@@ -6,20 +6,38 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('room_availabilities', function (Blueprint $table) {
+
             $table->id();
+
+            $table->foreignId('room_type_id')
+                ->constrained()
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
+
+            $table->date('date');
+
+            $table->integer('available_stock');
+
+            $table->integer('booked_room')->default(0);
+
             $table->timestamps();
+
+            $table->index([
+                'room_type_id',
+                'date'
+            ]);
+
+            $table->unique([
+                'room_type_id',
+                'date'
+            ]);
+
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('room_availabilities');

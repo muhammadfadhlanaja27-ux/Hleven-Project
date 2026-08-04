@@ -6,20 +6,37 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('room_price_histories', function (Blueprint $table) {
+
             $table->id();
+
+            $table->foreignId('room_type_id')
+                ->constrained()
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
+
+            $table->decimal('weekday_price',12,2);
+
+            $table->decimal('weekend_price',12,2);
+
+            $table->timestamp('effective_from');
+
+            $table->timestamp('effective_until')->nullable();
+
             $table->timestamps();
+
+            $table->index('room_type_id');
+
+            $table->index([
+                'room_type_id',
+                'effective_from'
+            ]);
+
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('room_price_histories');
