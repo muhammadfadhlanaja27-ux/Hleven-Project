@@ -6,20 +6,33 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('partner_documents', function (Blueprint $table) {
+
             $table->id();
+
+            $table->foreignId('partner_application_id')
+                ->constrained()
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
+
+            $table->string('document_type');
+
+            $table->string('file');
+
+            $table->boolean('verified')->default(false);
+
+            $table->timestamp('uploaded_at')->nullable();
+
             $table->timestamps();
+
+            $table->index('partner_application_id');
+            $table->index('verified');
+
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('partner_documents');
