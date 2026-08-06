@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FacilityController;
+use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -57,9 +58,15 @@ Route::prefix('v1')->group(function () {
     });
 });
 
-// Di dalam grup middleware Admin Hotel
+// Grup Middleware Admin Hotel (auth:sanctum & v1/admin)
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     Route::post('/verify-qr', [\App\Http\Controllers\QRCodeController::class, 'verify']);
+
+    // Hotel Admin Routes
+    Route::get('/hotels', [HotelController::class, 'myHotels']);
+    Route::put('/hotels/{id}', [HotelController::class, 'update']);
+    Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
+    Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
 });
 
 // Route Super Admin Dashboard
@@ -84,7 +91,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1/warnings')->group(function () {
 
     // Endpoint khusus Super Admin
     Route::middleware('role:super_admin')->group(function () {
-        // Perbaikan duplikasi prefix internal dengan menghapus '/' yang redundan
         Route::post('/', [WarningController::class, 'store']);
         Route::patch('/{id}/status', [WarningController::class, 'updateStatus']);
         Route::delete('/{id}', [WarningController::class, 'destroy']);
@@ -94,7 +100,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1/warnings')->group(function () {
 // Route Notification
 Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function () {
     Route::get('/', [NotificationController::class, 'index']);
-    Route::patch('/read-all', [NotificationController::class, 'markAllAsRead']); // Letakkan di atas /{id}
+    Route::patch('/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::get('/{id}', [NotificationController::class, 'show']);
     Route::patch('/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::delete('/{id}', [NotificationController::class, 'destroy']);
