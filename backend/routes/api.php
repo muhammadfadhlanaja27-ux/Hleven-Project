@@ -1,18 +1,15 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\PaymentController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes - H'Leven Backend
 |--------------------------------------------------------------------------
 */
-
-// Rute Bawaan / User Profile lama
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
 
 // H'Leven Backend v1 Routes
 Route::prefix('v1')->group(function () {
@@ -21,20 +18,24 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 
+    // Rute Webhook Midtrans (Public, tidak butuh auth)
+    Route::post('/payments/callback', [PaymentController::class, 'callback']);
+
     // Protected Routes (Membutuhkan Token Sanctum)
     Route::middleware('auth:sanctum')->group(function () {
+        
+        // Profile & Auth Management
         Route::get('/profile', [AuthController::class, 'profile']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']);
+        Route::put('/change-password', [AuthController::class, 'changePassword']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        // Rute untuk User (Dilindungi Sanctum)
-        Route::middleware(['auth:sanctum', 'role:user'])->prefix('v1/payments')->group(function () {
+        // Rute untuk User (Dilindungi Sanctum & Role User)
+        Route::middleware('role:user')->prefix('payments')->group(function () {
             Route::get('/{id}', [PaymentController::class, 'show']);
             Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
             Route::get('/{id}/status', [PaymentController::class, 'status']);
         });
-
-        // Rute Webhook Midtrans (Public, tidak butuh auth)
-        Route::post('v1/payments/callback', [PaymentController::class, 'callback']);
 
         // Rute khusus Admin Hotel (Menggunakan middleware 'role')
         Route::middleware('role:admin_hotel,super_admin')->group(function () {
@@ -42,5 +43,6 @@ Route::prefix('v1')->group(function () {
                 return response()->json(['message' => 'Selamat datang di Dashboard Admin Hotel']);
             });
         });
+
     });
 });
