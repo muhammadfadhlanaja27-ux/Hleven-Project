@@ -1,12 +1,11 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Payment;
 use App\Models\Booking;
-use App\Models\ETicket;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class MidtransService
 {
@@ -77,21 +76,17 @@ class MidtransService
                 $payment->update(['payment_status' => 'Success', 'paid_at' => now()]);
                 $booking->update(['status' => 'Paid']); // PAYMENT-007[cite: 1]
 
-                // Buat QR Code (E-Ticket)[cite: 1]
-                ETicket::firstOrCreate(
-                    ['booking_id' => $booking->id],
-                    ['qr_code' => Str::uuid()->toString()] // Menggunakan UUID sementara untuk isi QR
-                );
+                // Panggil QRCodeService untuk membuat E-Ticket yang rapi
+                app(\App\Services\QRCodeService::class)->generateTicket($booking);
 
                 $activity = 'Payment Success';
-                // Di dalam MidtransService.php -> handleCallback()
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                 $status = $transactionStatus === 'expire' ? 'Expired' : 'Cancelled';
                 $payment->update(['payment_status' => $status]);
                 $booking->update(['status' => $status]); // PAYMENT-008, PAYMENT-009[cite: 1]
 
                 // Kembalikan stok kamar
-                app(RoomAvailabilityService::class)->restoreStock($booking);
+                app(\App\Services\RoomAvailabilityService::class)->restoreStock($booking);
 
                 $activity = 'Payment ' . $status;
             }
@@ -105,6 +100,7 @@ class MidtransService
             ]);
         });
     }
+
     /**
      * Sinkronisasi status pembayaran manual dari Midtrans
      */
@@ -123,10 +119,8 @@ class MidtransService
                     $payment->update(['payment_status' => 'Success', 'paid_at' => now()]);
                     $booking->update(['status' => 'Paid']);
 
-                    \App\Models\ETicket::firstOrCreate(
-                        ['booking_id' => $booking->id],
-                        ['qr_code' => \Illuminate\Support\Str::uuid()->toString()]
-                    );
+                    // Panggil QRCodeService untuk membuat E-Ticket yang rapi
+                    app(\App\Services\QRCodeService::class)->generateTicket($booking);
 
                     $this->logSyncActivity($booking->user_id, 'Payment Success', $booking->booking_code);
                 }
@@ -135,9 +129,10 @@ class MidtransService
 
                 if ($payment->payment_status !== $status) {
                     $payment->update(['payment_status' => $status]);
-                    $booking->update(['status' => $status]); // Sesuai aturan PAYMENT-008 dan PAYMENT-009
+                    $booking->update(['status' => $status]); // Sesuai aturan PAYMENT-008 dan PAYMENT-009[cite: 1]
 
-                    app(RoomAvailabilityService::class)->restoreStock($booking);
+                    // Kembalikan stok kamar
+                    app(\App\Services\RoomAvailabilityService::class)->restoreStock($booking);
 
                     $this->logSyncActivity($booking->user_id, 'Payment ' . $status, $booking->booking_code);
                 }
@@ -147,10 +142,10 @@ class MidtransService
 
     private function logSyncActivity($userId, $activity, $orderId)
     {
-        \App\Models\ActivityLog::create([
+        ActivityLog::create([
             'user_id' => $userId,
             'activity' => $activity,
-            'description' => "Manual Sync Midtrans status untuk Order ID {$orderId}", // Aturan PAYMENT-010
+            'description' => "Manual Sync Midtrans status untuk Order ID {$orderId}", // Aturan PAYMENT-010[cite: 1]
             'ip_address' => request()->ip()
         ]);
     }
