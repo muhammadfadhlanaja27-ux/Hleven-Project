@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\UserRole;
-use App\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -12,30 +10,40 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::create([
-            'role' => UserRole::SUPER_ADMIN,
-            'name' => 'Super Admin',
-            'email' => 'superadmin@hleven.com',
-            'password' => Hash::make('password'),
-            'status' => UserStatus::ACTIVE,
-        ]);
+        // 1. Super Admin
+        User::updateOrCreate(
+            ['email' => 'superadmin@hleven.com'],
+            [
+                'name' => 'Super Admin H\'Leven',
+                'role' => 'super_admin',
+                'password' => Hash::make('password123'),
+                'phone' => '081111111111',
+                'status' => 'active',
+            ]
+        );
 
-        User::create([
-            'role' => UserRole::ADMIN_HOTEL,
-            'name' => 'Hotel Admin',
-            'email' => 'admin@hleven.com',
-            'password' => Hash::make('password'),
-            'status' => UserStatus::ACTIVE,
-        ]);
+        // 2. Admin Hotel
+        User::updateOrCreate(
+            ['email' => 'adminhotel@hleven.com'],
+            [
+                'name' => 'Hotel Manager Partner',
+                'role' => 'admin_hotel',
+                'password' => Hash::make('password123'),
+                'phone' => '082222222222',
+                'status' => 'active',
+            ]
+        );
 
-        User::create([
-            'role' => UserRole::USER,
-            'name' => 'Customer',
-            'email' => 'user@hleven.com',
-            'password' => Hash::make('password'),
-            'status' => UserStatus::ACTIVE,
-        ]);
-
-        User::factory(20)->create();
+        // 3. Regular User
+        User::updateOrCreate(
+            ['email' => 'user@hleven.com'],
+            [
+                'name' => 'John Doe (Customer)',
+                'role' => 'user',
+                'password' => Hash::make('password123'),
+                'phone' => '083333333333',
+                'status' => 'active',
+            ]
+        );
     }
 }
