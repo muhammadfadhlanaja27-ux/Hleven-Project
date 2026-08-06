@@ -1,17 +1,15 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\Auth\GoogleAuthController;
+use App\Http\Controllers\PaymentController;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
-
-Route::prefix('auth')->group(function () {
-    Route::get('/google', [GoogleAuthController::class, 'redirect']);
-    Route::get('/google/callback', [GoogleAuthController::class, 'callback']);
-    Route::post('/google/exchange', [GoogleAuthController::class, 'exchange']);
+// Rute untuk User (Dilindungi Sanctum)
+Route::middleware(['auth:sanctum', 'role:user'])->prefix('v1/payments')->group(function () {
+    Route::get('/{id}', [PaymentController::class, 'show']);
+    Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
+    Route::get('/{id}/status', [PaymentController::class, 'status']);
 });
 
+// Rute Webhook Midtrans (Public, tidak butuh auth)
+Route::post('v1/payments/callback', [PaymentController::class, 'callback']);
 
