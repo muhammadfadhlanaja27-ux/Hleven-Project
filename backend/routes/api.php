@@ -1,10 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\V1\AuthController;
-
+use App\Http\Controllers\PaymentController;
 /*
 |--------------------------------------------------------------------------
 | API Routes - H'Leven Backend
@@ -34,6 +33,16 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
+
+// Rute untuk User (Dilindungi Sanctum)
+Route::middleware(['auth:sanctum', 'role:user'])->prefix('v1/payments')->group(function () {
+    Route::get('/{id}', [PaymentController::class, 'show']);
+    Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
+    Route::get('/{id}/status', [PaymentController::class, 'status']);
+});
+
+// Rute Webhook Midtrans (Public, tidak butuh auth)
+Route::post('v1/payments/callback', [PaymentController::class, 'callback']);
 
         // Rute khusus Admin Hotel (Menggunakan middleware 'role')
         Route::middleware('role:admin_hotel,super_admin')->group(function () {
