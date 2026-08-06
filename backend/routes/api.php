@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
+use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -67,6 +68,12 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::put('/hotels/{id}', [HotelController::class, 'update']);
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
+
+    // Room Type Admin Routes
+    Route::get('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'index']);
+    Route::post('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'store']);
+    Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
+    Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
 });
 
 // Route Super Admin Dashboard
