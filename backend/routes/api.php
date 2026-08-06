@@ -3,34 +3,43 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes - H'Leven Backend
 |--------------------------------------------------------------------------
-*/
+ */
 
 // H'Leven Backend v1 Routes
 Route::prefix('v1')->group(function () {
-
     // Public Auth Routes
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+
+    // Public Facility Routes
+    Route::get('/facilities', [FacilityController::class, 'index']);
 
     // Rute Webhook Midtrans (Public, tidak butuh auth)
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
 
     // Protected Routes (Membutuhkan Token Sanctum)
     Route::middleware('auth:sanctum')->group(function () {
-        
         // Profile & Auth Management
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::put('/change-password', [AuthController::class, 'changePassword']);
         Route::post('/logout', [AuthController::class, 'logout']);
+
+        // Protected Facility Routes (Hanya untuk Super Admin & Admin Hotel)
+        Route::middleware('role:super_admin,admin_hotel')->group(function () {
+            Route::post('/facilities', [FacilityController::class, 'store']);
+            Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
+        });
 
         // Rute untuk User (Dilindungi Sanctum & Role User)
         Route::middleware('role:user')->prefix('payments')->group(function () {
@@ -45,7 +54,6 @@ Route::prefix('v1')->group(function () {
                 return response()->json(['message' => 'Selamat datang di Dashboard Admin Hotel']);
             });
         });
-
     });
 });
 
@@ -53,7 +61,6 @@ Route::prefix('v1')->group(function () {
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     Route::post('/verify-qr', [\App\Http\Controllers\QRCodeController::class, 'verify']);
 });
-
 
 // Route Super Admin Dashboard
 Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin/dashboard')->group(function () {
@@ -69,9 +76,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin/
     Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
 });
 
-
 // Route Warning
-
 Route::middleware(['auth:sanctum'])->prefix('v1/warnings')->group(function () {
     // Endpoint yang bisa diakses Admin Hotel dan Super Admin
     Route::get('/', [WarningController::class, 'index']);
@@ -79,6 +84,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1/warnings')->group(function () {
 
     // Endpoint khusus Super Admin
     Route::middleware('role:super_admin')->group(function () {
+        // Perbaikan duplikasi prefix internal dengan menghapus '/' yang redundan
         Route::post('/', [WarningController::class, 'store']);
         Route::patch('/{id}/status', [WarningController::class, 'updateStatus']);
         Route::delete('/{id}', [WarningController::class, 'destroy']);
