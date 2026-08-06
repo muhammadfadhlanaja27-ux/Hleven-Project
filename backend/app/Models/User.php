@@ -2,10 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\UserRole;
-use App\Enums\UserStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -15,84 +12,35 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'role',
-        'name',
-        'email',
-        'password',
-        'phone',
-        'avatar',
-        'google_id',
-        'status',
+        'role', 'name', 'email', 'password', 'phone', 'avatar', 'google_id', 'email_verified_at', 'status'
     ];
 
     protected $hidden = [
-        'password',
-        'remember_token',
+        'password', 'remember_token',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'role' => UserRole::class,
-            'status' => UserStatus::class,
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
 
-    /**
-     * Hotel yang dikelola user.
-     */
-    public function hotels(): HasMany
+    public function hotels()
     {
         return $this->hasMany(Hotel::class, 'admin_id');
     }
 
-    /**
-     * Booking user.
-     */
-    public function bookings(): HasMany
+    public function bookings()
     {
-        return $this->hasMany(Booking::class);
+        return $this->hasMany(Booking::class, 'user_id');
     }
 
-    /**
-     * Review user.
-     */
-    public function reviews(): HasMany
+    public function reviews()
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(Review::class, 'user_id');
     }
 
-    /**
-     * Notifikasi user.
-     */
-    public function notifications(): HasMany
+    public function notifications()
     {
-        return $this->hasMany(Notification::class);
-    }
-
-    /**
-     * Log aktivitas user.
-     */
-    public function activityLogs(): HasMany
-    {
-        return $this->hasMany(ActivityLog::class);
-    }
-
-    /**
-     * Warning yang dibuat Super Admin.
-     */
-    public function warnings(): HasMany
-    {
-        return $this->hasMany(Warning::class, 'super_admin_id');
-    }
-
-    /**
-     * Riwayat perubahan status booking.
-     */
-    public function bookingStatusHistories(): HasMany
-    {
-        return $this->hasMany(BookingStatusHistory::class, 'changed_by');
+        return $this->hasMany(Notification::class, 'user_id');
     }
 }
