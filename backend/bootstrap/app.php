@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Aktifkan CORS untuk semua request API (mengizinkan frontend Vite)
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+
         // Daftarkan alias middleware Anda di sini
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,

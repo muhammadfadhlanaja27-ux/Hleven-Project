@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Landing from './pages/dashboard/Landing';
 
 function App() {
   return (
@@ -7,9 +9,13 @@ function App() {
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-        {/* Default redirect: root → /login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Dashboard Route */}
+        <Route path="/dashboard" element={<Landing />} />
+
+        {/* Default route: root → landing page */}
+        <Route path="/" element={<Landing />} />
 
         {/* Fallback: semua path tidak dikenal → /login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

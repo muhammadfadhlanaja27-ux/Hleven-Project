@@ -21,24 +21,31 @@ export default function Login() {
 
     try {
       const result = await authService.login(email, password);
-      const { user, access_token } = result.data;
 
-      // Validasi role: Hanya Admin Hotel atau Super Admin yang boleh masuk
-      if (user.role !== 'admin_hotel' && user.role !== 'super_admin') {
-        setErrorMsg('Akses ditolak. Halaman ini khusus untuk Admin Hotel.');
-        setLoading(false);
-        return;
+      const responseData = result.data?.data || result.data;
+      const user = responseData?.user;
+      const access_token = responseData?.access_token;
+
+      if (!user) {
+        throw new Error('Data pengguna tidak ditemukan dari server.');
       }
 
-      // Simpan token dan data user
-      localStorage.setItem('access_token', access_token);
+      // Simpan token dan data user ke localStorage
+      if (access_token) {
+        localStorage.setItem('access_token', access_token);
+      }
       localStorage.setItem('user', JSON.stringify(user));
 
-      // Redirect ke Dashboard
-      navigate('/admin/dashboard');
+      // Arahkan berdasarkan role secara fleksibel
+      if (user.role === 'admin_hotel' || user.role === 'super_admin') {
+        navigate('/admin/dashboard');
+      } else {
+        // Untuk user biasa, arahkan ke halaman dashboard / landing page utama
+        navigate('/dashboard');
+      }
     } catch (err) {
       setErrorMsg(
-        err?.message || 'Terjadi kesalahan saat login. Periksa email dan password Anda.'
+        err?.response?.data?.message || err?.message || 'Terjadi kesalahan saat login. Periksa email dan password Anda.'
       );
     } finally {
       setLoading(false);
