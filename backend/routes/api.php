@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\PaymentController;
 /*
@@ -15,16 +14,9 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Google Authentication Routes
-Route::prefix('auth')->group(function () {
-    Route::get('/google', [GoogleAuthController::class, 'redirect']);
-    Route::get('/google/callback', [GoogleAuthController::class, 'callback']);
-    Route::post('/google/exchange', [GoogleAuthController::class, 'exchange']);
-});
-
 // H'Leven Backend v1 Routes
 Route::prefix('v1')->group(function () {
-    
+
     // Public Auth Routes
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
@@ -34,15 +26,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
-// Rute untuk User (Dilindungi Sanctum)
-Route::middleware(['auth:sanctum', 'role:user'])->prefix('v1/payments')->group(function () {
-    Route::get('/{id}', [PaymentController::class, 'show']);
-    Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
-    Route::get('/{id}/status', [PaymentController::class, 'status']);
-});
+        // Rute untuk User (Dilindungi Sanctum)
+        Route::middleware(['auth:sanctum', 'role:user'])->prefix('v1/payments')->group(function () {
+            Route::get('/{id}', [PaymentController::class, 'show']);
+            Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
+            Route::get('/{id}/status', [PaymentController::class, 'status']);
+        });
 
-// Rute Webhook Midtrans (Public, tidak butuh auth)
-Route::post('v1/payments/callback', [PaymentController::class, 'callback']);
+        // Rute Webhook Midtrans (Public, tidak butuh auth)
+        Route::post('v1/payments/callback', [PaymentController::class, 'callback']);
 
         // Rute khusus Admin Hotel (Menggunakan middleware 'role')
         Route::middleware('role:admin_hotel,super_admin')->group(function () {
