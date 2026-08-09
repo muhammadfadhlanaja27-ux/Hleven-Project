@@ -35,7 +35,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::put('/change-password', [AuthController::class, 'changePassword']);
+        Route::put('/user/profile', [App\Http\Controllers\Api\ProfileController::class, 'update']);
+        // Untuk ganti password
+        Route::put('/user/change-password', [App\Http\Controllers\Api\ProfileController::class, 'changePassword']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        
 
         // Protected Facility Routes (Hanya untuk Super Admin & Admin Hotel)
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
