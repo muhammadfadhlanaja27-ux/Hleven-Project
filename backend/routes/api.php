@@ -11,6 +11,7 @@ use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -119,4 +120,19 @@ Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function 
 Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/activity-logs')->group(function () {
     Route::get('/', [ActivityLogController::class, 'index']);
     Route::get('/{id}', [ActivityLogController::class, 'show']);
+});
+
+// Rute untuk laporan (Reports) - Hanya bisa diakses oleh Admin Hotel dan Super Admin
+Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/reports')->group(function () {
+    Route::get('/bookings', [ReportController::class, 'bookings']);
+    Route::get('/revenue', [ReportController::class, 'revenue']);
+    Route::get('/refunds', [ReportController::class, 'refunds']);
+    Route::get('/export', [ReportController::class, 'export']);
+
+    // Laporan spesifik platform, idealnya dibatasi untuk Super Admin
+    Route::middleware('role:super_admin')->group(function () {
+        Route::get('/users', [ReportController::class, 'users']);
+        Route::get('/hotels', [ReportController::class, 'hotels']);
+        Route::get('/partners', [ReportController::class, 'partners']);
+    });
 });
