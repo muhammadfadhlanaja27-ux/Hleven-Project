@@ -10,6 +10,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ActivityLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -111,4 +112,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function 
     Route::get('/{id}', [NotificationController::class, 'show']);
     Route::patch('/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::delete('/{id}', [NotificationController::class, 'destroy']);
+});
+
+
+// Hanya bisa diakses oleh Admin Hotel dan Super Admin
+Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/activity-logs')->group(function () {
+    Route::get('/', [ActivityLogController::class, 'index']);
+    Route::get('/{id}', [ActivityLogController::class, 'show']);
 });
