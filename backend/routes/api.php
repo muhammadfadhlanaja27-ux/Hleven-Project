@@ -10,6 +10,10 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SuperAdminUserController;
+use App\Http\Controllers\FileStorageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -111,4 +115,50 @@ Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function 
     Route::get('/{id}', [NotificationController::class, 'show']);
     Route::patch('/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::delete('/{id}', [NotificationController::class, 'destroy']);
+});
+
+
+// Hanya bisa diakses oleh Admin Hotel dan Super Admin
+Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/activity-logs')->group(function () {
+    Route::get('/', [ActivityLogController::class, 'index']);
+    Route::get('/{id}', [ActivityLogController::class, 'show']);
+});
+
+// Rute untuk laporan (Reports) - Hanya bisa diakses oleh Admin Hotel dan Super Admin
+Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/reports')->group(function () {
+    Route::get('/bookings', [ReportController::class, 'bookings']);
+    Route::get('/revenue', [ReportController::class, 'revenue']);
+    Route::get('/refunds', [ReportController::class, 'refunds']);
+    Route::get('/export', [ReportController::class, 'export']);
+
+    // Laporan spesifik platform, idealnya dibatasi untuk Super Admin
+    Route::middleware('role:super_admin')->group(function () {
+        Route::get('/users', [ReportController::class, 'users']);
+        Route::get('/hotels', [ReportController::class, 'hotels']);
+        Route::get('/partners', [ReportController::class, 'partners']);
+    });
+});
+
+// Rute untuk manajemen Admin Hotel oleh Super Admin
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin/users')->group(function () {
+    Route::get('/', [SuperAdminUserController::class, 'index']);
+    Route::get('/{id}', [SuperAdminUserController::class, 'show']);
+    Route::post('/', [SuperAdminUserController::class, 'store']); // Untuk membuat Admin Hotel baru
+    Route::patch('/{id}/status', [SuperAdminUserController::class, 'updateStatus']); // Untuk Suspend/Activate
+    Route::delete('/{id}', [SuperAdminUserController::class, 'destroy']);
+});
+
+// Rute untuk manajemen file (Upload Avatar, Foto Hotel, Foto Kamar)
+Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
+    // Endpoint untuk User & Admin (Upload Avatar)
+    Route::post('/users/{id}/avatar', [FileStorageController::class, 'uploadAvatar']);
+
+    // Endpoint khusus Admin Hotel untuk mengelola foto hotel dan kamar
+    Route::middleware('role:admin_hotel')->group(function () {
+        Route::post('/hotels/{id}/photos', [FileStorageController::class, 'uploadHotelPhoto']);
+        Route::delete('/hotel-photos/{id}', [FileStorageController::class, 'deleteHotelPhoto']);
+
+        Route::post('/rooms/{id}/photos', [FileStorageController::class, 'uploadRoomPhoto']);
+        Route::delete('/room-photos/{id}', [FileStorageController::class, 'deleteRoomPhoto']);
+    });
 });
