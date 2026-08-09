@@ -1,31 +1,39 @@
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import './landing.css';
 
 export default function Landing() {
+  const navigate = useNavigate();
   return (
     <div className="bg-surface text-on-surface antialiased font-body-md landing-page">
       {/* TopNavBar */}
       <header className="w-full sticky top-0 z-50 bg-off-white dark:bg-surface-dim shadow-sm shadow-forest-green/5">
         <div className="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
           {/* Brand */}
-          <a className="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim" href="/">
+          <Link className="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim" to="/">
             H'Leven
-          </a>
+          </Link>
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6">
-            <a className="text-forest-green dark:text-primary-fixed-dim font-bold border-b-2 border-forest-green pb-1 font-label-md text-label-md" href="/">Hotels</a>
-            <a className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" href="/detail">Resorts</a>
-            <a className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" href="/design-system">Design System</a>
-            <a className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" href="/user-dashboard">User Dashboard</a>
+            <Link className="text-forest-green dark:text-primary-fixed-dim font-bold border-b-2 border-forest-green pb-1 font-label-md text-label-md" to="/">Hotels</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" to="/detail">Resorts</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" to="/design-system">Design System</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" to="/user-dashboard">User Dashboard</Link>
           </nav>
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <button className="hidden md:flex text-forest-green dark:text-primary-fixed-dim hover:bg-warm-beige/10 p-2 rounded-full transition-colors active:scale-[0.99] duration-200">
+            <Link 
+              to="/login"
+              className="hidden md:flex text-forest-green dark:text-primary-fixed-dim hover:bg-warm-beige/10 p-2 rounded-full transition-colors active:scale-[0.99] duration-200"
+            >
               <span className="material-symbols-outlined">person</span>
-            </button>
-            <button className="bg-forest-green text-white px-6 py-2 rounded-full font-label-md text-label-md hover:bg-primary transition-colors active:scale-[0.99] duration-200">
+            </Link>
+            <Link 
+              to="/login"
+              className="bg-forest-green text-white px-6 py-2 rounded-full font-label-md text-label-md hover:bg-primary transition-colors active:scale-[0.99] duration-200"
+            >
               Book Now
-            </button>
+            </Link>
           </div>
         </div>
       </header>
