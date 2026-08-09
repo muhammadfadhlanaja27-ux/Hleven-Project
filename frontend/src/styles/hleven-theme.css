@@ -1,16 +1,16 @@
-@import "./styles/hleven-theme.css";
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* ==========================================================================
-   H'Leven Design System — Global CSS
+   H'Leven Design System - React & Web CSS Theme
    Brand: Sophisticated, Trustworthy, and Welcoming Hospitality Platform
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Design Tokens (CSS Custom Properties)
+   1. Google Fonts & Icon Imports
+   -------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* --------------------------------------------------------------------------
+   2. Design Tokens (CSS Custom Properties)
    -------------------------------------------------------------------------- */
 :root {
   /* Brand Colors */
@@ -53,7 +53,7 @@
   --color-surface-container-highest: #e8e2d9;
   --color-surface-variant: #e8e2d9;
   --color-surface-tint: #52634f;
-
+  
   --color-on-surface: #1e1b16;
   --color-on-surface-variant: #444842;
   --color-inverse-surface: #33302a;
@@ -62,7 +62,7 @@
   --color-background: #fff8f0;
   --color-on-background: #1e1b16;
 
-  /* Named Brand Palette */
+  /* Accent & Named Colors */
   --color-forest-green: #778873;
   --color-sage-green: #A1BC98;
   --color-warm-beige: #DCCFC0;
@@ -81,20 +81,20 @@
   --color-outline: #747871;
   --color-outline-variant: #c4c8bf;
 
-  /* Typography */
+  /* Typography Fonts */
   --font-headline: 'Libre Caslon Text', Georgia, serif;
   --font-body: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-label: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Border Radii */
-  --radius-sm: 0.25rem;
-  --radius-default: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-full: 9999px;
+  --radius-sm: 0.25rem;    /* 4px */
+  --radius-default: 0.5rem; /* 8px - Standard buttons, inputs */
+  --radius-md: 0.75rem;   /* 12px */
+  --radius-lg: 1rem;      /* 16px - Cards, image galleries */
+  --radius-xl: 1.5rem;    /* 24px - Hero containers, modals */
+  --radius-full: 9999px;  /* Pill badges, circular buttons */
 
-  /* Spacing */
+  /* Spacing Scale */
   --spacing-container-max: 1280px;
   --spacing-gutter: 1.5rem;
   --spacing-margin-mobile: 1rem;
@@ -104,27 +104,15 @@
   --spacing-stack-lg: 2rem;
   --spacing-section-gap: 5rem;
 
-  /* Shadows */
+  /* Shadows (Ambient & Subtle) */
   --shadow-ambient: 0 4px 20px -2px rgba(119, 136, 115, 0.08);
   --shadow-hover: 0 8px 30px -4px rgba(119, 136, 115, 0.14);
 }
 
 /* --------------------------------------------------------------------------
-   3. Base Reset & Global Styles
+   3. Base Global Styles
    -------------------------------------------------------------------------- */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  font-size: 16px;
-  scroll-behavior: smooth;
-}
-
 body {
-  margin: 0;
   font-family: var(--font-body);
   background-color: var(--color-background);
   color: var(--color-on-background);
@@ -133,39 +121,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Override default Vite #root constraints for full-page layouts */
-#root {
-  width: 100%;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-}
-
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-headline);
-  color: var(--color-on-surface);
-  margin: 0;
-}
-
-p {
-  margin: 0;
-}
-
-a {
-  color: var(--color-forest-green);
-  text-decoration: none;
-}
-
-a:hover {
-  color: var(--color-secondary);
+  font-weight: 700;
+  color: var(--color-primary);
 }
 
 /* --------------------------------------------------------------------------
-   4. Typography Utility Classes
+   4. Typography Utilities
    -------------------------------------------------------------------------- */
 .font-headline { font-family: var(--font-headline); }
-.font-body     { font-family: var(--font-body); }
-.font-label    { font-family: var(--font-label); }
+.font-body { font-family: var(--font-body); }
+.font-label { font-family: var(--font-label); }
 
 .text-headline-xl {
   font-family: var(--font-headline);
@@ -219,7 +186,36 @@ a:hover {
 }
 
 /* --------------------------------------------------------------------------
-   5. Reusable Component Classes
+   5. Color Utilities
+   -------------------------------------------------------------------------- */
+/* Backgrounds */
+.bg-hleven-primary { background-color: var(--color-primary); }
+.bg-hleven-secondary { background-color: var(--color-secondary); }
+.bg-hleven-tertiary { background-color: var(--color-tertiary); }
+.bg-hleven-surface { background-color: var(--color-surface); }
+.bg-hleven-container { background-color: var(--color-surface-container); }
+.bg-hleven-forest-green { background-color: var(--color-forest-green); }
+.bg-hleven-sage-green { background-color: var(--color-sage-green); }
+.bg-hleven-warm-beige { background-color: var(--color-warm-beige); }
+.bg-hleven-off-white { background-color: var(--color-off-white); }
+
+/* Text Colors */
+.text-hleven-primary { color: var(--color-primary); }
+.text-hleven-secondary { color: var(--color-secondary); }
+.text-hleven-tertiary { color: var(--color-tertiary); }
+.text-hleven-on-surface { color: var(--color-on-surface); }
+.text-hleven-forest-green { color: var(--color-forest-green); }
+.text-hleven-sage-green { color: var(--color-sage-green); }
+.text-hleven-warm-beige { color: var(--color-warm-beige); }
+.text-hleven-main { color: var(--color-text-main); }
+
+/* Borders */
+.border-hleven-outline { border-color: var(--color-outline); }
+.border-hleven-variant { border-color: var(--color-outline-variant); }
+.border-hleven-warm-beige { border-color: var(--color-warm-beige); }
+
+/* --------------------------------------------------------------------------
+   6. Reusable Component Classes (React Friendly)
    -------------------------------------------------------------------------- */
 
 /* Buttons */
@@ -229,10 +225,9 @@ a:hover {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1.5rem;
-  font-family: var(--font-label);
+  font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.875rem;
-  letter-spacing: 0.05em;
+  font-size: 0.95rem;
   border-radius: var(--radius-default);
   transition: all 0.2s ease-in-out;
   cursor: pointer;
@@ -251,6 +246,14 @@ a:hover {
   transform: translateY(-1px);
 }
 
+.hleven-btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-on-secondary);
+}
+.hleven-btn-secondary:hover {
+  background-color: var(--color-primary-container);
+}
+
 .hleven-btn-outline {
   background-color: transparent;
   border-color: var(--color-primary);
@@ -260,6 +263,14 @@ a:hover {
   background-color: var(--color-warm-beige);
   border-color: var(--color-secondary);
   color: var(--color-secondary);
+}
+
+.hleven-btn-ghost {
+  background-color: transparent;
+  color: var(--color-primary);
+}
+.hleven-btn-ghost:hover {
+  background-color: var(--color-surface-container);
 }
 
 /* Cards */
@@ -277,19 +288,18 @@ a:hover {
   box-shadow: var(--shadow-hover);
 }
 
-/* Form Inputs */
+/* Inputs & Form Controls */
 .hleven-input {
   width: 100%;
   padding: 0.75rem 1rem;
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--color-on-surface);
   background-color: var(--color-surface-container-lowest);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-default);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-sizing: border-box;
 }
 
 .hleven-input:focus {
@@ -323,12 +333,3 @@ a:hover {
   background-color: var(--color-tertiary-fixed);
   color: var(--color-on-tertiary-fixed-variant);
 }
-.bg-surface { background-color: var(--color-surface); }
-.bg-off-white { background-color: var(--color-off-white); }
-.bg-warm-beige { background-color: var(--color-warm-beige); }
-.text-on-surface { color: var(--color-on-surface); }
-.text-forest-green { color: var(--color-forest-green); }
-.bg-forest-green { background-color: var(--color-forest-green); }
-.bg-primary { background-color: var(--color-primary); }
-.text-primary { color: var(--color-primary); }
-.hover\:bg-warm-beige\/30:hover { background-color: rgba(var(--color-warm-beige), 0.3); }
