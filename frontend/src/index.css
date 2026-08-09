@@ -1,111 +1,323 @@
+/* ==========================================================================
+   H'Leven Design System — Global CSS
+   Brand: Sophisticated, Trustworthy, and Welcoming Hospitality Platform
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Google Fonts (diimpor via index.html <link> untuk performa optimal)
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   2. Design Tokens (CSS Custom Properties)
+   -------------------------------------------------------------------------- */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Brand Colors */
+  --color-primary: #50604d;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #687965;
+  --color-on-primary-container: #f7fff1;
+  --color-primary-fixed: #d5e8cf;
+  --color-primary-fixed-dim: #baccb4;
+  --color-on-primary-fixed: #111f10;
+  --color-on-primary-fixed-variant: #3b4b39;
+  --color-inverse-primary: #baccb4;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --color-secondary: #4c6546;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #ceebc4;
+  --color-on-secondary-container: #526b4c;
+  --color-secondary-fixed: #ceebc4;
+  --color-secondary-fixed-dim: #b3cea9;
+  --color-on-secondary-fixed: #0a2008;
+  --color-on-secondary-fixed-variant: #354d30;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --color-tertiary: #645b4f;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #7d7366;
+  --color-on-tertiary-container: #fffbff;
+  --color-tertiary-fixed: #eee0d1;
+  --color-tertiary-fixed-dim: #d1c5b6;
+  --color-on-tertiary-fixed: #211b11;
+  --color-on-tertiary-fixed-variant: #4e453a;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Surfaces & Backgrounds */
+  --color-surface: #fff8f0;
+  --color-surface-dim: #e0d9d0;
+  --color-surface-bright: #fff8f0;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #faf3ea;
+  --color-surface-container: #f4ede4;
+  --color-surface-container-high: #eee7de;
+  --color-surface-container-highest: #e8e2d9;
+  --color-surface-variant: #e8e2d9;
+  --color-surface-tint: #52634f;
+
+  --color-on-surface: #1e1b16;
+  --color-on-surface-variant: #444842;
+  --color-inverse-surface: #33302a;
+  --color-inverse-on-surface: #f7f0e7;
+
+  --color-background: #fff8f0;
+  --color-on-background: #1e1b16;
+
+  /* Named Brand Palette */
+  --color-forest-green: #778873;
+  --color-sage-green: #A1BC98;
+  --color-warm-beige: #DCCFC0;
+  --color-off-white: #FDF6ED;
+  --color-text-main: #2D332C;
+
+  /* Status Colors */
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-status-success: #4F6F52;
+  --color-status-error: #A0522D;
+
+  /* Borders & Outlines */
+  --color-outline: #747871;
+  --color-outline-variant: #c4c8bf;
+
+  /* Typography */
+  --font-headline: 'Libre Caslon Text', Georgia, serif;
+  --font-body: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-label: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Border Radii */
+  --radius-sm: 0.25rem;
+  --radius-default: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --spacing-container-max: 1280px;
+  --spacing-gutter: 1.5rem;
+  --spacing-margin-mobile: 1rem;
+  --spacing-margin-desktop: 2.5rem;
+  --spacing-stack-sm: 0.5rem;
+  --spacing-stack-md: 1rem;
+  --spacing-stack-lg: 2rem;
+  --spacing-section-gap: 5rem;
+
+  /* Shadows */
+  --shadow-ambient: 0 4px 20px -2px rgba(119, 136, 115, 0.08);
+  --shadow-hover: 0 8px 30px -4px rgba(119, 136, 115, 0.14);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* --------------------------------------------------------------------------
+   3. Base Reset & Global Styles
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Override default Vite #root constraints for full-page layouts */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-headline);
+  color: var(--color-on-surface);
+  margin: 0;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+a {
+  color: var(--color-forest-green);
+  text-decoration: none;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+a:hover {
+  color: var(--color-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   4. Typography Utility Classes
+   -------------------------------------------------------------------------- */
+.font-headline { font-family: var(--font-headline); }
+.font-body     { font-family: var(--font-body); }
+.font-label    { font-family: var(--font-label); }
+
+.text-headline-xl {
+  font-family: var(--font-headline);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.text-headline-lg {
+  font-family: var(--font-headline);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.text-headline-md {
+  font-family: var(--font-headline);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.text-body-lg {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-body-md {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-label-md {
+  font-family: var(--font-label);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+}
+
+.text-label-sm {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* --------------------------------------------------------------------------
+   5. Reusable Component Classes
+   -------------------------------------------------------------------------- */
+
+/* Buttons */
+.hleven-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-default);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.hleven-btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 2px 8px rgba(80, 96, 77, 0.25);
+}
+.hleven-btn-primary:hover {
+  background-color: var(--color-secondary);
+  box-shadow: 0 4px 12px rgba(80, 96, 77, 0.35);
+  transform: translateY(-1px);
+}
+
+.hleven-btn-outline {
+  background-color: transparent;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.hleven-btn-outline:hover {
+  background-color: var(--color-warm-beige);
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+}
+
+/* Cards */
+.hleven-card {
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-surface-container-highest);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-ambient);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hleven-card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Form Inputs */
+.hleven-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-on-surface);
+  background-color: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.hleven-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(80, 96, 77, 0.15);
+}
+
+/* Status Badges */
+.hleven-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hleven-badge-success {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.hleven-badge-error {
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+.hleven-badge-pending {
+  background-color: var(--color-tertiary-fixed);
+  color: var(--color-on-tertiary-fixed-variant);
 }
