@@ -60,7 +60,7 @@ class ReportService
 
     public function getRevenueReport($user, array $filters): array
     {
-        $query = Payment::where('payment_status', 'Success'); // REPORT-005[cite: 1]
+        $query = Payment::query()->where('payment_status', 'Success');
         $this->applyRoleAndDateFilters($query, $user, $filters, 'paid_at');
 
         $totalRevenue = $query->sum('gross_amount');
@@ -74,7 +74,7 @@ class ReportService
 
     public function getRefundReport($user, array $filters): array
     {
-        $query = Refund::where('status', 'Completed'); // REPORT-006[cite: 1]
+        $query = Refund::query()->where('status', 'Completed');
         $this->applyRoleAndDateFilters($query, $user, $filters, 'approved_at');
 
         $totalAmount = $query->join('payments', 'refunds.booking_id', '=', 'payments.booking_id')
