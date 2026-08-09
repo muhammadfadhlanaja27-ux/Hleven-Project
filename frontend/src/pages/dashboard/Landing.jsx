@@ -15,24 +15,22 @@ export default function Landing() {
           </Link>
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link className="text-forest-green dark:text-primary-fixed-dim font-bold border-b-2 border-forest-green pb-1 font-label-md text-label-md" to="/">Hotels</Link>
-            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" to="/detail">Resorts</Link>
-            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" to="/design-system">Design System</Link>
-            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors font-label-md text-label-md rounded px-2 py-1" to="/user-dashboard">User Dashboard</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="/">Hotels</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="/detail">Resorts</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="#">Our Story</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="#">Promotions</Link>
           </nav>
+
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <Link 
-              to="/login"
-              className="hidden md:flex text-forest-green dark:text-primary-fixed-dim hover:bg-warm-beige/10 p-2 rounded-full transition-colors active:scale-[0.99] duration-200"
-            >
-              <span className="material-symbols-outlined">person</span>
-            </Link>
-            <Link 
-              to="/login"
+            <Link
+              to="/"
               className="bg-forest-green text-white px-6 py-2 rounded-full font-label-md text-label-md hover:bg-primary transition-colors active:scale-[0.99] duration-200"
             >
               Book Now
+            </Link>
+            <Link to="/profile" className="hidden md:flex text-forest-green dark:text-primary-fixed-dim hover:bg-warm-beige/10 p-2 rounded-full transition-colors">
+              <span className="material-symbols-outlined">person</span>
             </Link>
           </div>
         </div>
@@ -40,9 +38,9 @@ export default function Landing() {
 
       {/* Hero Section */}
       <section className="relative w-full h-[600px] flex items-center justify-center bg-warm-beige overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center" 
-          data-alt="A luxurious modern hotel exterior at dusk with warm glowing lights, showcasing sophisticated architecture, a serene pool area, and a welcoming, premium atmosphere suitable for a high-end booking platform hero section." 
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          data-alt="A luxurious modern hotel exterior at dusk with warm glowing lights, showcasing sophisticated architecture, a serene pool area, and a welcoming, premium atmosphere suitable for a high-end booking platform hero section."
           style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDzvadz-wSQ_EhmF9D8iFWi9mGkts1CRGLAdeae-Xjw_pYLzbTUCbfL1qobhQM5IAQFR1WeejU8WwoEEKFOByeRaisbYY7TaFh2RrIDnitCZ17k32Ur2mD0uj-CfCqFtBjeTXBF7Y1CzrUaGJ8JgPMJhyMGAYrZQUNUpoDRDo0lLHGVlnNKfVFsRMXFZaJJkw7kr1fyth-eoNS7nyJzNy8_vOSJiw-x5OV7UAovm2zqoIuQVfbZkcyM3w')" }}
         >
           <div className="absolute inset-0 bg-black/40"></div>
@@ -77,7 +75,7 @@ export default function Landing() {
                 <input className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-body-md text-on-surface text-sm" type="date" />
               </div>
             </div>
-            <div className="w-full md:w-1/4 flex flex-col items-start bg-off-white px-4 py-2 rounded-xl border border-warm-beige/50 focus-within:border-forest-green transition-colors">
+            <div className="w-full md:w-1/4 flex flex-col items-start bg-off-white px-2 py-2 rounded-xl border border-warm-beige/50 focus-within:border-forest-green transition-colors">
               <label className="font-label-sm text-label-sm text-on-surface-variant">Tamu &amp; Kamar</label>
               <div className="flex items-center w-full mt-1">
                 <span className="material-symbols-outlined text-outline mr-2 text-sm">group</span>
@@ -191,10 +189,10 @@ export default function Landing() {
             {/* Hotel Card 1 */}
             <div className="bg-off-white rounded-2xl overflow-hidden shadow-sm shadow-forest-green/5 border border-warm-beige/20 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col">
               <div className="relative h-48 overflow-hidden">
-                <img 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  data-alt="A beautiful modern hotel resort with a crystal clear swimming pool, surrounded by lush greenery and comfortable lounge chairs under a sunny sky, embodying luxury and relaxation." 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHuNm76IvFQZbSl7VYRktpTVvsfWnBMG9Do1DD_H6n2mfh5tRKYh3A8n77QD4L5fz_K3swo8a2OoYo9n4AzniP2ZVR7wplDpSWVt1gkxhmiTtds3KYEygb-FF2Wb_AnIvA9_XjtILGBtbPQNl5D8vknOX0p7cQGGeOgEt4IONLZQAmw0IyvEVk_vZnLQ7z2L2-YHUIYacyWDHWW7_CyW8Lr6qCptkn6A0JNgBFmd1NMwB4c850aI_8UA" 
+                <img
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  data-alt="A beautiful modern hotel resort with a crystal clear swimming pool, surrounded by lush greenery and comfortable lounge chairs under a sunny sky, embodying luxury and relaxation."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHuNm76IvFQZbSl7VYRktpTVvsfWnBMG9Do1DD_H6n2mfh5tRKYh3A8n77QD4L5fz_K3swo8a2OoYo9n4AzniP2ZVR7wplDpSWVt1gkxhmiTtds3KYEygb-FF2Wb_AnIvA9_XjtILGBtbPQNl5D8vknOX0p7cQGGeOgEt4IONLZQAmw0IyvEVk_vZnLQ7z2L2-YHUIYacyWDHWW7_CyW8Lr6qCptkn6A0JNgBFmd1NMwB4c850aI_8UA"
                 />
                 <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                   <span className="material-symbols-outlined text-sage-green text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -230,10 +228,10 @@ export default function Landing() {
             {/* Hotel Card 2 */}
             <div className="bg-off-white rounded-2xl overflow-hidden shadow-sm shadow-forest-green/5 border border-warm-beige/20 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col">
               <div className="relative h-48 overflow-hidden">
-                <img 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  data-alt="An elegant interior of a boutique hotel room featuring modern minimalist furniture, large windows with natural light, warm beige tones, and a sophisticated, calm atmosphere." 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfQenZqO5APVgCCDbpV-9DYkdvsEaGhX-5bJlkcamNtVVzC63YmfJTrLDgxwfO35ix5KTZfKvziP-Oz8FY82NhTYZOW0kiuA-eChhNKQnXtngKcywgDnMxH_7RuUzwwKjyJyqnBxvyr_mU45xlwI12STunsYglyaXJF2IuSwGYh6ipjdKXdF1y0tkdGZ75GqtCKwWGe6ddNJQ0u5hdxn0n_Km4rauFF79Yy3DWvIXsoewQxuQRB-ogeg" 
+                <img
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  data-alt="An elegant interior of a boutique hotel room featuring modern minimalist furniture, large windows with natural light, warm beige tones, and a sophisticated, calm atmosphere."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfQenZqO5APVgCCDbpV-9DYkdvsEaGhX-5bJlkcamNtVVzC63YmfJTrLDgxwfO35ix5KTZfKvziP-Oz8FY82NhTYZOW0kiuA-eChhNKQnXtngKcywgDnMxH_7RuUzwwKjyJyqnBxvyr_mU45xlwI12STunsYglyaXJF2IuSwGYh6ipjdKXdF1y0tkdGZ75GqtCKwWGe6ddNJQ0u5hdxn0n_Km4rauFF79Yy3DWvIXsoewQxuQRB-ogeg"
                 />
                 <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                   <span className="material-symbols-outlined text-sage-green text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -268,10 +266,10 @@ export default function Landing() {
             {/* Hotel Card 3 */}
             <div className="bg-off-white rounded-2xl overflow-hidden shadow-sm shadow-forest-green/5 border border-warm-beige/20 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col">
               <div className="relative h-48 overflow-hidden">
-                <img 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  data-alt="A pristine modern hotel suite with a large comfortable bed, premium linens, aesthetic lighting, and a relaxing vibe, perfect for a tranquil getaway." 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5LUTs3NB_3d6B1A_zcGaTmG5xGO_U4CmacFK-ogA1pG6BCbiFXXKIZVTxVYVvvXg3qdKnHitNKBZMvwNP0GzvpXXRGuuKz5V5mVNoejrjHc31oAUR4tj0bscPEHPBqgazj_QhdnBgbpIRUGhuhWha45LneSKPVPvXf1Yz6Jycgby9wRdhWVzi0iHAOEnaKvKijyT-Rgt9czN5Y8M_9vbBEX9KP3L5Pp2qKIA9p0M6nhihG2be6KOabQ" 
+                <img
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  data-alt="A pristine modern hotel suite with a large comfortable bed, premium linens, aesthetic lighting, and a relaxing vibe, perfect for a tranquil getaway."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5LUTs3NB_3d6B1A_zcGaTmG5xGO_U4CmacFK-ogA1pG6BCbiFXXKIZVTxVYVvvXg3qdKnHitNKBZMvwNP0GzvpXXRGuuKz5V5mVNoejrjHc31oAUR4tj0bscPEHPBqgazj_QhdnBgbpIRUGhuhWha45LneSKPVPvXf1Yz6Jycgby9wRdhWVzi0iHAOEnaKvKijyT-Rgt9czN5Y8M_9vbBEX9KP3L5Pp2qKIA9p0M6nhihG2be6KOabQ"
                 />
                 <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                   <span className="material-symbols-outlined text-sage-green text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
