@@ -12,6 +12,7 @@ use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SuperAdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -135,4 +136,13 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
         Route::get('/hotels', [ReportController::class, 'hotels']);
         Route::get('/partners', [ReportController::class, 'partners']);
     });
+});
+
+// Rute untuk manajemen Admin Hotel oleh Super Admin
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin/users')->group(function () {
+    Route::get('/', [SuperAdminUserController::class, 'index']);
+    Route::get('/{id}', [SuperAdminUserController::class, 'show']);
+    Route::post('/', [SuperAdminUserController::class, 'store']); // Untuk membuat Admin Hotel baru
+    Route::patch('/{id}/status', [SuperAdminUserController::class, 'updateStatus']); // Untuk Suspend/Activate
+    Route::delete('/{id}', [SuperAdminUserController::class, 'destroy']);
 });
