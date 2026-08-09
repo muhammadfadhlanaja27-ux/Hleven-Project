@@ -24,7 +24,7 @@ export default function Landing() {
           {/* Actions */}
           <div className="flex items-center gap-4">
             <Link
-              to="/login"
+              to="/"
               className="bg-forest-green text-white px-6 py-2 rounded-full font-label-md text-label-md hover:bg-primary transition-colors active:scale-[0.99] duration-200"
             >
               Book Now

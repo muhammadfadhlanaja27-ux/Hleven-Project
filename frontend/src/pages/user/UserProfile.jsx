@@ -134,7 +134,7 @@ export default function UserProfile() {
                     </nav>
                     <div className="flex items-center gap-4">
                         <Link
-                            to="/login"
+                            to="/"
                             className="bg-forest-green text-white px-6 py-2 rounded-full font-label-md text-label-md hover:bg-primary transition-colors active:scale-[0.99] duration-200"
                         >
                             Book Now
@@ -176,7 +176,7 @@ export default function UserProfile() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <nav className="bg-surface-container-low rounded-xl border border-warm-beige/30 overflow-hidden">
                             <a className="flex items-center gap-3 px-6 py-4 bg-forest-green/10 text-forest-green font-label-md text-label-md border-l-4 border-forest-green" href="#">
                                 <span className="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
