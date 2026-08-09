@@ -1,102 +1,164 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { 
-  StitchCard, 
-  StitchInput, 
-  StitchButton, 
-  StitchAlert 
-} from 'google-stitch-ui'; // Menggunakan Google Stitch UI Components
+import { authService } from '../../services/authService';
+import './Login.css';
 
-const Login = () => {
+const HOTEL_IMAGE_URL =
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuAfCNjjxx28HhcC3xlxBlcUYHFwteXxHdkx0F4GxqjUEbZFhPgMGpPhLuLUjkvbQ8eDR_zSSM-PzErM2OYg2LKkD05q7NfJVIdfbJL-XCrSA1PFPHf958zLIL4eD45818xKeR5rmIUCa7KRAw76tYHxI-uy46fZeDLnNXqajI68WnS7uPm-D1Dmw0kBx2Pn23h5Ma2pTNqGsfz_hvQ2g6q8w8YEQKlDlvtifknsQh1r7SRv5U4RQGbENQ';
+
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const { login } = useAuth();
+  const [rememberMe, setRememberMe] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
-    setSubmitting(true);
+    setErrorMsg('');
+    setLoading(true);
 
     try {
-      await login(email, password);
-      // Redirect ke Landing Page atau Halaman Utama setelah berhasil
-      navigate('/');
+      const result = await authService.login(email, password);
+      const { user, access_token } = result.data;
+
+      // Validasi role: Hanya Admin Hotel atau Super Admin yang boleh masuk
+      if (user.role !== 'admin_hotel' && user.role !== 'super_admin') {
+        setErrorMsg('Akses ditolak. Halaman ini khusus untuk Admin Hotel.');
+        setLoading(false);
+        return;
+      }
+
+      // Simpan token dan data user
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // Redirect ke Dashboard
+      navigate('/admin/dashboard');
     } catch (err) {
-      setError(err.message || 'Email atau password salah.');
+      setErrorMsg(
+        err?.message || 'Terjadi kesalahan saat login. Periksa email dan password Anda.'
+      );
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] px-4">
-      <StitchCard className="w-full max-w-md p-6 shadow-lg rounded-xl bg-white">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
-          Masuk ke H'Leven
-        </h2>
-        <p className="text-sm text-center text-gray-500 mb-6">
-          Temukan dan pesan hotel favoritmu dengan mudah.
-        </p>
+    <div className="login-page">
+      <main className="login-card">
 
-        {error && (
-          <StitchAlert type="error" className="mb-4">
-            {error}
-          </StitchAlert>
-        )}
+        {/* ── Left Side: Image Panel ── */}
+        <div className="login-image-panel">
+          <div
+            className="login-image-bg"
+            role="img"
+            aria-label="Luxury resort infinity pool at golden hour — H'Leven"
+            style={{ backgroundImage: `url('${HOTEL_IMAGE_URL}')` }}
+          />
+          <div className="login-image-overlay" />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <StitchInput
-              type="email"
-              placeholder="nama@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-            />
+        {/* ── Right Side: Form Panel ── */}
+        <div className="login-form-panel">
+
+          {/* Brand Logo */}
+          <div className="login-brand">
+            <span className="login-brand-name">H'Leven</span>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <StitchInput
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-            />
+          {/* Heading */}
+          <div className="login-heading">
+            <h1 className="login-title">Welcome Back</h1>
+            <p className="login-subtitle">
+              Please enter your details to access your account.
+            </p>
           </div>
 
-          <StitchButton
-            type="submit"
-            variant="primary"
-            disabled={submitting}
-            className="w-full mt-2"
-          >
-            {submitting ? 'Memproses...' : 'Masuk'}
-          </StitchButton>
-        </form>
+          {/* Error Alert */}
+          {errorMsg && (
+            <div className="login-error" role="alert">
+              {errorMsg}
+            </div>
+          )}
 
-        <p className="text-xs text-center text-gray-600 mt-6">
-          Belum punya akun?{' '}
-          <Link to="/register" className="text-blue-600 font-semibold hover:underline">
-            Daftar Sekarang
-          </Link>
-        </p>
-      </StitchCard>
+          {/* Login Form */}
+          <form className="login-form" onSubmit={handleLogin} noValidate>
+
+            {/* Email Input (Floating Label) */}
+            <div className="floating-input">
+              <input
+                id="email"
+                type="email"
+                name="email"
+                placeholder=" "
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+              <label htmlFor="email">Email Address</label>
+            </div>
+
+            {/* Password Input (Floating Label) */}
+            <div className="floating-input">
+              <input
+                id="password"
+                type="password"
+                name="password"
+                placeholder=" "
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+              />
+              <label htmlFor="password">Password</label>
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="login-options-row">
+              <div className="login-remember-me">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  name="remember-me"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <label htmlFor="remember-me">Remember me</label>
+              </div>
+
+              <a href="#" className="login-forgot-link">
+                Forgot password?
+              </a>
+            </div>
+
+            {/* Submit Button */}
+            <div className="login-submit-wrapper">
+              <button
+                id="login-submit-btn"
+                type="submit"
+                className="login-btn"
+                disabled={loading}
+              >
+                {loading ? 'Memproses...' : 'Login'}
+              </button>
+            </div>
+          </form>
+
+          {/* Register Link */}
+          <div className="login-register-prompt">
+            Don&apos;t have an account?{' '}
+            <Link to="/register" className="login-register-link">
+              Register
+            </Link>
+          </div>
+
+        </div>
+      </main>
     </div>
   );
-};
-
-export default Login;
+}
