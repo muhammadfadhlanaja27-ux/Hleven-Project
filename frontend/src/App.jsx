@@ -2,8 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Layout Components
-import Navbar from './components/Layout/NavBar';
-import Footer from './components/Layout/Footer';
+import Navbar from './components/layout/NavBar';
+import Footer from './components/layout/Footer';
 
 // User / Public Pages
 import LandingPage from './pages/LandingPage'; // Menggunakan LandingPage terbaru Anda

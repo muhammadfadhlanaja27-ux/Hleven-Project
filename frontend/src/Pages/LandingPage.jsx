@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
-import HotelCard from '../components/Landing/HotelCard';
+import HotelCard from '../components/landing/HotelCard';
 
 const LandingPage = () => {
     const [hotels, setHotels] = useState([]);
