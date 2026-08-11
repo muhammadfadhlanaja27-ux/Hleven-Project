@@ -13,12 +13,16 @@ import Register from './pages/auth/Register';
 import Landing from './pages/dashboard/Landing';
 import UserProfile from './pages/user/UserProfile';
 
-// Admin Hotel Pages
-import AdminLogin from './pages/admin/Login';
-import Dashboard from './pages/admin/Dashboard';
-import RoomList from './pages/admin/RoomList';
-import RoomCreate from './pages/admin/RoomCreate';
-import BookingList from './pages/admin/BookingList';
+
+// Admin Pages
+import AdminLogin from './pages/auth/admin_hotel/login';
+import Dashboard from './pages/auth/Dashboard';
+import RoomList from './pages/auth/RoomList';
+import RoomCreate from './pages/auth/RoomCreate';
+import BookingList from './pages/auth/BookingList';
+import HotelDetail from './Pages/HotelDetail';
+import BookingPage from './Pages/BookingPage';
+
 
 // Super Admin Pages
 import UserManagement from './pages/UserManagement';
@@ -61,6 +65,8 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
+            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} /> {/* <-- Route Booking */}
             <Route path="/dashboard" element={<Landing />} />
             <Route path="/profile" element={<UserProfile />} />
 
