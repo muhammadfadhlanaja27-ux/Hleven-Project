@@ -27,6 +27,7 @@ import PartnerApproval from './pages/super-admin/PartnerApproval';
 import WarningManagement from './pages/super-admin/WarningManagement';
 import ActivityLogs from './pages/super-admin/ActivityLogs';
 import Reports from './pages/super-admin/Reports';
+import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
@@ -102,6 +103,7 @@ function App() {
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<SuperAdminDashboard />} />
+              <Route path="profile" element={<SuperAdminProfile />} /> 
               <Route path="users" element={<UserManagement />} />
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
