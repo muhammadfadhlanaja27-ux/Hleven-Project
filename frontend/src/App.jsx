@@ -7,17 +7,17 @@ import Footer from './components/layout/Footer';
 
 // User / Public Pages
 import LandingPage from './pages/LandingPage'; // Menggunakan LandingPage terbaru Anda
-import Login from './pages/auth/Login';
+import Login from './pages/auth/admin_hotel/login';
 import Register from './pages/auth/Register';
 import Landing from './pages/dashboard/Landing'; // Jika ini berbeda dengan LandingPage, tetap dipertahankan
 import UserProfile from './pages/user/UserProfile';
 
 // Admin Pages
-import AdminLogin from './pages/admin/Login';
-import Dashboard from './pages/admin/Dashboard';
-import RoomList from './pages/admin/RoomList';
-import RoomCreate from './pages/admin/RoomCreate';
-import BookingList from './pages/admin/BookingList';
+import AdminLogin from './pages/auth/admin_hotel/login';
+import Dashboard from './pages/auth/Dashboard';
+import RoomList from './pages/auth/RoomList';
+import RoomCreate from './pages/auth/RoomCreate';
+import BookingList from './pages/auth/BookingList';
 
 function App() {
   return (
