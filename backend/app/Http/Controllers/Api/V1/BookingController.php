@@ -53,14 +53,18 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Kamar tidak tersedia pada tanggal tersebut'], 400);
         }
 
-        // 3. Hitung Harga
-        $pricePerNight = $this->bookingService->calculatePrice($request->room_type_id, $request->check_in, $request->check_out) / Carbon::parse($request->check_in)->diffInDays($request->check_out);
-        $subtotal = ($pricePerNight * $request->qty) * Carbon::parse($request->check_in)->diffInDays($request->check_out);
-        $tax = $subtotal * 0.1; // Contoh pajak 10%
+        // 3. Hitung Harga Total & Rata-rata per malam
+        $totalNight = Carbon::parse($request->check_in)->diffInDays($request->check_out);
+        $totalPrice = $this->bookingService->calculatePrice($request->room_type_id, $request->check_in, $request->check_out);
+        
+        $subtotal = $totalPrice * $request->qty;
+        $pricePerNight = $totalNights > 0 ? $subtotal / ($totalNight * $request->qty) : $subtotal;
+        
+        $tax = $subtotal * 0.1; // Pajak 10%
         $grandTotal = $subtotal + $tax;
 
         // 4. Jalankan Transaksi Database
-        return DB::transaction(function () use ($request, $room, $subtotal, $tax, $grandTotal) {
+        return DB::transaction(function () use ($request, $room, $totalNight, $subtotal, $tax, $grandTotal, $pricePerNight) {
             
             // Buat Booking
             $booking = Booking::create([
@@ -69,7 +73,7 @@ class BookingController extends Controller
                 'hotel_id' => $room->hotel_id,
                 'check_in' => $request->check_in,
                 'check_out' => $request->check_out,
-                'total_night' => Carbon::parse($request->check_in)->diffInDays($request->check_out),
+                'total_night' => $totalNight,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'grand_total' => $grandTotal,
@@ -105,5 +109,49 @@ class BookingController extends Controller
                 'data' => $booking
             ], 201);
         });
+    }
+
+    /**
+     * TAMBAHAN: Untuk menampilkan daftar pesanan khusus Admin Hotel
+     */
+    public function indexAdmin(Request $request)
+    {
+        $adminId = $request->user()->id;
+        $hotel = \App\Models\Hotel::where('admin_id', $adminId)->first();
+
+        if (!$hotel) {
+            return response()->json(['success' => false, 'message' => 'Hotel tidak ditemukan untuk admin ini'], 404);
+        }
+
+        $bookings = Booking::with(['user', 'bookingRooms.roomType'])
+            ->where('hotel_id', $hotel->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $bookings
+        ]);
+    }
+
+    /**
+     * TAMBAHAN: Untuk mengubah status booking (Check-In / Check-Out / Cancel)
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,paid,checked_in,checked_out,cancelled'
+        ]);
+
+        $booking = Booking::findOrFail($id);
+        $booking->update([
+            'status' => $request->status
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status booking berhasil diperbarui',
+            'data' => $booking
+        ]);
     }
 }
