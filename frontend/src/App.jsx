@@ -2,35 +2,34 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 // Layout Components
-import Navbar from './components/layout/NavBar';
-import Footer from './components/layout/Footer';
-import SuperAdminLayout from './layouts/SuperAdminLayout';
+import Navbar from './components/layouts/NavBar';
+import Footer from './components/layouts/Footer';
+import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
 
 // User / Public Pages
-import LandingPage from './pages/LandingPage';
+import LandingPage from './pages/user/LandingPage';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Landing from './pages/dashboard/Landing';
 import UserProfile from './pages/user/UserProfile';
 
-
-// Admin Pages
-import AdminLogin from './pages/auth/admin_hotel/login';
-import Dashboard from './pages/auth/Dashboard';
-import RoomList from './pages/auth/RoomList';
-import RoomCreate from './pages/auth/RoomCreate';
-import BookingList from './pages/auth/BookingList';
-import HotelDetail from './Pages/HotelDetail';
-import BookingPage from './Pages/BookingPage';
-
+// Admin Hotel Pages
+import AdminLogin from './pages/auth/admin-hotel/Login';
+import Dashboard from './pages/admin-hotel/Dashboard';
+import RoomList from './pages/admin-hotel/RoomList';
+import RoomCreate from './pages/admin-hotel/RoomCreate';
+import BookingList from './pages/admin-hotel/BookingList';
 
 // Super Admin Pages
-import UserManagement from './pages/UserManagement';
-import SuperAdminLogin from './pages/SuperAdminLogin'; // Pastikan path import ini sesuai dengan lokasi file Anda
+import SuperAdminLogin from './pages/Auth/super-admin/SuperAdminLogin'; 
+import UserManagement from './pages/super-admin/UserManagement';
+import HotelMonitoring from './pages/super-admin/HotelMonitoring';
+import PartnerApproval from './pages/super-admin/PartnerApproval';
+import WarningManagement from './pages/super-admin/WarningManagement';
+import ActivityLogs from './pages/super-admin/ActivityLogs';
+import Reports from './pages/super-admin/Reports';
 
 // ---------------------------------------------------------
-// Layout Wrapper untuk Halaman Publik & Admin Hotel
-// (Menjaga agar Navbar & Footer hanya muncul di sini)
+// 1. Layout Wrapper Publik
 // ---------------------------------------------------------
 const MainLayout = () => (
   <div className="flex flex-col min-h-screen">
@@ -42,13 +41,39 @@ const MainLayout = () => (
   </div>
 );
 
-// Placeholder untuk Halaman Super Admin yang belum dibuat
-const SuperAdminDashboard = () => <div className="text-2xl font-bold">Dashboard Summary</div>;
-const HotelMonitoring = () => <div className="text-2xl font-bold">Hotel Monitoring</div>;
-const PartnerApproval = () => <div className="text-2xl font-bold">Partner Approval</div>;
-const WarningManagement = () => <div className="text-2xl font-bold">Warning Management</div>;
-const ActivityLogs = () => <div className="text-2xl font-bold">Activity Logs</div>;
-const Reports = () => <div className="text-2xl font-bold">Reporting</div>;
+// ---------------------------------------------------------
+// 2. SATPAM FRONTEND (Protected Route) UNTUK SUPER ADMIN
+// ---------------------------------------------------------
+const SuperAdminProtectedRoute = () => {
+  // Cek apakah ada token dan data user di LocalStorage browser
+  const token = localStorage.getItem('token');
+  const userString = localStorage.getItem('user');
+  
+  // Jika tidak ada token atau tidak ada data user, tendang ke login
+  if (!token || !userString) {
+    return <Navigate to="/super-admin/login" replace />;
+  }
+
+  const user = JSON.parse(userString);
+  
+  // Jika dia punya token, tapi role-nya bukan super_admin, tendang juga
+  if (user.role !== 'super_admin') {
+    return <Navigate to="/super-admin/login" replace />;
+  }
+
+  // Jika aman, persilakan masuk ke komponen yang dituju
+  return <Outlet />;
+};
+
+// ---------------------------------------------------------
+// Dashboard Summary 
+// ---------------------------------------------------------
+const SuperAdminDashboard = () => (
+  <div className="space-y-6">
+    <h1 className="text-2xl font-bold text-gray-900">Dashboard Super Admin</h1>
+    <p className="text-gray-600">Selamat datang di panel kendali utama H'Leven. Silakan gunakan menu di sebelah kiri untuk mengelola sistem.</p>
+  </div>
+);
 
 function App() {
   return (
@@ -56,21 +81,16 @@ function App() {
       <div id="root" className="flex flex-col min-h-screen">
         <Routes>
           
-          {/* Rute Login Super Admin yang berdiri sendiri (Tanpa Navbar/Footer/Sidebar) */}
+          {/* Rute Login Super Admin (Bebas diakses) */}
           <Route path="/super-admin/login" element={<SuperAdminLogin />} />
 
-          {/* GRUP 1: Rute dengan Navbar & Footer Global */}
+          {/* GRUP 1: Rute Publik & Admin Hotel */}
           <Route element={<MainLayout />}>
-            {/* Public & User Routes */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<LandingPage/>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/hotels/:id" element={<HotelDetail />} />
-            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} /> {/* <-- Route Booking */}
-            <Route path="/dashboard" element={<Landing />} />
             <Route path="/profile" element={<UserProfile />} />
 
-            {/* Admin Hotel Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/rooms" element={<RoomList />} />
@@ -78,18 +98,20 @@ function App() {
             <Route path="/admin/bookings" element={<BookingList />} />
           </Route>
 
-          {/* GRUP 2: Rute Khusus Super Admin (Menggunakan Layout Sendiri) */}
-          <Route path="/super-admin" element={<SuperAdminLayout />}>
-            <Route index element={<SuperAdminDashboard />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="hotels" element={<HotelMonitoring />} />
-            <Route path="partners" element={<PartnerApproval />} />
-            <Route path="warnings" element={<WarningManagement />} />
-            <Route path="activity-logs" element={<ActivityLogs />} />
-            <Route path="reports" element={<Reports />} />
+          {/* GRUP 2: Rute Khusus Super Admin (DIBUNGKUS SATPAM) */}
+          <Route element={<SuperAdminProtectedRoute />}>
+            <Route path="/super-admin" element={<SuperAdminLayout />}>
+              <Route index element={<SuperAdminDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="hotels" element={<HotelMonitoring />} />
+              <Route path="partners" element={<PartnerApproval />} />
+              <Route path="warnings" element={<WarningManagement />} />
+              <Route path="activity-logs" element={<ActivityLogs />} />
+              <Route path="reports" element={<Reports />} />
+            </Route>
           </Route>
 
-          {/* Fallback: Redirect ke /login jika path tidak ditemukan */}
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />
           
         </Routes>

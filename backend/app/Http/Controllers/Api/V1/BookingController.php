@@ -58,7 +58,7 @@ class BookingController extends Controller
         $totalPrice = $this->bookingService->calculatePrice($request->room_type_id, $request->check_in, $request->check_out);
         
         $subtotal = $totalPrice * $request->qty;
-        $pricePerNight = $totalNights > 0 ? $subtotal / ($totalNight * $request->qty) : $subtotal;
+        $pricePerNight = $totalNight > 0 ? $subtotal / ($totalNight * $request->qty) : $subtotal;
         
         $tax = $subtotal * 0.1; // Pajak 10%
         $grandTotal = $subtotal + $tax;
