@@ -19,7 +19,8 @@ class SuperAdminUserController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $filters = $request->only(['role', 'status', 'search', 'page']);
+            // Melempar semua parameter filter dari React ke Service
+            $filters = $request->only(['role', 'status', 'search', 'per_page']);
             $users = $this->userService->getUsers($filters);
 
             return response()->json([
@@ -36,7 +37,8 @@ class SuperAdminUserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada server.'
+                'message' => 'Terjadi kesalahan pada server.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -63,7 +65,7 @@ class SuperAdminUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:admin_hotel,user',
+            'role' => 'required|in:admin_hotel,user,super_admin',
             'phone' => 'nullable|string|max:20'
         ]);
 
@@ -85,14 +87,14 @@ class SuperAdminUserController extends Controller
 
     public function updateStatus(Request $request, $id): JsonResponse
     {
+        // 1. Terima data dari React (apapun bentuk hurufnya)
         $request->validate([
-            'status' => 'required|in:Active,Blocked,Inactive'
+            'status' => 'required|in:Active,Blocked,Inactive,active,blocked,inactive'
         ]);
 
         try {
             $user = User::findOrFail($id);
 
-            // Mencegah Super Admin memblokir dirinya sendiri
             if ($user->id === $request->user()->id) {
                 return response()->json([
                     'success' => false,
@@ -100,7 +102,10 @@ class SuperAdminUserController extends Controller
                 ], 400);
             }
 
-            $this->userService->updateUserStatus($user, $request->status, $request->user());
+            // 2. PERBAIKAN: Paksa menjadi huruf kecil semua agar lolos dari aturan database Supabase
+            $statusToSave = strtolower($request->status);
+
+            $this->userService->updateUserStatus($user, $statusToSave, $request->user());
 
             return response()->json([
                 'success' => true,
@@ -109,7 +114,8 @@ class SuperAdminUserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memperbarui status pengguna.'
+                'message' => 'Gagal memperbarui status pengguna.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -126,9 +132,6 @@ class SuperAdminUserController extends Controller
                     'message' => 'Tidak dapat menghapus akun Anda sendiri.'
                 ], 400);
             }
-
-            // Validasi tambahan: Jangan hapus jika user memiliki booking/hotel aktif
-            // (Aturan CASCADE yang baik, atau bisa ditangani oleh restrict di database)
 
             $this->userService->deleteUser($user, $request->user());
 
