@@ -1,34 +1,23 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import Landing from './pages/dashboard/Landing';
-import UserProfile from './pages/user/UserProfile'; 
-import HotelDetail from './pages/dashboard/HotelDetail'; // 1. Impor komponen HotelDetail
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Layout/NavBar';
+import Footer from './components/Layout/Footer';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
-        {/* Dashboard Route */}
-        <Route path="/dashboard" element={<Landing />} />
-        
-        {/* Profile Route */}
-        <Route path="/profile" element={<UserProfile />} /> 
-
-        {/* Hotel Detail Route */}
-        <Route path="/hotel-detail" element={<HotelDetail />} /> {/* 2. Jangan lupa tambahkan baris ini */}
-
-        {/* Default route: root → landing page */}
-        <Route path="/" element={<Landing />} />
-
-        {/* Fallback: semua path tidak dikenal → /login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <Router>
+      <div id="root">
+        <Navbar />
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            {/* Halaman lain untuk User (Login, Register, Detail Hotel, dll) akan ditambahkan di sini */}
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
   );
 }
 
