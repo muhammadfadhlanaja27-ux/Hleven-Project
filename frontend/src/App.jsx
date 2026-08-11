@@ -18,6 +18,8 @@ import Dashboard from './pages/auth/Dashboard';
 import RoomList from './pages/auth/RoomList';
 import RoomCreate from './pages/auth/RoomCreate';
 import BookingList from './pages/auth/BookingList';
+import HotelDetail from './Pages/HotelDetail';
+import BookingPage from './Pages/BookingPage';
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
+            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} /> {/* <-- Route Booking */}
             <Route path="/dashboard" element={<Landing />} />
             <Route path="/profile" element={<UserProfile />} />
 
