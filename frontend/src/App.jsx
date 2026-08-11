@@ -1,20 +1,54 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// Layout Components
 import Navbar from './components/Layout/NavBar';
 import Footer from './components/Layout/Footer';
-import LandingPage from './pages/LandingPage';
+
+// User / Public Pages
+import LandingPage from './pages/LandingPage'; // Menggunakan LandingPage terbaru Anda
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Landing from './pages/dashboard/Landing'; // Jika ini berbeda dengan LandingPage, tetap dipertahankan
+import UserProfile from './pages/user/UserProfile';
+
+// Admin Pages
+import AdminLogin from './pages/admin/Login';
+import Dashboard from './pages/admin/Dashboard';
+import RoomList from './pages/admin/RoomList';
+import RoomCreate from './pages/admin/RoomCreate';
+import BookingList from './pages/admin/BookingList';
 
 function App() {
   return (
     <Router>
-      <div id="root">
-        <Navbar />
+      <div id="root" className="flex flex-col min-h-screen">
+        {/* Navbar akan muncul di semua halaman */}
+        <Navbar /> 
+
+        {/* Konten utama aplikasi */}
         <main className="flex-grow">
           <Routes>
+            {/* Public & User Routes */}
             <Route path="/" element={<LandingPage />} />
-            {/* Halaman lain untuk User (Login, Register, Detail Hotel, dll) akan ditambahkan di sini */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Landing />} />
+            <Route path="/profile" element={<UserProfile />} />
+
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<Dashboard />} />
+            <Route path="/admin/rooms" element={<RoomList />} />
+            <Route path="/admin/rooms/create" element={<RoomCreate />} />
+            <Route path="/admin/bookings" element={<BookingList />} />
+
+            {/* Fallback: semua path tidak dikenal → /login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </main>
+
+        {/* Footer akan muncul di semua halaman */}
         <Footer />
       </div>
     </Router>
