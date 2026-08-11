@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 class SuperAdminUserService
 {
     /**
-     * Mengambil daftar pengguna dengan fitur filter[cite: 1]
+     * Mengambil daftar pengguna dengan fitur filter
      */
     public function getUsers(array $filters)
     {
@@ -31,11 +31,12 @@ class SuperAdminUserService
             });
         }
 
-        return $query->paginate($filters['page'] ?? 10);
+        // PERBAIKAN: Menggunakan 'per_page' untuk paginasi
+        return $query->paginate($filters['per_page'] ?? 10);
     }
 
     /**
-     * Membuat akun baru (khususnya Admin Hotel)[cite: 1]
+     * Membuat akun baru (khususnya Admin Hotel)
      */
     public function createUser(array $data, User $superAdmin): User
     {
@@ -61,7 +62,7 @@ class SuperAdminUserService
     }
 
     /**
-     * Mengubah status pengguna (Active / Blocked)[cite: 1]
+     * Mengubah status pengguna (Active / Blocked)
      */
     public function updateUserStatus(User $user, string $status, User $superAdmin): void
     {
@@ -78,7 +79,7 @@ class SuperAdminUserService
     }
 
     /**
-     * Menghapus akun pengguna[cite: 1]
+     * Menghapus akun pengguna
      */
     public function deleteUser(User $user, User $superAdmin): void
     {

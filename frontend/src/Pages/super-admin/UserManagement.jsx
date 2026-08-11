@@ -1,29 +1,39 @@
 import React, { useState, useEffect } from "react";
 import Table from "../../components/ui/Table";
-import api from "../../services/api"; // Pastikan path ini sesuai dengan lokasi api.js Anda
+import api from "../../services/api";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // State untuk filter pencarian dan role
+  // 1. State untuk filter pencarian, role, dan status
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(""); // Tambahan state status
+
+  // 2. State untuk Modal Tambah Admin Hotel
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    password_confirmation: "",
+  });
 
   // Fungsi untuk mengambil data dari backend
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // Memanggil GET /super-admin/users dengan query parameter
       const response = await api.get("/super-admin/users", {
         params: {
           search: search,
           role: roleFilter,
+          status: statusFilter, // Filter status dikirim ke backend
         },
       });
 
-      // Mengambil array data dari struktur JSON backend
       setUsers(response.data.data);
       setError(null);
     } catch (err) {
@@ -36,19 +46,17 @@ const UserManagement = () => {
 
   // Memanggil fetchUsers saat komponen dimuat atau filter berubah
   useEffect(() => {
-    // Kita gunakan setTimeout sebagai debounce sederhana agar tidak terlalu sering menembak API saat mengetik
     const delayDebounceFn = setTimeout(() => {
       fetchUsers();
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [search, roleFilter]);
+  }, [search, roleFilter, statusFilter]); // statusFilter ditambahkan ke array dependency
 
   // Fungsi untuk mengubah status (Block/Activate)
   const handleToggleStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === "Active" ? "Blocked" : "Active";
+    const newStatus = currentStatus === "active" ? "blocked" : "active";
 
-    // Konfirmasi sebelum melakukan aksi
     if (
       !window.confirm(
         `Apakah Anda yakin ingin mengubah status pengguna ini menjadi ${newStatus}?`,
@@ -63,12 +71,47 @@ const UserManagement = () => {
       });
 
       alert("Status berhasil diperbarui!");
-      fetchUsers(); // Refresh data setelah berhasil update
+      fetchUsers();
     } catch (err) {
       console.error("Gagal update status:", err);
       alert(
         err.response?.data?.message || "Gagal memperbarui status pengguna.",
       );
+    }
+  };
+
+  // Fungsi untuk menangani penambahan Admin Hotel baru
+  const handleCreateAdmin = async (e) => {
+    e.preventDefault();
+    setSubmitLoading(true);
+
+    if (formData.password !== formData.password_confirmation) {
+      alert("Password dan Konfirmasi Password tidak cocok!");
+      setSubmitLoading(false);
+      return;
+    }
+
+    try {
+      // Mengirim data ke endpoint POST dengan role default admin_hotel
+      await api.post("/super-admin/users", {
+        ...formData,
+        role: "admin_hotel",
+      });
+
+      alert("Admin Hotel berhasil ditambahkan!");
+      setIsModalOpen(false); // Tutup modal
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        password_confirmation: "",
+      }); // Reset form
+      fetchUsers(); // Refresh tabel data
+    } catch (err) {
+      console.error("Gagal menambah admin:", err);
+      alert(err.response?.data?.message || "Gagal menambahkan Admin Hotel.");
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -79,34 +122,41 @@ const UserManagement = () => {
     { header: "Role", accessor: "role" },
     {
       header: "Status",
-      render: (row) => (
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            row.status === "Active"
-              ? "bg-green-100 text-green-800"
-              : row.status === "Blocked"
-                ? "bg-red-100 text-red-800"
-                : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {row.status}
-        </span>
-      ),
+      render: (row) => {
+        // Normalisasi teks dari database menjadi huruf kecil semua agar aman
+        const statusStr = row.status ? row.status.toLowerCase() : "";
+        return (
+          <span
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+              statusStr === "active"
+                ? "bg-green-100 text-green-800"
+                : statusStr === "blocked"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {row.status}
+          </span>
+        );
+      },
     },
     {
       header: "Aksi",
-      render: (row) => (
-        <button
-          onClick={() => handleToggleStatus(row.id, row.status)}
-          className={`text-sm font-medium transition-colors ${
-            row.status === "Active"
-              ? "text-red-600 hover:text-red-900"
-              : "text-green-600 hover:text-green-900"
-          }`}
-        >
-          {row.status === "Active" ? "Block" : "Activate"}
-        </button>
-      ),
+      render: (row) => {
+        const statusStr = row.status ? row.status.toLowerCase() : "";
+        return (
+          <button
+            onClick={() => handleToggleStatus(row.id, statusStr)}
+            className={`text-sm font-medium transition-colors ${
+              statusStr === "active"
+                ? "text-red-600 hover:text-red-900"
+                : "text-green-600 hover:text-green-900"
+            }`}
+          >
+            {statusStr === "active" ? "Block" : "Activate"}
+          </button>
+        );
+      },
     },
   ];
 
@@ -114,12 +164,15 @@ const UserManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-        <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+        >
           + Tambah Admin Hotel
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4 flex-wrap">
         <input
           type="text"
           placeholder="Cari nama atau email..."
@@ -137,9 +190,19 @@ const UserManagement = () => {
           <option value="admin_hotel">Admin Hotel</option>
           <option value="super_admin">Super Admin</option>
         </select>
+
+        {/* Tambahan Filter Status */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+        >
+          <option value="">Semua Status</option>
+          <option value="active">Active</option>
+          <option value="blocked">Blocked</option>
+        </select>
       </div>
 
-      {/* Render Error, Loading, atau Tabel */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
@@ -150,6 +213,97 @@ const UserManagement = () => {
         <div className="text-center py-10 text-gray-500">Memuat data...</div>
       ) : (
         <Table columns={columns} data={users} />
+      )}
+
+      {/* MODAL TAMBAH ADMIN HOTEL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-xl font-bold mb-4">Tambah Admin Hotel Baru</h2>
+            <form onSubmit={handleCreateAdmin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Konfirmasi Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password_confirmation}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      password_confirmation: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitLoading}
+                  className={`px-4 py-2 text-white rounded font-medium transition ${
+                    submitLoading
+                      ? "bg-green-400 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  {submitLoading ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
