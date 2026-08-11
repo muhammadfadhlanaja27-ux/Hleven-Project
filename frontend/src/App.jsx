@@ -1,16 +1,18 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 // Layout Components
 import Navbar from './components/layout/NavBar';
 import Footer from './components/layout/Footer';
+import SuperAdminLayout from './layouts/SuperAdminLayout';
 
 // User / Public Pages
-import LandingPage from './pages/LandingPage'; // Menggunakan LandingPage terbaru Anda
-import Login from './pages/auth/admin_hotel/login';
+import LandingPage from './pages/LandingPage';
+import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Landing from './pages/dashboard/Landing'; // Jika ini berbeda dengan LandingPage, tetap dipertahankan
+import Landing from './pages/dashboard/Landing';
 import UserProfile from './pages/user/UserProfile';
+
 
 // Admin Pages
 import AdminLogin from './pages/auth/admin_hotel/login';
@@ -21,16 +23,44 @@ import BookingList from './pages/auth/BookingList';
 import HotelDetail from './Pages/HotelDetail';
 import BookingPage from './Pages/BookingPage';
 
+
+// Super Admin Pages
+import UserManagement from './pages/UserManagement';
+import SuperAdminLogin from './pages/SuperAdminLogin'; // Pastikan path import ini sesuai dengan lokasi file Anda
+
+// ---------------------------------------------------------
+// Layout Wrapper untuk Halaman Publik & Admin Hotel
+// (Menjaga agar Navbar & Footer hanya muncul di sini)
+// ---------------------------------------------------------
+const MainLayout = () => (
+  <div className="flex flex-col min-h-screen">
+    <Navbar />
+    <main className="flex-grow">
+      <Outlet />
+    </main>
+    <Footer />
+  </div>
+);
+
+// Placeholder untuk Halaman Super Admin yang belum dibuat
+const SuperAdminDashboard = () => <div className="text-2xl font-bold">Dashboard Summary</div>;
+const HotelMonitoring = () => <div className="text-2xl font-bold">Hotel Monitoring</div>;
+const PartnerApproval = () => <div className="text-2xl font-bold">Partner Approval</div>;
+const WarningManagement = () => <div className="text-2xl font-bold">Warning Management</div>;
+const ActivityLogs = () => <div className="text-2xl font-bold">Activity Logs</div>;
+const Reports = () => <div className="text-2xl font-bold">Reporting</div>;
+
 function App() {
   return (
     <Router>
       <div id="root" className="flex flex-col min-h-screen">
-        {/* Navbar akan muncul di semua halaman */}
-        <Navbar /> 
+        <Routes>
+          
+          {/* Rute Login Super Admin yang berdiri sendiri (Tanpa Navbar/Footer/Sidebar) */}
+          <Route path="/super-admin/login" element={<SuperAdminLogin />} />
 
-        {/* Konten utama aplikasi */}
-        <main className="flex-grow">
-          <Routes>
+          {/* GRUP 1: Rute dengan Navbar & Footer Global */}
+          <Route element={<MainLayout />}>
             {/* Public & User Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
@@ -40,20 +70,29 @@ function App() {
             <Route path="/dashboard" element={<Landing />} />
             <Route path="/profile" element={<UserProfile />} />
 
-            {/* Admin Routes */}
+            {/* Admin Hotel Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/rooms" element={<RoomList />} />
             <Route path="/admin/rooms/create" element={<RoomCreate />} />
             <Route path="/admin/bookings" element={<BookingList />} />
+          </Route>
 
-            {/* Fallback: semua path tidak dikenal → /login */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </main>
+          {/* GRUP 2: Rute Khusus Super Admin (Menggunakan Layout Sendiri) */}
+          <Route path="/super-admin" element={<SuperAdminLayout />}>
+            <Route index element={<SuperAdminDashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="hotels" element={<HotelMonitoring />} />
+            <Route path="partners" element={<PartnerApproval />} />
+            <Route path="warnings" element={<WarningManagement />} />
+            <Route path="activity-logs" element={<ActivityLogs />} />
+            <Route path="reports" element={<Reports />} />
+          </Route>
 
-        {/* Footer akan muncul di semua halaman */}
-        <Footer />
+          {/* Fallback: Redirect ke /login jika path tidak ditemukan */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+          
+        </Routes>
       </div>
     </Router>
   );
