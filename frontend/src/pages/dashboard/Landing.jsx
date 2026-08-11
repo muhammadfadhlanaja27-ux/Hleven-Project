@@ -16,7 +16,7 @@ export default function Landing() {
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6">
             <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="/">Hotels</Link>
-            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="/detail">Resorts</Link>
+            <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="#">Resorts</Link>
             <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="#">Our Story</Link>
             <Link className="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" to="#">Promotions</Link>
           </nav>
@@ -41,8 +41,7 @@ export default function Landing() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           data-alt="A luxurious modern hotel exterior at dusk with warm glowing lights, showcasing sophisticated architecture, a serene pool area, and a welcoming, premium atmosphere suitable for a high-end booking platform hero section."
-          style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDzvadz-wSQ_EhmF9D8iFWi9mGkts1CRGLAdeae-Xjw_pYLzbTUCbfL1qobhQM5IAQFR1WeejU8WwoEEKFOByeRaisbYY7TaFh2RrIDnitCZ17k32Ur2mD0uj-CfCqFtBjeTXBF7Y1CzrUaGJ8JgPMJhyMGAYrZQUNUpoDRDo0lLHGVlnNKfVFsRMXFZaJJkw7kr1fyth-eoNS7nyJzNy8_vOSJiw-x5OV7UAovm2zqoIuQVfbZkcyM3w')" }}
-        >
+          style={{ backgroundImage: `url('/image/hotelbg.jpg')` }}>
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="relative z-10 w-full max-w-container-max px-margin-desktop mx-auto flex flex-col items-center text-center">
@@ -218,9 +217,14 @@ export default function Landing() {
                     <p className="font-headline-md text-[20px] font-bold text-forest-green">Rp 1.250.000</p>
                     <p className="text-xs text-outline-variant">/ malam</p>
                   </div>
-                  <button className="bg-surface border border-forest-green text-forest-green px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-warm-beige/30 transition-colors">
+
+                  {/* Ubah button menjadi Link ke /hotel-detail */}
+                  <Link
+                    to="/hotel-detail"
+                    className="bg-surface border border-forest-green text-forest-green px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-warm-beige/30 transition-colors inline-block text-center"
+                  >
                     View Details
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -256,9 +260,12 @@ export default function Landing() {
                     <p className="font-headline-md text-[20px] font-bold text-forest-green">Rp 850.000</p>
                     <p className="text-xs text-outline-variant">/ malam</p>
                   </div>
-                  <button className="bg-surface border border-forest-green text-forest-green px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-warm-beige/30 transition-colors">
+                  <Link
+                    to="/HotelDetail"
+                    className="bg-surface border border-forest-green text-forest-green px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-warm-beige/30 transition-colors inline-block text-center"
+                  >
                     View Details
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
