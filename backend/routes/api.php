@@ -9,12 +9,12 @@ use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\ReportController; // Memastikan impor sudah ada
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\Api\ProfileController;
@@ -59,6 +59,9 @@ Route::prefix('v1')->group(function () {
         Route::get('hotel/bookings', [BookingController::class, 'index']);
         Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
         Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
+
+        // --- Laporan Hotel (User / Partner) ---
+        Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
 
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
