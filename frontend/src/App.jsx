@@ -7,29 +7,29 @@ import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
 import AdminHotelLayout from './components/layouts/AdminHotelLayout'; // Impor Sidebar Admin Hotel
 
-// User / Public Pages
-import LandingPage from './Pages/user/LandingPage';
-import Login from './Pages/Auth/Login';
-import Register from './Pages/Auth/Register';
-import UserProfile from './Pages/user/UserProfile';
-import HotelDetail from './Pages/user/HotelDetail';
+// User / Public pages
+import LandingPage from './pages/user/LandingPage';
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
+import UserProfile from './pages/user/UserProfile';
+import HotelDetail from './pages/user/HotelDetail';
 
-// Admin Hotel Pages
+// Admin Hotel pages
 import AdminLogin from './pages/Auth/admin-hotel/AdminLogin';
 import Dashboard from './pages/admin-hotel/Dashboard';
 import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
 import BookingList from './pages/admin-hotel/BookingList';
 
-// Super Admin Pages
-import SuperAdminLogin from './Pages/Auth/super-admin/SuperAdminLogin'; 
-import UserManagement from './Pages/super-admin/UserManagement';
-import HotelMonitoring from './Pages/super-admin/HotelMonitoring';
-import PartnerApproval from './Pages/super-admin/PartnerApproval';
-import WarningManagement from './Pages/super-admin/WarningManagement';
-import ActivityLogs from './Pages/super-admin/ActivityLogs';
-import Reports from './Pages/super-admin/Reports';
-import SuperAdminProfile from './Pages/super-admin/SuperAdminProfile';
+// Super Admin pages
+import SuperAdminLogin from './pages/Auth/super-admin/SuperAdminLogin'; 
+import UserManagement from './pages/super-admin/UserManagement';
+import HotelMonitoring from './pages/super-admin/HotelMonitoring';
+import PartnerApproval from './pages/super-admin/PartnerApproval';
+import WarningManagement from './pages/super-admin/WarningManagement';
+import ActivityLogs from './pages/super-admin/ActivityLogs';
+import Reports from './pages/super-admin/Reports';
+import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
@@ -79,7 +79,6 @@ const SuperAdminProtectedRoute = () => {
     return <Navigate to="/super-admin/login" replace />;
   }
 
-  // 🟢 2. DITAMBAHKAN TRY-CATCH UNTUK MENCEGAH WHITE-SCREEN
   try {
     const user = JSON.parse(userString);
     if (user.role !== 'super_admin') {
@@ -88,29 +87,6 @@ const SuperAdminProtectedRoute = () => {
   } catch (error) {
     console.error("Gagal parsing data user:", error);
     return <Navigate to="/super-admin/login" replace />;
-  }
-
-  return <Outlet />;
-};
-
-// ---------------------------------------------------------
-// 3. SATPAM FRONTEND UNTUK ADMIN HOTEL
-// ---------------------------------------------------------
-const AdminHotelProtectedRoute = () => {
-  const token = localStorage.getItem('token');
-  const userString = localStorage.getItem('user');
-  
-  if (!token || !userString) {
-    return <Navigate to="/admin/login" replace />;
-  }
-
-  try {
-    const user = JSON.parse(userString);
-    if (user.role !== 'admin_hotel') {
-      return <Navigate to="/admin/login" replace />;
-    }
-  } catch (error) {
-    return <Navigate to="/admin/login" replace />;
   }
 
   return <Outlet />;
@@ -137,7 +113,7 @@ function App() {
           {/* GRUP 1: Rute Publik & User Biasa */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/hotels/:id" element={<HotelDetail />} /> {/* 🟢 ROUTE DENGAN IMPORT BERHASIL */}
+            <Route path="/hotels/:id" element={<HotelDetail />} />
             
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -177,4 +153,4 @@ function App() {
   );
 }
 
-export default App;
+export default App; 
