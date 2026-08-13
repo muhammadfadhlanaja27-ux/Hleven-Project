@@ -5,7 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 import Navbar from './components/layouts/NavBar';
 import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
-import AdminHotelLayout from './components/layouts/AdminHotelLayout'; // Impor Sidebar Admin Hotel
+import AdminHotelLayout from './components/layouts/AdminHotelLayout';
 
 // User / Public pages
 import LandingPage from './pages/user/LandingPage';
@@ -21,7 +21,7 @@ import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
 import BookingList from './pages/admin-hotel/BookingList';
 
-// Super Admin pages
+// Super Admin Pages
 import SuperAdminLogin from './pages/Auth/super-admin/SuperAdminLogin'; 
 import UserManagement from './pages/super-admin/UserManagement';
 import HotelMonitoring from './pages/super-admin/HotelMonitoring';
@@ -45,7 +45,7 @@ const MainLayout = () => (
 );
 
 // ---------------------------------------------------------
-// 2. SATPAM FRONTEND UNTUK SUPER ADMIN
+// 2. SATPAM AMAN: Protected Route untuk Admin Hotel (Hanya 1 buah)
 // ---------------------------------------------------------
 const AdminHotelProtectedRoute = () => {
   const token = localStorage.getItem('token');
@@ -74,8 +74,8 @@ const AdminHotelProtectedRoute = () => {
 const SuperAdminProtectedRoute = () => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
-
-  if (!token || !userString) {
+  
+  if (!token || !userString || userString === "undefined" || userString === "null") {
     return <Navigate to="/super-admin/login" replace />;
   }
 
@@ -84,8 +84,8 @@ const SuperAdminProtectedRoute = () => {
     if (user.role !== 'super_admin') {
       return <Navigate to="/super-admin/login" replace />;
     }
-  } catch (error) {
-    console.error("Gagal parsing data user:", error);
+  } catch (e) {
+    localStorage.clear();
     return <Navigate to="/super-admin/login" replace />;
   }
 
@@ -105,12 +105,12 @@ function App() {
     <Router>
       <div id="root" className="flex flex-col min-h-screen">
         <Routes>
-
-          {/* Rute Auth Khusus Admin */}
-          <Route path="/super-admin/login" element={<SuperAdminLogin />} />
+          
+          {/* Rute Login Khusus Admin (Bebas Diakses) */}
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/super-admin/login" element={<SuperAdminLogin />} />
 
-          {/* GRUP 1: Rute Publik & User Biasa */}
+          {/* GRUP 1: Rute Publik & User */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/hotels/:id" element={<HotelDetail />} />
@@ -123,9 +123,9 @@ function App() {
             <Route path="/profile" element={<UserProfile />} />
           </Route>
 
-          {/* GRUP 2: Rute Khusus Admin Hotel (DIPROTEKSI) */}
+          {/* GRUP 2: Rute Admin Hotel */}
           <Route element={<AdminHotelProtectedRoute />}>
-            <Route element={<MainLayout />}>
+            <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
@@ -133,7 +133,7 @@ function App() {
             </Route>
           </Route>
 
-          {/* GRUP 3: Rute Khusus Super Admin (DIPROTEKSI) */}
+          {/* GRUP 3: Rute Khusus Super Admin */}
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<SuperAdminDashboard />} />
@@ -147,7 +147,7 @@ function App() {
             </Route>
           </Route>
 
-          {/* Fallback jika route tidak ditemukan */}
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>

@@ -1,105 +1,139 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
 import api from "../../services/api";
+import { useNavigate } from 'react-router-dom';
 
 export default function RoomCreate() {
-  const [formData, setFormData] = useState({
-    name: "",
-    weekday_price: "",
-    weekend_price: "",
-    stock: "",
-    capacity_adult: "",
-    capacity_child: "",
-    breakfast: false,
-  });
   const navigate = useNavigate();
+  const [facilitiesList, setFacilitiesList] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    weekday_price: '',
+    weekend_price: '',
+    stock: '',
+    adult_capacity: '',
+    child_capacity: '',
+    facilities: [],
+    photos: []
+  });
+
+  useEffect(() => {
+    // Ambil daftar fasilitas yang tersedia untuk dipilih
+    api.get('/facilities').then(res => setFacilitiesList(res.data.data || res.data));
+  }, []);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleCheckboxChange = (e) => {
+    const id = parseInt(e.target.value);
+    const current = formData.facilities;
+    if (e.target.checked) {
+      setFormData({ ...formData, facilities: [...current, id] });
+    } else {
+      setFormData({ ...formData, facilities: current.filter(item => item !== id) });
+    }
+  };
+
+  const handleFileChange = (e) => {
+    setFormData({ ...formData, photos: e.target.files });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const hotelRes = await api.get("/admin/hotels");
-      const hotelsData = hotelRes.data?.data || hotelRes.data;
+      const hotelRes = await api.get('/admin/hotels');
+      const hotelId = hotelRes.data.data[0].id;
 
-      if (!hotelsData || hotelsData.length === 0) {
-        alert("Data hotel tidak ditemukan.");
-        return;
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('description', formData.description);
+      data.append('weekday_price', formData.weekday_price);
+      data.append('weekend_price', formData.weekend_price);
+      data.append('stock', formData.stock);
+      data.append('adult_capacity', formData.adult_capacity);
+      data.append('child_capacity', formData.child_capacity);
+
+      formData.facilities.forEach(facId => {
+        data.append('facilities[]', facId);
+      });
+
+      for (let i = 0; i < formData.photos.length; i++) {
+        data.append('photos[]', formData.photos[i]);
       }
 
-      const hotelId = hotelsData[0].id;
+      await api.post(`/admin/hotels/${hotelId}/rooms`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-      // Sesuaikan juga endpoint POST kamar Anda
-      await api.post(`/admin/hotels/${hotelId}/rooms`, formData);
-      alert("Kamar berhasil dibuat!");
-      navigate("/admin/rooms");
+      alert('Kamar berhasil dibuat!');
+      navigate('/admin/rooms');
     } catch (error) {
-      console.error(error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Terjadi kesalahan pada server";
-      alert("Gagal menyimpan kamar: " + errorMessage);
+      console.error("Gagal membuat kamar:", error);
+      alert('Terjadi kesalahan saat menyimpan kamar.');
     }
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto bg-white rounded shadow">
-      <h1 className="text-xl font-bold mb-4">Tambah Tipe Kamar</h1>
+    <div className="p-6 max-w-3xl mx-auto bg-white shadow rounded-lg my-6">
+      <h1 className="text-2xl font-bold mb-6">Tambah Tipe Kamar Baru</h1>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Nama Kamar (Contoh: Deluxe)"
-          className="w-full p-2 border rounded"
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
+        <div>
+          <label className="block font-medium text-sm text-gray-700">Nama Kamar</label>
+          <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+        </div>
+
+        <div>
+          <label className="block font-medium text-sm text-gray-700">Deskripsi Kamar</label>
+          <textarea name="description" value={formData.description} onChange={handleChange} className="w-full border p-2 rounded mt-1" rows="3"></textarea>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
-          <input
-            type="number"
-            placeholder="Harga Weekday"
-            className="w-full p-2 border rounded"
-            onChange={(e) =>
-              setFormData({ ...formData, weekday_price: e.target.value })
-            }
-          />
-          <input
-            type="number"
-            placeholder="Harga Weekend"
-            className="w-full p-2 border rounded"
-            onChange={(e) =>
-              setFormData({ ...formData, weekend_price: e.target.value })
-            }
-          />
+          <div>
+            <label className="block font-medium text-sm text-gray-700">Harga Weekday (Rp)</label>
+            <input type="number" name="weekday_price" value={formData.weekday_price} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+          </div>
+          <div>
+            <label className="block font-medium text-sm text-gray-700">Harga Weekend (Rp)</label>
+            <input type="number" name="weekend_price" value={formData.weekend_price} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+          </div>
         </div>
+
         <div className="grid grid-cols-3 gap-4">
-          <input
-            type="number"
-            placeholder="Stok"
-            className="p-2 border rounded"
-            onChange={(e) =>
-              setFormData({ ...formData, stock: e.target.value })
-            }
-          />
-          <input
-            type="number"
-            placeholder="Kapasitas Dewasa"
-            className="p-2 border rounded"
-            onChange={(e) =>
-              setFormData({ ...formData, capacity_adult: e.target.value })
-            }
-          />
-          <input
-            type="number"
-            placeholder="Kapasitas Anak"
-            className="p-2 border rounded"
-            onChange={(e) =>
-              setFormData({ ...formData, capacity_child: e.target.value })
-            }
-          />
+          <div>
+            <label className="block font-medium text-sm text-gray-700">Stok Kamar</label>
+            <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+          </div>
+          <div>
+            <label className="block font-medium text-sm text-gray-700">Kapasitas Dewasa</label>
+            <input type="number" name="adult_capacity" value={formData.adult_capacity} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+          </div>
+          <div>
+            <label className="block font-medium text-sm text-gray-700">Kapasitas Anak</label>
+            <input type="number" name="child_capacity" value={formData.child_capacity} onChange={handleChange} className="w-full border p-2 rounded mt-1" />
+          </div>
         </div>
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded"
-        >
+
+        <div>
+          <label className="block font-medium text-sm text-gray-700 mb-2">Fasilitas Kamar</label>
+          <div className="grid grid-cols-2 gap-2 border p-3 rounded max-h-40 overflow-y-auto">
+            {facilitiesList.map(fac => (
+              <label key={fac.id} className="flex items-center space-x-2 text-sm">
+                <input type="checkbox" value={fac.id} onChange={handleCheckboxChange} />
+                <span>{fac.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block font-medium text-sm text-gray-700">Foto Kamar (Bisa pilih lebih dari satu)</label>
+          <input type="file" multiple onChange={handleFileChange} className="w-full border p-2 rounded mt-1" accept="image/*" />
+        </div>
+
+        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700">
           Simpan Kamar
         </button>
       </form>
