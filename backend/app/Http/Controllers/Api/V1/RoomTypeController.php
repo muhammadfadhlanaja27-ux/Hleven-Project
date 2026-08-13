@@ -1,148 +1,148 @@
-<?php 
+<?php
 
-namespace App\Http\Controllers\Api\V1; 
+namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller; 
-use App\Models\RoomType; 
-use App\Models\RoomPriceHistory; 
-use Illuminate\Http\JsonResponse; 
-use Illuminate\Http\Request; 
-use Carbon\Carbon; 
+use App\Http\Controllers\Controller;
+use App\Models\RoomType;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
-class RoomTypeController extends Controller 
-{ 
-    // Menampilkan daftar kamar berdasarkan hotel 
-    public function index($hotelId): JsonResponse 
-    { 
-        $rooms = RoomType::with(['photos', 'facilities', 'priceHistories']) 
-            ->where('hotel_id', $hotelId) 
-            ->get(); 
+class RoomTypeController extends Controller
+{
+    // Menampilkan daftar tipe kamar milik hotel yang sedang login
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $hotel = $user->hotel;
 
-        return response()->json([ 
-            'success' => true, 
-            'message' => 'Daftar tipe kamar berhasil dimuat', 
-            'data' => $rooms, 
-        ], 200); 
-    } 
+        if (!$hotel) {
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+        }
 
-    // Menambah tipe kamar baru dengan dukungan unggah foto & fasilitas
-    public function store(Request $request, $hotelId): JsonResponse 
-    { 
-        $request->validate([ 
-            'name' => 'required|string|max:255', 
-            'description' => 'nullable|string', 
-            'weekday_price' => 'required|numeric|min:0', 
-            'weekend_price' => 'required|numeric|min:0', 
-            'stock' => 'required|integer|min:0', 
-            'adult_capacity' => 'required|integer|min:1', 
-            'child_capacity' => 'nullable|integer|min:0', 
-            'facilities' => 'nullable|array', // Array ID fasilitas 
-            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Multiple foto 
-        ]); 
+        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with('rooms')->get();
 
-        $roomType = RoomType::create([ 
-            'hotel_id' => $hotelId, 
-            'name' => $request->name, 
-            'description' => $request->description, 
-            'weekday_price' => $request->weekday_price, 
-            'weekend_price' => $request->weekend_price, 
-            'stock' => $request->stock, 
-            'adult_capacity' => $request->adult_capacity, 
-            'child_capacity' => $request->child_capacity ?? 0, 
-        ]); 
+        return response()->json([
+            'status' => 'success',
+            'data' => $roomTypes
+        ]);
+    }
 
-        // Simpan relasi fasilitas jika ada 
-        if ($request->has('facilities')) { 
-            $roomType->facilities()->sync($request->facilities); 
-        } 
+    // Menambah tipe kamar baru
+    public function store(Request $request)
+    {
+        $user = $request->user();
+        $hotel = $user->hotel;
 
-        // Simpan foto-foto kamar jika diunggah 
-        if ($request->hasFile('photos')) { 
-            foreach ($request->file('photos') as $photo) { 
-                $path = $photo->store('room-photos', 'public'); 
-                
-                // Simpan ke tabel relasi foto kamar
-                $roomType->photos()->create(['image_path' => $path]); 
-            } 
-        } 
+        if (!$hotel) {
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+        }
 
-        // Catat ke riwayat harga awal 
-        RoomPriceHistory::create([ 
-            'room_type_id' => $roomType->id, 
-            'weekday_price' => $request->weekday_price, 
-            'weekend_price' => $request->weekend_price, 
-            'effective_from' => Carbon::now(), 
-        ]); 
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'capacity' => 'required|integer|min:1',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+        ]);
 
-        return response()->json([ 
-            'success' => true, 
-            'message' => 'Tipe kamar berhasil ditambahkan', 
-            'data' => $roomType->load(['facilities', 'photos']), 
-        ], 201); 
-    } 
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
 
-    // Mengupdate tipe kamar & memantau perubahan harga 
-    public function update(Request $request, $id): JsonResponse 
-    { 
-        $roomType = RoomType::findOrFail($id); 
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('room_types', 'public');
+        }
 
-        $request->validate([ 
-            'name' => 'required|string|max:255', 
-            'description' => 'nullable|string', 
-            'weekday_price' => 'required|numeric|min:0', 
-            'weekend_price' => 'required|numeric|min:0', 
-            'stock' => 'required|integer|min:0', 
-            'adult_capacity' => 'required|integer|min:1', 
-            'child_capacity' => 'nullable|integer|min:0', 
-            'facilities' => 'nullable|array', 
-        ]); 
+        $roomType = RoomType::create([
+            'hotel_id' => $hotel->id,
+            'name' => $request->name,
+            'description' => $request->description,
+            'price' => $request->price,
+            'capacity' => $request->capacity,
+            'image' => $imagePath,
+        ]);
 
-        // Cek jika ada perubahan harga, tutup riwayat lama & buat riwayat harga baru 
-        if ($roomType->weekday_price != $request->weekday_price || $roomType->weekend_price != $request->weekend_price) { 
-            // Tutup effective_until riwayat harga aktif terakhir 
-            RoomPriceHistory::where('room_type_id', $roomType->id) 
-                ->whereNull('effective_until') 
-                ->update(['effective_until' => Carbon::now()]); 
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Room type created successfully',
+            'data' => $roomType
+        ], 201);
+    }
 
-            // Buat riwayat harga baru 
-            RoomPriceHistory::create([ 
-                'room_type_id' => $roomType->id, 
-                'weekday_price' => $request->weekday_price, 
-                'weekend_price' => $request->weekend_price, 
-                'effective_from' => Carbon::now(), 
-            ]); 
-        } 
+    // Menampilkan detail tipe kamar tertentu
+    public function show($id)
+    {
+        $roomType = RoomType::with(['rooms', 'hotel'])->find($id);
 
-        $roomType->update([
-            'name' => $request->name, 
-            'description' => $request->description, 
-            'weekday_price' => $request->weekday_price, 
-            'weekend_price' => $request->weekend_price, 
-            'stock' => $request->stock, 
-            'adult_capacity' => $request->adult_capacity, 
-            'child_capacity' => $request->child_capacity ?? 0, 
-        ]); 
+        if (!$roomType) {
+            return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
+        }
 
-        if ($request->has('facilities')) { 
-            $roomType->facilities()->sync($request->facilities); 
-        } 
+        return response()->json([
+            'status' => 'success',
+            'data' => $roomType
+        ]);
+    }
 
-        return response()->json([ 
-            'success' => true, 
-            'message' => 'Tipe kamar berhasil diperbarui', 
-            'data' => $roomType->load(['facilities', 'photos', 'priceHistories']), 
-        ], 200); 
-    } 
+    // Mengubah data tipe kamar
+    public function update(Request $request, $id)
+    {
+        $roomType = RoomType::find($id);
 
-    // Menghapus tipe kamar (Soft Delete) 
-    public function destroy($id): JsonResponse 
-    { 
-        $roomType = RoomType::findOrFail($id); 
-        $roomType->delete(); 
+        if (!$roomType) {
+            return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
+        }
 
-        return response()->json([ 
-            'success' => true, 
-            'message' => 'Tipe kamar berhasil dihapus', 
-        ], 200); 
-    } 
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:100',
+            'description' => 'nullable|string',
+            'price' => 'sometimes|numeric|min:0',
+            'capacity' => 'sometimes|integer|min:1',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        if ($request->hasFile('image')) {
+            // Hapus gambar lama jika ada
+            if ($roomType->image) {
+                Storage::disk('public')->delete($roomType->image);
+            }
+            $roomType->image = $request->file('image')->store('room_types', 'public');
+        }
+
+        $roomType->update($request->except('image'));
+        $roomType->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Room type updated successfully',
+            'data' => $roomType
+        ]);
+    }
+
+    // Menghapus tipe kamar
+    public function destroy($id)
+    {
+        $roomType = RoomType::find($id);
+
+        if (!$roomType) {
+            return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
+        }
+
+        if ($roomType->image) {
+            Storage::disk('public')->delete($roomType->image);
+        }
+
+        $roomType->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Room type deleted successfully'
+        ]);
+    }
 }

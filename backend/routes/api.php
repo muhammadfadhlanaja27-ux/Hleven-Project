@@ -6,10 +6,10 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
-use App\Http\Controllers\Api\V1\RoomTypeController;
+use App\Http\Controllers\Api\V1\RoomTypeController; // Memastikan impor sudah ada
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
-use App\Http\Controllers\Api\V1\ReportController; // Memastikan impor sudah ada
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -54,6 +54,9 @@ Route::prefix('v1')->group(function () {
 
         // --- Resource Kamar (RoomController) ---
         Route::apiResource('hotel/rooms', RoomController::class);
+
+        // --- Resource Tipe Kamar (RoomTypeController) ---
+        Route::apiResource('hotel/room-types', RoomTypeController::class);
 
         // --- Booking Management (User / Pelanggan) ---
         Route::get('hotel/bookings', [BookingController::class, 'index']);
@@ -105,7 +108,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
 
-    // Room Type Admin Routes
+    // Room Type Admin Routes (Catatan: rute ini spesifik berdasarkan hotelId)
     Route::get('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'index']);
     Route::post('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'store']);
     Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
