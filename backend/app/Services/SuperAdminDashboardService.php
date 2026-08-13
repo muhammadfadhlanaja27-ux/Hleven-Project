@@ -117,11 +117,29 @@ class SuperAdminDashboardService
 
     public function getHotelStats(): array
     {
+        // Jika dipanggil oleh endpoint statistik lama
         return [
             'active_hotels' => Hotel::where('status', 'Active')->count(),
             'inactive_hotels' => Hotel::where('status', 'Inactive')->count(),
             'blocked_hotels' => Hotel::where('status', 'Blocked')->count(),
         ];
+    }
+
+    // TAMBAHKAN METHOD INI UNTUK LIST HOTEL DI MONITORING
+    public function getAllHotelsForMonitoring($search = null, $status = null)
+    {
+        $query = Hotel::with(['admin:id,email', 'city']);
+
+        if ($search) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        // TAMBAHAN: Filter status jika dipilih
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     public function getPartnerStats(): array
@@ -161,5 +179,10 @@ class SuperAdminDashboardService
                 'time' => Carbon::parse($log->created_at)->format('Y-m-d H:i:s')
             ];
         })->toArray();
+    }
+
+    public function updateHotelStatus(Hotel $hotel, string $status): void
+    {
+        $hotel->update(['status' => $status]);
     }
 }

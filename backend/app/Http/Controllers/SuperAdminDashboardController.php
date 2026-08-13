@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\SuperAdminDashboardService;
 use Illuminate\Http\JsonResponse;
-
+use App\Models\Hotel;
 class SuperAdminDashboardController extends Controller
 {
     protected SuperAdminDashboardService $dashboardService;
@@ -56,9 +56,14 @@ class SuperAdminDashboardController extends Controller
         return $this->successResponse($this->dashboardService->getUserStats());
     }
 
-    public function hotels(): JsonResponse
+    public function hotels(Request $request): JsonResponse
     {
-        return $this->successResponse($this->dashboardService->getHotelStats());
+        $search = $request->query('search');
+        $status = $request->query('status'); // Tangkap parameter status
+
+        $data = $this->dashboardService->getAllHotelsForMonitoring($search, $status);
+
+        return $this->successResponse($data);
     }
 
     public function partners(): JsonResponse
@@ -74,5 +79,35 @@ class SuperAdminDashboardController extends Controller
     public function recentActivities(): JsonResponse
     {
         return $this->successResponse($this->dashboardService->getRecentActivities());
+    }
+
+    public function updateHotelStatus(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|string'
+        ]);
+
+        try {
+            $hotel = Hotel::findOrFail($id);
+
+            // PERBAIKAN: Paksa status menjadi huruf kecil agar lolos dari constraint database Supabase
+            $statusToSave = strtolower($request->status);
+
+            // Jika frontend mengirim "Suspended" atau "Active", sesuaikan dengan pilihan database jika diperlukan
+            // (misal database pakai 'inactive' atau 'blocked', sesuaikan dengan constraint Anda, umumnya 'active', 'inactive', 'suspended')
+
+            $this->dashboardService->updateHotelStatus($hotel, $statusToSave);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status hotel berhasil diperbarui.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui status hotel.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
