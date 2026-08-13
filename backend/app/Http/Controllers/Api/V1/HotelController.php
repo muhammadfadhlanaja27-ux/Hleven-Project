@@ -4,65 +4,124 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class HotelController extends Controller
 {
-    // Menampilkan profil hotel yang sedang dikelola admin
-    public function show(Request $request)
+    // Menampilkan daftar hotel milik admin yang sedang login
+    public function myHotels(Request $request): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel;
 
-        if (!$hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+        $query = Hotel::with(['city', 'photos', 'facilities']);
+
+        if ($user->role === 'admin_hotel') {
+            $query->where('admin_id', $user->id);
         }
 
+        $hotels = $query->get();
+
         return response()->json([
-            'status' => 'success',
-            'data' => $hotel
-        ]);
+            'success' => true,
+            'message' => 'Data hotel berhasil dimuat',
+            'data' => $hotels,
+        ], 200);
     }
 
-    // Memperbarui profil hotel
-    public function update(Request $request)
+    // Update profil hotel milik admin
+    public function update(Request $request, $id): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel;
+        $hotel = Hotel::findOrFail($id);
 
-        if (!$hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+        // Validasi kepemilikan jika role-nya admin_hotel
+        if ($user->role === 'admin_hotel' && $hotel->admin_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki hak akses untuk mengubah hotel ini.',
+            ], 403);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:150',
-            'address' => 'sometimes|string',
-            'phone' => 'sometimes|string|max:20',
+        $request->validate([
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+            'address' => 'required|string',
+            'city_id' => 'required|exists:cities,id',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'facilities' => 'array', // Array ID fasilitas hotel
+            'facilities.*' => 'exists:facilities,id',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
+        $hotel->update([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name) . '-' . $hotel->id,
+            'description' => $request->description,
+            'address' => $request->address,
+            'city_id' => $request->city_id,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+        ]);
 
-        if ($request->hasFile('image')) {
-            // Hapus gambar lama jika ada
-            if ($hotel->image) {
-                Storage::disk('public')->delete($hotel->image);
-            }
-            $hotel->image = $request->file('image')->store('hotels', 'public');
+        // Sync Facilities Pivot
+        if ($request->has('facilities')) {
+            $hotel->facilities()->sync($request->facilities);
         }
-
-        $hotel->update($request->except('image'));
-        $hotel->save();
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Hotel profile updated successfully',
-            'data' => $hotel
+            'success' => true,
+            'message' => 'Profil hotel berhasil diperbarui',
+            'data' => $hotel->load(['city', 'facilities', 'photos']),
+        ], 200);
+    }
+
+    // Upload foto galeri hotel
+    public function uploadPhoto(Request $request, $id): JsonResponse
+    {
+        $hotel = Hotel::findOrFail($id);
+
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'is_thumbnail' => 'boolean',
         ]);
+
+        $path = $request->file('photo')->store('hotels', 'public');
+
+        // Jika diset sebagai thumbnail, ubah thumbnail foto lain jadi false
+        if ($request->is_thumbnail) {
+            $hotel->photos()->update(['is_thumbnail' => false]);
+        }
+
+        $hotelPhoto = $hotel->photos()->create([
+            'photo' => $path,
+            'is_thumbnail' => $request->is_thumbnail ?? false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto hotel berhasil diunggah',
+            'data' => $hotelPhoto,
+        ], 201);
+    }
+
+    // Hapus foto hotel
+    public function deletePhoto($hotelId, $photoId): JsonResponse
+    {
+        $hotel = Hotel::findOrFail($hotelId);
+        $photo = $hotel->photos()->findOrFail($photoId);
+
+        if (Storage::disk('public')->exists($photo->photo)) {
+            Storage::disk('public')->delete($photo->photo);
+        }
+
+        $photo->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto berhasil dihapus',
+        ], 200);
     }
 }
