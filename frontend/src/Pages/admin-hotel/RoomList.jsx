@@ -11,10 +11,15 @@ export default function RoomList() {
   }, []);
 
   const fetchRooms = async () => {
-    // Asumsi hotelId didapat dari data user di localStorage atau endpoint khusus
-    // Untuk awal, kita ambil semua kamar hotel milik admin yang login
     try {
-      const response = await api.get('/admin/hotels'); // Ambil info hotel dulu
+      const response = await api.get('/admin/hotels'); 
+
+      // Pengaman jika data hotel kosong/belum ada
+      if (!response.data.data || response.data.data.length === 0) {
+        setLoading(false);
+        return;
+      }
+
       const hotelId = response.data.data[0].id; 
       const roomResponse = await api.get(`/admin/hotels/${hotelId}/rooms`);
       setRooms(roomResponse.data.data);
@@ -24,6 +29,8 @@ export default function RoomList() {
       setLoading(false);
     }
   };
+
+  if (loading) return <div className="p-8">Memuat data kamar...</div>;
 
   return (
     <div className="p-6">
@@ -45,17 +52,25 @@ export default function RoomList() {
             </tr>
           </thead>
           <tbody>
-            {rooms.map(room => (
-              <tr key={room.id} className="border-b">
-                <td className="py-3">{room.name}</td>
-                <td className="py-3">Rp {room.weekday_price.toLocaleString()}</td>
-                <td className="py-3">{room.stock}</td>
-                <td className="py-3">
-                  <button className="text-yellow-600 mr-2">Edit</button>
-                  <button className="text-red-600">Hapus</button>
+            {rooms.length === 0 ? (
+              <tr>
+                <td colSpan="4" className="py-4 text-center text-gray-500">
+                  Belum ada kamar yang ditambahkan. Silakan buat hotel dan kamar terlebih dahulu di database/admin.
                 </td>
               </tr>
-            ))}
+            ) : (
+              rooms.map(room => (
+                <tr key={room.id} className="border-b">
+                  <td className="py-3">{room.name}</td>
+                  <td className="py-3">Rp {room.weekday_price?.toLocaleString()}</td>
+                  <td className="py-3">{room.stock}</td>
+                  <td className="py-3">
+                    <button className="text-yellow-600 mr-2">Edit</button>
+                    <button className="text-red-600">Hapus</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

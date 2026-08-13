@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 import Navbar from './components/layouts/NavBar';
 import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
+import AdminHotelLayout from './components/layouts/AdminHotelLayout'; // Impor Sidebar Admin Hotel
 
 // User / Public Pages
 import LandingPage from './Pages/user/LandingPage';
@@ -44,7 +45,31 @@ const MainLayout = () => (
 );
 
 // ---------------------------------------------------------
-// 2. SATPAM FRONTEND (Protected Route) UNTUK SUPER ADMIN
+// 2. SATPAM AMAN: Protected Route untuk Admin Hotel
+// ---------------------------------------------------------
+const AdminHotelProtectedRoute = () => {
+  const token = localStorage.getItem('token');
+  const userString = localStorage.getItem('user');
+  
+  if (!token || !userString || userString === "undefined" || userString === "null") {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  try {
+    const user = JSON.parse(userString);
+    if (user.role !== 'admin_hotel' && user.role !== 'super_admin') {
+      return <Navigate to="/admin/login" replace />;
+    }
+  } catch (e) {
+    localStorage.clear();
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  return <Outlet />;
+};
+
+// ---------------------------------------------------------
+// 3. SATPAM AMAN: Protected Route untuk Super Admin
 // ---------------------------------------------------------
 const SuperAdminProtectedRoute = () => {
   const token = localStorage.getItem('token');
@@ -91,9 +116,7 @@ const AdminHotelProtectedRoute = () => {
   return <Outlet />;
 };
 
-// ---------------------------------------------------------
-// Dashboard Summary 
-// ---------------------------------------------------------
+// Dashboard Summary Super Admin Sederhana
 const SuperAdminDashboard = () => (
   <div className="space-y-6">
     <h1 className="text-2xl font-bold text-gray-900">Dashboard Super Admin</h1>

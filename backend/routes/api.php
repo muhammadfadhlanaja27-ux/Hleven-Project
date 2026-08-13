@@ -16,6 +16,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\QRCodeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,7 +46,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        // Menggunakan ProfileController untuk update data (Dibersihkan agar tidak redundan)
+        // Menggunakan ProfileController untuk update data
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
@@ -71,11 +72,16 @@ Route::prefix('v1')->group(function () {
 // 3. ADMIN HOTEL ROUTES
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
+    
+    // Endpoint Statistik Dashboard Admin Hotel
     Route::get('/dashboard-stats', function () {
-        return response()->json(['message' => 'Selamat datang di Dashboard Admin Hotel']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Selamat datang di Dashboard Admin Hotel'
+        ]);
     });
 
-    Route::post('/verify-qr', [\App\Http\Controllers\QRCodeController::class, 'verify']);
+    Route::post('/verify-qr', [QRCodeController::class, 'verify']);
 
     // Hotel Admin Routes
     Route::get('/hotels', [HotelController::class, 'myHotels']);
@@ -89,9 +95,10 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
 
-    Route::get('/bookings', [BookingController::class, 'index']); // Melihat daftar pesanan masuk
-Route::get('/bookings/{id}', [BookingController::class, 'show']); // Melihat detail pesanan
-Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); // Update status check-in/out
+    // Booking Admin Routes (Disesuaikan dengan indexAdmin)
+    Route::get('/bookings', [BookingController::class, 'indexAdmin']); 
+    Route::get('/bookings/{id}', [BookingController::class, 'show']); 
+    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
 });
 
 // ==========================================
@@ -122,13 +129,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     // --- Hotel Monitoring ---
     Route::prefix('hotels')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'hotels']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']); // Endpoint baru untuk Suspend/Activate Hotel
+        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']);
     });
 
     // --- Partner Approval ---
     Route::prefix('partners')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'partners']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updatePartnerStatus']); // Endpoint baru untuk Approve/Reject Partner
+        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updatePartnerStatus']);
     });
 
     // --- Warning Management ---
@@ -145,20 +152,17 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
 // 5. SHARED ROUTES (Admin Hotel & Super Admin)
 // ==========================================
 
-// --- Activity Logs ---
 Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/activity-logs')->group(function () {
     Route::get('/', [ActivityLogController::class, 'index']);
     Route::get('/{id}', [ActivityLogController::class, 'show']);
 });
 
-// --- Reports ---
 Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/reports')->group(function () {
     Route::get('/bookings', [ReportController::class, 'bookings']);
     Route::get('/revenue', [ReportController::class, 'revenue']);
     Route::get('/refunds', [ReportController::class, 'refunds']);
     Route::get('/export', [ReportController::class, 'export']);
 
-    // Laporan khusus Super Admin
     Route::middleware('role:super_admin')->group(function () {
         Route::get('/users', [ReportController::class, 'users']);
         Route::get('/hotels', [ReportController::class, 'hotels']);
@@ -166,7 +170,6 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
     });
 });
 
-// --- Notifications ---
 Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function () {
     Route::get('/', [NotificationController::class, 'index']);
     Route::patch('/read-all', [NotificationController::class, 'markAllAsRead']);
@@ -175,7 +178,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function 
     Route::delete('/{id}', [NotificationController::class, 'destroy']);
 });
 
-// --- File Storage (Hotel & Room Photos) ---
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1')->group(function () {
     Route::post('/hotels/{id}/photos', [FileStorageController::class, 'uploadHotelPhoto']);
     Route::delete('/hotel-photos/{id}', [FileStorageController::class, 'deleteHotelPhoto']);
