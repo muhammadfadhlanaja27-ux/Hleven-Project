@@ -7,7 +7,8 @@ use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
-use App\Http\Controllers\Api\V1\DashboardController; // Impor ditambahkan di sini
+use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -51,6 +52,14 @@ Route::prefix('v1')->group(function () {
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
+        // --- Resource Kamar (RoomController) ---
+        Route::apiResource('hotel/rooms', RoomController::class);
+
+        // --- Booking Management (User / Pelanggan) ---
+        Route::get('hotel/bookings', [BookingController::class, 'index']);
+        Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
+        Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
+
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
             Route::post('/facilities', [FacilityController::class, 'store']);
@@ -82,7 +91,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
         ]);
     });
 
-    // Rute Baru: Dashboard Admin Hotel via DashboardController
+    // Dashboard Admin Hotel via DashboardController
     Route::get('/hotel/dashboard', [DashboardController::class, 'index']);
 
     Route::post('/verify-qr', [QRCodeController::class, 'verify']);
