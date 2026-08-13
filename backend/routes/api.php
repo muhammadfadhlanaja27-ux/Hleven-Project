@@ -4,9 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FacilityController;
-use App\Http\Controllers\Api\V1\HotelController;
+use App\Http\Controllers\Api\V1\HotelController; // Memastikan impor sudah ada
 use App\Http\Controllers\Api\V1\BookingController;
-use App\Http\Controllers\Api\V1\RoomTypeController; // Memastikan impor sudah ada
+use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -48,9 +48,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        // Menggunakan ProfileController untuk update data
+        // Menggunakan ProfileController untuk update data user
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
+
+        // --- Profil Hotel Management ---
+        Route::get('hotel/profile', [HotelController::class, 'show']);
+        Route::post('hotel/profile', [HotelController::class, 'update']); // Gunakan POST dengan form-data + _method=PUT jika mengunggah gambar/logo
 
         // --- Resource Kamar (RoomController) ---
         Route::apiResource('hotel/rooms', RoomController::class);
@@ -108,7 +112,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
 
-    // Room Type Admin Routes (Catatan: rute ini spesifik berdasarkan hotelId)
+    // Room Type Admin Routes
     Route::get('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'index']);
     Route::post('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'store']);
     Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
