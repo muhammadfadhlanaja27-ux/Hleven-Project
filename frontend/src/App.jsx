@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 // Layout Components
 import Navbar from './components/layouts/NavBar';
 import Footer from './components/layouts/Footer';
-import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
+import SuperAdminLayout from './components/layouts/SuperAdminLayout';
 
 // User / Public Pages
 import LandingPage from './Pages/user/LandingPage';
@@ -12,6 +12,7 @@ import Login from './Pages/Auth/Login';
 import Register from './Pages/Auth/Register';
 import UserProfile from './Pages/user/UserProfile';
 import HotelDetail from './Pages/user/HotelDetail';
+import BookingPage from "./Pages/user/BookingPage";
 
 // Admin Hotel Pages
 import AdminLogin from './Pages/Auth/admin-hotel/Login';
@@ -21,7 +22,7 @@ import RoomCreate from './Pages/admin-hotel/RoomCreate';
 import BookingList from './Pages/admin-hotel/BookingList';
 
 // Super Admin Pages
-import SuperAdminLogin from './Pages/Auth/super-admin/SuperAdminLogin'; 
+import SuperAdminLogin from './Pages/Auth/super-admin/SuperAdminLogin';
 import UserManagement from './Pages/super-admin/UserManagement';
 import HotelMonitoring from './Pages/super-admin/HotelMonitoring';
 import PartnerApproval from './Pages/super-admin/PartnerApproval';
@@ -44,17 +45,16 @@ const MainLayout = () => (
 );
 
 // ---------------------------------------------------------
-// 2. SATPAM FRONTEND (Protected Route) UNTUK SUPER ADMIN
+// 2. SATPAM FRONTEND UNTUK SUPER ADMIN
 // ---------------------------------------------------------
 const SuperAdminProtectedRoute = () => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
-  
+
   if (!token || !userString) {
     return <Navigate to="/super-admin/login" replace />;
   }
 
-  // 🟢 2. DITAMBAHKAN TRY-CATCH UNTUK MENCEGAH WHITE-SCREEN
   try {
     const user = JSON.parse(userString);
     if (user.role !== 'super_admin') {
@@ -74,7 +74,7 @@ const SuperAdminProtectedRoute = () => {
 const AdminHotelProtectedRoute = () => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
-  
+
   if (!token || !userString) {
     return <Navigate to="/admin/login" replace />;
   }
@@ -106,15 +106,18 @@ function App() {
     <Router>
       <div id="root" className="flex flex-col min-h-screen">
         <Routes>
-          
-          {/* Rute Auth Khusus Admin (Bebas diakses tanpa layout publik) */}
+
+          {/* Rute Auth Khusus Admin */}
           <Route path="/super-admin/login" element={<SuperAdminLogin />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
           {/* GRUP 1: Rute Publik & User Biasa */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/hotels/:id" element={<HotelDetail />} /> {/* 🟢 ROUTE DENGAN IMPORT BERHASIL */}
+            <Route path="/hotels/:id" element={<HotelDetail />} />
+            
+            {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
+            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
             
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -135,7 +138,7 @@ function App() {
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<SuperAdminDashboard />} />
-              <Route path="profile" element={<SuperAdminProfile />} /> 
+              <Route path="profile" element={<SuperAdminProfile />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
@@ -147,7 +150,7 @@ function App() {
 
           {/* Fallback jika route tidak ditemukan */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          
+
         </Routes>
       </div>
     </Router>
