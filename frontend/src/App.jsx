@@ -7,14 +7,15 @@ import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
 import AdminHotelLayout from './components/layouts/AdminHotelLayout';
 
-// User / Public Pages
+// User / Public pages
 import LandingPage from './pages/user/LandingPage';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
 import UserProfile from './pages/user/UserProfile';
+import HotelDetail from './pages/user/HotelDetail';
 
-// Admin Hotel Pages
-import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
+// Admin Hotel pages
+import AdminLogin from './pages/Auth/admin-hotel/AdminLogin';
 import Dashboard from './pages/admin-hotel/Dashboard';
 import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
@@ -49,9 +50,9 @@ const MainLayout = () => (
 const AdminHotelProtectedRoute = () => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
-  
-  if (!token || !userString || userString === "undefined" || userString === "null") {
-    return <Navigate to="/admin/login" replace />;
+
+  if (!token || !userString) {
+    return <Navigate to="/super-admin/login" replace />;
   }
 
   try {
@@ -112,6 +113,11 @@ function App() {
           {/* GRUP 1: Rute Publik & User */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
+            
+            {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
+            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
+            
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<UserProfile />} />
@@ -131,7 +137,7 @@ function App() {
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<SuperAdminDashboard />} />
-              <Route path="profile" element={<SuperAdminProfile />} /> 
+              <Route path="profile" element={<SuperAdminProfile />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
@@ -143,11 +149,11 @@ function App() {
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          
+
         </Routes>
       </div>
     </Router>
   );
 }
 
-export default App;
+export default App; 
