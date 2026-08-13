@@ -15,9 +15,9 @@ class HotelController extends Controller
     public function myHotels(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $query = Hotel::with(['city', 'photos', 'facilities']);
-        
+
         if ($user->role === 'admin_hotel') {
             $query->where('admin_id', $user->id);
         }
@@ -82,7 +82,7 @@ class HotelController extends Controller
     public function uploadPhoto(Request $request, $id): JsonResponse
     {
         $hotel = Hotel::findOrFail($id);
-        
+
         $request->validate([
             'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
             'is_thumbnail' => 'boolean',
