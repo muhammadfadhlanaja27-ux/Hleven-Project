@@ -71,7 +71,7 @@ Route::prefix('v1')->group(function () {
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     
-    // Perbaikan: Mengarahkan dashboard-stats ke response JSON yang benar (atau hubungkan ke DashboardController jika ada)
+    // Endpoint Statistik Dashboard Admin Hotel
     Route::get('/dashboard-stats', function () {
         return response()->json([
             'success' => true,
@@ -93,7 +93,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
 
-    // Booking Admin Routes (Disesuaikan dengan indexAdmin agar sesuai dengan BookingController)
+    // Booking Admin Routes (Disesuaikan dengan indexAdmin)
     Route::get('/bookings', [BookingController::class, 'indexAdmin']); 
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
