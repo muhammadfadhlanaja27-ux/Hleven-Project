@@ -45,14 +45,14 @@ const MainLayout = () => (
 );
 
 // ---------------------------------------------------------
-// 2. SATPAM AMAN: Protected Route untuk Admin Hotel
+// 2. SATPAM FRONTEND UNTUK SUPER ADMIN
 // ---------------------------------------------------------
 const AdminHotelProtectedRoute = () => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
-  
-  if (!token || !userString || userString === "undefined" || userString === "null") {
-    return <Navigate to="/admin/login" replace />;
+
+  if (!token || !userString) {
+    return <Navigate to="/super-admin/login" replace />;
   }
 
   try {
@@ -74,7 +74,7 @@ const AdminHotelProtectedRoute = () => {
 const SuperAdminProtectedRoute = () => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
-  
+
   if (!token || !userString) {
     return <Navigate to="/super-admin/login" replace />;
   }
@@ -105,8 +105,8 @@ function App() {
     <Router>
       <div id="root" className="flex flex-col min-h-screen">
         <Routes>
-          
-          {/* Rute Auth Khusus Admin (Bebas diakses tanpa layout publik) */}
+
+          {/* Rute Auth Khusus Admin */}
           <Route path="/super-admin/login" element={<SuperAdminLogin />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
@@ -114,6 +114,9 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/hotels/:id" element={<HotelDetail />} />
+            
+            {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
+            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
             
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -134,7 +137,7 @@ function App() {
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<SuperAdminDashboard />} />
-              <Route path="profile" element={<SuperAdminProfile />} /> 
+              <Route path="profile" element={<SuperAdminProfile />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
@@ -146,7 +149,7 @@ function App() {
 
           {/* Fallback jika route tidak ditemukan */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          
+
         </Routes>
       </div>
     </Router>

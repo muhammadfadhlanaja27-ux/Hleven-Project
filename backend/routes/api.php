@@ -36,6 +36,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']); // Webhook Midtrans
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show']);
+    Route::get('/hotels', [HotelController::class, 'index']);
+    Route::get('/hotels/{id}', [HotelController::class, 'show']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
