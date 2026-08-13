@@ -4,12 +4,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FacilityController;
-use App\Http\Controllers\Api\V1\HotelController; // Memastikan impor sudah ada
+use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\StaffController; // Impor ditambahkan di sini
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -69,6 +70,11 @@ Route::prefix('v1')->group(function () {
 
         // --- Laporan Hotel (User / Partner) ---
         Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
+
+        // --- Manajemen Staf Hotel ---
+        Route::get('hotel/staffs', [StaffController::class, 'index']);
+        Route::post('hotel/staffs', [StaffController::class, 'store']);
+        Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
 
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
