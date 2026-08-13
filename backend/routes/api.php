@@ -40,21 +40,17 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']); // Webhook Midtrans
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show']);
-    Route::get('/hotels', [HotelController::class, 'index']);
-    Route::get('/hotels/{id}', [HotelController::class, 'show']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
     // ==========================================
     Route::middleware('auth:sanctum')->group(function () {
 
-        // --- Profile & Auth Management ---
+        // --- Profile & Auth Management (SUDAH DI DALAM MIDDLEWARE & PAKAI POST) ---
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
-
-        // Menggunakan ProfileController untuk update data user
-        Route::put('/user/profile', [ProfileController::class, 'update']);
-        Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
+        Route::post('/user/profile', [ProfileController::class, 'update']);
+        Route::post('/user/change-password', [ProfileController::class, 'changePassword']);
 
         // --- Profil Hotel Management ---
         Route::get('hotel/profile', [HotelController::class, 'show']);
@@ -132,6 +128,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
 
+
     // Booking Admin Routes (Disesuaikan dengan indexAdmin)
     Route::get('/bookings', [BookingController::class, 'indexAdmin']); 
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
@@ -205,3 +202,21 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
         Route::get('/hotels', [ReportController::class, 'hotels']);
     });
 });
+
+// --- Notifications ---
+Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function () {
+    Route::get('/', [NotificationController::class, 'index']);
+    Route::patch('/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::get('/{id}', [NotificationController::class, 'show']);
+    Route::patch('/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/{id}', [NotificationController::class, 'destroy']);
+});
+
+// --- File Storage (Hotel & Room Photos) ---
+Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1')->group(function () {
+    Route::post('/hotels/{id}/photos', [FileStorageController::class, 'uploadHotelPhoto']);
+    Route::delete('/hotel-photos/{id}', [FileStorageController::class, 'deleteHotelPhoto']);
+    Route::post('/rooms/{id}/photos', [FileStorageController::class, 'uploadRoomPhoto']);
+    Route::delete('/room-photos/{id}', [FileStorageController::class, 'deleteRoomPhoto']);
+});
+

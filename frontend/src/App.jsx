@@ -7,22 +7,24 @@ import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
 import AdminHotelLayout from './components/layouts/AdminHotelLayout';
 
-// User / Public pages
+// User / Public Pages
 import LandingPage from './pages/user/LandingPage';
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
 import UserProfile from './pages/user/UserProfile';
 import HotelDetail from './pages/user/HotelDetail';
+import BookingPage from "./pages/user/BookingPage";
 
-// Admin Hotel pages
-import AdminLogin from './pages/Auth/admin-hotel/AdminLogin';
+// Admin Hotel Pages
+import AdminLogin from './pages/auth/admin-hotel/Login';
+
 import Dashboard from './pages/admin-hotel/Dashboard';
 import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
 import BookingList from './pages/admin-hotel/BookingList';
 
 // Super Admin Pages
-import SuperAdminLogin from './pages/Auth/super-admin/SuperAdminLogin'; 
+import SuperAdminLogin from './pages/auth/super-admin/SuperAdminLogin'; 
 import UserManagement from './pages/super-admin/UserManagement';
 import HotelMonitoring from './pages/super-admin/HotelMonitoring';
 import PartnerApproval from './pages/super-admin/PartnerApproval';
