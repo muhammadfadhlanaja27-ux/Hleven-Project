@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
+use App\Http\Controllers\Api\V1\DashboardController; // Impor ditambahkan di sini
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -80,6 +81,9 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
             'message' => 'Selamat datang di Dashboard Admin Hotel'
         ]);
     });
+
+    // Rute Baru: Dashboard Admin Hotel via DashboardController
+    Route::get('/hotel/dashboard', [DashboardController::class, 'index']);
 
     Route::post('/verify-qr', [QRCodeController::class, 'verify']);
 
@@ -166,21 +170,5 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
     Route::middleware('role:super_admin')->group(function () {
         Route::get('/users', [ReportController::class, 'users']);
         Route::get('/hotels', [ReportController::class, 'hotels']);
-        Route::get('/partners', [ReportController::class, 'partners']);
     });
-});
-
-Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->group(function () {
-    Route::get('/', [NotificationController::class, 'index']);
-    Route::patch('/read-all', [NotificationController::class, 'markAllAsRead']);
-    Route::get('/{id}', [NotificationController::class, 'show']);
-    Route::patch('/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::delete('/{id}', [NotificationController::class, 'destroy']);
-});
-
-Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1')->group(function () {
-    Route::post('/hotels/{id}/photos', [FileStorageController::class, 'uploadHotelPhoto']);
-    Route::delete('/hotel-photos/{id}', [FileStorageController::class, 'deleteHotelPhoto']);
-    Route::post('/rooms/{id}/photos', [FileStorageController::class, 'uploadRoomPhoto']);
-    Route::delete('/room-photos/{id}', [FileStorageController::class, 'deleteRoomPhoto']);
 });
