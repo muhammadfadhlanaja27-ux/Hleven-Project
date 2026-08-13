@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 import Navbar from './components/layouts/NavBar';
 import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout'; 
+import AdminHotelLayout from './components/layouts/AdminHotelLayout'; // Impor Sidebar Admin Hotel
 
 // User / Public Pages
 import LandingPage from './pages/user/LandingPage';
@@ -116,9 +117,9 @@ function App() {
             <Route path="/profile" element={<UserProfile />} />
           </Route>
 
-          {/* GRUP 2: Rute Admin Hotel (Dilindungi Satpam Aman) */}
+          {/* GRUP 2: Rute Admin Hotel (Menggunakan Sidebar Layout & Dilindungi Satpam) */}
           <Route element={<AdminHotelProtectedRoute />}>
-            <Route element={<MainLayout />}>
+            <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
