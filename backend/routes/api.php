@@ -10,7 +10,8 @@ use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\ReportController;
-use App\Http\Controllers\Api\V1\StaffController; // Impor ditambahkan di sini
+use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\ReviewController; // Impor ditambahkan di sini
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -75,6 +76,11 @@ Route::prefix('v1')->group(function () {
         Route::get('hotel/staffs', [StaffController::class, 'index']);
         Route::post('hotel/staffs', [StaffController::class, 'store']);
         Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
+
+        // --- Manajemen Ulasan Hotel ---
+        Route::get('hotel/reviews', [ReviewController::class, 'index']);
+        Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
+        Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
