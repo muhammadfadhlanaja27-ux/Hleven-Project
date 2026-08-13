@@ -13,7 +13,7 @@ import Register from './pages/auth/Register';
 import UserProfile from './pages/user/UserProfile';
 
 // Admin Hotel Pages
-import AdminLogin from './pages/auth/admin-hotel/Login';
+import AdminLogin from './pages/Auth/admin-hotel/Login';
 import Dashboard from './pages/admin-hotel/Dashboard';
 import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
