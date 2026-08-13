@@ -81,35 +81,60 @@ const UserManagement = () => {
   };
 
   // Fungsi untuk menangani penambahan Admin Hotel baru
+  // Fungsi untuk menangani penambahan Admin Hotel baru
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     setSubmitLoading(true);
 
+    // 1. Validasi kecocokan password
     if (formData.password !== formData.password_confirmation) {
       alert("Password dan Konfirmasi Password tidak cocok!");
       setSubmitLoading(false);
       return;
     }
 
+    // 2. Validasi panjang password (sesuai aturan backend min:8)
+    if (formData.password.length < 8) {
+      alert("Password minimal harus 8 karakter!");
+      setSubmitLoading(false);
+      return;
+    }
+
     try {
-      // Mengirim data ke endpoint POST dengan role default admin_hotel
-      await api.post("/super-admin/users", {
-        ...formData,
+      // 3. Pisahkan data agar password_confirmation tidak ikut terkirim ke backend
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
         role: "admin_hotel",
-      });
+        status: "active", // Memastikan status default
+      };
+
+      await api.post("/super-admin/users", payload);
 
       alert("Admin Hotel berhasil ditambahkan!");
-      setIsModalOpen(false); // Tutup modal
+
+      // Reset form dan tutup modal
       setFormData({
         name: "",
         email: "",
         password: "",
         password_confirmation: "",
-      }); // Reset form
-      fetchUsers(); // Refresh tabel data
+      });
+      setIsModalOpen(false);
+
+      // Refresh tabel data
+      fetchUsers();
     } catch (err) {
       console.error("Gagal menambah admin:", err);
-      alert(err.response?.data?.message || "Gagal menambahkan Admin Hotel.");
+
+      // Menangkap pesan error spesifik dari Laravel (misal: email sudah terdaftar)
+      let errorMessage = "Gagal menambahkan Admin Hotel.";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+
+      alert(errorMessage);
     } finally {
       setSubmitLoading(false);
     }
