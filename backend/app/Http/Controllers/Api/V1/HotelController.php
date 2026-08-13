@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class HotelController extends Controller
 {
@@ -71,6 +70,7 @@ class HotelController extends Controller
     public function myHotels(Request $request): JsonResponse
     {
         $user = $request->user();
+        $hotel = $user->hotel;
 
         $query = Hotel::with(['city', 'photos', 'facilities']);
         
@@ -78,20 +78,17 @@ class HotelController extends Controller
             $query->where('admin_id', $user->id);
         }
 
-        $hotels = $query->get();
-
         return response()->json([
-            'success' => true,
-            'message' => 'Data hotel berhasil dimuat',
-            'data' => $hotels,
-        ], 200);
+            'status' => 'success',
+            'data' => $hotel
+        ]);
     }
 
     // 4. Update profil hotel milik admin
     public function update(Request $request, $id): JsonResponse
     {
         $user = $request->user();
-        $hotel = Hotel::findOrFail($id);
+        $hotel = $user->hotel;
 
         if ($user->role === 'admin_hotel' && $hotel->admin_id !== $user->id) {
             return response()->json([
@@ -100,8 +97,10 @@ class HotelController extends Controller
             ], 403);
         }
 
-        $request->validate([
-            'name' => 'required|string|max:255',
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:150',
+            'address' => 'sometimes|string',
+            'phone' => 'sometimes|string|max:20',
             'description' => 'nullable|string',
             'address' => 'required|string',
             'city_id' => 'required|exists:cities,id',
@@ -148,10 +147,8 @@ class HotelController extends Controller
             $hotel->photos()->update(['is_thumbnail' => false]);
         }
 
-        $hotelPhoto = $hotel->photos()->create([
-            'photo' => $path,
-            'is_thumbnail' => $request->is_thumbnail ?? false,
-        ]);
+        $hotel->update($request->except('image'));
+        $hotel->save();
 
         return response()->json([
             'success' => true,

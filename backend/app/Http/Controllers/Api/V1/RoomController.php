@@ -8,15 +8,13 @@ use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
-use App\Http\Controllers\Api\V1\RoomController;
-use App\Http\Controllers\Api\V1\ReportController;
-use App\Http\Controllers\Api\V1\StaffController;
-use App\Http\Controllers\Api\V1\ReviewController; // Impor ditambahkan di sini
+use App\Http\Controllers\Api\V1\RoomController; // Impor ditambahkan di sini
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\Api\ProfileController;
@@ -40,8 +38,6 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']); // Webhook Midtrans
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show']);
-    Route::get('/hotels', [HotelController::class, 'index']);
-    Route::get('/hotels/{id}', [HotelController::class, 'show']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -52,37 +48,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        // Menggunakan ProfileController untuk update data user
+        // Menggunakan ProfileController untuk update data
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
-        // --- Profil Hotel Management ---
-        Route::get('hotel/profile', [HotelController::class, 'show']);
-        Route::post('hotel/profile', [HotelController::class, 'update']); // Gunakan POST dengan form-data + _method=PUT jika mengunggah gambar/logo
-
         // --- Resource Kamar (RoomController) ---
         Route::apiResource('hotel/rooms', RoomController::class);
-
-        // --- Resource Tipe Kamar (RoomTypeController) ---
-        Route::apiResource('hotel/room-types', RoomTypeController::class);
-
-        // --- Booking Management (User / Pelanggan) ---
-        Route::get('hotel/bookings', [BookingController::class, 'index']);
-        Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
-        Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
-
-        // --- Laporan Hotel (User / Partner) ---
-        Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
-
-        // --- Manajemen Staf Hotel ---
-        Route::get('hotel/staffs', [StaffController::class, 'index']);
-        Route::post('hotel/staffs', [StaffController::class, 'store']);
-        Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
-
-        // --- Manajemen Ulasan Hotel ---
-        Route::get('hotel/reviews', [ReviewController::class, 'index']);
-        Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
-        Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
