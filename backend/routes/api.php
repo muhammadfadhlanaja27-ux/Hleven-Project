@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\StaffController;
-use App\Http\Controllers\Api\V1\ReviewController; // Impor ditambahkan di sini
+use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -40,8 +40,6 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']); // Webhook Midtrans
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show']);
-    Route::get('/hotels', [HotelController::class, 'index']);
-    Route::get('/hotels/{id}', [HotelController::class, 'show']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -52,13 +50,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        // Menggunakan ProfileController untuk update data user
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
         // --- Profil Hotel Management ---
         Route::get('hotel/profile', [HotelController::class, 'show']);
-        Route::post('hotel/profile', [HotelController::class, 'update']); // Gunakan POST dengan form-data + _method=PUT jika mengunggah gambar/logo
+        Route::post('hotel/profile', [HotelController::class, 'update']);
 
         // --- Resource Kamar (RoomController) ---
         Route::apiResource('hotel/rooms', RoomController::class);
@@ -71,7 +68,7 @@ Route::prefix('v1')->group(function () {
         Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
         Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 
-        // --- Laporan Hotel (User / Partner) ---
+        // --- Laporan Hotel ---
         Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
 
         // --- Manajemen Staf Hotel ---
@@ -84,7 +81,7 @@ Route::prefix('v1')->group(function () {
         Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
         Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
-        // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
+        // --- Fasilitas ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
             Route::post('/facilities', [FacilityController::class, 'store']);
             Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
@@ -126,13 +123,20 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
 
-    // Room Type Admin Routes
-    Route::get('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'index']);
-    Route::post('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'store']);
-    Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
-    Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
+    // --- DIPERBAIKI: Pemisahan Endpoint Room & RoomType Admin ---
+    // Mengarahkan endpoint kamar ke RoomController agar error 404 saat tambah kamar teratasi
+    Route::get('/hotels/{hotelId}/rooms', [RoomController::class, 'index']);
+    Route::post('/hotels/{hotelId}/rooms', [RoomController::class, 'store']);
+    Route::put('/rooms/{id}', [RoomController::class, 'update']);
+    Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
 
-    // Booking Admin Routes (Disesuaikan dengan indexAdmin)
+    // Tipe Kamar Admin Routes (Jika dikelola terpisah)
+    Route::get('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'index']);
+    Route::post('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'store']);
+    Route::put('/room-types/{id}', [RoomTypeController::class, 'update']);
+    Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy']);
+
+    // Booking Admin Routes
     Route::get('/bookings', [BookingController::class, 'indexAdmin']); 
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 

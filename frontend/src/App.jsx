@@ -20,6 +20,7 @@ import Dashboard from './pages/admin-hotel/Dashboard';
 import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
 import BookingList from './pages/admin-hotel/BookingList';
+import BookingPage from './pages/admin-hotel/BookingPage';
 
 // Super Admin Pages
 import SuperAdminLogin from './pages/Auth/super-admin/SuperAdminLogin'; 
