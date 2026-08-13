@@ -7,29 +7,29 @@ import Footer from './components/layouts/Footer';
 import SuperAdminLayout from './components/layouts/SuperAdminLayout';
 
 // User / Public Pages
-import LandingPage from './Pages/user/LandingPage';
-import Login from './Pages/Auth/Login';
-import Register from './Pages/Auth/Register';
-import UserProfile from './Pages/user/UserProfile';
-import HotelDetail from './Pages/user/HotelDetail';
-import BookingPage from "./Pages/user/BookingPage";
+import LandingPage from './pages/user/LandingPage';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import UserProfile from './pages/user/UserProfile';
+import HotelDetail from './pages/user/HotelDetail';
+import BookingPage from "./pages/user/BookingPage";
 
 // Admin Hotel Pages
-import AdminLogin from './Pages/Auth/admin-hotel/Login';
-import Dashboard from './Pages/admin-hotel/Dashboard';
-import RoomList from './Pages/admin-hotel/RoomList';
-import RoomCreate from './Pages/admin-hotel/RoomCreate';
-import BookingList from './Pages/admin-hotel/BookingList';
+import AdminLogin from './pages/auth/admin-hotel/Login';
+import Dashboard from './pages/admin-hotel/Dashboard';
+import RoomList from './pages/admin-hotel/RoomList';
+import RoomCreate from './pages/admin-hotel/RoomCreate';
+import BookingList from './pages/admin-hotel/BookingList';
 
 // Super Admin Pages
-import SuperAdminLogin from './Pages/Auth/super-admin/SuperAdminLogin';
-import UserManagement from './Pages/super-admin/UserManagement';
-import HotelMonitoring from './Pages/super-admin/HotelMonitoring';
-import PartnerApproval from './Pages/super-admin/PartnerApproval';
-import WarningManagement from './Pages/super-admin/WarningManagement';
-import ActivityLogs from './Pages/super-admin/ActivityLogs';
-import Reports from './Pages/super-admin/Reports';
-import SuperAdminProfile from './Pages/super-admin/SuperAdminProfile';
+import SuperAdminLogin from './pages/auth/super-admin/SuperAdminLogin'; 
+import UserManagement from './pages/super-admin/UserManagement';
+import HotelMonitoring from './pages/super-admin/HotelMonitoring';
+import PartnerApproval from './pages/super-admin/PartnerApproval';
+import WarningManagement from './pages/super-admin/WarningManagement';
+import ActivityLogs from './pages/super-admin/ActivityLogs';
+import Reports from './pages/super-admin/Reports';
+import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
