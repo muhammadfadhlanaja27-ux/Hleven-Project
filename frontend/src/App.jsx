@@ -15,11 +15,11 @@ import UserProfile from './Pages/user/UserProfile';
 import HotelDetail from './Pages/user/HotelDetail';
 
 // Admin Hotel Pages
-import AdminLogin from './Pages/Auth/admin-hotel/Login';
-import Dashboard from './Pages/admin-hotel/Dashboard';
-import RoomList from './Pages/admin-hotel/RoomList';
-import RoomCreate from './Pages/admin-hotel/RoomCreate';
-import BookingList from './Pages/admin-hotel/BookingList';
+import AdminLogin from './pages/Auth/admin-hotel/AdminLogin';
+import Dashboard from './pages/admin-hotel/Dashboard';
+import RoomList from './pages/admin-hotel/RoomList';
+import RoomCreate from './pages/admin-hotel/RoomCreate';
+import BookingList from './pages/admin-hotel/BookingList';
 
 // Super Admin Pages
 import SuperAdminLogin from './Pages/Auth/super-admin/SuperAdminLogin'; 

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Link } from 'react-router-dom';
+import { Link } from "react-router-dom";
 
 export default function RoomList() {
   const [rooms, setRooms] = useState([]);
@@ -12,19 +12,26 @@ export default function RoomList() {
 
   const fetchRooms = async () => {
     try {
-      const response = await api.get('/admin/hotels'); 
+      // 1. Mengambil data hotel milik admin (Endpoint: /api/v1/admin/hotels)
+      const response = await api.get("/admin/hotels");
 
-      // Pengaman jika data hotel kosong/belum ada
-      if (!response.data.data || response.data.data.length === 0) {
+      // Ambil data dengan aman dari struktur respons Laravel
+      const hotels = response.data.data || response.data;
+
+      if (!hotels || hotels.length === 0) {
         setLoading(false);
         return;
       }
 
-      const hotelId = response.data.data[0].id; 
-      const roomResponse = await api.get(`/admin/hotels/${hotelId}/rooms`);
-      setRooms(roomResponse.data.data);
+      // Ambil ID hotel pertama
+      const hotelId = hotels[0].id;
+
+      // 2. Mengambil daftar kamar berdasarkan hotelId (Endpoint: /api/v1/admin/hotels/{hotelId}/rooms)
+      const roomResponse = await api.get(`/admin/hotels/${hotelId}/rooms`); 
+
+      setRooms(roomResponse.data.data || roomResponse.data);
     } catch (error) {
-      console.error("Gagal memuat kamar:", error);
+      console.error("Gagal memuat daftar kamar:", error);
     } finally {
       setLoading(false);
     }
@@ -36,7 +43,10 @@ export default function RoomList() {
     <div className="p-6">
       <div className="flex justify-between mb-6">
         <h1 className="text-2xl font-bold">Manajemen Kamar</h1>
-        <Link to="/admin/rooms/create" className="bg-blue-600 text-white px-4 py-2 rounded">
+        <Link
+          to="/admin/rooms/create"
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
           Tambah Kamar
         </Link>
       </div>
@@ -55,14 +65,17 @@ export default function RoomList() {
             {rooms.length === 0 ? (
               <tr>
                 <td colSpan="4" className="py-4 text-center text-gray-500">
-                  Belum ada kamar yang ditambahkan. Silakan buat hotel dan kamar terlebih dahulu di database/admin.
+                  Belum ada kamar yang ditambahkan. Silakan buat hotel dan kamar
+                  terlebih dahulu di database/admin.
                 </td>
               </tr>
             ) : (
-              rooms.map(room => (
+              rooms.map((room) => (
                 <tr key={room.id} className="border-b">
                   <td className="py-3">{room.name}</td>
-                  <td className="py-3">Rp {room.weekday_price?.toLocaleString()}</td>
+                  <td className="py-3">
+                    Rp {room.weekday_price?.toLocaleString()}
+                  </td>
                   <td className="py-3">{room.stock}</td>
                   <td className="py-3">
                     <button className="text-yellow-600 mr-2">Edit</button>
