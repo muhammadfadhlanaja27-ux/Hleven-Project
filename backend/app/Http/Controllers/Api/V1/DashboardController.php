@@ -3,30 +3,60 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
-use App\Models\Hotel;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function getAdminStats(Request $request)
+    public function index(Request $request)
     {
-        $adminId = $request->user()->id;
-        $hotel = Hotel::where('admin_id', $adminId)->firstOrFail();
+        $user = $request->user();
+        // Asumsi hotel admin terhubung ke user, atau ambil hotel berdasarkan request/admin
+        $hotel = $user->hotel; // Sesuaikan dengan relasi model Anda jika ada
 
-        // Statistik Booking
-        $stats = [
-            'total_bookings' => Booking::where('hotel_id', $hotel->id)->count(),
-            'pending_bookings' => Booking::where('hotel_id', $hotel->id)->where('status', 'pending')->count(),
-            'revenue' => Booking::where('hotel_id', $hotel->id)
-                            ->where('status', 'paid')
-                            ->sum('grand_total'),
-            'recent_bookings' => Booking::where('hotel_id', $hotel->id)
-                                    ->with(['user', 'bookingRooms.roomType'])
-                                    ->latest()->take(5)->get()
-        ];
+        if (!$hotel) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hotel not found for this user.'
+            ], 404);
+        }
 
-        return response()->json(['success' => true, 'data' => $stats]);
+        $now = Carbon::now();
+
+        // Contoh perhitungan pendapatan dari tabel bookings / payments
+        // Sesuaikan nama tabel dan kolom status (misal: 'completed' atau 'success')
+        $query = \App\Models\Payment::whereHas('booking.rooms.roomType', function($q) use ($hotel) {
+            $q->where('hotel_id', $hotel->id);
+        })->where('status', 'success');
+
+        // Pendapatan Per Hari (Hari ini)
+        $daily = (clone $query)->whereDate('created_at', $now->toDateString())->sum('amount');
+
+        // Pendapatan Per Minggu (Minggu ini)
+        $weekly = (clone $query)->whereBetween('created_at', [
+            $now->copy()->startOfWeek(),
+            $now->copy()->endOfWeek()
+        ])->sum('amount');
+
+        // Pendapatan Per Bulan (Bulan ini)
+        $monthly = (clone $query)->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->sum('amount');
+
+        // Pendapatan Per Tahun (Tahun ini)
+        $yearly = (clone $query)->whereYear('created_at', $now->year)->sum('amount');
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'hotel_name' => $hotel->name,
+                'revenue' => [
+                    'daily' => $daily,
+                    'weekly' => $weekly,
+                    'monthly' => $monthly,
+                    'yearly' => $yearly,
+                ]
+            ]
+        ]);
     }
 }

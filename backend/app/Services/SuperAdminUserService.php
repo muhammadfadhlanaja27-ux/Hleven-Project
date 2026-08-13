@@ -47,7 +47,8 @@ class SuperAdminUserService
                 'password' => Hash::make($data['password']),
                 'role' => $data['role'], // Biasanya 'admin_hotel'
                 'phone' => $data['phone'] ?? null,
-                'status' => 'Active'
+                // PERBAIKAN UTAMA: Menggunakan huruf kecil agar lolos constraint Supabase
+                'status' => 'active'
             ]);
 
             ActivityLog::create([
