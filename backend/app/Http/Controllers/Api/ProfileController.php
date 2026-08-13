@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -12,22 +13,43 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
+        // 1. Validasi Input
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string|max:20',
+            'first_name' => 'required|string|max:255',
+            'last_name'  => 'nullable|string|max:255',
+            'email'      => 'required|email|unique:users,email,' . $user->id,
+            'phone'      => 'nullable|string|max:20',
+            'avatar'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $user->update([
-            'name' => $request->name,
+        // Gabungkan first_name dan last_name menjadi 'name'
+        $fullName = trim($request->first_name . ' ' . ($request->last_name ?? ''));
+
+        $updateData = [
+            'name'  => $fullName,
             'email' => $request->email,
             'phone' => $request->phone,
-        ]);
+        ];
+
+        // 2. Upload Foto Profil
+        if ($request->hasFile('avatar')) {
+            // Hapus foto lama jika ada di storage
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            // Simpan foto baru ke public/storage/avatars
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $updateData['avatar'] = $avatarPath;
+        }
+
+        // 3. Simpan ke Database
+        $user->update($updateData);
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui',
-            'user' => $user
-        ]);
+            'user'    => $user
+        ], 200);
     }
 
     public function changePassword(Request $request)
@@ -36,7 +58,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'current_password' => 'required',
-            'new_password' => 'required|min:8',
+            'new_password'     => 'required|min:8',
         ]);
 
         if (!Hash::check($request->current_password, $user->password)) {

@@ -26,7 +26,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
-            'role' => $request->role ?? 'user', // Default role adalah user biasa
+            'role' => $request->role ?? 'user',
             'status' => 'active',
         ]);
 
@@ -65,7 +65,6 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Hapus token lama (opsional: agar satu device/sesi bersih) atau biarkan multi-token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -92,19 +91,25 @@ class AuthController extends Controller
     }
 
     /**
-     * Update Profile Pengguna
+     * Update Profile Pengguna (Disesuaikan agar mendukung first_name & last_name)
      */
-    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    public function updateProfile(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        // Tentukan nama: jika dikirim first_name/last_name gabungkan, jika tidak gunakan $request->name
+        $fullName = $request->has('first_name')
+            ? trim($request->first_name . ' ' . ($request->last_name ?? ''))
+            : $request->name;
+
         $data = [
-            'name' => $request->name,
+            'name'  => $fullName ?: $user->name,
+            'email' => $request->email ?: $user->email,
             'phone' => $request->phone,
         ];
 
         // Handle upload avatar jika ada
         if ($request->hasFile('avatar')) {
-            // Hapus avatar lama jika ada
             if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                 Storage::disk('public')->delete($user->avatar);
             }
@@ -116,28 +121,30 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui',
-            'data' => $user,
+            'data'    => $user,
         ], 200);
     }
 
     /**
      * Ganti Password Pengguna
      */
-    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    public function changePassword(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        // Verifikasi password saat ini
-        if (!Hash::check($request->current_password, $user->password)) {
+        // Ambil input password saat ini (fleksibel current_password / old_password)
+        $currentPwd = $request->current_password ?? $request->old_password;
+        $newPwd     = $request->new_password ?? $request->password;
+
+        if (!$currentPwd || !Hash::check($currentPwd, $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Password saat ini tidak cocok',
             ], 422);
         }
 
-        // Update password baru
         $user->update([
-            'password' => Hash::make($request->new_password),
+            'password' => Hash::make($newPwd),
         ]);
 
         return response()->json([
