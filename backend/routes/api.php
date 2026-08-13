@@ -35,21 +35,17 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']); // Webhook Midtrans
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show']);
-    Route::get('/hotels', [HotelController::class, 'index']);
-    Route::get('/hotels/{id}', [HotelController::class, 'show']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
     // ==========================================
     Route::middleware('auth:sanctum')->group(function () {
 
-        // --- Profile & Auth Management ---
+        // --- Profile & Auth Management (SUDAH DI DALAM MIDDLEWARE & PAKAI POST) ---
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::post('/logout', [AuthController::class, 'logout']);
-
-        // Menggunakan ProfileController untuk update data (Dibersihkan agar tidak redundan)
-        Route::put('/user/profile', [ProfileController::class, 'update']);
-        Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
+        Route::post('/user/profile', [ProfileController::class, 'update']);
+        Route::post('/user/change-password', [ProfileController::class, 'changePassword']);
 
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
@@ -91,9 +87,9 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
 
-    Route::get('/bookings', [BookingController::class, 'index']); // Melihat daftar pesanan masuk
-Route::get('/bookings/{id}', [BookingController::class, 'show']); // Melihat detail pesanan
-Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); // Update status check-in/out
+    Route::get('/bookings', [BookingController::class, 'index']);
+    Route::get('/bookings/{id}', [BookingController::class, 'show']);
+    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 });
 
 // ==========================================
@@ -124,13 +120,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     // --- Hotel Monitoring ---
     Route::prefix('hotels')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'hotels']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']); // Endpoint baru untuk Suspend/Activate Hotel
+        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']);
     });
 
     // --- Partner Approval ---
     Route::prefix('partners')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'partners']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updatePartnerStatus']); // Endpoint baru untuk Approve/Reject Partner
+        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updatePartnerStatus']);
     });
 
     // --- Warning Management ---
@@ -160,7 +156,6 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
     Route::get('/refunds', [ReportController::class, 'refunds']);
     Route::get('/export', [ReportController::class, 'export']);
 
-    // Laporan khusus Super Admin
     Route::middleware('role:super_admin')->group(function () {
         Route::get('/users', [ReportController::class, 'users']);
         Route::get('/hotels', [ReportController::class, 'hotels']);
