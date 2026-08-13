@@ -18,13 +18,16 @@ import BookingPage from "./pages/user/BookingPage";
 // Admin Hotel Pages
 import AdminLogin from './pages/auth/admin-hotel/Login';
 
+// Admin Hotel pages
+import AdminLogin from './pages/auth/admin-hotel/AdminLogin';
 import Dashboard from './pages/admin-hotel/Dashboard';
 import RoomList from './pages/admin-hotel/RoomList';
 import RoomCreate from './pages/admin-hotel/RoomCreate';
 import BookingList from './pages/admin-hotel/BookingList';
 
-// Super Admin Pages
+// Super Admin pages
 import SuperAdminLogin from './pages/auth/super-admin/SuperAdminLogin'; 
+import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
 import UserManagement from './pages/super-admin/UserManagement';
 import HotelMonitoring from './pages/super-admin/HotelMonitoring';
 import PartnerApproval from './pages/super-admin/PartnerApproval';
@@ -94,14 +97,6 @@ const SuperAdminProtectedRoute = () => {
   return <Outlet />;
 };
 
-// Dashboard Summary Super Admin Sederhana
-const SuperAdminDashboard = () => (
-  <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-gray-900">Dashboard Super Admin</h1>
-    <p className="text-gray-600">Selamat datang di panel kendali utama H'Leven. Silakan gunakan menu di sebelah kiri untuk mengelola sistem.</p>
-  </div>
-);
-
 function App() {
   return (
     <Router>
@@ -138,8 +133,12 @@ function App() {
           {/* GRUP 3: Rute Khusus Super Admin */}
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
-              <Route index element={<SuperAdminDashboard />} />
-              <Route path="profile" element={<SuperAdminProfile />} />
+
+              {/* Tambahkan baris di bawah ini agar otomatis redirect ke dashboard */}
+              <Route index element={<Navigate to="dashboard" replace />} /> 
+              
+              <Route path="dashboard" element={<SuperAdminDashboard />} />
+              <Route path="profile" element={<SuperAdminProfile />} /> 
               <Route path="users" element={<UserManagement />} />
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
