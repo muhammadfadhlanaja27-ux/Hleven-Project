@@ -15,9 +15,6 @@ import UserProfile from './pages/user/UserProfile';
 import HotelDetail from './pages/user/HotelDetail';
 import BookingPage from "./pages/user/BookingPage";
 
-// Admin Hotel Pages
-import AdminLogin from './pages/auth/admin-hotel/Login';
-
 // Admin Hotel pages
 import AdminLogin from './pages/auth/admin-hotel/AdminLogin';
 import Dashboard from './pages/admin-hotel/Dashboard';
