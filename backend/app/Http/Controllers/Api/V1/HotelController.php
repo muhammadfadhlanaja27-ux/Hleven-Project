@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 class HotelController extends Controller
 {
     // Menampilkan daftar hotel milik admin yang sedang login
+
     public function myHotels(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -31,13 +32,13 @@ class HotelController extends Controller
         ], 200);
     }
 
-    // Update profil hotel milik admin
+    // Update profil hotel milik 
     public function update(Request $request, $id): JsonResponse
     {
         $user = $request->user();
         $hotel = Hotel::findOrFail($id);
 
-        // Validasi kepemilikan jika role-nya admin_hotel
+        // Validasi kepemilikan jika role-nya 
         if ($user->role === 'admin_hotel' && $hotel->admin_id !== $user->id) {
             return response()->json([
                 'success' => false,
