@@ -9,8 +9,8 @@ import AdminHotelLayout from './components/layouts/AdminHotelLayout';
 
 // User / Public Pages
 import LandingPage from './pages/user/LandingPage';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
+import Login from './Pages/Auth/Login';
+import Register from './Pages/Auth/Register';
 import UserProfile from './pages/user/UserProfile';
 import HotelDetail from './pages/user/HotelDetail';
 import BookingPage from "./pages/user/BookingPage";
