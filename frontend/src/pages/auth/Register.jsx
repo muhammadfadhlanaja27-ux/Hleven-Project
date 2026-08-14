@@ -20,7 +20,7 @@ const Register = () => {
     setError({});
     setLoading(true);
 
-    // Gabungkan first_name dan last_name untuk field 'name'
+    // Gabungkan first_name dan last_name untuk kolom 'name' di database
     const fullName = `${formData.firstName} ${formData.lastName}`.trim();
 
     const payload = {
@@ -36,7 +36,7 @@ const Register = () => {
     try {
       const response = await api.post('/register', payload);
       
-      // Ambil access_token dari response jika backend mengembalikan token
+      // Ambil token jika backend langsung mereturn access_token saat registrasi
       const token = 
         response.data?.data?.access_token || 
         response.data?.access_token ||
@@ -51,7 +51,6 @@ const Register = () => {
         window.dispatchEvent(new Event("storage"));
         navigate('/');
       } else {
-        alert('Registrasi berhasil! Silakan masuk ke akun Anda.');
         navigate('/login');
       }
     } catch (err) {
@@ -78,14 +77,14 @@ const Register = () => {
       )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Grid Nama Depan & Nama Belakang */}
+        {/* Nama Depan & Nama Belakang */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700">Nama Depan</label>
             <input 
               type="text" 
               className="w-full p-2.5 border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)] text-sm"
-              placeholder="John"
+              placeholder="Khalifah"
               value={formData.firstName}
               onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
               required 
@@ -98,7 +97,7 @@ const Register = () => {
             <input 
               type="text" 
               className="w-full p-2.5 border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)] text-sm"
-              placeholder="Doe"
+              placeholder="Mustika"
               value={formData.lastName}
               onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
             />

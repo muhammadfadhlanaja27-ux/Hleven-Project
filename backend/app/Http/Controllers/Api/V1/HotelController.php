@@ -11,8 +11,65 @@ use Illuminate\Support\Str;
 
 class HotelController extends Controller
 {
-    // Menampilkan daftar hotel milik admin yang sedang login
+    /**
+     * 🟢 BARU: Menampilkan semua daftar hotel aktif (Public)
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = Hotel::with(['city', 'photos', 'facilities'])
+            ->where('status', 'active');
 
+        // Filter sederhana berdasarkan kata kunci pencarian (opsional)
+        if ($request->has('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        $hotels = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar hotel berhasil dimuat',
+            'data'    => $hotels,
+        ], 200);
+    }
+
+    /**
+     * 🟢 BARU: Menampilkan detail hotel berdasarkan ID (GET /api/v1/hotels/{id})
+     * Ini yang tadi bikin error 500 karena fungsinya belum ada!
+     */
+    public function show($id): JsonResponse
+    {
+        // Panggil relasi yang dibutuhkan oleh H'Leven SRS
+        // Catatan: Pastikan relasi kamar di Model Hotel.php bernama 'roomTypes' atau 'rooms'
+        $hotel = Hotel::with([
+            'city', 
+            'photos', 
+            'facilities', 
+            'roomTypes', // Ubah ke 'rooms' jika nama fungsi relasi di Model Hotel.php adalah rooms()
+            'reviews.user'
+        ])->find($id);
+
+        if (!$hotel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel tidak ditemukan',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Detail hotel berhasil dimuat',
+            'data'    => [
+                'hotel'      => $hotel,
+                'photos'     => $hotel->photos,
+                'facilities' => $hotel->facilities,
+                'rooms'      => $hotel->roomTypes ?? $hotel->rooms ?? [],
+                'reviews'    => $hotel->reviews ?? [],
+            ],
+        ], 200);
+    }
+
+    // Menampilkan daftar hotel milik admin yang sedang login
     public function myHotels(Request $request): JsonResponse
     {
         $user = $request->user();
