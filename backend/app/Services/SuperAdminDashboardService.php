@@ -110,18 +110,36 @@ class SuperAdminDashboardService
             'total_users' => User::count(),
             'active_users' => User::where('status', 'Active')->count(),
             'new_users_this_month' => User::whereMonth('created_at', Carbon::now()->month)
-                                        ->whereYear('created_at', Carbon::now()->year)
-                                        ->count(),
+                ->whereYear('created_at', Carbon::now()->year)
+                ->count(),
         ];
     }
 
     public function getHotelStats(): array
     {
+        // Jika dipanggil oleh endpoint statistik lama
         return [
             'active_hotels' => Hotel::where('status', 'Active')->count(),
             'inactive_hotels' => Hotel::where('status', 'Inactive')->count(),
             'blocked_hotels' => Hotel::where('status', 'Blocked')->count(),
         ];
+    }
+
+    // TAMBAHKAN METHOD INI UNTUK LIST HOTEL DI MONITORING
+    public function getAllHotelsForMonitoring($search = null, $status = null)
+    {
+        $query = Hotel::with(['admin:id,email', 'city']);
+
+        if ($search) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        // TAMBAHAN: Filter status jika dipilih
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     public function getPartnerStats(): array
@@ -148,7 +166,6 @@ class SuperAdminDashboardService
 
     public function getRecentActivities(): array
     {
-        // DASHBOARD-SA-006: Diambil dari tabel activity_logs[cite: 1]
         $activities = ActivityLog::with('user:id,name')
             ->orderBy('created_at', 'desc')
             ->limit(10)
@@ -158,8 +175,14 @@ class SuperAdminDashboardService
             return [
                 'activity' => $log->activity,
                 'user' => $log->user ? $log->user->name : 'System',
-                'time' => $log->created_at->format('Y-m-d H:i:s')
+                // PERBAIKAN: Gunakan Carbon::parse() sebelum format()
+                'time' => Carbon::parse($log->created_at)->format('Y-m-d H:i:s')
             ];
         })->toArray();
+    }
+
+    public function updateHotelStatus(Hotel $hotel, string $status): void
+    {
+        $hotel->update(['status' => $status]);
     }
 }
