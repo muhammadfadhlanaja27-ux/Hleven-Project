@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
-use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RoomController; 
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\ReviewController; // Impor ditambahkan di sini
