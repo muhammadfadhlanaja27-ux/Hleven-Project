@@ -16,26 +16,21 @@ const Login = () => {
     try {
       const response = await api.post('/login', formData);
       
-      // Ambil access_token dari response AuthController
       const token = 
         response.data?.data?.access_token || 
         response.data?.access_token ||
         response.data?.data?.token || 
         response.data?.token;
 
-      const user = 
-        response.data?.data?.user || 
-        response.data?.user;
+      const user = response.data?.data?.user || response.data?.user;
 
       if (!token) {
         throw new Error("Token autentikasi tidak ditemukan dari server.");
       }
 
-      // Simpan ke LocalStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
 
-      // Trigger pembaruan UI Navbar
       window.dispatchEvent(new Event("storage"));
       
       navigate('/');

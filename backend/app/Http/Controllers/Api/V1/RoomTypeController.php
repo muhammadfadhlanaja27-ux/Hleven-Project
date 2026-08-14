@@ -20,7 +20,7 @@ class RoomTypeController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
-        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with('rooms')->get();
+        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with(['photos', 'facilities'])->get();
 
         return response()->json([
             'status' => 'success',
@@ -74,7 +74,7 @@ class RoomTypeController extends Controller
     // Menampilkan detail tipe kamar tertentu
     public function show($id)
     {
-        $roomType = RoomType::with(['rooms', 'hotel'])->find($id);
+        $roomType = RoomType::with(['photos', 'facilities', 'hotel'])->find($id);
 
         if (!$roomType) {
             return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
