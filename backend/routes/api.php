@@ -9,7 +9,7 @@ use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
-use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\ReviewController; // Impor ditambahkan di sini
 use App\Http\Controllers\PaymentController;
@@ -102,7 +102,7 @@ Route::prefix('v1')->group(function () {
 // 3. ADMIN HOTEL ROUTES
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
-    
+
     // Endpoint Statistik Dashboard Admin Hotel
     Route::get('/dashboard-stats', function () {
         return response()->json([
@@ -130,9 +130,9 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
 
 
     // Booking Admin Routes (Disesuaikan dengan indexAdmin)
-    Route::get('/bookings', [BookingController::class, 'indexAdmin']); 
-    Route::get('/bookings/{id}', [BookingController::class, 'show']); 
-    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
+    Route::get('/bookings', [BookingController::class, 'indexAdmin']);
+    Route::get('/bookings/{id}', [BookingController::class, 'show']);
+    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 });
 
 // ==========================================
@@ -219,4 +219,3 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1')->group(fun
     Route::post('/rooms/{id}/photos', [FileStorageController::class, 'uploadRoomPhoto']);
     Route::delete('/room-photos/{id}', [FileStorageController::class, 'deleteRoomPhoto']);
 });
-

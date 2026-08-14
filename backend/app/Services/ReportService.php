@@ -63,12 +63,20 @@ class ReportService
         $query = Payment::query()->where('payment_status', 'Success');
         $this->applyRoleAndDateFilters($query, $user, $filters, 'paid_at');
 
-        $totalRevenue = $query->sum('gross_amount');
+        $totalRevenue = (clone $query)->sum('gross_amount');
+
+        // TAMBAHAN: Mengambil data tren harian untuk grafik (dikelompokkan per tanggal)
+        $trend = (clone $query)
+            ->selectRaw('DATE(paid_at) as date, SUM(gross_amount) as total')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->limit(30) // Batasi 30 hari terakhir agar grafik tidak terlalu padat
+            ->get();
 
         return [
             'total_revenue' => (float) $totalRevenue,
-            'average_daily' => (float) ($totalRevenue / 30), // Simplifikasi perhitungan rata-rata
-            'average_monthly' => (float) $totalRevenue // Jika difilter per bulan
+            'average_daily' => (float) ($totalRevenue / 30), // Simplifikasi
+            'trend' => $trend // Data untuk grafik Recharts
         ];
     }
 
@@ -78,7 +86,7 @@ class ReportService
         $this->applyRoleAndDateFilters($query, $user, $filters, 'approved_at');
 
         $totalAmount = $query->join('payments', 'refunds.booking_id', '=', 'payments.booking_id')
-                             ->sum('payments.gross_amount');
+            ->sum('payments.gross_amount');
 
         return [
             'total_refund' => $query->count(),
