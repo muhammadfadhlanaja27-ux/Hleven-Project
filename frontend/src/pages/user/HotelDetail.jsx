@@ -15,17 +15,31 @@ const HotelDetail = () => {
   useEffect(() => {
     const fetchHotelDetail = async () => {
       setLoading(true);
+
+      // 1. Cari data murni dari mockHotels.js berdasarkan ID URL
+      const foundMock = mockHotels.find((h) => String(h.id) === String(id)) || mockHotels[0];
+
       try {
         const response = await api.get(`/hotels/${id}`);
         if (response.data && response.data.data) {
-          setHotel(response.data.data);
+          const apiData = response.data.data;
+
+          // 2. Gabungkan data API dengan data mockHotels
+          // Jika API tidak memiliki data rooms/facilities/starting_price yang valid, paksa pakai mockHotels
+          setHotel({
+            ...foundMock,
+            ...apiData,
+            // Utamakan daftar kamar dari mockHotels jika data API kosong atau berbeda
+            rooms: (foundMock && foundMock.rooms && foundMock.rooms.length > 0)
+              ? foundMock.rooms
+              : (apiData.rooms || apiData.room_types || [])
+          });
         } else {
-          throw new Error("Format data backend tidak valid");
+          setHotel(foundMock);
         }
       } catch (err) {
-        console.warn("Backend Error / Menggunakan Mock Data.");
-        const foundMock = mockHotels.find((h) => String(h.id) === String(id));
-        setHotel(foundMock || mockHotels[0]);
+        console.warn("Backend Error / Menggunakan Data Pure MockHotels.");
+        setHotel(foundMock);
       } finally {
         setLoading(false);
       }
@@ -64,25 +78,12 @@ const HotelDetail = () => {
     );
   }
 
-  // 🔴 FALLBACK DATA LOKAL UNTUK KAMAR, FASILITAS, & KOORDINAT MAP
-  const mockFallbackHotel = mockHotels.find((h) => String(h.id) === String(id)) || mockHotels[0];
-  
-  // 1. Fallback Daftar Kamar
-  const roomsList = (hotel.rooms && hotel.rooms.length > 0) 
-    ? hotel.rooms 
-    : (hotel.room_types && hotel.room_types.length > 0)
-    ? hotel.room_types
-    : (mockFallbackHotel?.rooms || []);
-
-  // 2. Fallback Daftar Fasilitas
-  const facilitiesList = (hotel.facilities && hotel.facilities.length > 0)
-    ? hotel.facilities
-    : (mockFallbackHotel?.facilities || ["Free WiFi", "Kolam Renang", "Restoran", "AC", "Parkir Gratis"]);
-
-  // 3. Fallback Alamat & Koordinat Map
-  const hotelAddress = hotel.address || mockFallbackHotel?.address || "Bandung, Jawa Barat";
-  const latitude = hotel.latitude || mockFallbackHotel?.latitude || "-6.9147";
-  const longitude = hotel.longitude || mockFallbackHotel?.longitude || "107.6098";
+  // 🔴 MENGAMBIL DATA LANGSUNG DARI DOKUMEN MOCK
+  const roomsList = hotel.rooms || [];
+  const facilitiesList = hotel.facilities || [];
+  const hotelAddress = hotel.address || "Bandung, Jawa Barat";
+  const latitude = hotel.latitude || "-6.9147";
+  const longitude = hotel.longitude || "107.6098";
 
   const handleBookRoom = (e, room) => {
     e.preventDefault();
@@ -91,7 +92,10 @@ const HotelDetail = () => {
     navigate(`/booking/${targetHotelId}/${targetRoomId}`);
   };
 
-  const rawPhotos = hotel.photos && hotel.photos.length > 0 ? hotel.photos : [hotel.thumbnail || DEFAULT_IMAGE];
+  const rawPhotos = hotel.photos && hotel.photos.length > 0 
+    ? hotel.photos 
+    : [hotel.thumbnail || DEFAULT_IMAGE];
+
   const photoList = [
     getImageUrl(rawPhotos[0]),
     getImageUrl(rawPhotos[1] || rawPhotos[0]),
@@ -130,12 +134,12 @@ const HotelDetail = () => {
         </div>
       </div>
 
-      {/* 🟢 Deskripsi, Fasilitas, & Widget Peta */}
+      {/* Deskripsi, Fasilitas, & Widget Peta */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
         <div className="md:col-span-2">
           <h2 className="text-xl font-bold mb-3 text-gray-800">Tentang Hotel</h2>
           <p className="text-gray-600 leading-relaxed mb-6 text-sm md:text-base whitespace-pre-line">
-            {hotel.description || mockFallbackHotel?.description || "Tidak ada deskripsi rinci untuk hotel ini."}
+            {hotel.description || "Tidak ada deskripsi rinci untuk hotel ini."}
           </p>
 
           <h2 className="text-xl font-bold mb-3 text-gray-800">Fasilitas Utama</h2>
@@ -151,7 +155,7 @@ const HotelDetail = () => {
           </div>
         </div>
 
-        {/* 🟢 CARD PETA LOKASI */}
+        {/* CARD PETA LOKASI */}
         <div className="bg-gray-50 p-5 rounded-2xl border border-gray-200 flex flex-col justify-between h-fit">
           <div>
             <h3 className="font-bold text-gray-800 text-lg mb-2">Lokasi Hotel</h3>
@@ -177,49 +181,54 @@ const HotelDetail = () => {
         </div>
       </div>
 
-      {/* Daftar Tipe Kamar */}
+      {/* Daftar Tipe Kamar (100% MATCH DENGAN MOCKHOTELS.JS) */}
       <div className="pt-6 border-t border-gray-100">
         <h2 className="text-2xl font-bold mb-6 text-gray-800">Pilihan Kamar Tersedia</h2>
 
         {roomsList && roomsList.length > 0 ? (
           <div className="space-y-4">
-            {roomsList.map((room, idx) => (
-              <div
-                key={room.id || idx}
-                className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm hover:border-[var(--accent)] transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-gray-800">{room.name || room.type || "Kamar Standard"}</h3>
-                    {(room.breakfast || room.is_breakfast) && (
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded">
-                        Free Breakfast
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 flex items-center gap-3">
-                    <span>👥 Kapasitas: {room.capacity || "2"} Dewasa</span>
-                    <span>🛏️ {room.bed || room.bed_type || "1 King Bed"}</span>
-                  </p>
-                </div>
+            {roomsList.map((room, idx) => {
+              // Pembacaan harga persis dari properti `price` di mockHotels.js
+              const roomPrice = Number(room.price || room.weekday_price || 0);
 
-                <div className="text-right flex md:flex-col justify-between items-center md:items-end w-full md:w-auto gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
-                  <div>
-                    <span className="text-2xl font-extrabold text-[var(--accent)]">
-                      Rp {room.price ? Number(room.price).toLocaleString("id-ID") : "0"}
-                    </span>
-                    <span className="text-xs text-gray-400"> /malam</span>
+              return (
+                <div
+                  key={room.id || idx}
+                  className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm hover:border-[var(--accent)] transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-800">{room.name || room.type || "Kamar Standard"}</h3>
+                      {(room.breakfast || room.is_breakfast) && (
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded">
+                          Free Breakfast
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 flex items-center gap-3">
+                      <span>👥 Kapasitas: {room.capacity || "2 Tamu"}</span>
+                      <span>🛏️ Kasur: {room.bed || "1 King Bed"}</span>
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => handleBookRoom(e, room)}
-                    className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
-                  >
-                    Pesan Kamar
-                  </button>
+
+                  <div className="text-right flex md:flex-col justify-between items-center md:items-end w-full md:w-auto gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
+                    <div>
+                      <span className="text-2xl font-extrabold text-[var(--accent)]">
+                        Rp {roomPrice.toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-xs text-gray-400"> /malam</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleBookRoom(e, room)}
+                      className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
+                    >
+                      Pesan Kamar
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-8 text-center bg-gray-50 rounded-2xl border border-gray-200">
