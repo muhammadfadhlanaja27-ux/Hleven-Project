@@ -8,8 +8,7 @@ use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
-// jika RoomController belum/tidak digunakan, hapus impor ini:
-// use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
@@ -53,8 +52,8 @@ Route::prefix('v1')->group(function () {
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
-        // --- Resource Kamar (Gunakan RoomTypeController jika RoomController tidak ada) ---
-        // Route::apiResource('hotel/rooms', RoomController::class);
+        // --- Resource Kamar ---
+        Route::apiResource('hotel/rooms', RoomController::class);
 
         // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {

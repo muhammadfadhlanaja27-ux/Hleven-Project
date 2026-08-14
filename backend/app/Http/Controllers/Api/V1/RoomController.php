@@ -1,178 +1,195 @@
 <?php
 
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Models\RoomType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\FacilityController;
-use App\Http\Controllers\Api\V1\HotelController;
-use App\Http\Controllers\Api\V1\BookingController;
-use App\Http\Controllers\Api\V1\RoomTypeController;
-use App\Http\Controllers\Api\V1\DashboardController;
-use App\Http\Controllers\Api\V1\RoomController; // Impor ditambahkan di sini
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SuperAdminDashboardController;
-use App\Http\Controllers\WarningController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\SuperAdminUserController;
-use App\Http\Controllers\FileStorageController;
-use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\QRCodeController;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes - H'Leven Backend
-|--------------------------------------------------------------------------
-*/
+class RoomController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $hotel = $user->hotel;
 
-// H'Leven Backend v1 Routes
-Route::prefix('v1')->group(function () {
+        if (!$hotel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel tidak ditemukan untuk user ini.',
+            ], 404);
+        }
 
-    // ==========================================
-    // 1. PUBLIC ROUTES (Tidak butuh token)
-    // ==========================================
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::get('/facilities', [FacilityController::class, 'index']);
-    Route::post('/payments/callback', [PaymentController::class, 'callback']); // Webhook Midtrans
-    Route::get('/hotels', [HotelController::class, 'index']);
-    Route::get('/hotels/{id}', [HotelController::class, 'show']);
+        $rooms = RoomType::where('hotel_id', $hotel->id)
+            ->with(['photos', 'facilities'])
+            ->get();
 
-    // ==========================================
-    // 2. PROTECTED ROUTES (Butuh Token Sanctum)
-    // ==========================================
-    Route::middleware('auth:sanctum')->group(function () {
-
-        // --- Profile & Auth Management ---
-        Route::get('/profile', [AuthController::class, 'profile']);
-        Route::post('/logout', [AuthController::class, 'logout']);
-
-        // Menggunakan ProfileController untuk update data
-        Route::put('/user/profile', [ProfileController::class, 'update']);
-        Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
-
-        // --- Resource Kamar (RoomController) ---
-        Route::apiResource('hotel/rooms', RoomController::class);
-
-        // --- Fasilitas (Hanya Super Admin & Admin Hotel) ---
-        Route::middleware('role:super_admin,admin_hotel')->group(function () {
-            Route::post('/facilities', [FacilityController::class, 'store']);
-            Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
-        });
-
-        // --- Rute Pembayaran User ---
-        Route::middleware('role:user')->prefix('payments')->group(function () {
-            Route::get('/{id}', [PaymentController::class, 'show']);
-            Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
-            Route::get('/{id}/status', [PaymentController::class, 'status']);
-        });
-
-        // --- File Storage (Avatar) ---
-        Route::post('/users/{id}/avatar', [FileStorageController::class, 'uploadAvatar']);
-    });
-});
-
-// ==========================================
-// 3. ADMIN HOTEL ROUTES
-// ==========================================
-Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
-    
-    // Endpoint Statistik Dashboard Admin Hotel
-    Route::get('/dashboard-stats', function () {
         return response()->json([
             'success' => true,
-            'message' => 'Selamat datang di Dashboard Admin Hotel'
+            'message' => 'Daftar kamar berhasil dimuat',
+            'data' => $rooms,
+        ], 200);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $hotel = $user->hotel;
+
+        if (!$hotel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hotel tidak ditemukan untuk user ini.',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'weekday_price' => 'required|numeric|min:0',
+            'weekend_price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'capacity_adult' => 'required|integer|min:1',
+            'capacity_child' => 'required|integer|min:0',
+            'breakfast' => 'boolean',
+            'smoking_area' => 'boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
         ]);
-    });
 
-    // Dashboard Admin Hotel via DashboardController
-    Route::get('/hotel/dashboard', [DashboardController::class, 'index']);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-    Route::post('/verify-qr', [QRCodeController::class, 'verify']);
+        $room = RoomType::create([
+            'hotel_id' => $hotel->id,
+            'name' => $request->name,
+            'description' => $request->description,
+            'weekday_price' => $request->weekday_price,
+            'weekend_price' => $request->weekend_price,
+            'stock' => $request->stock,
+            'capacity_adult' => $request->capacity_adult,
+            'capacity_child' => $request->capacity_child,
+            'breakfast' => $request->breakfast ?? false,
+            'smoking_area' => $request->smoking_area ?? false,
+        ]);
 
-    // Hotel Admin Routes
-    Route::get('/hotels', [HotelController::class, 'myHotels']);
-    Route::put('/hotels/{id}', [HotelController::class, 'update']);
-    Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
-    Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('rooms', 'public');
+            $room->photos()->create([
+                'photo' => $path,
+                'is_thumbnail' => true,
+            ]);
+        }
 
-    // Room Type Admin Routes
-    Route::get('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'index']);
-    Route::post('/hotels/{hotelId}/rooms', [RoomTypeController::class, 'store']);
-    Route::put('/rooms/{id}', [RoomTypeController::class, 'update']);
-    Route::delete('/rooms/{id}', [RoomTypeController::class, 'destroy']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Kamar berhasil ditambahkan',
+            'data' => $room->load('photos'),
+        ], 201);
+    }
 
-    // Booking Admin Routes (Disesuaikan dengan indexAdmin)
-    Route::get('/bookings', [BookingController::class, 'indexAdmin']); 
-    Route::get('/bookings/{id}', [BookingController::class, 'show']); 
-    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
-});
+    /**
+     * Display the specified resource.
+     */
+    public function show($id): JsonResponse
+    {
+        $room = RoomType::with(['photos', 'facilities', 'hotel'])->find($id);
 
-// ==========================================
-// 4. SUPER ADMIN ROUTES
-// ==========================================
-Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin')->group(function () {
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kamar tidak ditemukan',
+            ], 404);
+        }
 
-    // --- Dashboard Analytics ---
-    Route::prefix('dashboard')->group(function () {
-        Route::get('/', [SuperAdminDashboardController::class, 'summary']);
-        Route::get('/bookings', [SuperAdminDashboardController::class, 'bookings']);
-        Route::get('/payments', [SuperAdminDashboardController::class, 'payments']);
-        Route::get('/refunds', [SuperAdminDashboardController::class, 'refunds']);
-        Route::get('/revenue', [SuperAdminDashboardController::class, 'revenue']);
-        Route::get('/charts', [SuperAdminDashboardController::class, 'charts']);
-        Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
-    });
+        return response()->json([
+            'success' => true,
+            'message' => 'Detail kamar berhasil dimuat',
+            'data' => $room,
+        ], 200);
+    }
 
-    // --- User Management ---
-    Route::prefix('users')->group(function () {
-        Route::get('/', [SuperAdminUserController::class, 'index']);
-        Route::get('/{id}', [SuperAdminUserController::class, 'show']);
-        Route::post('/', [SuperAdminUserController::class, 'store']);
-        Route::patch('/{id}/status', [SuperAdminUserController::class, 'updateStatus']);
-        Route::delete('/{id}', [SuperAdminUserController::class, 'destroy']);
-    });
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, $id): JsonResponse
+    {
+        $room = RoomType::find($id);
 
-    // --- Hotel Monitoring ---
-    Route::prefix('hotels')->group(function () {
-        Route::get('/', [SuperAdminDashboardController::class, 'hotels']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']);
-    });
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kamar tidak ditemukan',
+            ], 404);
+        }
 
-    // --- Partner Approval ---
-    Route::prefix('partners')->group(function () {
-        Route::get('/', [SuperAdminDashboardController::class, 'partners']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updatePartnerStatus']);
-    });
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'weekday_price' => 'sometimes|required|numeric|min:0',
+            'weekend_price' => 'sometimes|required|numeric|min:0',
+            'stock' => 'sometimes|required|integer|min:0',
+            'capacity_adult' => 'sometimes|required|integer|min:1',
+            'capacity_child' => 'sometimes|required|integer|min:0',
+            'breakfast' => 'boolean',
+            'smoking_area' => 'boolean',
+        ]);
 
-    // --- Warning Management ---
-    Route::prefix('warnings')->group(function () {
-        Route::get('/', [WarningController::class, 'index']);
-        Route::get('/{id}', [WarningController::class, 'show']);
-        Route::post('/', [WarningController::class, 'store']);
-        Route::patch('/{id}/status', [WarningController::class, 'updateStatus']);
-        Route::delete('/{id}', [WarningController::class, 'destroy']);
-    });
-});
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-// ==========================================
-// 5. SHARED ROUTES (Admin Hotel & Super Admin)
-// ==========================================
+        $room->update($request->all());
 
-Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/activity-logs')->group(function () {
-    Route::get('/', [ActivityLogController::class, 'index']);
-    Route::get('/{id}', [ActivityLogController::class, 'show']);
-});
+        return response()->json([
+            'success' => true,
+            'message' => 'Kamar berhasil diperbarui',
+            'data' => $room,
+        ], 200);
+    }
 
-Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/reports')->group(function () {
-    Route::get('/bookings', [ReportController::class, 'bookings']);
-    Route::get('/revenue', [ReportController::class, 'revenue']);
-    Route::get('/refunds', [ReportController::class, 'refunds']);
-    Route::get('/export', [ReportController::class, 'export']);
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy($id): JsonResponse
+    {
+        $room = RoomType::find($id);
 
-    Route::middleware('role:super_admin')->group(function () {
-        Route::get('/users', [ReportController::class, 'users']);
-        Route::get('/hotels', [ReportController::class, 'hotels']);
-    });
-});
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kamar tidak ditemukan',
+            ], 404);
+        }
+
+        // Hapus foto terkait
+        foreach ($room->photos as $photo) {
+            if (Storage::disk('public')->exists($photo->photo)) {
+                Storage::disk('public')->delete($photo->photo);
+            }
+            $photo->delete();
+        }
+
+        $room->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kamar berhasil dihapus',
+        ], 200);
+    }
+}
