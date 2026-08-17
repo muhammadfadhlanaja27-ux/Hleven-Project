@@ -8,16 +8,13 @@ use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
-use App\Http\Controllers\Api\V1\RoomController; 
+use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\Api\V1\StaffController;
-use App\Http\Controllers\Api\V1\ReviewController; // Impor ditambahkan di sini
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\WarningController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\Api\ProfileController;
@@ -146,8 +143,10 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
 
     // --- Partner Approval ---
     Route::prefix('partners')->group(function () {
-        Route::get('/', [SuperAdminDashboardController::class, 'partners']);
-        Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updatePartnerStatus']);
+        Route::get('/stats', [SuperAdminDashboardController::class, 'partners']);
+        Route::get('/', [\App\Http\Controllers\PartnerApplicationController::class, 'index']);
+        Route::patch('/{id}/approve', [\App\Http\Controllers\PartnerApplicationController::class, 'approve']);
+        Route::patch('/{id}/reject', [\App\Http\Controllers\PartnerApplicationController::class, 'reject']);
     });
 
     // --- Warning Management ---
@@ -158,7 +157,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::patch('/{id}/status', [WarningController::class, 'updateStatus']);
         Route::delete('/{id}', [WarningController::class, 'destroy']);
     });
-});
+}); 
 
 // ==========================================
 // 5. SHARED ROUTES (Admin Hotel & Super Admin)

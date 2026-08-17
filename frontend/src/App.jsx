@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
 // Layout Components
 import Navbar from './components/layouts/NavBar';
@@ -98,6 +99,7 @@ function App() {
   return (
     <Router>
       <div id="root" className="flex flex-col min-h-screen">
+        <Toaster position="top-right" />
         <Routes>
           
           {/* Rute Login Khusus Admin (Bebas Diakses) */}

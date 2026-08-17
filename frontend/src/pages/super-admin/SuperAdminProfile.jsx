@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 const SuperAdminProfile = () => {
   // State untuk Data Profil
@@ -14,14 +15,17 @@ const SuperAdminProfile = () => {
   // State untuk Status UI
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   // Ambil data user yang sedang login dari localStorage saat halaman dimuat
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user'));
-    if (userData) {
-      setName(userData.name || '');
-      setEmail(userData.email || '');
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        setName(userData.name || '');
+        setEmail(userData.email || '');
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, []);
 
@@ -29,19 +33,29 @@ const SuperAdminProfile = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoadingProfile(true);
-    setMessage({ type: '', text: '' });
+
+    const updatePromise = api.put('/user/profile', { name, email });
+
+    toast.promise(updatePromise, {
+      loading: 'Menyimpan profil...',
+      success: () => {
+        try {
+          const userData = JSON.parse(localStorage.getItem('user')) || {};
+          userData.name = name;
+          userData.email = email;
+          localStorage.setItem('user', JSON.stringify(userData));
+        } catch (err) {
+          console.error(err);
+        }
+        return 'Profil berhasil diperbarui!';
+      },
+      error: (err) => err.response?.data?.message || 'Gagal memperbarui profil.'
+    });
 
     try {
-      const response = await api.put('/user/profile', { name, email });
-      setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
-      
-      // Update data di localStorage agar selaras
-      const userData = JSON.parse(localStorage.getItem('user'));
-      userData.name = name;
-      userData.email = email;
-      localStorage.setItem('user', JSON.stringify(userData));
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Gagal memperbarui profil.' });
+      await updatePromise;
+    } catch (error) {
+      // Error handled by toast
     } finally {
       setLoadingProfile(false);
     }
@@ -50,75 +64,95 @@ const SuperAdminProfile = () => {
   // Fungsi Update Password
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    setLoadingPassword(true);
-    setMessage({ type: '', text: '' });
-
+    
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Password baru dan konfirmasi tidak cocok!' });
-      setLoadingPassword(false);
+      toast.error('Password baru dan konfirmasi tidak cocok!');
       return;
     }
 
+    setLoadingPassword(true);
+
+    const updatePromise = api.put('/user/change-password', {
+      current_password: currentPassword,
+      password: newPassword,
+      password_confirmation: confirmPassword
+    });
+
+    toast.promise(updatePromise, {
+      loading: 'Memperbarui password...',
+      success: () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        return 'Password berhasil diubah!';
+      },
+      error: (err) => err.response?.data?.message || 'Gagal mengubah password.'
+    });
+
     try {
-      await api.put('/user/change-password', {
-        current_password: currentPassword,
-        password: newPassword,
-        password_confirmation: confirmPassword
-      });
-      setMessage({ type: 'success', text: 'Password berhasil diubah!' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Gagal mengubah password.' });
+      await updatePromise;
+    } catch (error) {
+      // Error handled by toast
     } finally {
       setLoadingPassword(false);
     }
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="w-full max-w-5xl mx-auto space-y-8 font-hanken">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Pengaturan Profil</h1>
-        <p className="text-gray-600">Kelola informasi data diri dan keamanan akun Super Admin Anda.</p>
+        <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+          Pengaturan Profil
+        </h2>
+        <p className="font-hanken text-[15px] text-[#747872] mt-1">
+          Kelola informasi data diri dan keamanan akun Super Administrator H'Leven.
+        </p>
       </div>
 
-      {/* Pesan Sukses / Error Global */}
-      {message.text && (
-        <div className={`p-4 rounded-md ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-          {message.text}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Form Ubah Profil */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold mb-4 border-b pb-2">Data Diri</h2>
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
+        <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
+          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
+            <span className="material-symbols-outlined text-[#768875]">person</span>
+            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Data Diri</h3>
+          </div>
+
+          <form onSubmit={handleUpdateProfile} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
+                Nama Lengkap
+              </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                disabled={loadingProfile}
+                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
+                Email
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                disabled={loadingProfile}
+                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
                 required
               />
             </div>
+
             <button
               type="submit"
               disabled={loadingProfile}
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+              className={`w-full py-3 rounded-lg text-white font-hanken text-[14px] font-semibold tracking-[0.01em] transition-all ${
+                loadingProfile ? 'bg-[#A2BA9C] cursor-not-allowed' : 'bg-[#768875] hover:bg-[#657764] shadow-sm'
+              }`}
             >
               {loadingProfile ? 'Menyimpan...' : 'Simpan Profil'}
             </button>
@@ -126,43 +160,64 @@ const SuperAdminProfile = () => {
         </div>
 
         {/* Form Ubah Password */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold mb-4 border-b pb-2">Ubah Password</h2>
-          <form onSubmit={handleUpdatePassword} className="space-y-4">
+        <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
+          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
+            <span className="material-symbols-outlined text-[#768875]">lock</span>
+            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Ubah Password</h3>
+          </div>
+
+          <form onSubmit={handleUpdatePassword} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password Saat Ini</label>
+              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
+                Password Saat Ini
+              </label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                disabled={loadingPassword}
+                placeholder="••••••••"
+                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password Baru</label>
+              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
+                Password Baru
+              </label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                disabled={loadingPassword}
+                placeholder="••••••••"
+                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
+              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
+                Konfirmasi Password Baru
+              </label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                disabled={loadingPassword}
+                placeholder="••••••••"
+                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
                 required
               />
             </div>
+
             <button
               type="submit"
               disabled={loadingPassword}
-              className="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-900 transition"
+              className={`w-full py-3 rounded-lg text-white font-hanken text-[14px] font-semibold tracking-[0.01em] transition-all ${
+                loadingPassword ? 'bg-[#747872] cursor-not-allowed' : 'bg-[#2F3231] hover:bg-[#1a1c1b] shadow-sm'
+              }`}
             >
               {loadingPassword ? 'Memperbarui...' : 'Perbarui Password'}
             </button>
