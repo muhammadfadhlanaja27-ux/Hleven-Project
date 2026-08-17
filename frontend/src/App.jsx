@@ -23,20 +23,11 @@ import HotelDetail from "./pages/user/HotelDetail";
 import BookingPage from "./pages/user/BookingPage";
 
 // Admin Hotel pages
-<<<<<<< HEAD
-import AdminLogin from './pages/Auth/admin-hotel/AdminLogin';
-import Dashboard from './pages/admin-hotel/Dashboard';
-import RoomList from './pages/admin-hotel/RoomList';
-import RoomCreate from './pages/admin-hotel/RoomCreate';
-import BookingList from './pages/admin-hotel/BookingList';
-import BookingPage from './pages/admin-hotel/BookingPage';
-=======
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
 import Dashboard from "./pages/admin-hotel/Dashboard";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
 import BookingList from "./pages/admin-hotel/BookingList";
->>>>>>> origin/develop
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
