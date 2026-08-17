@@ -1,47 +1,42 @@
 import axios from 'axios';
 
-// 1. Inisialisasi Axios dengan Base URL Backend Anda
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api/v1', // Sesuaikan port jika backend Anda tidak di port 8000
-    headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-    }
+  baseURL: 'http://localhost:8000/api/v1',
+  headers: {
+    'Accept': 'application/json',
+  },
 });
 
-// 2. Request Interceptor: Menyisipkan Token secara otomatis
+// Request Interceptor
 api.interceptors.request.use(
-    (config) => {
-        // Mengambil token dari localStorage yang disimpan saat Login
-        const token = localStorage.getItem('token');
-        
-        // Jika token ada, sisipkan ke header Authorization
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+  (config) => {
+    let token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (token) {
+      token = token.replace(/^"|"$/g, '');
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  (error) => Promise.reject(error)
 );
 
-// 3. Response Interceptor: Menangani Token Expired (401) secara global
+// Response Interceptor
 api.interceptors.response.use(
-    (response) => {
-        return response;
-    },
-    (error) => {
-        if (error.response && error.response.status === 401) {
-            // Jika token tidak valid / kedaluwarsa, hapus data dan arahkan ke Login
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            
-            // Redirect menggunakan window.location agar memicu hard reload
-            window.location.href = '/login'; 
-        }
-        return Promise.reject(error);
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      if (window.location.pathname.startsWith('/super-admin') && !window.location.pathname.includes('/login')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/super-admin/login';
+      } else if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
+    return Promise.reject(error);
+  }
 );
 
 export default api;

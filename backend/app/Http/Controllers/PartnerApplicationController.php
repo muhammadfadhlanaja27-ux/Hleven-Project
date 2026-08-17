@@ -16,6 +16,15 @@ class PartnerApplicationController extends Controller
         $this->partnerService = $partnerService;
     }
 
+    public function index(Request $request): JsonResponse
+    {
+        $applications = PartnerApplication::orderBy('created_at', 'desc')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $applications
+        ], 200);
+    }
+
     /**
      * PATCH /api/v1/partner-applications/{id}/approve
      */

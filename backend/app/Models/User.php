@@ -24,6 +24,21 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    // Accessor tambahan agar React tetap mendapatkan first_name & last_name
+    protected $appends = ['first_name', 'last_name'];
+
+    public function getFirstNameAttribute()
+    {
+        return explode(' ', $this->name)[0] ?? $this->name;
+    }
+
+    public function getLastNameAttribute()
+    {
+        $parts = explode(' ', $this->name);
+        array_shift($parts);
+        return implode(' ', $parts);
+    }
+
     public function hotels()
     {
         return $this->hasMany(Hotel::class, 'admin_id');

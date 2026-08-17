@@ -65,7 +65,7 @@ class RoomController extends Controller
     {
         try {
             $room = Room::findOrFail($id);
-            
+
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255',
                 'description' => 'nullable|string',
