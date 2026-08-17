@@ -37,6 +37,6 @@ class ActivityLogService
             ]);
         }
 
-        return $query->paginate($filters['page'] ?? 10);
+        return $query->paginate($filters['per_page'] ?? 10);
     }
 }

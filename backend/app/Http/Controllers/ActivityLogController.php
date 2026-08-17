@@ -34,8 +34,9 @@ class ActivityLogController extends Controller
                     'user' => $log->user ? $log->user->name : 'System',
                     'activity' => $log->activity,
                     'description' => $log->description,
-                    'ip_address' => $log->ip_address,
-                    'created_at' => $log->created_at->format('Y-m-d H:i:s')
+                    'created_at' => $log->created_at instanceof \DateTimeInterface
+                        ? $log->created_at->format('Y-m-d H:i:s')
+                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s'))
                 ];
             });
 
@@ -82,7 +83,9 @@ class ActivityLogController extends Controller
                     'activity' => $log->activity,
                     'description' => $log->description,
                     'ip_address' => $log->ip_address,
-                    'created_at' => $log->created_at->format('Y-m-d H:i:s')
+                    'created_at' => $log->created_at instanceof \DateTimeInterface
+                        ? $log->created_at->format('Y-m-d H:i:s')
+                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s'))
                 ]
             ], 200);
 
