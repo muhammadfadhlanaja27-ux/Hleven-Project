@@ -1,21 +1,20 @@
-import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import SuperAdminSidebar from '../super-admin/SuperAdminSidebar';
-import SuperAdminHeader from '../super-admin/SuperAdminHeader';
+import React, { useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import SuperAdminSidebar from "./SuperAdminSidebar";
+import SuperAdminHeader from "./SuperAdminHeader";
 
 const SuperAdminLayout = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/super-admin/login');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/super-admin/login");
   };
 
   return (
     <div className="flex h-screen overflow-hidden bg-warm-surface font-hanken">
-
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -32,7 +31,7 @@ const SuperAdminLayout = () => {
           bg-deep-charcoal text-white
           transform transition-transform duration-300 ease-in-out
 
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
 
           lg:relative
           lg:translate-x-0
@@ -46,11 +45,8 @@ const SuperAdminLayout = () => {
 
       {/* Main Area — takes remaining width, locked to viewport height */}
       <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden">
-
         {/* Header — fixed height, never shrinks */}
-        <SuperAdminHeader
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-        />
+        <SuperAdminHeader onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         {/* Content — scrollable area fills remaining height */}
         <main className="flex-1 overflow-y-auto overflow-x-auto">
@@ -58,7 +54,6 @@ const SuperAdminLayout = () => {
             <Outlet />
           </div>
         </main>
-
       </div>
     </div>
   );
