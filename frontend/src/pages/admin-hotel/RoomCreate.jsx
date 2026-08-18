@@ -18,8 +18,13 @@ export default function RoomCreate() {
   });
 
   useEffect(() => {
-    // Ambil daftar fasilitas yang tersedia untuk dipilih
-    api.get('/facilities').then(res => setFacilitiesList(res.data.data || res.data));
+    // Ambil daftar fasilitas
+    api.get('/facilities').then(res => {
+      const data = res.data.data || res.data;
+      setFacilitiesList(data);
+    }).catch(err => {
+      console.error("Gagal memuat fasilitas:", err);
+    });
   }, []);
 
   const handleChange = (e) => {
@@ -43,8 +48,17 @@ export default function RoomCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const hotelRes = await api.get('/admin/hotels');
-      const hotelId = hotelRes.data.data[0].id;
+      // 🟢 DIPERBAIKI: Mengambil ID hotel langsung dari profil admin yang sedang login
+      const hotelRes = await api.get('/admin/hotel/profile');
+      
+      // Menangani berbagai kemungkinan struktur respons Laravel (baik terbungkus data maupun objek langsung)
+      const hotelData = hotelRes.data.data || hotelRes.data;
+      const hotelId = hotelData.id;
+
+      if (!hotelId) {
+        alert('Data hotel tidak ditemukan untuk akun admin ini. Pastikan profil hotel sudah dibuat.');
+        return;
+      }
 
       const data = new FormData();
       data.append('name', formData.name);
@@ -53,25 +67,29 @@ export default function RoomCreate() {
       data.append('weekend_price', formData.weekend_price);
       data.append('stock', formData.stock);
       data.append('adult_capacity', formData.adult_capacity);
-      data.append('child_capacity', formData.child_capacity);
+      data.append('child_capacity', formData.child_capacity || 0);
 
       formData.facilities.forEach(facId => {
         data.append('facilities[]', facId);
       });
 
-      for (let i = 0; i < formData.photos.length; i++) {
-        data.append('photos[]', formData.photos[i]);
+      if (formData.photos) {
+        for (let i = 0; i < formData.photos.length; i++) {
+          data.append('photos[]', formData.photos[i]);
+        }
       }
 
       await api.post(`/admin/hotels/${hotelId}/rooms`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      alert('Kamar berhasil dibuat!');
+      alert('Tipe kamar berhasil dibuat!');
       navigate('/admin/rooms');
     } catch (error) {
       console.error("Gagal membuat kamar:", error);
-      alert('Terjadi kesalahan saat menyimpan kamar.');
+      // Menampilkan pesan error spesifik dari backend jika ada (misal validasi 422 atau pesan 500)
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Terjadi kesalahan saat menyimpan kamar.';
+      alert(errorMsg);
     }
   };
 
@@ -122,7 +140,7 @@ export default function RoomCreate() {
             {facilitiesList.map(fac => (
               <label key={fac.id} className="flex items-center space-x-2 text-sm">
                 <input type="checkbox" value={fac.id} onChange={handleCheckboxChange} />
-                <span>{fac.name}</span>
+                <span>{fac.name} ({fac.category})</span>
               </label>
             ))}
           </div>

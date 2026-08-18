@@ -9,20 +9,21 @@ use Illuminate\Support\Facades\Validator;
 
 class BookingController extends Controller
 {
-    // Menampilkan daftar semua booking yang masuk ke hotel
+    // Menampilkan daftar semua booking yang masuk ke hotel admin yang sedang login
     public function index(Request $request)
     {
         $user = $request->user();
-        $hotel = $user->hotel;
+        $hotel = $user->hotel; // Asumsi admin hotel terhubung langsung ke tabel hotel
 
         if (!$hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found for this user.'], 404);
         }
 
-        // Mengambil booking berdasarkan kamar yang ada di hotel tersebut
-        $bookings = Booking::whereHas('rooms.roomType', function($q) use ($hotel) {
-            $q->where('hotel_id', $hotel->id);
-        })->with(['user', 'rooms.roomType'])->latest()->get();
+        // Menggunakan kolom hotel_id langsung dan relasi bookingRooms serta payment
+        $bookings = Booking::with(['user', 'bookingRooms.roomType', 'payment'])
+            ->where('hotel_id', $hotel->id)
+            ->latest()
+            ->get();
 
         return response()->json([
             'status' => 'success',
@@ -30,10 +31,11 @@ class BookingController extends Controller
         ]);
     }
 
-    // Menampilkan detail booking tertentu
+    // Menampilkan detail booking tertentu berdasarkan ID
     public function show(Request $request, $id)
     {
-        $booking = Booking::with(['user', 'rooms.roomType', 'payments'])->find($id);
+        // Menyesuaikan relasi dengan model Booking.php ('bookingRooms' dan 'payment')
+        $booking = Booking::with(['user', 'bookingRooms.roomType', 'payment', 'guests'])->find($id);
 
         if (!$booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
@@ -45,7 +47,7 @@ class BookingController extends Controller
         ]);
     }
 
-    // Mengubah status booking (misal: confirmed, checked_in, completed, cancelled)
+    // Mengubah status booking (misal: pending, confirmed, checked_in, completed, cancelled)
     public function updateStatus(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
