@@ -1,159 +1,551 @@
-import React, { useState, useEffect } from 'react';
-import api from "../../services/api";
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import {
+  getStoredRooms,
+  saveStoredRooms,
+  getStoredRoomFacilities,
+} from "../../utils/roomData";
 
 export default function RoomCreate() {
   const navigate = useNavigate();
-  const [facilitiesList, setFacilitiesList] = useState([]);
+  const fileInputRef = useRef(null);
+
+  // Shared Room Facilities list
+  const [roomFacilities, setRoomFacilities] = useState([]);
+
+  // Form State
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    weekday_price: '',
-    weekend_price: '',
-    stock: '',
-    adult_capacity: '',
-    child_capacity: '',
-    facilities: [],
-    photos: []
+    name: "",
+    type: "",
+    description: "",
+    weekday_price: "",
+    weekend_price: "",
+    capacity: "",
+    stock: "",
+    facilityIds: [],
+    photos: [],
   });
 
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    // Ambil daftar fasilitas
-    api.get('/facilities').then(res => {
-      const data = res.data.data || res.data;
-      setFacilitiesList(data);
-    }).catch(err => {
-      console.error("Gagal memuat fasilitas:", err);
-    });
+    const facilities = getStoredRoomFacilities();
+    setRoomFacilities(facilities);
   }, []);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleCheckboxChange = (e) => {
-    const id = parseInt(e.target.value);
-    const current = formData.facilities;
-    if (e.target.checked) {
-      setFormData({ ...formData, facilities: [...current, id] });
-    } else {
-      setFormData({ ...formData, facilities: current.filter(item => item !== id) });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  const handleFileChange = (e) => {
-    setFormData({ ...formData, photos: e.target.files });
+  const handleFacilityToggle = (facilityId) => {
+    setFormData((prev) => {
+      const currentIds = prev.facilityIds || [];
+      const updatedIds = currentIds.includes(facilityId)
+        ? currentIds.filter((id) => id !== facilityId)
+        : [...currentIds, facilityId];
+      return { ...prev, facilityIds: updatedIds };
+    });
   };
 
-  const handleSubmit = async (e) => {
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newPhotos = files.map((file, idx) => ({
+      id: `p-create-${Date.now()}-${idx}`,
+      url: URL.createObjectURL(file),
+      name: file.name,
+    }));
+
+    setFormData((prev) => ({
+      ...prev,
+      photos: [...prev.photos, ...newPhotos],
+    }));
+    toast.success(`${files.length} foto berhasil diunggah!`);
+  };
+
+  const handleRemovePhoto = (photoId) => {
+    setFormData((prev) => ({
+      ...prev,
+      photos: prev.photos.filter((p) => p.id !== photoId),
+    }));
+    toast.success("Foto dihapus.");
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Room name is required.";
+    }
+
+    if (!formData.type) {
+      newErrors.type = "Please select a room type.";
+    }
+
+    if (!formData.weekday_price || Number(formData.weekday_price) <= 0) {
+      newErrors.weekday_price = "Weekday price must be greater than 0.";
+    }
+
+    if (!formData.weekend_price || Number(formData.weekend_price) <= 0) {
+      newErrors.weekend_price = "Weekend price must be greater than 0.";
+    }
+
+    if (!formData.capacity || Number(formData.capacity) < 1) {
+      newErrors.capacity = "Capacity must be at least 1 guest.";
+    }
+
+    if (!formData.stock || Number(formData.stock) < 1) {
+      newErrors.stock = "Stock must be at least 1 unit.";
+    }
+
+    return newErrors;
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      // 🟢 DIPERBAIKI: Mengambil ID hotel langsung dari profil admin yang sedang login
-      const hotelRes = await api.get('/admin/hotel/profile');
-      
-      // Menangani berbagai kemungkinan struktur respons Laravel (baik terbungkus data maupun objek langsung)
-      const hotelData = hotelRes.data.data || hotelRes.data;
-      const hotelId = hotelData.id;
 
-      if (!hotelId) {
-        alert('Data hotel tidak ditemukan untuk akun admin ini. Pastikan profil hotel sudah dibuat.');
-        return;
-      }
-
-      const data = new FormData();
-      data.append('name', formData.name);
-      data.append('description', formData.description);
-      data.append('weekday_price', formData.weekday_price);
-      data.append('weekend_price', formData.weekend_price);
-      data.append('stock', formData.stock);
-      data.append('adult_capacity', formData.adult_capacity);
-      data.append('child_capacity', formData.child_capacity || 0);
-
-      formData.facilities.forEach(facId => {
-        data.append('facilities[]', facId);
-      });
-
-      if (formData.photos) {
-        for (let i = 0; i < formData.photos.length; i++) {
-          data.append('photos[]', formData.photos[i]);
-        }
-      }
-
-      await api.post(`/admin/hotels/${hotelId}/rooms`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-
-      alert('Tipe kamar berhasil dibuat!');
-      navigate('/admin/rooms');
-    } catch (error) {
-      console.error("Gagal membuat kamar:", error);
-      // Menampilkan pesan error spesifik dari backend jika ada (misal validasi 422 atau pesan 500)
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Terjadi kesalahan saat menyimpan kamar.';
-      alert(errorMsg);
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
     }
+
+    setIsSubmitting(true);
+
+    setTimeout(() => {
+      const existingRooms = getStoredRooms();
+      const newRoom = {
+        id: Date.now(),
+        name: formData.name.trim(),
+        type: formData.type,
+        description: formData.description.trim(),
+        weekday_price: Number(formData.weekday_price),
+        weekend_price: Number(formData.weekend_price),
+        capacity: Number(formData.capacity),
+        stock: Number(formData.stock),
+        occupied: 0,
+        facilityIds: formData.facilityIds,
+        photos: formData.photos,
+        status: "Available",
+      };
+
+      const updatedRooms = [newRoom, ...existingRooms];
+      saveStoredRooms(updatedRooms);
+
+      setIsSubmitting(false);
+      toast.success("Room created successfully.");
+      navigate("/admin/rooms");
+    }, 600);
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto bg-white shadow rounded-lg my-6">
-      <h1 className="text-2xl font-bold mb-6">Tambah Tipe Kamar Baru</h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <label className="block font-medium text-sm text-gray-700">Nama Kamar</label>
-          <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+          <div className="flex items-center gap-2 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider mb-1">
+            <Link to="/admin/rooms" className="hover:text-[#506147]">
+              Rooms
+            </Link>
+            <span>/</span>
+            <span className="text-[#2D312C]">Add New Room</span>
+          </div>
+          <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
+            Add Room
+          </h2>
+          <p className="text-sm text-[#6B6E6A] mt-1">
+            Configure a new room listing for the property.
+          </p>
         </div>
 
-        <div>
-          <label className="block font-medium text-sm text-gray-700">Deskripsi Kamar</label>
-          <textarea name="description" value={formData.description} onChange={handleChange} className="w-full border p-2 rounded mt-1" rows="3"></textarea>
-        </div>
+        <Link
+          to="/admin/rooms"
+          className="px-4 py-2 border border-[#c4c8be] rounded-lg bg-white text-[#2D312C] text-xs font-semibold hover:bg-[#eae8e4] transition-colors shadow-sm"
+        >
+          Cancel
+        </Link>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block font-medium text-sm text-gray-700">Harga Weekday (Rp)</label>
-            <input type="number" name="weekday_price" value={formData.weekday_price} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
+      {/* Form Card */}
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-8">
+        {/* SECTION 1: ROOM INFORMATION */}
+        <div className="space-y-6">
+          <div className="border-b border-[#E5E1DA] pb-3">
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+              1. Room Information
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Nama, tipe, dan deskripsi umum dari kamar hotel.
+            </p>
           </div>
-          <div>
-            <label className="block font-medium text-sm text-gray-700">Harga Weekend (Rp)</label>
-            <input type="number" name="weekend_price" value={formData.weekend_price} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
-          </div>
-        </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block font-medium text-sm text-gray-700">Stok Kamar</label>
-            <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
-          </div>
-          <div>
-            <label className="block font-medium text-sm text-gray-700">Kapasitas Dewasa</label>
-            <input type="number" name="adult_capacity" value={formData.adult_capacity} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
-          </div>
-          <div>
-            <label className="block font-medium text-sm text-gray-700">Kapasitas Anak</label>
-            <input type="number" name="child_capacity" value={formData.child_capacity} onChange={handleChange} className="w-full border p-2 rounded mt-1" />
-          </div>
-        </div>
-
-        <div>
-          <label className="block font-medium text-sm text-gray-700 mb-2">Fasilitas Kamar</label>
-          <div className="grid grid-cols-2 gap-2 border p-3 rounded max-h-40 overflow-y-auto">
-            {facilitiesList.map(fac => (
-              <label key={fac.id} className="flex items-center space-x-2 text-sm">
-                <input type="checkbox" value={fac.id} onChange={handleCheckboxChange} />
-                <span>{fac.name} ({fac.category})</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Room Name */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="name" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Room Name <span className="text-[#ba1a1a]">*</span>
               </label>
-            ))}
+              <input
+                id="name"
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                placeholder="Contoh: Deluxe Ocean View Suite"
+                className={`w-full h-11 px-4 bg-white border ${
+                  errors.name ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+              />
+              {errors.name && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.name}
+                </span>
+              )}
+            </div>
+
+            {/* Room Type */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="type" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Room Type <span className="text-[#ba1a1a]">*</span>
+              </label>
+              <select
+                id="type"
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                className={`w-full h-11 px-4 bg-white border ${
+                  errors.type ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer`}
+              >
+                <option value="" disabled>
+                  Select a type
+                </option>
+                <option value="Standard">Standard</option>
+                <option value="Deluxe">Deluxe</option>
+                <option value="Suite">Suite</option>
+              </select>
+              {errors.type && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.type}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="description" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Description
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              rows={4}
+              value={formData.description}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              placeholder="Berikan deskripsi detail tentang atmosfer, fasilitas, dan keunggulan kamar..."
+              className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed"
+            />
           </div>
         </div>
 
-        <div>
-          <label className="block font-medium text-sm text-gray-700">Foto Kamar (Bisa pilih lebih dari satu)</label>
-          <input type="file" multiple onChange={handleFileChange} className="w-full border p-2 rounded mt-1" accept="image/*" />
+        {/* SECTION 2: ROOM PRICING */}
+        <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
+          <div className="border-b border-[#E5E1DA] pb-3">
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+              2. Room Pricing
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Tentukan harga terpisah untuk hari kerja (Weekday) dan akhir pekan (Weekend).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Weekday Price */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="weekday_price" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Weekday Price (Senin - Kamis) <span className="text-[#ba1a1a]">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757870] font-semibold text-sm">
+                  Rp
+                </span>
+                <input
+                  id="weekday_price"
+                  type="number"
+                  name="weekday_price"
+                  value={formData.weekday_price}
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  placeholder="500000"
+                  className={`w-full h-11 pl-11 pr-4 bg-white border ${
+                    errors.weekday_price ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+              </div>
+              {errors.weekday_price && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.weekday_price}
+                </span>
+              )}
+            </div>
+
+            {/* Weekend Price */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="weekend_price" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Weekend Price (Jumat - Minggu) <span className="text-[#ba1a1a]">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757870] font-semibold text-sm">
+                  Rp
+                </span>
+                <input
+                  id="weekend_price"
+                  type="number"
+                  name="weekend_price"
+                  value={formData.weekend_price}
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  placeholder="650000"
+                  className={`w-full h-11 pl-11 pr-4 bg-white border ${
+                    errors.weekend_price ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+              </div>
+              {errors.weekend_price && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.weekend_price}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700">
-          Simpan Kamar
-        </button>
+        {/* SECTION 3: ROOM AVAILABILITY */}
+        <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
+          <div className="border-b border-[#E5E1DA] pb-3">
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+              3. Room Availability &amp; Capacity
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Kapasitas maksimal tamu dan total jumlah unit fisik kamar.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Capacity */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="capacity" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Capacity (Guests) <span className="text-[#ba1a1a]">*</span>
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
+                  person
+                </span>
+                <input
+                  id="capacity"
+                  type="number"
+                  name="capacity"
+                  min="1"
+                  value={formData.capacity}
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  placeholder="2"
+                  className={`w-full h-11 pl-10 pr-4 bg-white border ${
+                    errors.capacity ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+              </div>
+              {errors.capacity && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.capacity}
+                </span>
+              )}
+            </div>
+
+            {/* Stock */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="stock" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Total Units / Stock <span className="text-[#ba1a1a]">*</span>
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
+                  tag
+                </span>
+                <input
+                  id="stock"
+                  type="number"
+                  name="stock"
+                  min="1"
+                  value={formData.stock}
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  placeholder="10"
+                  className={`w-full h-11 pl-10 pr-4 bg-white border ${
+                    errors.stock ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+              </div>
+              {errors.stock && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.stock}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-[#F6F3EF] p-4 rounded-xl text-xs text-[#6B6E6A] border border-[#E5E1DA]">
+            <p className="font-semibold text-[#2D312C]">Informasi Stok Tersedia (Available Stock)</p>
+            <p className="mt-0.5">
+              Available stock dikalkulasikan secara otomatis berdasarkan rumus: <code className="bg-white px-1.5 py-0.5 rounded border">Stock - Occupied</code>.
+            </p>
+          </div>
+        </div>
+
+        {/* SECTION 4: ROOM FACILITIES */}
+        <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
+          <div className="border-b border-[#E5E1DA] pb-3">
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+              4. Room Facilities &amp; Amenities
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Pilih fasilitas yang tersedia di kamar dari katalog Room Facilities.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
+            {roomFacilities.map((fac) => {
+              const isChecked = formData.facilityIds.includes(fac.id);
+              const isInactive = fac.status === "inactive";
+
+              return (
+                <label
+                  key={fac.id}
+                  className={`flex items-center gap-2.5 p-3 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                    isChecked
+                      ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]"
+                      : "border-[#E5E1DA] bg-white text-[#2D312C] hover:border-[#c4c8be]"
+                  } ${isInactive ? "opacity-40 cursor-not-allowed bg-gray-100" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    disabled={isInactive}
+                    onChange={() => !isInactive && handleFacilityToggle(fac.id)}
+                    className="accent-[#506147]"
+                  />
+                  <span className="material-symbols-outlined text-[18px] text-[#506147]">
+                    {fac.icon || "star"}
+                  </span>
+                  <span className="truncate">{fac.name}</span>
+                  {isInactive && (
+                    <span className="text-[9px] text-[#ba1a1a] ml-auto uppercase font-bold">
+                      Inactive
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* SECTION 5: ROOM PHOTOS */}
+        <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
+          <div className="border-b border-[#E5E1DA] pb-3">
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+              5. Room Photos
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Unggah foto kamar untuk menampilkan pratinjau visual bagi calon tamu.
+            </p>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handlePhotoUpload}
+            multiple
+            accept="image/*"
+            className="hidden"
+          />
+
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-[#c4c8be] hover:border-[#506147] rounded-xl p-8 text-center bg-[#fcf9f5] hover:bg-[#f6f3ef] transition-colors cursor-pointer flex flex-col items-center justify-center group"
+          >
+            <span className="material-symbols-outlined text-4xl text-[#506147] group-hover:scale-110 transition-transform mb-2">
+              cloud_upload
+            </span>
+            <p className="text-sm font-semibold text-[#2D312C]">
+              Click to upload or drag and drop room photos
+            </p>
+            <p className="text-xs text-[#6B6E6A] mt-1">
+              SVG, PNG, JPG or WEBP (Max. 5MB per file)
+            </p>
+          </div>
+
+          {/* Photo Gallery Grid */}
+          {formData.photos.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+              {formData.photos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className="relative aspect-[4/3] rounded-xl overflow-hidden border border-[#E5E1DA] group shadow-sm"
+                >
+                  <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePhoto(photo.id)}
+                    className="absolute top-2 right-2 p-1.5 bg-[#ba1a1a] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action Footer Buttons */}
+        <div className="pt-6 border-t border-[#E5E1DA] flex items-center justify-end gap-3">
+          <Link
+            to="/admin/rooms"
+            className="px-6 py-2.5 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors"
+          >
+            Cancel
+          </Link>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-8 py-2.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-all shadow-sm hover:shadow active:scale-[0.98] flex items-center gap-2 disabled:bg-[#a2ba9c]"
+          >
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Saving Room...</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[18px]">save</span>
+                <span>Save Room</span>
+              </>
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );

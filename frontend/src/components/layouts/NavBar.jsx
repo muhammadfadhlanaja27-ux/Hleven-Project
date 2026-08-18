@@ -73,58 +73,95 @@ const Navbar = () => {
         </nav>
 
         {/* Right Area (User / Auth) */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           {user ? (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2.5 focus:outline-none cursor-pointer p-1 rounded-full hover:bg-[#DCCFC0]/20 transition-colors"
-              >
-                <img
-                  src={getAvatarUrl()}
-                  alt="Profile"
-                  className="w-9 h-9 rounded-full object-cover border-2 border-[#778873]/40 shadow-xs"
-                  onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
-                />
-                <span className="hidden sm:inline font-semibold text-sm text-[#1e1b16]">
-                  {getUserName()}
-                </span>
-                <span className="text-xs text-[#747871]">▼</span>
-              </button>
-
-              {/* Dropdown Menu */}
-              {dropdownOpen && (
-                <div
-                  className="absolute right-0 mt-3 w-56 bg-[#fff8f0] rounded-2xl shadow-xl border border-[#DCCFC0]/50 py-2 text-left animate-in fade-in duration-200 z-50"
-                  onMouseLeave={() => setDropdownOpen(false)}
+            <div className="flex items-center gap-3">
+              {/* Tombol Khusus Admin / Super Admin */}
+              {(user.role === "admin_hotel" || user.role === "super_admin") && (
+                <Link
+                  to={user.role === "super_admin" ? "/super-admin/dashboard" : "/admin/dashboard"}
+                  className="flex items-center gap-1.5 bg-[#778873] text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold hover:bg-[#50604d] transition-all shadow-sm active:scale-95"
+                  title="Buka Dashboard Admin"
                 >
-                  <div className="px-4 py-3 border-b border-[#DCCFC0]/30">
-                    <p className="text-sm font-bold text-[#1e1b16]">
-                      {user.name || `${user.first_name || ""} ${user.last_name || ""}`.trim()}
-                    </p>
-                    <p className="text-xs text-[#444842] truncate">{user.email}</p>
-                  </div>
-
-                  <Link
-                    to="/profile"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e1b16] hover:bg-[#FDF6ED] transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-lg text-[#778873]">person</span>
-                    Detail Profil Saya
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#ba1a1a] hover:bg-[#ffdad6]/20 transition-colors cursor-pointer border-t border-[#DCCFC0]/30 mt-1"
-                  >
-                    <span className="material-symbols-outlined text-lg text-[#ba1a1a]">logout</span>
-                    Keluar (Logout)
-                  </button>
-                </div>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {user.role === "super_admin" ? "admin_panel_settings" : "dashboard"}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {user.role === "super_admin" ? "Super Admin" : "Admin Panel"}
+                  </span>
+                </Link>
               )}
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-2.5 focus:outline-none cursor-pointer p-1 rounded-full hover:bg-[#DCCFC0]/20 transition-colors"
+                >
+                  <img
+                    src={getAvatarUrl()}
+                    alt="Profile"
+                    className="w-9 h-9 rounded-full object-cover border-2 border-[#778873]/40 shadow-xs"
+                    onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
+                  />
+                  <span className="hidden sm:inline font-semibold text-sm text-[#1e1b16]">
+                    {getUserName()}
+                  </span>
+                  <span className="text-xs text-[#747871]">▼</span>
+                </button>
+
+                {/* Dropdown Menu */}
+                {dropdownOpen && (
+                  <div
+                    className="absolute right-0 mt-3 w-56 bg-[#fff8f0] rounded-2xl shadow-xl border border-[#DCCFC0]/50 py-2 text-left animate-in fade-in duration-200 z-50"
+                    onMouseLeave={() => setDropdownOpen(false)}
+                  >
+                    <div className="px-4 py-3 border-b border-[#DCCFC0]/30">
+                      <p className="text-sm font-bold text-[#1e1b16]">
+                        {user.name || `${user.first_name || ""} ${user.last_name || ""}`.trim()}
+                      </p>
+                      <p className="text-xs text-[#444842] truncate">{user.email}</p>
+                      {user.role && user.role !== "user" && (
+                        <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-[#778873]/20 text-[#50604d]">
+                          {user.role === "admin_hotel" ? "Admin Hotel" : user.role === "super_admin" ? "Super Admin" : user.role}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Menu Admin di Dropdown */}
+                    {(user.role === "admin_hotel" || user.role === "super_admin") && (
+                      <Link
+                        to={user.role === "super_admin" ? "/super-admin/dashboard" : "/admin/dashboard"}
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-[#778873] hover:bg-[#FDF6ED] transition-colors border-b border-[#DCCFC0]/20"
+                      >
+                        <span className="material-symbols-outlined text-lg text-[#778873]">
+                          {user.role === "super_admin" ? "admin_panel_settings" : "dashboard"}
+                        </span>
+                        {user.role === "super_admin" ? "Dashboard Super Admin" : "Dashboard Admin Hotel"}
+                      </Link>
+                    )}
+
+                    <Link
+                      to="/profile"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#1e1b16] hover:bg-[#FDF6ED] transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg text-[#778873]">person</span>
+                      Detail Profil Saya
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#ba1a1a] hover:bg-[#ffdad6]/20 transition-colors cursor-pointer border-t border-[#DCCFC0]/30 mt-1"
+                    >
+                      <span className="material-symbols-outlined text-lg text-[#ba1a1a]">logout</span>
+                      Keluar (Logout)
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">

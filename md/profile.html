@@ -1,0 +1,464 @@
+<!doctype html>
+<html class="light" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>H'Leven Admin - Profile</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-fixed-variant": "#3a4b38",
+              surface: "#fcf9f5",
+              "outline-variant": "#c4c8be",
+              "tertiary-fixed": "#ffdbce",
+              "cream-surface": "#F2EBE1",
+              "surface-tint": "#53634a",
+              "surface-bright": "#fcf9f5",
+              "surface-container-low": "#f6f3ef",
+              "on-secondary": "#ffffff",
+              "secondary-fixed-dim": "#b9ccb2",
+              tertiary: "#8f482c",
+              "on-error": "#ffffff",
+              "sidebar-bg": "#2D312C",
+              "on-tertiary-fixed": "#370d00",
+              "border-subtle": "#E5E1DA",
+              "on-secondary-container": "#566752",
+              "surface-dim": "#dcdad6",
+              "tertiary-container": "#ad6042",
+              "on-primary": "#ffffff",
+              "surface-container-high": "#eae8e4",
+              "primary-fixed": "#d6e8c8",
+              "on-tertiary": "#ffffff",
+              "text-main": "#2D312C",
+              background: "#fcf9f5",
+              "surface-container": "#f0ede9",
+              "inverse-surface": "#31302e",
+              "surface-container-lowest": "#ffffff",
+              "secondary-container": "#d2e5cb",
+              "primary-container": "#69795f",
+              "inverse-on-surface": "#f3f0ec",
+              "secondary-fixed": "#d5e8cd",
+              "status-warning": "#D48C45",
+              "on-secondary-fixed": "#101f0f",
+              "error-container": "#ffdad6",
+              secondary: "#52634e",
+              "status-error": "#9B5235",
+              "sidebar-text": "#D1D5D1",
+              "on-surface-variant": "#444840",
+              "surface-variant": "#e5e2de",
+              "on-background": "#1c1c1a",
+              "on-error-container": "#93000a",
+              "text-muted": "#6B6E6A",
+              "status-success": "#6D7E63",
+              "on-primary-fixed": "#111f0b",
+              "primary-fixed-dim": "#baccad",
+              error: "#ba1a1a",
+              "on-primary-fixed-variant": "#3b4b33",
+              "inverse-primary": "#baccad",
+              "on-surface": "#1c1c1a",
+              "on-tertiary-fixed-variant": "#743419",
+              primary: "#506147",
+              "on-tertiary-container": "#fffbff",
+              "surface-container-highest": "#e5e2de",
+              "on-primary-container": "#f8ffee",
+              "tertiary-fixed-dim": "#ffb59a",
+              outline: "#757870",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              "card-padding": "24px",
+              "container-margin": "32px",
+              "sidebar-collapsed": "80px",
+              "base-unit": "4px",
+              "gutter-md": "16px",
+              "gutter-lg": "24px",
+              "sidebar-width": "260px",
+            },
+            fontFamily: {
+              "body-md": ["Inter"],
+              "body-sm": ["Inter"],
+              "display-lg": ["Newsreader"],
+              "headline-lg": ["Newsreader"],
+              "label-sm": ["Inter"],
+              "headline-md": ["Newsreader"],
+              "title-lg": ["Inter"],
+              "label-md": ["Inter"],
+              "headline-lg-mobile": ["Newsreader"],
+            },
+            fontSize: {
+              "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+              "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+              "display-lg": [
+                "40px",
+                {
+                  lineHeight: "48px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg": [
+                "32px",
+                { lineHeight: "40px", fontWeight: "600" },
+              ],
+              "label-sm": ["11px", { lineHeight: "14px", fontWeight: "500" }],
+              "headline-md": [
+                "24px",
+                { lineHeight: "32px", fontWeight: "500" },
+              ],
+              "title-lg": ["18px", { lineHeight: "28px", fontWeight: "600" }],
+              "label-md": [
+                "12px",
+                {
+                  lineHeight: "16px",
+                  letterSpacing: "0.05em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg-mobile": [
+                "28px",
+                { lineHeight: "36px", fontWeight: "600" },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #f8f5f1;
+      }
+      .soft-shadow {
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+      }
+    </style>
+  </head>
+  <body
+    class="font-body-md text-text-main antialiased bg-background min-h-screen flex"
+  >
+    <!-- SideNavBar -->
+    <nav
+      class="hidden md:flex flex-col h-screen w-sidebar-width fixed left-0 top-0 bg-sidebar-bg dark:bg-sidebar-bg z-50"
+    >
+      <div class="px-6 py-8">
+        <h1 class="font-headline-md text-headline-md font-semibold text-white">
+          H'Leven Admin
+        </h1>
+        <p class="text-sidebar-text text-body-sm mt-1">
+          Operational Excellence
+        </p>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <ul class="space-y-1 py-4">
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">dashboard</span
+              ><span class="font-label-md text-label-md">Dashboard</span></a
+            >
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">hotel</span
+              ><span class="font-label-md text-label-md">Hotel</span></a
+            >
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">bed</span
+              ><span class="font-label-md text-label-md">Rooms</span></a
+            >
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">pool</span
+              ><span class="font-label-md text-label-md">Facilities</span></a
+            >
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">calendar_today</span
+              ><span class="font-label-md text-label-md">Bookings</span></a
+            >
+          </li>
+
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">star</span
+              ><span class="font-label-md text-label-md">Reviews</span></a
+            >
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">notifications</span
+              ><span class="font-label-md text-label-md">Notifications</span></a
+            >
+          </li>
+        </ul>
+      </div>
+      <div class="mt-auto py-4">
+        <ul>
+          <li class="">
+            <a
+              class="bg-primary text-white border-l-4 border-primary-fixed flex items-center px-6 py-3 transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span
+                class="material-symbols-outlined mr-3"
+                style="font-variation-settings: &quot;FILL&quot; 1"
+                >account_circle</span
+              ><span class="font-label-md text-label-md">Profile</span></a
+            >
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out"
+              href="#"
+              ><span class="material-symbols-outlined mr-3">exit_to_app</span
+              ><span class="font-label-md text-label-md">Logout</span></a
+            >
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 md:ml-[260px] flex flex-col min-h-screen">
+      <!-- TopNavBar -->
+      <header
+        class="h-16 fixed top-0 right-0 left-0 md:left-sidebar-width z-40 bg-surface dark:bg-surface-dim flex justify-between items-center px-container-margin w-full md:w-[calc(100%-260px)]"
+      >
+        <div class="flex items-center">
+          <span
+            class="md:hidden material-symbols-outlined mr-4 cursor-pointer text-text-main"
+            >menu</span
+          >
+          <h2
+            class="font-title-lg text-title-lg font-bold text-text-main hidden md:block"
+          >
+            Profile Overview
+          </h2>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button
+            class="text-text-muted hover:text-primary transition-colors cursor-pointer active:opacity-80"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+          </button>
+          <div
+            class="w-8 h-8 rounded-full bg-cream-surface border border-border-subtle overflow-hidden cursor-pointer"
+          >
+            <img
+              alt="Admin Avatar"
+              class="w-full h-full object-cover"
+              data-alt="A professional headshot of a hotel administrator in a well-lit, elegant office setting. The individual is wearing sophisticated business attire. The background is slightly blurred, showing a hint of modern luxury hotel decor with warm cream and charcoal tones. The lighting is soft and flattering, highlighting a professional and approachable demeanor."
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRquWsb7womfjMjL0ZBb88bQpabIgT5D0prlSAarFaife08kRxuRxdWblnUKv7eAjSiqPymc21Yurvwo_b4oA2ELitb0QLASOT9A2CDsQFQ3V7IXzwHS8M2SZs__tzc8G1qXEpq_aINq00yacxn8NSe3jz1g3HiEBQXlejMDkSppXBqzbmYoOydFHJ0Dljib7NLYZO_Zz1Z6zGGsLtpbsBoRdjdkjRGdg9z80f3eZ-wtoeagG8fKPIrw"
+            />
+          </div>
+        </div>
+      </header>
+      <!-- Main Canvas -->
+      <main class="flex-1 mt-16 p-6 md:p-container-margin overflow-y-auto">
+        <div class="max-w-4xl mx-auto space-y-8">
+          <!-- Profile Header Card -->
+          <div
+            class="bg-surface-container-lowest rounded-lg border border-border-subtle soft-shadow p-8 flex flex-col md:flex-row items-center md:items-start gap-8"
+          >
+            <div class="relative group">
+              <div
+                class="w-32 h-32 rounded-full border-4 border-surface overflow-hidden soft-shadow bg-cream-surface"
+              >
+                <img
+                  alt="Profile Picture"
+                  class="w-full h-full object-cover"
+                  data-alt="A professional headshot of a hotel administrator in a well-lit, elegant office setting. The individual is wearing sophisticated business attire. The background is slightly blurred, showing a hint of modern luxury hotel decor with warm cream and charcoal tones. The lighting is soft and flattering, highlighting a professional and approachable demeanor."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6GPVAj4hut6V2YofUT1Tu0h9WPOJv_a14GtAthiE5Q7HbidVPYMLw_u1BRCnAdhGSnIiA5IhgdqCpy6lbiwcSq23TtENW4kZOFeEWRQCAEc-KS8VlTE_pJFqqnL1sZ4IxDm8I8DX1eCrecSHSipxEEo_aJdaXhQeW80gARv-7oL49R7YLbZKB6IInh70EQXvg1hGXz00PLPC3gu9ngaRucGYiDN8gR45NiOdSzBX6MWza1RMcZzs6MQ"
+                />
+              </div>
+              <button
+                class="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full soft-shadow hover:bg-surface-tint transition-colors"
+              >
+                <span class="material-symbols-outlined text-[20px]"
+                  >photo_camera</span
+                >
+              </button>
+            </div>
+            <div class="flex-1 text-center md:text-left">
+              <h1 class="font-headline-lg text-headline-lg text-text-main">
+                Eleanor Vance
+              </h1>
+              <p class="font-body-md text-body-md text-text-muted mt-1">
+                General Manager
+              </p>
+              <p
+                class="font-label-md text-label-md text-status-success mt-2 flex items-center justify-center md:justify-start"
+              >
+                <span class="material-symbols-outlined text-[16px] mr-1"
+                  >location_on</span
+                >
+                H'Leven Downtown
+              </p>
+            </div>
+            <div class="flex flex-col gap-3 w-full md:w-auto">
+              <button
+                class="bg-primary text-white font-label-md text-label-md py-2.5 px-6 rounded hover:bg-surface-tint transition-colors flex items-center justify-center"
+              >
+                <span class="material-symbols-outlined text-[18px] mr-2"
+                  >edit</span
+                >
+                Edit Profile
+              </button>
+              <button
+                class="border border-primary text-primary font-label-md text-label-md py-2.5 px-6 rounded hover:bg-surface-container transition-colors flex items-center justify-center"
+              >
+                <span class="material-symbols-outlined text-[18px] mr-2"
+                  >lock</span
+                >
+                Change Password
+              </button>
+            </div>
+          </div>
+          <!-- Bento Grid Layout for Details -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Account Details Card -->
+            <div
+              class="md:col-span-2 bg-surface-container-lowest rounded-lg border border-border-subtle soft-shadow p-6"
+            >
+              <div
+                class="flex items-center justify-between mb-6 border-b border-border-subtle pb-4"
+              >
+                <h3
+                  class="font-title-lg text-title-lg text-text-main flex items-center"
+                >
+                  <span class="material-symbols-outlined mr-2 text-text-muted"
+                    >manage_accounts</span
+                  >
+                  Account Information
+                </h3>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >Full Name</label
+                  >
+                  <p class="font-body-md text-body-md text-text-main">
+                    Eleanor Vance
+                  </p>
+                </div>
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >Email Address</label
+                  >
+                  <p class="font-body-md text-body-md text-text-main">
+                    e.vance@hleven.com
+                  </p>
+                </div>
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >Phone Number</label
+                  >
+                  <p class="font-body-md text-body-md text-text-main">
+                    +1 (555) 019-8472
+                  </p>
+                </div>
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >Timezone</label
+                  >
+                  <p class="font-body-md text-body-md text-text-main">
+                    Pacific Time (PT)
+                  </p>
+                </div>
+              </div>
+            </div>
+            <!-- Role & Hotel Details -->
+            <div
+              class="bg-surface-container-lowest rounded-lg border border-border-subtle soft-shadow p-6"
+            >
+              <div
+                class="flex items-center justify-between mb-6 border-b border-border-subtle pb-4"
+              >
+                <h3
+                  class="font-title-lg text-title-lg text-text-main flex items-center"
+                >
+                  <span class="material-symbols-outlined mr-2 text-text-muted"
+                    >business</span
+                  >
+                  Assigment
+                </h3>
+              </div>
+              <div class="space-y-6">
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >Primary Property</label
+                  >
+                  <p
+                    class="font-body-md text-body-md text-text-main font-medium"
+                  >
+                    H'Leven Downtown
+                  </p>
+                </div>
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >System Role</label
+                  >
+                  <div
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm mt-1"
+                  >
+                    Administrator
+                  </div>
+                </div>
+                <div class="space-y-1">
+                  <label
+                    class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider"
+                    >Access Level</label
+                  >
+                  <p class="font-body-sm text-body-sm text-text-main">
+                    Full Access (Tier 1)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
