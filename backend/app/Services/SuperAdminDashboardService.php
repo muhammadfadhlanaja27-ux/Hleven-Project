@@ -12,26 +12,29 @@ use App\Models\PartnerApplication;
 use App\Models\ActivityLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class SuperAdminDashboardService
 {
     public function getSummary(): array
     {
-        // DASHBOARD-SA-003: Pendapatan hari ini hanya dari status Success[cite: 1]
-        $todayRevenue = Payment::where('payment_status', 'Success')
-            ->whereDate('paid_at', Carbon::today())
-            ->sum('gross_amount');
+        return Cache::remember('super_admin_summary', 30, function () {
+            // DASHBOARD-SA-003: Pendapatan hari ini hanya dari status Success
+            $todayRevenue = Payment::where('payment_status', 'Success')
+                ->whereDate('paid_at', Carbon::today())
+                ->sum('gross_amount');
 
-        return [
-            'total_users' => User::count(),
-            'total_hotels' => Hotel::count(),
-            'total_rooms' => RoomType::sum('stock'),
-            'total_bookings' => Booking::count(),
-            'active_bookings' => Booking::whereIn('status', ['Pending', 'Paid', 'Checked In'])->count(),
-            'today_revenue' => (float) $todayRevenue,
-            'pending_refunds' => Refund::where('status', 'Pending')->count(),
-            'pending_partner_applications' => PartnerApplication::where('status', 'Pending')->count(),
-        ];
+            return [
+                'total_users' => User::count(),
+                'total_hotels' => Hotel::count(),
+                'total_rooms' => RoomType::sum('stock'),
+                'total_bookings' => Booking::count(),
+                'active_bookings' => Booking::whereIn('status', ['Pending', 'Paid', 'Checked In'])->count(),
+                'today_revenue' => (float) $todayRevenue,
+                'pending_refunds' => Refund::where('status', 'Pending')->count(),
+                'pending_partner_applications' => PartnerApplication::where('status', 'Pending')->count(),
+            ];
+        });
     }
 
     public function getBookingStats(): array
@@ -166,23 +169,27 @@ class SuperAdminDashboardService
 
     public function getRecentActivities(): array
     {
-        $activities = ActivityLog::with('user:id,name')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        return Cache::remember('super_admin_recent_activities', 15, function () {
+            $activities = ActivityLog::with('user:id,name')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
 
-        return $activities->map(function ($log) {
-            return [
-                'activity' => $log->activity,
-                'user' => $log->user ? $log->user->name : 'System',
-                // PERBAIKAN: Gunakan Carbon::parse() sebelum format()
-                'time' => Carbon::parse($log->created_at)->format('Y-m-d H:i:s')
-            ];
-        })->toArray();
+            return $activities->map(function ($log) {
+                return [
+                    'activity' => $log->activity,
+                    'user' => $log->user ? $log->user->name : 'System',
+                    'time' => $log->created_at instanceof \DateTimeInterface
+                        ? $log->created_at->format('Y-m-d H:i:s')
+                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s'))
+                ];
+            })->toArray();
+        });
     }
 
     public function updateHotelStatus(Hotel $hotel, string $status): void
     {
         $hotel->update(['status' => $status]);
+        Cache::forget('super_admin_summary');
     }
 }

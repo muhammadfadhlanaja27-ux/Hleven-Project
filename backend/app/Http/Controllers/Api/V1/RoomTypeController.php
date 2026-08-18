@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Storage;
 
 class RoomTypeController extends Controller
 {
-    // Menampilkan daftar tipe kamar milik hotel yang sedang login
+    /**
+     * Menampilkan daftar tipe kamar milik hotel yang sedang login
+     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -28,7 +30,9 @@ class RoomTypeController extends Controller
         ]);
     }
 
-    // Menambah tipe kamar baru
+    /**
+     * Menambah tipe kamar baru (Disesuaikan dengan RoomCreate.jsx & Model RoomType)
+     */
     public function store(Request $request)
     {
         $user = $request->user();
@@ -39,39 +43,58 @@ class RoomTypeController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:100',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'capacity' => 'required|integer|min:1',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+            'weekday_price' => 'required|numeric|min:0',
+            'weekend_price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'adult_capacity' => 'required|integer|min:1',
+            'child_capacity' => 'nullable|integer|min:0',
+            'facilities' => 'nullable|array',
+            'facilities.*' => 'exists:facilities,id',
+            'photos' => 'nullable|array',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('room_types', 'public');
-        }
-
+        // 1. Buat data utama RoomType (disesuaikan dengan kolom model: capacity_adult & capacity_child)
         $roomType = RoomType::create([
             'hotel_id' => $hotel->id,
             'name' => $request->name,
             'description' => $request->description,
-            'price' => $request->price,
-            'capacity' => $request->capacity,
-            'image' => $imagePath,
+            'weekday_price' => $request->weekday_price,
+            'weekend_price' => $request->weekend_price,
+            'stock' => $request->stock,
+            'capacity_adult' => $request->adult_capacity,
+            'capacity_child' => $request->child_capacity ?? 0,
         ]);
+
+        // 2. Simpan relasi fasilitas ke tabel pivot `room_facilities`
+        if ($request->has('facilities')) {
+            $roomType->facilities()->sync($request->facilities);
+        }
+
+        // 3. Simpan multiple foto jika ada
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photo) {
+                $path = $photo->store('room_types', 'public');
+                $roomType->photos()->create(['image_path' => $path]);
+            }
+        }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Room type created successfully',
-            'data' => $roomType
+            'data' => $roomType->load(['photos', 'facilities'])
         ], 201);
     }
 
-    // Menampilkan detail tipe kamar tertentu
+    /**
+     * Menampilkan detail tipe kamar tertentu
+     */
     public function show($id)
     {
         $roomType = RoomType::with(['photos', 'facilities', 'hotel'])->find($id);
@@ -86,7 +109,9 @@ class RoomTypeController extends Controller
         ]);
     }
 
-    // Mengubah data tipe kamar
+    /**
+     * Mengubah data tipe kamar
+     */
     public function update(Request $request, $id)
     {
         $roomType = RoomType::find($id);
@@ -96,36 +121,51 @@ class RoomTypeController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:100',
+            'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'sometimes|numeric|min:0',
-            'capacity' => 'sometimes|integer|min:1',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+            'weekday_price' => 'sometimes|numeric|min:0',
+            'weekend_price' => 'sometimes|numeric|min:0',
+            'stock' => 'sometimes|integer|min:0',
+            'adult_capacity' => 'sometimes|integer|min:1',
+            'child_capacity' => 'nullable|integer|min:0',
+            'facilities' => 'nullable|array',
+            'facilities.*' => 'exists:facilities,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        if ($request->hasFile('image')) {
-            // Hapus gambar lama jika ada
-            if ($roomType->image) {
-                Storage::disk('public')->delete($roomType->image);
-            }
-            $roomType->image = $request->file('image')->store('room_types', 'public');
+        // Mapping inputan dari request ke kolom database model
+        $updateData = $request->only([
+            'name', 'description', 'weekday_price', 'weekend_price', 
+            'stock'
+        ]);
+
+        if ($request->has('adult_capacity')) {
+            $updateData['capacity_adult'] = $request->adult_capacity;
+        }
+        if ($request->has('child_capacity')) {
+            $updateData['capacity_child'] = $request->child_capacity;
         }
 
-        $roomType->update($request->except('image'));
-        $roomType->save();
+        $roomType->update($updateData);
+
+        // Update relasi fasilitas jika dikirimkan
+        if ($request->has('facilities')) {
+            $roomType->facilities()->sync($request->facilities);
+        }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Room type updated successfully',
-            'data' => $roomType
+            'data' => $roomType->load(['photos', 'facilities'])
         ]);
     }
 
-    // Menghapus tipe kamar
+    /**
+     * Menghapus tipe kamar
+     */
     public function destroy($id)
     {
         $roomType = RoomType::find($id);
@@ -134,9 +174,16 @@ class RoomTypeController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
         }
 
-        if ($roomType->image) {
-            Storage::disk('public')->delete($roomType->image);
+        // Hapus foto-foto terkait di storage jika ada
+        foreach ($roomType->photos as $photo) {
+            if (isset($photo->image_path)) {
+                Storage::disk('public')->delete($photo->image_path);
+            }
         }
+        $roomType->photos()->delete();
+
+        // Hapus relasi pivot fasilitas
+        $roomType->facilities()->detach();
 
         $roomType->delete();
 

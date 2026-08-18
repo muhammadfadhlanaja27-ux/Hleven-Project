@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    // Menampilkan laporan pendapatan berdasarkan rentang tanggal (start_date & end_date)
+    // Menampilkan laporan pendapatan berdasarkan period (daily, weekly, monthly, yearly) atau rentang tanggal
     public function revenueReport(Request $request)
     {
         $user = $request->user();
@@ -19,39 +19,50 @@ class ReportController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
-
-        $startDate = $request->start_date;
-        $endDate = $request->end_date;
-
-        // Mengambil data pembayaran yang sukses dalam rentang tanggal
-        $payments = Payment::whereHas('booking.rooms.roomType', function($q) use ($hotel) {
+        $period = $request->get('period', 'monthly'); // Default monthly
+        
+        $query = Payment::whereHas('booking.rooms.roomType', function($q) use ($hotel) {
                 $q->where('hotel_id', $hotel->id);
             })
             ->where('status', 'success')
-            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->with(['booking.user', 'booking.rooms.roomType'])
-            ->get();
+            ->with(['booking.user', 'booking.rooms.roomType']);
 
-        // Hitung total pendapatan pada rentang tanggal tersebut
+        // Filter berdasarkan periode waktu
+        $now = Carbon::now();
+        if ($period === 'daily') {
+            $query->whereDate('created_at', $now->toDateString());
+        } elseif ($period === 'weekly') {
+            $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+        } elseif ($period === 'monthly') {
+            $query->whereMonth('created_at', $now->month)
+                  ->whereYear('created_at', $now->year);
+        } elseif ($period === 'yearly') {
+            $query->whereYear('created_at', $now->year);
+        }
+
+        $payments = $query->latest()->get();
+
+        // Hitung total pendapatan
         $totalRevenue = $payments->sum('amount');
+
+        // Petakan data untuk rincian tabel di frontend
+        $details = $payments->map(function($payment) {
+            return [
+                'date' => $payment->created_at->format('Y-m-d H:i'),
+                'booking_code' => $payment->booking->booking_code ?? 'INV-' . $payment->id,
+                'payment_method' => $payment->payment_method ?? 'Transfer',
+                'amount' => $payment->amount,
+            ];
+        });
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'hotel_name' => $hotel->name,
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'total_transactions' => $payments->count(),
                 'total_revenue' => $totalRevenue,
-                'transactions' => $payments
+                'period_revenue' => $totalRevenue, // Pendapatan sesuai periode yang dipilih
+                'transactions_count' => $payments->count(),
+                'details' => $details
             ]
         ]);
     }

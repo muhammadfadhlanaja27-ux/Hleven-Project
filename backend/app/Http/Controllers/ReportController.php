@@ -61,8 +61,9 @@ class ReportController extends Controller
 
     public function export(Request $request): JsonResponse
     {
+        // PERBAIKAN: Tambahkan 'user' ke dalam daftar validasi 'in:'
         $request->validate([
-            'type' => 'required|in:booking,revenue,refund,hotel,partner',
+            'type' => 'required|in:booking,revenue,refund,hotel,partner,user',
             'format' => 'required|in:pdf,excel'
         ]);
 

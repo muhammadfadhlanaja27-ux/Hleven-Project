@@ -26,6 +26,21 @@
   --color-secondary: #4c6546;
   --color-secondary-container: #ceebc4;
   --color-tertiary: #645b4f;
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --heading: 'Newsreader', serif;
+  --mono: ui-monospace, Consolas, monospace;
+
 
   --spacing-container-max: 1280px;
   --spacing-section-gap: 5rem;
@@ -55,7 +70,9 @@ body {
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  max-width: 100%;
+  margin: 0;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
 }

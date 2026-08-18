@@ -12,10 +12,7 @@ export default function RoomList() {
 
   const fetchRooms = async () => {
     try {
-      // 1. Mengambil data hotel milik admin (Endpoint: /api/v1/admin/hotels)
       const response = await api.get("/admin/hotels");
-
-      // Ambil data dengan aman dari struktur respons Laravel
       const hotels = response.data.data || response.data;
 
       if (!hotels || hotels.length === 0) {
@@ -23,10 +20,7 @@ export default function RoomList() {
         return;
       }
 
-      // Ambil ID hotel pertama
       const hotelId = hotels[0].id;
-
-      // 2. Mengambil daftar kamar berdasarkan hotelId (Endpoint: /api/v1/admin/hotels/{hotelId}/rooms)
       const roomResponse = await api.get(`/admin/hotels/${hotelId}/rooms`); 
 
       setRooms(roomResponse.data.data || roomResponse.data);
@@ -34,6 +28,23 @@ export default function RoomList() {
       console.error("Gagal memuat daftar kamar:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🟢 BARU: Fungsi untuk menghapus tipe kamar berdasarkan ID
+  const handleDelete = async (id) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus tipe kamar ini?")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/admin/rooms/${id}`);
+      // Filter state agar kamar yang dihapus langsung hilang dari tabel
+      setRooms(rooms.filter((room) => room.id !== id));
+      alert("Kamar berhasil dihapus.");
+    } catch (error) {
+      console.error("Gagal menghapus kamar:", error);
+      alert("Terjadi kesalahan saat menghapus kamar.");
     }
   };
 
@@ -65,21 +76,26 @@ export default function RoomList() {
             {rooms.length === 0 ? (
               <tr>
                 <td colSpan="4" className="py-4 text-center text-gray-500">
-                  Belum ada kamar yang ditambahkan. Silakan buat hotel dan kamar
-                  terlebih dahulu di database/admin.
+                  Belum ada kamar yang ditambahkan. Silakan buat kamar terlebih dahulu.
                 </td>
               </tr>
             ) : (
               rooms.map((room) => (
                 <tr key={room.id} className="border-b">
-                  <td className="py-3">{room.name}</td>
+                  <td className="py-3 font-medium">{room.name}</td>
                   <td className="py-3">
-                    Rp {room.weekday_price?.toLocaleString()}
+                    Rp {Number(room.weekday_price || 0).toLocaleString('id-ID')}
                   </td>
                   <td className="py-3">{room.stock}</td>
                   <td className="py-3">
-                    <button className="text-yellow-600 mr-2">Edit</button>
-                    <button className="text-red-600">Hapus</button>
+                    <button className="text-yellow-600 mr-3 hover:underline">Edit</button>
+                    {/* 🟢 BARU: Menghubungkan tombol hapus ke fungsi handleDelete */}
+                    <button 
+                      onClick={() => handleDelete(room.id)} 
+                      className="text-red-600 hover:underline"
+                    >
+                      Hapus
+                    </button>
                   </td>
                 </tr>
               ))
