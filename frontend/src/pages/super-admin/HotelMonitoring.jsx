@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 
 const HotelMonitoring = () => {
-  const [hotels, setHotels] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialKey = getCacheKey("/super-admin/hotels", { search: "", status: "" });
+  const cachedInitialHotels = getCachedData(initialKey)?.data || getCachedData(initialKey) || null;
+
+  const [hotels, setHotels] = useState(Array.isArray(cachedInitialHotels) ? cachedInitialHotels : []);
+  const [loading, setLoading] = useState(!cachedInitialHotels);
   const [error, setError] = useState(false);
 
   // State untuk pencarian dan filter status
@@ -19,23 +23,37 @@ const HotelMonitoring = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  const fetchHotels = async () => {
+  const fetchHotels = async (forceRefresh = false) => {
+    const key = getCacheKey("/super-admin/hotels", { search, status: statusFilter });
+    const cached = getCachedData(key);
+
+    if (!forceRefresh && cached) {
+      const data = cached.data || cached || [];
+      setHotels(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } else if (hotels.length === 0 || forceRefresh) {
+      if (hotels.length === 0) setLoading(true);
+    }
+
     try {
-      setLoading(true);
       setError(false);
-      const response = await api.get("/super-admin/hotels", {
-        params: {
-          search,
-          status: statusFilter,
+      const response = await cachedGet(
+        "/super-admin/hotels",
+        {
+          params: {
+            search,
+            status: statusFilter,
+          },
         },
-      });
+        forceRefresh
+      );
 
       // Handle data array
-      const data = response.data.data || response.data || [];
-      setHotels(Array.isArray(data) ? data : []);
+      const resData = response.data?.data || response.data || [];
+      setHotels(Array.isArray(resData) ? resData : []);
     } catch (err) {
       console.error("Gagal mengambil data hotel:", err);
-      setError(true);
+      if (hotels.length === 0) setError(true);
       toast.error("Gagal memuat data hotel. Silakan coba lagi.");
     } finally {
       setLoading(false);
@@ -44,8 +62,8 @@ const HotelMonitoring = () => {
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchHotels();
-    }, 400);
+      fetchHotels(false);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [search, statusFilter]);
@@ -66,11 +84,13 @@ const HotelMonitoring = () => {
       await api.patch(`/super-admin/hotels/${id}/status`, {
         status: newStatus,
       });
+      invalidateCache("/super-admin/hotels");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Status hotel berhasil diperbarui!");
       if (selectedHotel && selectedHotel.id === id) {
         setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
       }
-      fetchHotels();
+      fetchHotels(true);
     } catch (err) {
       toast.error(
         err.response?.data?.message || "Gagal memperbarui status hotel."
@@ -133,7 +153,7 @@ const HotelMonitoring = () => {
 
           {/* Refresh Button */}
           <button
-            onClick={fetchHotels}
+            onClick={() => fetchHotels(true)}
             title="Refresh Data"
             className="flex items-center gap-1.5 px-3 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
           >

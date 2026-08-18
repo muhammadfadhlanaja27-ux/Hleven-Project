@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 
 const ActivityLogs = () => {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
   // Pagination State
   const [page, setPage] = useState(1);
+
+  // Filter States
+  const [searchActivity, setSearchActivity] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const initialKey = getCacheKey("/activity-logs", { page: 1 });
+  const cachedInitial = getCachedData(initialKey)?.data || getCachedData(initialKey) || null;
+
+  const [logs, setLogs] = useState(Array.isArray(cachedInitial) ? cachedInitial : []);
+  const [loading, setLoading] = useState(!cachedInitial);
+  const [error, setError] = useState(false);
+
   const [meta, setMeta] = useState({
     current_page: 1,
     last_page: 1,
@@ -16,24 +26,27 @@ const ActivityLogs = () => {
     per_page: 10,
   });
 
-  // Filter States
-  const [searchActivity, setSearchActivity] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const fetchLogs = async (forceRefresh = false) => {
+    const params = { page };
+    if (searchActivity) params.activity = searchActivity;
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
 
-  const fetchLogs = async () => {
+    const key = getCacheKey("/activity-logs", params);
+    const cached = getCachedData(key);
+
+    if (!forceRefresh && cached) {
+      const data = cached.data || cached || [];
+      setLogs(Array.isArray(data) ? data : []);
+      if (cached.meta) setMeta(cached.meta);
+      setLoading(false);
+    } else if (logs.length === 0 || forceRefresh) {
+      if (logs.length === 0) setLoading(true);
+    }
+
     try {
-      setLoading(true);
       setError(false);
-
-      const params = {
-        page: page,
-      };
-      if (searchActivity) params.activity = searchActivity;
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
-
-      const response = await api.get("/activity-logs", { params });
+      const response = await cachedGet("/activity-logs", { params }, forceRefresh);
 
       const data = response.data?.data || response.data || [];
       setLogs(Array.isArray(data) ? data : []);
@@ -50,7 +63,7 @@ const ActivityLogs = () => {
       }
     } catch (err) {
       console.error("Gagal mengambil data log aktivitas:", err);
-      setError(true);
+      if (logs.length === 0) setError(true);
       toast.error("Gagal memuat log aktivitas. Pastikan server backend berjalan.");
     } finally {
       setLoading(false);
@@ -59,8 +72,8 @@ const ActivityLogs = () => {
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchLogs();
-    }, 400);
+      fetchLogs(false);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchActivity, startDate, endDate, page]);
@@ -153,7 +166,7 @@ const ActivityLogs = () => {
         </div>
 
         <button
-          onClick={fetchLogs}
+          onClick={() => fetchLogs(true)}
           className="flex items-center gap-1.5 px-3.5 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
