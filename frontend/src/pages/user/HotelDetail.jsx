@@ -3,33 +3,34 @@ import { useParams, useNavigate } from "react-router-dom";
 import { mockHotels } from "../../data/mockHotels";
 import api from "../../services/api";
 
+const DEFAULT_IMAGES = [
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80"
+];
+
 const HotelDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80";
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   useEffect(() => {
     const fetchHotelDetail = async () => {
       setLoading(true);
-
-      // 1. Cari data murni dari mockHotels.js berdasarkan ID URL
       const foundMock = mockHotels.find((h) => String(h.id) === String(id)) || mockHotels[0];
 
       try {
         const response = await api.get(`/hotels/${id}`);
         if (response.data && response.data.data) {
           const apiData = response.data.data;
-
-          // 2. Gabungkan data API dengan data mockHotels
-          // Jika API tidak memiliki data rooms/facilities/starting_price yang valid, paksa pakai mockHotels
           setHotel({
             ...foundMock,
             ...apiData,
-            // Utamakan daftar kamar dari mockHotels jika data API kosong atau berbeda
             rooms: (foundMock && foundMock.rooms && foundMock.rooms.length > 0)
               ? foundMock.rooms
               : (apiData.rooms || apiData.room_types || [])
@@ -38,7 +39,7 @@ const HotelDetail = () => {
           setHotel(foundMock);
         }
       } catch (err) {
-        console.warn("Backend Error / Menggunakan Data Pure MockHotels.");
+        console.warn("Backend Error / Menggunakan Data Fallback MockHotels.");
         setHotel(foundMock);
       } finally {
         setLoading(false);
@@ -49,41 +50,70 @@ const HotelDetail = () => {
   }, [id]);
 
   const getImageUrl = (photoItem) => {
-    if (!photoItem) return DEFAULT_IMAGE;
+    if (!photoItem) return DEFAULT_IMAGES[0];
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
-    if (!path) return DEFAULT_IMAGE;
+    if (!path) return DEFAULT_IMAGES[0];
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
     return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
   };
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto py-12 px-6 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-        <div className="h-4 bg-gray-200 rounded w-1/4 mb-6"></div>
-        <div className="h-96 bg-gray-200 rounded-2xl mb-8"></div>
-        <div className="h-32 bg-gray-200 rounded-xl"></div>
+      <div className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-12 animate-pulse text-left">
+        <div className="h-8 bg-[#DCCFC0]/40 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-[#DCCFC0]/40 rounded w-1/4 mb-6"></div>
+        <div className="h-[500px] bg-[#DCCFC0]/40 rounded-2xl mb-8"></div>
+        <div className="h-32 bg-[#DCCFC0]/40 rounded-xl"></div>
       </div>
     );
   }
 
   if (!hotel) {
     return (
-      <div className="max-w-4xl mx-auto py-16 text-center">
-        <h2 className="text-2xl font-bold mb-2 text-gray-800">Hotel Tidak Ditemukan</h2>
-        <button onClick={() => navigate("/")} className="bg-[var(--accent)] text-white px-6 py-2.5 rounded-lg font-semibold">
+      <div className="w-full max-w-[1280px] mx-auto py-20 text-center">
+        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1e1b16]">Hotel Tidak Ditemukan</h2>
+        <button
+          onClick={() => navigate("/")}
+          className="bg-[#778873] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#50604d] transition-colors"
+        >
           Kembali ke Beranda
         </button>
       </div>
     );
   }
 
-  // 🔴 MENGAMBIL DATA LANGSUNG DARI DOKUMEN MOCK
+  // Raw Photos List
+  const rawPhotos = hotel.photos && hotel.photos.length > 0
+    ? hotel.photos
+    : [hotel.thumbnail || DEFAULT_IMAGES[0], ...DEFAULT_IMAGES.slice(1)];
+
+  const photosList = rawPhotos.map(getImageUrl);
+
+  // Facility list mapping
+  const facilitiesList = hotel.facilities || [
+    "WiFi Gratis",
+    "Kolam Renang",
+    "Pusat Kebugaran",
+    "Restoran & Bar",
+    "Layanan Spa",
+    "Parkir Gratis"
+  ];
+
+  const getFacilityIcon = (facNameStr) => {
+    const name = String(facNameStr).toLowerCase();
+    if (name.includes("wifi")) return "wifi";
+    if (name.includes("kolam") || name.includes("pool")) return "pool";
+    if (name.includes("gym") || name.includes("kebugaran") || name.includes("fitness")) return "fitness_center";
+    if (name.includes("restoran") || name.includes("restaurant") || name.includes("bar")) return "restaurant";
+    if (name.includes("spa") || name.includes("wellness")) return "spa";
+    if (name.includes("parkir") || name.includes("parking")) return "local_parking";
+    return "stars";
+  };
+
   const roomsList = hotel.rooms || [];
-  const facilitiesList = hotel.facilities || [];
-  const hotelAddress = hotel.address || "Bandung, Jawa Barat";
-  const latitude = hotel.latitude || "-6.9147";
-  const longitude = hotel.longitude || "107.6098";
+  const hotelAddress = hotel.address || `${hotel.city || 'Bandung'}, Jawa Barat`;
+  const ratingValue = hotel.rating || hotel.average_rating || 4.8;
+  const starCount = Math.floor(Number(ratingValue));
 
   const handleBookRoom = (e, room) => {
     e.preventDefault();
@@ -92,150 +122,321 @@ const HotelDetail = () => {
     navigate(`/booking/${targetHotelId}/${targetRoomId}`);
   };
 
-  const rawPhotos = hotel.photos && hotel.photos.length > 0 
-    ? hotel.photos 
-    : [hotel.thumbnail || DEFAULT_IMAGE];
-
-  const photoList = [
-    getImageUrl(rawPhotos[0]),
-    getImageUrl(rawPhotos[1] || rawPhotos[0]),
-    getImageUrl(rawPhotos[2] || rawPhotos[0])
-  ];
-
   return (
-    <div className="max-w-5xl mx-auto py-8 px-6 text-left">
-      {/* Header Info */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{hotel.name}</h1>
-          <p className="text-gray-600 flex items-center gap-1 text-sm">
-            📍 {hotelAddress}
-          </p>
-        </div>
-        <div>
-          <span className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-800 border border-yellow-200 text-sm px-3.5 py-1.5 rounded-full font-bold shadow-sm">
-            ★ {hotel.rating || hotel.average_rating || "5.0"} / 5.0
-          </span>
-        </div>
-      </div>
+    <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-6 pb-20 text-left">
+        
+        {/* Photo Gallery Mosaic */}
+        <section className="mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
+            {/* Hero Main Image (Left 2 cols x 2 rows) */}
+            <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+              <img
+                src={photosList[0]}
+                alt={hotel.name}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                onClick={() => setShowPhotoModal(true)}
+                onError={(e) => { e.target.src = DEFAULT_IMAGES[0]; }}
+              />
+            </div>
 
-      {/* Image Gallery Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 rounded-2xl overflow-hidden shadow-md max-h-[420px]">
-        <div className="md:col-span-2 h-[300px] md:h-[420px]">
-          <img src={photoList[0]} alt={hotel.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = DEFAULT_IMAGE; }} />
-        </div>
-        <div className="hidden md:flex flex-col gap-4 h-[420px]">
-          <div className="h-1/2 overflow-hidden rounded-r-xl">
-            <img src={photoList[1]} alt="View 2" className="w-full h-full object-cover" onError={(e) => { e.target.src = DEFAULT_IMAGE; }} />
-          </div>
-          <div className="h-1/2 overflow-hidden rounded-r-xl">
-            <img src={photoList[2]} alt="View 3" className="w-full h-full object-cover" onError={(e) => { e.target.src = DEFAULT_IMAGE; }} />
-          </div>
-        </div>
-      </div>
+            {/* Sub Photo 1 */}
+            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+              <img
+                src={photosList[1] || photosList[0]}
+                alt="Room detail 1"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                onClick={() => setShowPhotoModal(true)}
+                onError={(e) => { e.target.src = DEFAULT_IMAGES[1]; }}
+              />
+            </div>
 
-      {/* Deskripsi, Fasilitas, & Widget Peta */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        <div className="md:col-span-2">
-          <h2 className="text-xl font-bold mb-3 text-gray-800">Tentang Hotel</h2>
-          <p className="text-gray-600 leading-relaxed mb-6 text-sm md:text-base whitespace-pre-line">
-            {hotel.description || "Tidak ada deskripsi rinci untuk hotel ini."}
-          </p>
+            {/* Sub Photo 2 */}
+            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+              <img
+                src={photosList[2] || photosList[0]}
+                alt="Room detail 2"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                onClick={() => setShowPhotoModal(true)}
+                onError={(e) => { e.target.src = DEFAULT_IMAGES[2]; }}
+              />
+            </div>
 
-          <h2 className="text-xl font-bold mb-3 text-gray-800">Fasilitas Utama</h2>
-          <div className="flex flex-wrap gap-2.5">
-            {facilitiesList.map((fac, idx) => (
-              <span 
-                key={idx} 
-                className="bg-gray-50 text-gray-700 text-sm px-3.5 py-2 rounded-xl border border-gray-200 font-medium flex items-center gap-1.5"
+            {/* Sub Photo 3 */}
+            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+              <img
+                src={photosList[3] || photosList[0]}
+                alt="Room detail 3"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                onClick={() => setShowPhotoModal(true)}
+                onError={(e) => { e.target.src = DEFAULT_IMAGES[3]; }}
+              />
+            </div>
+
+            {/* Sub Photo 4 with Overlay Trigger */}
+            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+              <img
+                src={photosList[4] || photosList[0]}
+                alt="Room detail 4"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                onError={(e) => { e.target.src = DEFAULT_IMAGES[4]; }}
+              />
+              <div
+                onClick={() => setShowPhotoModal(true)}
+                className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
               >
-                <span className="text-emerald-600 font-bold">✓</span> {typeof fac === 'object' ? fac.name : fac}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* CARD PETA LOKASI */}
-        <div className="bg-gray-50 p-5 rounded-2xl border border-gray-200 flex flex-col justify-between h-fit">
-          <div>
-            <h3 className="font-bold text-gray-800 text-lg mb-2">Lokasi Hotel</h3>
-            <p className="text-xs text-gray-500 mb-4">{hotelAddress}</p>
-            
-            <div className="w-full h-36 bg-emerald-100/50 rounded-xl border border-emerald-200 flex flex-col items-center justify-center text-emerald-800 mb-4 relative overflow-hidden p-3 text-center">
-              <span className="text-2xl mb-1">🗺️</span>
-              <span className="text-xs font-semibold">OpenStreetMap View</span>
-              <span className="text-[10px] text-gray-500 mt-1">
-                Lat: {latitude}, Long: {longitude}
-              </span>
+                <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">grid_view</span>
+                  Lihat Semua Foto
+                </span>
+              </div>
             </div>
           </div>
+        </section>
 
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + " " + hotelAddress)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 text-center py-2.5 rounded-xl text-sm font-semibold transition-colors block shadow-sm"
-          >
-            Buka di Google Maps ↗
-          </a>
-        </div>
-      </div>
-
-      {/* Daftar Tipe Kamar (100% MATCH DENGAN MOCKHOTELS.JS) */}
-      <div className="pt-6 border-t border-gray-100">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Pilihan Kamar Tersedia</h2>
-
-        {roomsList && roomsList.length > 0 ? (
-          <div className="space-y-4">
-            {roomsList.map((room, idx) => {
-              // Pembacaan harga persis dari properti `price` di mockHotels.js
-              const roomPrice = Number(room.price || room.weekday_price || 0);
-
-              return (
-                <div
-                  key={room.id || idx}
-                  className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm hover:border-[var(--accent)] transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-gray-800">{room.name || room.type || "Kamar Standard"}</h3>
-                      {(room.breakfast || room.is_breakfast) && (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded">
-                          Free Breakfast
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 flex items-center gap-3">
-                      <span>👥 Kapasitas: {room.capacity || "2 Tamu"}</span>
-                      <span>🛏️ Kasur: {room.bed || "1 King Bed"}</span>
-                    </p>
-                  </div>
-
-                  <div className="text-right flex md:flex-col justify-between items-center md:items-end w-full md:w-auto gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
-                    <div>
-                      <span className="text-2xl font-extrabold text-[var(--accent)]">
-                        Rp {roomPrice.toLocaleString("id-ID")}
-                      </span>
-                      <span className="text-xs text-gray-400"> /malam</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => handleBookRoom(e, room)}
-                      className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
+        {/* Main 2-Column Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Left Column: Info & Description & Amenities */}
+          <div className="lg:col-span-2 space-y-12">
+            
+            {/* Hotel Info Header */}
+            <section>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex text-[#A0522D]">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="material-symbols-outlined text-lg"
+                      style={{ fontVariationSettings: i < starCount ? "'FILL' 1" : "'FILL' 0" }}
                     >
-                      Pesan Kamar
-                    </button>
+                      star
+                    </span>
+                  ))}
+                </div>
+                <span className="bg-[#DCCFC0]/40 text-[#778873] px-3 py-1 rounded font-label-sm text-xs font-semibold">
+                  Hotel Bintang {starCount}
+                </span>
+              </div>
+
+              <h1 className="font-headline-xl text-3xl md:text-5xl font-bold text-[#778873] mb-4 leading-tight">
+                {hotel.name}
+              </h1>
+
+              <div className="flex items-center gap-2 text-[#444842] mb-6">
+                <span className="material-symbols-outlined text-[#778873]">location_on</span>
+                <p className="font-body-md text-sm md:text-base">{hotelAddress}</p>
+              </div>
+
+              <div className="prose max-w-none text-[#444842] font-body-md text-base leading-relaxed space-y-4">
+                <p className="font-headline-md text-lg text-[#645b4f] leading-relaxed">
+                  {hotel.description ||
+                    `Terletak di lokasi strategis ${hotel.city || 'Bandung'}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
+                </p>
+                <p className="text-sm md:text-base text-[#444842]">
+                  Nikmati fasilitas kelas dunia, mulai dari kamar berdesain elegan, layanan resepsionis 24 jam, kolam renang dengan pemandangan menakjubkan, hingga pilihan restoran bersantap dengan hidangan lezat. Destinasi sempurna bagi Anda yang mencari ketenangan dan pengalaman tak terlupakan.
+                </p>
+              </div>
+            </section>
+
+            {/* Fasilitas Utama Grid */}
+            <section>
+              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">
+                Fasilitas Utama
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {facilitiesList.map((fac, idx) => {
+                  const facName = typeof fac === "object" ? fac.name : String(fac);
+                  const iconName = getFacilityIcon(facName);
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 p-4 rounded-xl bg-[#faf3ea] border border-[#DCCFC0]/30 shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-[#778873] text-2xl">
+                        {iconName}
+                      </span>
+                      <span className="font-label-md text-xs font-semibold text-[#1e1b16]">
+                        {facName}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+
+          {/* Right Column: Location Card */}
+          <div className="lg:col-span-1 space-y-8">
+            <section>
+              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">
+                Lokasi
+              </h2>
+              <div className="rounded-2xl overflow-hidden shadow-sm border border-[#DCCFC0]/40 bg-[#faf3ea]">
+                <div className="w-full h-56 bg-[#eee7de] relative overflow-hidden flex items-center justify-center">
+                  <img
+                    src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=80"
+                    alt="Peta Lokasi"
+                    className="w-full h-full object-cover opacity-80"
+                  />
+                  <div className="absolute inset-0 bg-[#778873]/10 flex flex-col items-center justify-center p-4 text-center">
+                    <span className="material-symbols-outlined text-4xl text-[#778873] drop-shadow">
+                      location_on
+                    </span>
+                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] mt-1 bg-white/90 px-3 py-1 rounded-full shadow-sm">
+                      {hotel.city || "Bandung"}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+                <div className="p-5 bg-[#FDF6ED] text-left">
+                  <p className="font-label-md text-sm font-semibold text-[#1e1b16]">
+                    {hotel.name}
+                  </p>
+                  <p className="font-body-md text-xs text-[#444842] mt-1">
+                    Berjarak 8.5 km dari pusat kota.
+                  </p>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + " " + hotelAddress)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 w-full py-2.5 border border-[#778873] text-[#778873] rounded-xl font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors block text-center"
+                  >
+                    Lihat di Peta
+                  </a>
+                </div>
+              </div>
+            </section>
           </div>
-        ) : (
-          <div className="p-8 text-center bg-gray-50 rounded-2xl border border-gray-200">
-            <p className="text-gray-500 text-sm">Belum ada tipe kamar yang terdaftar untuk hotel ini.</p>
+        </div>
+
+        {/* Room Types & Availability Section */}
+        <section className="mt-16 pt-10 border-t border-[#DCCFC0]/40">
+          <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-8">
+            Pilihan Kamar
+          </h2>
+
+          {roomsList && roomsList.length > 0 ? (
+            <div className="space-y-6">
+              {roomsList.map((room, idx) => {
+                const roomPrice = Number(room.price || room.weekday_price || 1250000);
+                const weekendPrice = Math.round(roomPrice * 1.35);
+                const roomImage = room.thumbnail || DEFAULT_IMAGES[idx % DEFAULT_IMAGES.length];
+
+                return (
+                  <div
+                    key={room.id || idx}
+                    className="flex flex-col md:flex-row bg-[#faf3ea] rounded-2xl overflow-hidden border border-[#DCCFC0]/40 shadow-sm shadow-[#778873]/5 hover:shadow-md transition-shadow"
+                  >
+                    {/* Room Thumbnail */}
+                    <div className="md:w-1/3 min-h-[220px] relative bg-[#eee7de]">
+                      <img
+                        src={roomImage}
+                        alt={room.name || "Kamar Hotel"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.src = DEFAULT_IMAGES[0]; }}
+                      />
+                    </div>
+
+                    {/* Room Content */}
+                    <div className="p-6 flex flex-col justify-between flex-grow text-left">
+                      <div>
+                        <div className="flex justify-between items-start mb-2 gap-2">
+                          <h3 className="font-headline-md text-xl font-bold text-[#778873]">
+                            {room.name || room.type || "Deluxe Room"}
+                          </h3>
+                          <span className="bg-[#e8e2d9] text-[#778873] px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0">
+                            <span className="material-symbols-outlined text-sm">group</span>
+                            {room.capacity || "2 Tamu"}
+                          </span>
+                        </div>
+
+                        <p className="font-body-md text-sm text-[#444842] mb-4">
+                          {room.description ||
+                            `Kamar seluas 45 meter persegi denganRan ${room.bed || '1 King Bed'}, pemandangan memukau, dan kamar mandi marmer yang luas.`}
+                        </p>
+
+                        {/* Features Checkmarks */}
+                        <div className="flex flex-wrap gap-4 mb-4 text-xs text-[#444842]">
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[#778873] text-base">check</span>
+                            Sarapan Termasuk
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[#778873] text-base">check</span>
+                            Pembatalan Gratis
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Price & Booking Button */}
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#DCCFC0]/30 gap-4">
+                        <div>
+                          <p className="text-xs text-[#444842] line-through">
+                            Rp {weekendPrice.toLocaleString("id-ID")} (Weekend)
+                          </p>
+                          <p className="font-headline-lg text-2xl font-bold text-[#778873]">
+                            Rp {roomPrice.toLocaleString("id-ID")}{" "}
+                            <span className="text-xs font-normal text-[#444842]">/ malam (Weekday)</span>
+                          </p>
+                          <p className="text-xs text-[#A0522D] font-semibold mt-1 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                            Hanya sisa 2 kamar!
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/hotels/${hotel?.id || id || 1}/rooms/${room?.id || 101}`)}
+                            className="w-full sm:w-auto border border-[#778873] text-[#778873] font-label-md text-sm font-semibold px-5 py-3 rounded-xl hover:bg-[#DCCFC0]/30 transition-colors shadow-sm active:scale-95 cursor-pointer text-center"
+                          >
+                            Detail Kamar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleBookRoom(e, room)}
+                            className="w-full sm:w-auto bg-[#778873] text-white font-label-md text-sm font-semibold px-6 py-3 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm active:scale-95 cursor-pointer text-center"
+                          >
+                            Pilih Kamar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-8 text-center bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40">
+              <p className="text-[#444842] text-sm">Belum ada tipe kamar yang terdaftar untuk hotel ini.</p>
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* All Photos Lightbox Modal */}
+      {showPhotoModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#fff8f0] rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative text-left">
+            <div className="flex justify-between items-center mb-4 border-b border-[#DCCFC0]/40 pb-3">
+              <h3 className="font-headline-md text-xl font-bold text-[#778873]">Galeri Foto {hotel.name}</h3>
+              <button
+                onClick={() => setShowPhotoModal(false)}
+                className="text-[#1e1b16] hover:text-[#778873] p-1 rounded-full text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {photosList.map((photo, i) => (
+                <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
+                  <img src={photo} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

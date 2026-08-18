@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Executive Suite with Private Pool - H'Leven</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "sage-green": "#A1BC98",
+                      "on-primary-container": "#f7fff1",
+                      "inverse-on-surface": "#f7f0e7",
+                      "primary-fixed": "#d5e8cf",
+                      "on-secondary-container": "#526b4c",
+                      "surface-tint": "#52634f",
+                      "on-surface": "#1e1b16",
+                      "on-secondary-fixed-variant": "#354d30",
+                      "surface": "#fff8f0",
+                      "tertiary-fixed-dim": "#d1c5b6",
+                      "on-error": "#ffffff",
+                      "on-tertiary-fixed": "#211b11",
+                      "on-surface-variant": "#444842",
+                      "inverse-surface": "#33302a",
+                      "surface-container-high": "#eee7de",
+                      "surface-container": "#f4ede4",
+                      "secondary-fixed": "#ceebc4",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#4e453a",
+                      "primary-container": "#687965",
+                      "status-error": "#A0522D",
+                      "text-main": "#2D332C",
+                      "on-primary-fixed": "#111f10",
+                      "surface-container-low": "#faf3ea",
+                      "on-secondary-fixed": "#0a2008",
+                      "secondary": "#4c6546",
+                      "off-white": "#FDF6ED",
+                      "on-primary-fixed-variant": "#3b4b39",
+                      "on-background": "#1e1b16",
+                      "status-success": "#4F6F52",
+                      "on-tertiary-container": "#fffbff",
+                      "secondary-fixed-dim": "#b3cea9",
+                      "outline": "#747871",
+                      "forest-green": "#778873",
+                      "surface-bright": "#fff8f0",
+                      "inverse-primary": "#baccb4",
+                      "surface-container-highest": "#e8e2d9",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary": "#645b4f",
+                      "tertiary-fixed": "#eee0d1",
+                      "tertiary-container": "#7d7366",
+                      "on-primary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "primary-fixed-dim": "#baccb4",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "surface-dim": "#e0d9d0",
+                      "primary": "#50604d",
+                      "secondary-container": "#ceebc4",
+                      "surface-variant": "#e8e2d9",
+                      "background": "#fff8f0",
+                      "on-tertiary": "#ffffff",
+                      "outline-variant": "#c4c8bf",
+                      "warm-beige": "#DCCFC0"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "2.5rem",
+                      "gutter": "1.5rem",
+                      "stack-lg": "2rem",
+                      "stack-md": "1rem",
+                      "stack-sm": "0.5rem",
+                      "margin-mobile": "1rem",
+                      "container-max": "1280px",
+                      "section-gap": "5rem"
+              },
+              "fontFamily": {
+                      "label-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Libre Caslon Text"
+                      ],
+                      "headline-xl": [
+                              "Libre Caslon Text"
+                      ],
+                      "label-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg-mobile": [
+                              "Libre Caslon Text"
+                      ],
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Libre Caslon Text"
+                      ]
+              },
+              "fontSize": {
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .text-shadow-sm {
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased font-body-md selection:bg-sage-green/30 selection:text-forest-green">
+<!-- TopNavBar -->
+<nav class="w-full sticky top-0 bg-off-white dark:bg-surface-dim border-b border-warm-beige/30 shadow-sm shadow-forest-green/5 z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+<!-- Brand -->
+<a class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim" href="#">
+                H'Leven
+            </a>
+<!-- Navigation Links (Web) -->
+<div class="hidden md:flex items-center space-x-gutter">
+<a class="text-forest-green dark:text-primary-fixed-dim font-bold border-b-2 border-forest-green pb-1 hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors" href="#">Hotels</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors" href="#">Resorts</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors" href="#">Our Story</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors" href="#">Promotions</a>
+</div>
+<!-- Actions -->
+<div class="flex items-center space-x-4">
+<button class="hidden md:flex text-on-surface-variant hover:text-forest-green transition-colors p-2 rounded-full hover:bg-warm-beige/10">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+<button class="bg-forest-green text-off-white px-6 py-2.5 rounded-DEFAULT font-label-md hover:bg-secondary transition-colors shadow-sm shadow-forest-green/20 hover:shadow-md hover:-translate-y-0.5 duration-200">
+                    Book Now
+                </button>
+</div>
+</div>
+</nav>
+<main class="w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12 flex flex-col gap-section-gap">
+<!-- Breadcrumb & Title Area -->
+<section class="flex flex-col gap-4">
+<nav class="flex items-center space-x-2 text-label-sm text-on-surface-variant/70">
+<a class="hover:text-forest-green transition-colors" href="#">H'Leven Ubud</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<a class="hover:text-forest-green transition-colors" href="#">Accommodations</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-forest-green font-medium">Executive Suite</span>
+</nav>
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Executive Suite with Private Pool</h1>
+<div class="flex flex-wrap items-center gap-4 text-body-md text-on-surface-variant">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[20px]">group</span> 2 Adults</div>
+<div class="w-1 h-1 rounded-full bg-warm-beige"></div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[20px]">bed</span> 1 King Bed</div>
+<div class="w-1 h-1 rounded-full bg-warm-beige"></div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[20px]">aspect_ratio</span> 80 sqm</div>
+</div>
+</div>
+<div class="flex flex-col items-start md:items-end">
+<span class="text-label-sm text-on-surface-variant uppercase tracking-wider">From</span>
+<div class="font-headline-lg text-headline-lg text-forest-green">Rp 3.200.000 <span class="text-body-md font-body-md text-on-surface-variant font-normal">/ night</span></div>
+</div>
+</div>
+</section>
+<!-- Hero Gallery -->
+<section class="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[50vh] md:h-[600px] rounded-xl overflow-hidden">
+<div class="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-warm-beige">
+<img alt="Main Bedroom" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A luxurious hotel suite bedroom featuring a large king-size bed with crisp white linens, dark wood furniture, and subtle warm lighting. Large floor-to-ceiling windows look out onto a lush tropical garden. The aesthetic is sophisticated, modern minimalism with subtle forest green accents and warm beige tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfLC5c8hS8uVdDHJUdacPxW3PKqCFyMGtVQPjbFNqkiwXfs81NBdtvV8UQxm10v83LeDwGYGZA0rw6wA4TR7eOgUa4bYn8hf4bPX-Pf8sIc4uCk6z4r__fulFdgj5aKEOmGUOccjwSx39tWMAo2jChZwvaCLBbUQVh8WQu9mH0c22LplIyWPZywLMTJGOK6GBxh7HxO2ZmXcoJ4p2xm8KdGUoiyCU_bJhS3nbApw_hQWZviHoXIGuSjA"/>
+</div>
+<div class="hidden md:block relative group overflow-hidden bg-warm-beige">
+<img alt="Bathroom" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="An elegant, modern hotel bathroom with a freestanding marble bathtub, dual sinks, and premium fixtures. Warm ambient lighting highlights the rich textures of the natural stone and off-white walls. The atmosphere is calming and spa-like, perfectly matching a quiet luxury aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGEtOSJGWfhU8cJEeewezZYWSbIiRviIt4lbwfXec3sRikVtC8rfcmFkmIA-gRlsO8TSAw6D2eldAczmwQu6_2DgnvWUW9nrh0_x30AnuRnkbeGDEYmOl05kdQqWKMh9cEzxEbbtujnUW_Ls08I7q6ph5lynsUvoLtUlCu0ZaD6-iMfHW03Noe_egCt77uUtNm2LncfYceR0FbVmUjgEkc-SCRLTL4X23ZaO6k8XxVFFhfTIXB32YmJg"/>
+</div>
+<div class="hidden md:block relative group overflow-hidden bg-warm-beige">
+<img alt="Private Pool" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A private outdoor infinity pool attached to a hotel suite, surrounded by lush tropical greenery and wooden decking. Two modern sun loungers sit by the water's edge under soft, diffused morning sunlight. The scene evokes tranquility, exclusivity, and premium hospitality design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ogY_FOsqfkOlKJVQQuP_XQtQIT5nXX1R5GFtGByez_XMUfp2oq-VbF3CUIjtLQn1EMaVb4HjF164m19FM6oKTyljqWh8KL1QgNRc8DBNiwsxQfR2g9BIb8OxzPSFr1vjJMHNJixEKY6P2N0mWI7_-DD5YpKkMNlyoz8O8BV5sRZSL2St_Le-uQ9mc-zQL5t-hEWGd3nbDDypqhf-7QRdGj0lYsOpqLYSEidX4YDyl4NHMxkw-t1sZQ"/>
+</div>
+<div class="hidden md:block md:col-span-2 relative group overflow-hidden bg-warm-beige cursor-pointer">
+<img alt="Living Area" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90" data-alt="A spacious living area within a luxury hotel suite, featuring a plush contemporary sofa, a curated coffee table with art books, and a dedicated workspace. The room is styled with natural textures, quiet luxury elements in warm beige and soft green, illuminated by large windows revealing a jungle view." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmdL9WzvsxJa-RoFkPBoxg5Wp7Iu_D4aABtp24zhtP4gCjdvhtZ1MW1nLY2so2uQjd168po_nN6ShahTBGBi_frhxzLlVqSbyHOcHtePiP5GOL5-eRFm719xq_x1FBd2OpiaoKmifZWUBqsEiRoo3oViLTI8KVz8bgomdzmObeXd4ytMEz94RYLG7VD8gJPN8aroEWBQQ2NdTMgwGS9Pco7xDYKocq7VKnc99sxZgvDTspL_kZ5vtQ3g"/>
+<div class="absolute inset-0 bg-on-surface/20 flex items-center justify-center transition-colors group-hover:bg-on-surface/10">
+<button class="bg-off-white text-forest-green px-6 py-3 rounded-full font-label-md flex items-center gap-2 shadow-sm shadow-forest-green/10 hover:bg-white transition-all transform hover:-translate-y-1">
+<span class="material-symbols-outlined">grid_view</span> View All 12 Photos
+                    </button>
+</div>
+</div>
+</section>
+<!-- Main Content Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter relative">
+<!-- Left Column: Details -->
+<div class="lg:col-span-8 flex flex-col gap-stack-lg pr-0 lg:pr-8">
+<!-- Description -->
+<section>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">About This Room</h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                        Experience unparalleled privacy and tranquility in our Executive Suite. Designed as a sanctuary for the modern traveler, this expansive 80sqm space seamlessly blends contemporary luxury with natural elements. The suite features a separate living area, a lavish marble bathroom with a deep soaking tub, and floor-to-ceiling windows that open out to your own private infinity pool overlooking the lush tropical canopy. Every detail, from the high-thread-count linens to the bespoke artisanal furnishings, has been curated to ensure an restorative stay.
+                    </p>
+</section>
+<hr class="border-warm-beige/30"/>
+<!-- Amenities -->
+<section>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Room Amenities</h2>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-forest-green text-[24px]">pool</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Private Infinity Pool</h3>
+<p class="font-body-md text-[14px] text-on-surface-variant/70 mt-1">Temperature controlled</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-forest-green text-[24px]">bathtub</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Marble Bathroom</h3>
+<p class="font-body-md text-[14px] text-on-surface-variant/70 mt-1">Freestanding tub &amp; rain shower</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-forest-green text-[24px]">coffee_maker</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Nespresso Machine</h3>
+<p class="font-body-md text-[14px] text-on-surface-variant/70 mt-1">Complimentary capsules daily</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-forest-green text-[24px]">room_service</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">24/7 Room Service</h3>
+<p class="font-body-md text-[14px] text-on-surface-variant/70 mt-1">In-room dining menu</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-forest-green text-[24px]">kitchen</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Premium Mini Bar</h3>
+<p class="font-body-md text-[14px] text-on-surface-variant/70 mt-1">Curated local &amp; international selections</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-forest-green text-[24px]">wifi</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">High-speed WiFi</h3>
+<p class="font-body-md text-[14px] text-on-surface-variant/70 mt-1">Complimentary premium access</p>
+</div>
+</div>
+</div>
+</section>
+<hr class="border-warm-beige/30"/>
+<!-- Policies -->
+<section>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Room Policies</h2>
+<ul class="space-y-4">
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-on-surface-variant/50 mt-0.5">schedule</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface">Check-in &amp; Check-out</h4>
+<p class="font-body-md text-[14px] text-on-surface-variant mt-1">Check-in from 15:00. Check-out until 12:00.</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-on-surface-variant/50 mt-0.5">smoke_free</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface">Smoke-Free Policy</h4>
+<p class="font-body-md text-[14px] text-on-surface-variant mt-1">All suites are strictly non-smoking. A designated outdoor smoking area is available on the private terrace.</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-on-surface-variant/50 mt-0.5">pets</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface">Pets</h4>
+<p class="font-body-md text-[14px] text-on-surface-variant mt-1">Pets are not allowed in this room type to maintain our allergy-free standards.</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-on-surface-variant/50 mt-0.5">event_busy</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface">Cancellation</h4>
+<p class="font-body-md text-[14px] text-on-surface-variant mt-1">Free cancellation up to 7 days before arrival. Cancellations made within 7 days will be charged the first night's rate.</p>
+</div>
+</li>
+</ul>
+</section>
+</div>
+<!-- Right Column: Booking Widget -->
+<div class="lg:col-span-4 mt-8 lg:mt-0 relative">
+<div class="sticky top-[100px] bg-warm-beige/30 border border-warm-beige/50 rounded-xl p-6 shadow-sm shadow-forest-green/5">
+<div class="flex justify-between items-baseline mb-6">
+<span class="font-headline-md text-headline-md text-forest-green">Rp 3.200.000</span>
+<span class="font-body-md text-[14px] text-on-surface-variant">/ night</span>
+</div>
+<div class="flex flex-col gap-4 mb-6">
+<!-- Dates -->
+<div class="grid grid-cols-2 gap-2">
+<div class="border border-warm-beige rounded-DEFAULT p-3 bg-off-white hover:border-forest-green transition-colors cursor-pointer group">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1 group-hover:text-forest-green transition-colors">Check In</label>
+<div class="font-body-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-forest-green">calendar_today</span>
+                                    24 Oct 2024
+                                </div>
+</div>
+<div class="border border-warm-beige rounded-DEFAULT p-3 bg-off-white hover:border-forest-green transition-colors cursor-pointer group">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1 group-hover:text-forest-green transition-colors">Check Out</label>
+<div class="font-body-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-forest-green">calendar_today</span>
+                                    28 Oct 2024
+                                </div>
+</div>
+</div>
+<!-- Guests -->
+<div class="border border-warm-beige rounded-DEFAULT p-3 bg-off-white hover:border-forest-green transition-colors cursor-pointer group flex justify-between items-center">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1 group-hover:text-forest-green transition-colors">Guests</label>
+<div class="font-body-md text-on-surface">2 Adults, 0 Children</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-forest-green transition-colors">expand_more</span>
+</div>
+</div>
+<!-- Price Breakdown -->
+<div class="space-y-3 mb-6 font-body-md text-[14px] text-on-surface-variant">
+<div class="flex justify-between">
+<span>Rp 3.200.000 x 4 nights</span>
+<span>Rp 12.800.000</span>
+</div>
+<div class="flex justify-between">
+<span>Taxes &amp; Fees (21%)</span>
+<span>Rp 2.688.000</span>
+</div>
+<hr class="border-warm-beige/50 my-2"/>
+<div class="flex justify-between font-label-md text-[16px] text-on-surface">
+<span>Total</span>
+<span>Rp 15.488.000</span>
+</div>
+</div>
+<button class="w-full bg-forest-green text-off-white py-3.5 rounded-DEFAULT font-label-md text-label-md hover:bg-secondary transition-colors shadow-sm shadow-forest-green/20 hover:shadow-md hover:-translate-y-0.5 duration-200">
+                        Reserve Now
+                    </button>
+<p class="text-center font-body-md text-[12px] text-on-surface-variant mt-4">You won't be charged yet</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-highest dark:bg-inverse-surface border-t border-warm-beige/20 mt-section-gap">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter w-full px-margin-desktop py-section-gap max-w-container-max mx-auto">
+<div class="md:col-span-1">
+<div class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim mb-4">
+                    H'Leven
+                </div>
+<p class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant mt-4">
+                    Redefining luxury hospitality through sustainable practices and exceptional experiences.
+                </p>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold mb-2">Company</h4>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Our Story</a>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Careers</a>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Contact Us</a>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold mb-2">Legal</h4>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Terms of Service</a>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold mb-2">Support</h4>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Support Center</a>
+<a class="font-body-md text-[14px] text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">FAQ</a>
+</div>
+</div>
+<div class="border-t border-warm-beige/20 w-full">
+<div class="w-full px-margin-desktop py-4 max-w-container-max mx-auto text-center md:text-left">
+<p class="font-body-md text-[12px] text-on-surface-variant dark:text-surface-variant">© 2024 H'Leven Hospitality Group. All rights reserved.</p>
+</div>
+</div>
+</footer>
+</body></html>
