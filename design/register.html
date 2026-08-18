@@ -1,0 +1,201 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>H'Leven - Register</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#526b4c",
+                        "error": "#ba1a1a",
+                        "warm-beige": "#DCCFC0",
+                        "on-tertiary-fixed-variant": "#4e453a",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#f4ede4",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#e0d9d0",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#444842",
+                        "sage-green": "#A1BC98",
+                        "on-primary-container": "#f7fff1",
+                        "surface-container-high": "#eee7de",
+                        "tertiary-container": "#7d7366",
+                        "forest-green": "#778873",
+                        "off-white": "#FDF6ED",
+                        "text-main": "#2D332C",
+                        "secondary-fixed": "#ceebc4",
+                        "primary-container": "#687965",
+                        "primary-fixed-dim": "#baccb4",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#50604d",
+                        "background": "#fff8f0",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#b3cea9",
+                        "status-error": "#A0522D",
+                        "tertiary-fixed": "#eee0d1",
+                        "surface-tint": "#52634f",
+                        "primary-fixed": "#d5e8cf",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#0a2008",
+                        "secondary-container": "#ceebc4",
+                        "outline": "#747871",
+                        "inverse-on-surface": "#f7f0e7",
+                        "surface-container-low": "#faf3ea",
+                        "surface-variant": "#e8e2d9",
+                        "surface-container-highest": "#e8e2d9",
+                        "on-background": "#1e1b16",
+                        "on-tertiary-fixed": "#211b11",
+                        "inverse-primary": "#baccb4",
+                        "tertiary-fixed-dim": "#d1c5b6",
+                        "surface": "#fff8f0",
+                        "on-primary-fixed": "#111f10",
+                        "status-success": "#4F6F52",
+                        "outline-variant": "#c4c8bf",
+                        "on-surface": "#1e1b16",
+                        "on-primary-fixed-variant": "#3b4b39",
+                        "surface-bright": "#fff8f0",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary": "#4c6546",
+                        "inverse-surface": "#33302a",
+                        "tertiary": "#645b4f",
+                        "on-secondary-fixed-variant": "#354d30"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "margin-mobile": "1rem",
+                        "stack-sm": "0.5rem",
+                        "margin-desktop": "2.5rem",
+                        "section-gap": "5rem",
+                        "stack-lg": "2rem",
+                        "gutter": "1.5rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Libre Caslon Text"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-xl": ["Libre Caslon Text"],
+                        "headline-lg": ["Libre Caslon Text"],
+                        "headline-lg-mobile": ["Libre Caslon Text"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.off-white'); color: theme('colors.text-main'); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: theme('colors.warm-beige'); border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+<!-- TopNavBar Suppressed: Transactional Screen Intent -->
+<main class="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop py-section-gap">
+<div class="w-full max-w-container-max grid grid-cols-1 md:grid-cols-2 bg-surface-container-low rounded-xl overflow-hidden shadow-sm shadow-forest-green/5 border border-warm-beige/30 min-h-[700px]">
+<!-- Image Side -->
+<div class="hidden md:block relative h-full w-full">
+<div class="absolute inset-0 bg-forest-green/20 z-10 mix-blend-multiply"></div>
+<div class="absolute inset-0 bg-cover bg-center w-full h-full z-0" data-alt="A luxurious modern hotel infinity pool overlooking a serene mountain landscape at sunset. The scene is bathed in soft, warm, golden hour light, reflecting off the pristine water. The aesthetic is sophisticated, quiet luxury, with natural stone textures and subtle forest green accents complementing the warm beige tones of the architecture. The mood is welcoming and tranquil, perfectly aligning with a high-end hospitality brand." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBGHjU2tOXAFZgDyf1GD1wcVwNdc2sLrU5vekcmxwcEHu2yvOZ5iYKPVS8Bk0SBToTM1jsbnIJlyk0sMDMD-1zo5UwhqPKar0VF7qyHBMZ-VgjX0nYFKW4kHmCmKo4LesD5VY2UnBc4axLpuRNW0dWUSbt3TNGtiS4AWxmNLizO-imemEatNgudy-66Z7Q-VSV3W2vnCLxS4KBAQHfel8ufw5-FYVB80w-mc1PZR1azA8VEq_xcwk-CXA')"></div>
+<div class="absolute bottom-0 left-0 p-12 z-20 w-full bg-gradient-to-t from-on-background/80 to-transparent text-on-primary">
+<h2 class="font-headline-lg text-headline-lg text-off-white mb-stack-sm">Begin Your Journey</h2>
+<p class="font-body-lg text-body-lg text-surface-variant max-w-md">Experience quiet luxury and unparalleled service. Register to unlock exclusive member rates and curated stays.</p>
+</div>
+</div>
+<!-- Form Side -->
+<div class="p-8 md:p-16 flex flex-col justify-center relative bg-off-white">
+<a class="inline-flex items-center text-forest-green hover:text-primary transition-colors absolute top-8 left-8 md:left-16 group" href="#">
+<span class="material-symbols-outlined mr-2 transition-transform group-hover:-translate-x-1">arrow_back</span>
+<span class="font-label-md text-label-md">Back</span>
+</a>
+<div class="text-center md:text-left mt-12 md:mt-0 mb-10">
+<h1 class="font-headline-md text-forest-green font-headline-md font-bold mb-2">H'Leven</h1>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-main mb-4">Create an Account</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Please fill in your details to register.</p>
+</div>
+<form class="space-y-stack-md w-full max-w-md mx-auto md:mx-0">
+<div>
+<label class="block font-label-md text-label-md text-forest-green mb-1" for="fullName">Full Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">person</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="fullName" placeholder="John Doe" required="" type="text">
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-forest-green mb-1" for="email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">mail</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="email" placeholder="john@example.com" required="" type="email">
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-forest-green mb-1" for="phone">Phone Number</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">call</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="phone" placeholder="+1 (555) 000-0000" type="tel">
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div>
+<label class="block font-label-md text-label-md text-forest-green mb-1" for="password">Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">lock</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="password" placeholder="••••••••" required="" type="password">
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-forest-green mb-1" for="confirmPassword">Confirm</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">lock_reset</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="confirmPassword" placeholder="••••••••" required="" type="password">
+</div>
+</div>
+</div>
+<div class="flex items-start mt-stack-md">
+<div class="flex items-center h-5">
+<input class="w-4 h-4 text-forest-green border-warm-beige rounded focus:ring-forest-green bg-surface-container-highest" id="terms" type="checkbox">
+</div>
+<div class="ml-3 text-sm">
+<label class="font-body-md text-body-md text-on-surface-variant" for="terms">I agree to the <a class="text-forest-green hover:underline" href="#">Terms and Conditions</a></label>
+</div>
+</div>
+<button class="w-full bg-forest-green hover:bg-primary text-on-primary font-label-md text-label-md py-4 rounded-DEFAULT transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-forest-green/20 mt-stack-lg" type="submit">
+                        Register Account
+                    </button>
+<p class="text-center font-body-md text-body-md text-on-surface-variant mt-stack-md">
+                        Already have an account? <a class="text-forest-green font-medium hover:underline" href="#">Login</a>
+</p>
+</form>
+</div>
+</div>
+</main>
+<!-- Footer Suppressed: Transactional Screen Intent -->
+</body></html>
