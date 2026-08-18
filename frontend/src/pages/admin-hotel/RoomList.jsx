@@ -1,108 +1,1094 @@
-import React, { useEffect, useState } from "react";
-import api from "../../services/api";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import {
+  getStoredRooms,
+  saveStoredRooms,
+  getStoredRoomFacilities,
+} from "../../utils/roomData";
+
+const fmtRupiah = (val) =>
+  "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
 export default function RoomList() {
+  const navigate = useNavigate();
+
+  // State Management
   const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [roomFacilities, setRoomFacilities] = useState([]);
+
+  // Search, Filter & Sort State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [capacityFilter, setCapacityFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Modal States
+  const [viewingRoom, setViewingRoom] = useState(null);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [deletingRoom, setDeletingRoom] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  // Edit Form Values & Errors
+  const [editValues, setEditValues] = useState({});
+  const [editErrors, setEditErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchRooms();
+    loadData();
   }, []);
 
-  const fetchRooms = async () => {
-    try {
-      const response = await api.get("/admin/hotels");
-      const hotels = response.data.data || response.data;
+  const loadData = () => {
+    const loadedRooms = getStoredRooms();
+    const loadedFacilities = getStoredRoomFacilities();
+    setRooms(loadedRooms);
+    setRoomFacilities(loadedFacilities);
+  };
 
-      if (!hotels || hotels.length === 0) {
-        setLoading(false);
-        return;
-      }
+  // Sync state to localStorage
+  const updateRoomsState = (newRooms) => {
+    setRooms(newRooms);
+    saveStoredRooms(newRooms);
+  };
 
-      const hotelId = hotels[0].id;
-      const roomResponse = await api.get(`/admin/hotels/${hotelId}/rooms`); 
+  // Map Facility IDs to Objects
+  const getFacilitiesForRoom = (facilityIds = []) => {
+    return facilityIds
+      .map((id) => roomFacilities.find((f) => f.id === id))
+      .filter(Boolean);
+  };
 
-      setRooms(roomResponse.data.data || roomResponse.data);
-    } catch (error) {
-      console.error("Gagal memuat daftar kamar:", error);
-    } finally {
-      setLoading(false);
+  // Filtering Logic
+  const filteredRooms = rooms.filter((room) => {
+    const matchesSearch =
+      room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      room.type.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesType =
+      typeFilter === "all" ? true : room.type.toLowerCase() === typeFilter.toLowerCase();
+
+    const matchesStatus =
+      statusFilter === "all" ? true : room.status.toLowerCase() === statusFilter.toLowerCase();
+
+    let matchesCapacity = true;
+    if (capacityFilter === "1") matchesCapacity = room.capacity === 1;
+    else if (capacityFilter === "2") matchesCapacity = room.capacity === 2;
+    else if (capacityFilter === "3") matchesCapacity = room.capacity === 3;
+    else if (capacityFilter === "4+") matchesCapacity = room.capacity >= 4;
+
+    return matchesSearch && matchesType && matchesStatus && matchesCapacity;
+  });
+
+  // Sorting Logic
+  const sortedRooms = [...filteredRooms].sort((a, b) => {
+    let aVal = a[sortBy];
+    let bVal = b[sortBy];
+
+    if (sortBy === "available") {
+      aVal = a.stock - a.occupied;
+      bVal = b.stock - b.occupied;
+    }
+
+    if (typeof aVal === "string") {
+      return sortOrder === "asc"
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    }
+
+    return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+  });
+
+  // Pagination Logic
+  const totalPages = Math.ceil(sortedRooms.length / itemsPerPage) || 1;
+  const paginatedRooms = sortedRooms.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Edit Modal Open
+  const handleOpenEdit = (room) => {
+    setEditingRoom(room);
+    setEditValues({
+      name: room.name,
+      type: room.type,
+      description: room.description || "",
+      weekday_price: room.weekday_price,
+      weekend_price: room.weekend_price,
+      capacity: room.capacity,
+      stock: room.stock,
+      occupied: room.occupied || 0,
+      facilityIds: room.facilityIds || [],
+      photos: room.photos || [],
+      status: room.status || "Available",
+    });
+    setEditErrors({});
+  };
+
+  // Edit Input Change
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditValues((prev) => ({ ...prev, [name]: value }));
+    if (editErrors[name]) {
+      setEditErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  // 🟢 BARU: Fungsi untuk menghapus tipe kamar berdasarkan ID
-  const handleDelete = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus tipe kamar ini?")) {
+  // Edit Facility Checkbox
+  const handleEditFacilityToggle = (facilityId) => {
+    setEditValues((prev) => {
+      const currentIds = prev.facilityIds || [];
+      const updatedIds = currentIds.includes(facilityId)
+        ? currentIds.filter((id) => id !== facilityId)
+        : [...currentIds, facilityId];
+      return { ...prev, facilityIds: updatedIds };
+    });
+  };
+
+  // Edit Photo Upload Simulation
+  const handleEditPhotoUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newPhotos = files.map((file, idx) => ({
+      id: `p-new-${Date.now()}-${idx}`,
+      url: URL.createObjectURL(file),
+      name: file.name,
+    }));
+
+    setEditValues((prev) => ({
+      ...prev,
+      photos: [...(prev.photos || []), ...newPhotos],
+    }));
+    toast.success(`${files.length} foto berhasil diunggah!`);
+  };
+
+  // Remove Photo from Edit Form
+  const handleRemovePhoto = (photoId) => {
+    setEditValues((prev) => ({
+      ...prev,
+      photos: (prev.photos || []).filter((p) => p.id !== photoId),
+    }));
+    toast.success("Foto dihapus.");
+  };
+
+  // Save Edit Submit
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+
+    const errs = {};
+    if (!editValues.name.trim()) errs.name = "Room name is required.";
+    if (!editValues.type) errs.type = "Room type is required.";
+    if (!editValues.weekday_price || Number(editValues.weekday_price) <= 0)
+      errs.weekday_price = "Weekday price must be greater than 0.";
+    if (!editValues.weekend_price || Number(editValues.weekend_price) <= 0)
+      errs.weekend_price = "Weekend price must be greater than 0.";
+    if (!editValues.capacity || Number(editValues.capacity) < 1)
+      errs.capacity = "Capacity must be at least 1.";
+    if (!editValues.stock || Number(editValues.stock) < 1)
+      errs.stock = "Stock must be at least 1.";
+
+    if (Object.keys(errs).length > 0) {
+      setEditErrors(errs);
       return;
     }
 
-    try {
-      await api.delete(`/admin/rooms/${id}`);
-      // Filter state agar kamar yang dihapus langsung hilang dari tabel
-      setRooms(rooms.filter((room) => room.id !== id));
-      alert("Kamar berhasil dihapus.");
-    } catch (error) {
-      console.error("Gagal menghapus kamar:", error);
-      alert("Terjadi kesalahan saat menghapus kamar.");
-    }
+    setIsSaving(true);
+
+    setTimeout(() => {
+      const stockNum = Number(editValues.stock);
+      const occupiedNum = Number(editValues.occupied);
+      const availNum = Math.max(0, stockNum - occupiedNum);
+      const calculatedStatus =
+        availNum === 0 ? "Occupied" : editValues.status || "Available";
+
+      const updatedRooms = rooms.map((r) =>
+        r.id === editingRoom.id
+          ? {
+              ...r,
+              name: editValues.name.trim(),
+              type: editValues.type,
+              description: editValues.description.trim(),
+              weekday_price: Number(editValues.weekday_price),
+              weekend_price: Number(editValues.weekend_price),
+              capacity: Number(editValues.capacity),
+              stock: stockNum,
+              occupied: occupiedNum,
+              facilityIds: editValues.facilityIds,
+              photos: editValues.photos,
+              status: calculatedStatus,
+            }
+          : r
+      );
+
+      updateRoomsState(updatedRooms);
+      setIsSaving(false);
+      setEditingRoom(null);
+      toast.success("Room updated successfully.");
+    }, 500);
   };
 
-  if (loading) return <div className="p-8">Memuat data kamar...</div>;
+  // Delete Room Action
+  const handleDeleteConfirm = () => {
+    if (!deletingRoom) return;
+
+    setIsSaving(true);
+    setTimeout(() => {
+      const updatedRooms = rooms.filter((r) => r.id !== deletingRoom.id);
+      updateRoomsState(updatedRooms);
+      setIsSaving(false);
+      setDeletingRoom(null);
+      if (viewingRoom && viewingRoom.id === deletingRoom.id) {
+        setViewingRoom(null);
+      }
+      toast.success("Room deleted successfully.");
+    }, 400);
+  };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-6">
-        <h1 className="text-2xl font-bold">Manajemen Kamar</h1>
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
+            Rooms
+          </h2>
+          <p className="text-sm text-[#6B6E6A] mt-1">
+            Manage rooms, pricing, availability, and facilities.
+          </p>
+        </div>
+
         <Link
           to="/admin/rooms/create"
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-[#506147] text-white text-xs font-semibold px-6 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#3b4b33] transition-all shadow-sm hover:shadow active:scale-[0.98]"
         >
-          Tambah Kamar
+          <span className="material-symbols-outlined text-[18px]">add</span>
+          + Add Room
         </Link>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-4">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="pb-2">Nama Kamar</th>
-              <th className="pb-2">Harga (Weekday)</th>
-              <th className="pb-2">Stok</th>
-              <th className="pb-2">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rooms.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="py-4 text-center text-gray-500">
-                  Belum ada kamar yang ditambahkan. Silakan buat kamar terlebih dahulu.
-                </td>
+      {/* Search, Filter & Sort Controls Card */}
+      <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+          {/* Search Bar */}
+          <div className="relative w-full lg:w-96">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search rooms..."
+              className="w-full pl-10 pr-4 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+            />
+          </div>
+
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            {/* Room Type */}
+            <select
+              value={typeFilter}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-xs font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer"
+            >
+              <option value="all">Type: All</option>
+              <option value="standard">Standard</option>
+              <option value="deluxe">Deluxe</option>
+              <option value="suite">Suite</option>
+            </select>
+
+            {/* Status */}
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-xs font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer"
+            >
+              <option value="all">Status: All</option>
+              <option value="available">Available</option>
+              <option value="occupied">Occupied</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+
+            {/* Capacity */}
+            <select
+              value={capacityFilter}
+              onChange={(e) => {
+                setCapacityFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-xs font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer"
+            >
+              <option value="all">Capacity: All</option>
+              <option value="1">1 Guest</option>
+              <option value="2">2 Guests</option>
+              <option value="3">3 Guests</option>
+              <option value="4+">4+ Guests</option>
+            </select>
+
+            {/* Sort Field */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-xs font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer"
+            >
+              <option value="name">Sort: Room Name</option>
+              <option value="weekday_price">Sort: Weekday Price</option>
+              <option value="weekend_price">Sort: Weekend Price</option>
+              <option value="capacity">Sort: Capacity</option>
+              <option value="available">Sort: Available Stock</option>
+            </select>
+
+            {/* Sort Order Toggle */}
+            <button
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              className="p-2 border border-[#E5E0D8] bg-[#fcf9f5] rounded-lg text-[#2D312C] hover:bg-[#f0ede9] transition-colors"
+              title={sortOrder === "asc" ? "Ascending" : "Descending"}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {sortOrder === "asc" ? "arrow_upward" : "arrow_downward"}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Room Table Card */}
+      <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Room
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Room Type
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Weekday Price
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Weekend Price
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Capacity
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Stock
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Available
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Facilities
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">
+                  Action
+                </th>
               </tr>
-            ) : (
-              rooms.map((room) => (
-                <tr key={room.id} className="border-b">
-                  <td className="py-3 font-medium">{room.name}</td>
-                  <td className="py-3">
-                    Rp {Number(room.weekday_price || 0).toLocaleString('id-ID')}
-                  </td>
-                  <td className="py-3">{room.stock}</td>
-                  <td className="py-3">
-                    <button className="text-yellow-600 mr-3 hover:underline">Edit</button>
-                    {/* 🟢 BARU: Menghubungkan tombol hapus ke fungsi handleDelete */}
-                    <button 
-                      onClick={() => handleDelete(room.id)} 
-                      className="text-red-600 hover:underline"
+            </thead>
+
+            <tbody className="divide-y divide-[#E5E1DA] text-sm">
+              {paginatedRooms.length > 0 ? (
+                paginatedRooms.map((room) => {
+                  const availableStock = Math.max(0, room.stock - (room.occupied || 0));
+                  const assignedFacilities = getFacilitiesForRoom(room.facilityIds);
+                  const firstPhoto = room.photos?.[0]?.url || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&q=80";
+
+                  return (
+                    <tr
+                      key={room.id}
+                      className="hover:bg-[#A8BBA2]/10 transition-colors"
                     >
-                      Hapus
-                    </button>
+                      {/* Room Thumbnail & Name */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={firstPhoto}
+                            alt={room.name}
+                            className="w-12 h-12 rounded-lg object-cover border border-[#E5E1DA] shrink-0"
+                          />
+                          <div>
+                            <p className="font-semibold text-[#2D312C] text-sm leading-tight">
+                              {room.name}
+                            </p>
+                            <div className="flex items-center gap-1 mt-1 text-[#6B6E6A]">
+                              {assignedFacilities.slice(0, 3).map((f) => (
+                                <span
+                                  key={f.id}
+                                  className="material-symbols-outlined text-[15px]"
+                                  title={f.name}
+                                >
+                                  {f.icon || "star"}
+                                </span>
+                              ))}
+                              {assignedFacilities.length > 3 && (
+                                <span className="text-[10px] font-semibold text-[#6B6E6A]">
+                                  +{assignedFacilities.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Room Type */}
+                      <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">
+                        {room.type}
+                      </td>
+
+                      {/* Weekday Price */}
+                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
+                        {fmtRupiah(room.weekday_price)}
+                      </td>
+
+                      {/* Weekend Price */}
+                      <td className="p-4 font-semibold text-[#506147] whitespace-nowrap">
+                        {fmtRupiah(room.weekend_price)}
+                      </td>
+
+                      {/* Capacity */}
+                      <td className="p-4 text-[#6B6E6A] whitespace-nowrap">
+                        {room.capacity} Guests
+                      </td>
+
+                      {/* Stock */}
+                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
+                        {room.stock}
+                      </td>
+
+                      {/* Available Stock */}
+                      <td className="p-4 font-bold text-[#506147] whitespace-nowrap">
+                        {availableStock}
+                      </td>
+
+                      {/* Facilities Badges */}
+                      <td className="p-4">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {assignedFacilities.length > 0 ? (
+                            assignedFacilities.slice(0, 2).map((fac) => (
+                              <span
+                                key={fac.id}
+                                className="bg-[#f0ede9] text-[#2D312C] text-[10px] font-semibold px-2 py-0.5 rounded border border-[#E5E1DA]"
+                              >
+                                {fac.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-[#6B6E6A]">—</span>
+                          )}
+                          {assignedFacilities.length > 2 && (
+                            <span className="bg-[#E4EBE0] text-[#4A5D43] text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                              +{assignedFacilities.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="p-4 whitespace-nowrap">
+                        {room.status === "Available" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
+                            Available
+                          </span>
+                        ) : room.status === "Occupied" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FFF0E0] text-[#9B5235]">
+                            Occupied
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0EDE9] text-[#6B6E6A] border border-[#E5E1DA]">
+                            Unavailable
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="p-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setViewingRoom(room)}
+                            className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors"
+                            title="View Room Detail"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              visibility
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenEdit(room)}
+                            className="p-1.5 text-[#D48C45] hover:bg-[#fff5eb] rounded-lg transition-colors"
+                            title="Edit Room"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              edit
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => setDeletingRoom(room)}
+                            className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors"
+                            title="Delete Room"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              delete
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="10" className="p-12 text-center text-[#6B6E6A]">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
+                        bed
+                      </span>
+                      <div>
+                        <p className="font-semibold text-[#2D312C] text-base">
+                          {rooms.length === 0 ? "No rooms yet." : "No rooms found."}
+                        </p>
+                        <p className="text-xs text-[#6B6E6A] mt-1">
+                          {rooms.length === 0
+                            ? "Mulai dengan menambahkan tipe kamar pertama Anda."
+                            : "Tidak ada kamar yang cocok dengan kriteria pencarian/filter."}
+                        </p>
+                      </div>
+
+                      {searchQuery ||
+                      typeFilter !== "all" ||
+                      statusFilter !== "all" ||
+                      capacityFilter !== "all" ? (
+                        <button
+                          onClick={() => {
+                            setSearchQuery("");
+                            setTypeFilter("all");
+                            setStatusFilter("all");
+                            setCapacityFilter("all");
+                          }}
+                          className="mt-2 px-4 py-2 bg-[#f0ede9] text-[#2D312C] rounded-lg text-xs font-semibold hover:bg-[#e5e2de] transition-colors"
+                        >
+                          Clear Search
+                        </button>
+                      ) : (
+                        <Link
+                          to="/admin/rooms/create"
+                          className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                        >
+                          + Add Room
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Table Pagination */}
+        {sortedRooms.length > 0 && (
+          <div className="p-4 border-t border-[#E5E1DA] bg-[#fcf9f5] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6B6E6A]">
+            <p>
+              Showing <span className="font-semibold text-[#2D312C]">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+              <span className="font-semibold text-[#2D312C]">{Math.min(currentPage * itemsPerPage, sortedRooms.length)}</span> of{" "}
+              <span className="font-semibold text-[#2D312C]">{sortedRooms.length}</span> rooms
+            </p>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 border border-[#E5E0D8] rounded-lg bg-white text-[#2D312C] font-semibold hover:bg-[#f0ede9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }).map((_, idx) => (
+                <button
+                  key={idx + 1}
+                  onClick={() => setCurrentPage(idx + 1)}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                    currentPage === idx + 1
+                      ? "bg-[#506147] text-white shadow-sm"
+                      : "bg-white border border-[#E5E0D8] text-[#2D312C] hover:bg-[#f0ede9]"
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 border border-[#E5E0D8] rounded-lg bg-white text-[#2D312C] font-semibold hover:bg-[#f0ede9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: ROOM DETAIL                                                      */}
+      {/* ========================================================================= */}
+      {viewingRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Detail Header */}
+            <div className="px-6 py-5 border-b border-[#E5E1DA] bg-[#fcf9f5] flex justify-between items-center">
+              <div>
+                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Room Detail
+                </span>
+                <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-0.5">
+                  {viewingRoom.name}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const r = viewingRoom;
+                    setViewingRoom(null);
+                    handleOpenEdit(r);
+                  }}
+                  className="px-4 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                  Edit Room
+                </button>
+
+                <button
+                  onClick={() => setViewingRoom(null)}
+                  className="p-1.5 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Detail Content */}
+            <div className="p-6 overflow-y-auto space-y-6 text-sm">
+              {/* Section 1: Room Information */}
+              <div className="bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] p-5 space-y-3">
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
+                  Room Information
+                </h4>
+                <p className="text-xs text-[#444840] leading-relaxed">
+                  {viewingRoom.description || "Tidak ada deskripsi kamar."}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-[#E5E1DA] text-xs">
+                  <div>
+                    <span className="text-[#6B6E6A]">Type:</span>
+                    <p className="font-semibold text-[#2D312C] mt-0.5">{viewingRoom.type}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#6B6E6A]">Capacity:</span>
+                    <p className="font-semibold text-[#2D312C] mt-0.5">{viewingRoom.capacity} Guests</p>
+                  </div>
+                  <div>
+                    <span className="text-[#6B6E6A]">Status:</span>
+                    <p className="font-semibold text-[#506147] mt-0.5">{viewingRoom.status}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Pricing */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-[#E5E1DA] p-4 shadow-sm">
+                  <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                    Weekday Price (Senin - Kamis)
+                  </span>
+                  <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
+                    {fmtRupiah(viewingRoom.weekday_price)}
+                  </p>
+                </div>
+                <div className="bg-[#F2EBE1] rounded-xl border border-[#E5E1DA] p-4 shadow-sm">
+                  <span className="text-[11px] font-semibold text-[#506147] uppercase tracking-wider">
+                    Weekend Price (Jumat - Minggu)
+                  </span>
+                  <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#506147] mt-1">
+                    {fmtRupiah(viewingRoom.weekend_price)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Section 3: Availability */}
+              <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-3">
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
+                  Room Availability Breakdown
+                </h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-3 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA]">
+                    <span className="text-[11px] font-semibold text-[#6B6E6A]">Total Stock</span>
+                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#2D312C] mt-1">{viewingRoom.stock}</p>
+                  </div>
+                  <div className="p-3 bg-[#FFF0E0] rounded-lg border border-[#E5E1DA]">
+                    <span className="text-[11px] font-semibold text-[#9B5235]">Occupied</span>
+                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#9B5235] mt-1">{viewingRoom.occupied || 0}</p>
+                  </div>
+                  <div className="p-3 bg-[#E4EBE0] rounded-lg border border-[#E5E1DA]">
+                    <span className="text-[11px] font-semibold text-[#4A5D43]">Available</span>
+                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#4A5D43] mt-1">
+                      {Math.max(0, viewingRoom.stock - (viewingRoom.occupied || 0))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Facilities */}
+              <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-3">
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
+                  Room Facilities
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {getFacilitiesForRoom(viewingRoom.facilityIds).map((fac) => (
+                    <span
+                      key={fac.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0ede9] rounded-lg text-xs font-semibold text-[#2D312C] border border-[#E5E1DA]"
+                    >
+                      <span className="material-symbols-outlined text-[16px] text-[#506147]">
+                        {fac.icon || "star"}
+                      </span>
+                      {fac.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 5: Photos Lightbox */}
+              {viewingRoom.photos?.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
+                    Room Photos
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {viewingRoom.photos.map((photo) => (
+                      <div
+                        key={photo.id}
+                        onClick={() => setPreviewPhoto(photo)}
+                        className="aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E1DA] cursor-pointer group relative"
+                      >
+                        <img src={photo.url} alt={photo.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: EDIT ROOM                                                        */}
+      {/* ========================================================================= */}
+      {editingRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="px-6 py-5 border-b border-[#E5E1DA] bg-[#fcf9f5] flex justify-between items-center">
+              <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
+                Edit Room: {editingRoom.name}
+              </h3>
+              <button
+                onClick={() => setEditingRoom(null)}
+                disabled={isSaving}
+                className="p-1 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-6">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  1. Room Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Room Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editValues.name}
+                      onChange={handleEditChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
+                    />
+                    {editErrors.name && <span className="text-xs text-[#ba1a1a]">{editErrors.name}</span>}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Room Type *</label>
+                    <select
+                      name="type"
+                      value={editValues.type}
+                      onChange={handleEditChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
+                    >
+                      <option value="Standard">Standard</option>
+                      <option value="Deluxe">Deluxe</option>
+                      <option value="Suite">Suite</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-[#2D312C]">Description</label>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    value={editValues.description}
+                    onChange={handleEditChange}
+                    className="p-3 border border-[#E5E0D8] rounded-lg text-sm leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  2. Room Pricing
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Weekday Price (Rp) *</label>
+                    <input
+                      type="number"
+                      name="weekday_price"
+                      value={editValues.weekday_price}
+                      onChange={handleEditChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
+                    />
+                    {editErrors.weekday_price && <span className="text-xs text-[#ba1a1a]">{editErrors.weekday_price}</span>}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Weekend Price (Rp) *</label>
+                    <input
+                      type="number"
+                      name="weekend_price"
+                      value={editValues.weekend_price}
+                      onChange={handleEditChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
+                    />
+                    {editErrors.weekend_price && <span className="text-xs text-[#ba1a1a]">{editErrors.weekend_price}</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Capacity & Stock */}
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  3. Capacity &amp; Availability
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Capacity (Guests) *</label>
+                    <input
+                      type="number"
+                      name="capacity"
+                      value={editValues.capacity}
+                      onChange={handleEditChange}
+                      min="1"
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
+                    />
+                    {editErrors.capacity && <span className="text-xs text-[#ba1a1a]">{editErrors.capacity}</span>}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Total Units / Stock *</label>
+                    <input
+                      type="number"
+                      name="stock"
+                      value={editValues.stock}
+                      onChange={handleEditChange}
+                      min="1"
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
+                    />
+                    {editErrors.stock && <span className="text-xs text-[#ba1a1a]">{editErrors.stock}</span>}
+                  </div>
+                </div>
+                <p className="text-[11px] text-[#6B6E6A] italic">
+                  Note: Available stock dihitung otomatis ({Math.max(0, Number(editValues.stock) - Number(editValues.occupied))} unit).
+                </p>
+              </div>
+
+              {/* Room Facilities */}
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  4. Room Facilities
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-[#E5E1DA] rounded-xl bg-[#fcf9f5]">
+                  {roomFacilities.map((fac) => {
+                    const isChecked = (editValues.facilityIds || []).includes(fac.id);
+                    const isInactive = fac.status === "inactive";
+                    return (
+                      <label
+                        key={fac.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                          isChecked
+                            ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]"
+                            : "border-[#E5E1DA] bg-white text-[#2D312C]"
+                        } ${isInactive && !isChecked ? "opacity-40 cursor-not-allowed" : ""}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={isInactive && !isChecked}
+                          onChange={() => handleEditFacilityToggle(fac.id)}
+                          className="accent-[#506147]"
+                        />
+                        <span className="material-symbols-outlined text-[16px]">{fac.icon || "star"}</span>
+                        <span className="truncate">{fac.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Room Photos */}
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                    5. Room Photos
+                  </h4>
+                  <label className="px-3 py-1.5 bg-[#506147] text-white text-xs font-semibold rounded-lg cursor-pointer hover:bg-[#3b4b33] transition-colors">
+                    + Upload Photo
+                    <input type="file" multiple accept="image/*" onChange={handleEditPhotoUpload} className="hidden" />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {(editValues.photos || []).map((photo) => (
+                    <div key={photo.id} className="relative aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E1DA] group">
+                      <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(photo.id)}
+                        className="absolute top-1.5 right-1.5 p-1 bg-[#ba1a1a] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingRoom(null)}
+                  disabled={isSaving}
+                  className="px-5 py-2.5 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-6 py-2.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isSaving ? "Saving Changes..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: DELETE CONFIRMATION                                              */}
+      {/* ========================================================================= */}
+      {deletingRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">warning</span>
+              </div>
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+                  Delete Room?
+                </h3>
+                <p className="text-xs text-[#6B6E6A] mt-1 leading-relaxed">
+                  Are you sure you want to delete <strong className="text-[#2D312C]">&quot;{deletingRoom.name}&quot;</strong>? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeletingRoom(null)}
+                disabled={isSaving}
+                className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isSaving}
+                className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isSaving ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* LIGHTBOX PREVIEW MODAL                                                    */}
+      {/* ========================================================================= */}
+      {previewPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="relative max-w-4xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[#E5E1DA] flex items-center justify-between bg-[#fcf9f5]">
+              <span className="text-sm font-semibold text-[#2D312C] truncate">
+                {previewPhoto.name}
+              </span>
+              <button
+                onClick={() => setPreviewPhoto(null)}
+                className="p-1 rounded-full text-[#6B6E6A] hover:bg-[#eae8e4] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-950 flex items-center justify-center p-4">
+              <img src={previewPhoto.url} alt={previewPhoto.name} className="max-h-[70vh] w-auto max-w-full object-contain rounded-lg shadow-lg" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

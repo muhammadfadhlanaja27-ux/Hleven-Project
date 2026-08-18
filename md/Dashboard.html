@@ -1,0 +1,1009 @@
+<!doctype html>
+<html
+  class="light"
+  lang="en"
+  style="width: 1280px; height: 1335px; overflow: hidden; position: relative"
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>H'Leven Admin - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-fixed-variant": "#3a4b38",
+              surface: "#fcf9f5",
+              "outline-variant": "#c4c8be",
+              "tertiary-fixed": "#ffdbce",
+              "cream-surface": "#F2EBE1",
+              "surface-tint": "#53634a",
+              "surface-bright": "#fcf9f5",
+              "surface-container-low": "#f6f3ef",
+              "on-secondary": "#ffffff",
+              "secondary-fixed-dim": "#b9ccb2",
+              tertiary: "#8f482c",
+              "on-error": "#ffffff",
+              "sidebar-bg": "#2D312C",
+              "on-tertiary-fixed": "#370d00",
+              "border-subtle": "#E5E1DA",
+              "on-secondary-container": "#566752",
+              "surface-dim": "#dcdad6",
+              "tertiary-container": "#ad6042",
+              "on-primary": "#ffffff",
+              "surface-container-high": "#eae8e4",
+              "primary-fixed": "#d6e8c8",
+              "on-tertiary": "#ffffff",
+              "text-main": "#2D312C",
+              background: "#fcf9f5",
+              "surface-container": "#f0ede9",
+              "inverse-surface": "#31302e",
+              "surface-container-lowest": "#ffffff",
+              "secondary-container": "#d2e5cb",
+              "primary-container": "#69795f",
+              "inverse-on-surface": "#f3f0ec",
+              "secondary-fixed": "#d5e8cd",
+              "status-warning": "#D48C45",
+              "on-secondary-fixed": "#101f0f",
+              "error-container": "#ffdad6",
+              secondary: "#52634e",
+              "status-error": "#9B5235",
+              "sidebar-text": "#D1D5D1",
+              "on-surface-variant": "#444840",
+              "surface-variant": "#e5e2de",
+              "on-background": "#1c1c1a",
+              "on-error-container": "#93000a",
+              "text-muted": "#6B6E6A",
+              "status-success": "#6D7E63",
+              "on-primary-fixed": "#111f0b",
+              "primary-fixed-dim": "#baccad",
+              error: "#ba1a1a",
+              "on-primary-fixed-variant": "#3b4b33",
+              "inverse-primary": "#baccad",
+              "on-surface": "#1c1c1a",
+              "on-tertiary-fixed-variant": "#743419",
+              primary: "#506147",
+              "on-tertiary-container": "#fffbff",
+              "surface-container-highest": "#e5e2de",
+              "on-primary-container": "#f8ffee",
+              "tertiary-fixed-dim": "#ffb59a",
+              outline: "#757870",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              "card-padding": "24px",
+              "container-margin": "32px",
+              "sidebar-collapsed": "80px",
+              "base-unit": "4px",
+              "gutter-md": "16px",
+              "gutter-lg": "24px",
+              "sidebar-width": "260px",
+            },
+            fontFamily: {
+              "body-md": ["Inter"],
+              "body-sm": ["Inter"],
+              "display-lg": ["Newsreader"],
+              "headline-lg": ["Newsreader"],
+              "label-sm": ["Inter"],
+              "headline-md": ["Newsreader"],
+              "title-lg": ["Inter"],
+              "label-md": ["Inter"],
+              "headline-lg-mobile": ["Newsreader"],
+            },
+            fontSize: {
+              "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+              "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+              "display-lg": [
+                "40px",
+                {
+                  lineHeight: "48px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg": [
+                "32px",
+                { lineHeight: "40px", fontWeight: "600" },
+              ],
+              "label-sm": ["11px", { lineHeight: "14px", fontWeight: "500" }],
+              "headline-md": [
+                "24px",
+                { lineHeight: "32px", fontWeight: "500" },
+              ],
+              "title-lg": ["18px", { lineHeight: "28px", fontWeight: "600" }],
+              "label-md": [
+                "12px",
+                {
+                  lineHeight: "16px",
+                  letterSpacing: "0.05em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg-mobile": [
+                "28px",
+                { lineHeight: "36px", fontWeight: "600" },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+      .material-symbols-outlined[data-weight="fill"] {
+        font-variation-settings:
+          "FILL" 1,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+
+      .soft-shadow {
+        box-shadow: 0px 4px 24px rgba(0, 0, 0, 0.04);
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden min-h-screen"
+  >
+    <!-- Sidebar component -->
+    <nav
+      class="bg-sidebar-bg w-sidebar-width h-full fixed left-0 top-0 flex flex-col z-50"
+    >
+      <div class="px-6 py-8">
+        <h1 class="font-headline-md text-headline-md font-semibold text-white">
+          H'Leven Admin
+        </h1>
+        <p class="text-sidebar-text font-body-sm text-body-sm opacity-80 mt-1">
+          Operational Excellence
+        </p>
+      </div>
+      <div class="flex-1 overflow-y-auto mt-4">
+        <ul class="flex flex-col gap-1">
+          <li class="">
+            <a
+              class="bg-primary text-white border-l-4 border-primary-fixed flex items-center px-6 py-3 transition-all duration-200 ease-in-out"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">dashboard</span>
+              <span class="font-label-md text-label-md">Dashboard</span>
+            </a>
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">hotel</span>
+              <span class="font-label-md text-label-md">Hotel</span>
+            </a>
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">bed</span>
+              <span class="font-label-md text-label-md">Rooms</span>
+            </a>
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">pool</span>
+              <span class="font-label-md text-label-md">Facilities</span>
+            </a>
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">calendar_today</span>
+              <span class="font-label-md text-label-md">Bookings</span>
+            </a>
+          </li>
+
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">star</span>
+              <span class="font-label-md text-label-md">Reviews</span>
+            </a>
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">notifications</span>
+              <span class="font-label-md text-label-md">Notifications</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="mt-auto mb-6">
+        <ul class="flex flex-col gap-1">
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">account_circle</span>
+              <span class="font-label-md text-label-md">Profile</span>
+            </a>
+          </li>
+          <li class="">
+            <a
+              class="text-sidebar-text flex items-center px-6 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out border-l-4 border-transparent"
+              href="#"
+            >
+              <span class="material-symbols-outlined mr-3">exit_to_app</span>
+              <span class="font-label-md text-label-md">Logout</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <!-- TopNavBar component -->
+    <header
+      class="bg-surface h-16 fixed top-0 right-0 left-sidebar-width z-40 flex justify-between items-center px-container-margin w-[calc(100%-260px)] shadow-[0_1px_0_0_rgba(229,225,218,1)]"
+    >
+      <div class="flex items-center">
+        <h2 class="font-title-lg text-title-lg font-bold text-text-main hidden">
+          H'Leven Admin
+        </h2>
+        <div class="text-text-muted font-body-sm text-body-sm">
+          Dashboard Overview
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <button
+          class="text-text-muted hover:text-primary transition-colors cursor-pointer active:opacity-80 p-2 rounded-full hover:bg-surface-variant"
+        >
+          <span class="material-symbols-outlined">notifications</span>
+        </button>
+        <div
+          class="w-8 h-8 rounded-full bg-cream-surface border border-border-subtle overflow-hidden flex items-center justify-center cursor-pointer"
+        >
+          <img
+            alt="Admin Avatar"
+            class="w-full h-full object-cover"
+            data-alt="A professional headshot of a hotel manager in a dark suit, well lit, neutral background, reflecting an authoritative but approachable demeanor, corporate portrait style."
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWjnuMsIHgUQ7xGG6Y-klL4Jv-tRNY4Pz-Wzes5eudFkzN0uWS83bJEAQzc82gh9j-_TI_bLKG45caLkasDYUaiNnE5ZKLfC-A33e1_wb_7STWW3vnm4RCywzcXYdqQon9EMh4MIDMtdYMQ2WPlhqqTaRyAA_uwpXRYirSrs4RqxquwpU4C9r2NAic0-MoDZHXbbgqdHYAdtG4H5EY5FzpkhUBBU0086EbbFoPKtciH9r4B_w-7hyMgQ"
+          />
+        </div>
+      </div>
+    </header>
+    <!-- Main Canvas -->
+    <main
+      class="pl-sidebar-width pt-16 min-h-screen bg-background p-container-margin"
+    >
+      <div class="max-w-[1400px] mx-auto">
+        <div class="mb-8 flex justify-between items-end">
+          <div>
+            <h2 class="font-headline-lg text-headline-lg text-text-main mb-2">
+              Good morning, Manager
+            </h2>
+            <p class="font-body-md text-body-md text-text-muted">
+              Here is what's happening at H'Leven today.
+            </p>
+          </div>
+          <div class="flex gap-3">
+            <button
+              class="px-4 py-2 border border-outline-variant rounded bg-surface text-primary font-label-md text-label-md hover:bg-surface-variant transition-colors flex items-center"
+            >
+              <span class="material-symbols-outlined mr-2 text-[18px]"
+                >calendar_month</span
+              >
+              Today, Oct 24
+            </button>
+            <button
+              class="px-4 py-2 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-surface-tint transition-colors"
+            >
+              Generate Report
+            </button>
+          </div>
+        </div>
+        <!-- Dashboard reference image container (for style context) -->
+        <div
+          class="mb-8 rounded-lg overflow-hidden border border-border-subtle soft-shadow hidden"
+        >
+          <img
+            alt="Reference Style"
+            class="w-full h-auto opacity-50"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2AymQJGUsy1cJrBgrkoS-aFnvH3NhlzWVQWUQztX6y9xw6jPMRI_D7zFwKCTab2Bnaj-H9uJGUb6c6AYCOOsD1zdmgzQClEglR2eg7XP-5nKxrjRed1fhCn1kF-Y6mHl9Kk3zD_BIwECX2euZLA--zK4cjTWo3iyCRtk0OAf5lwr75tM8u8yYbNt3Kp-vbEWBTmIaWxsp1L94993JjDm7SGdn2LyDw0rWK4w29lY8K4Cqb-gqnxYc_5KnMgYYZpvagRY"
+          />
+        </div>
+        <!-- Summary Cards Bento Grid -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-lg mb-8"
+        >
+          <!-- Total Rooms -->
+          <div
+            class="bg-surface-container-lowest rounded-lg border border-border-subtle p-card-padding soft-shadow flex flex-col justify-between"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <p
+                class="font-label-md text-label-md text-text-muted uppercase tracking-wider"
+              >
+                Total Rooms
+              </p>
+              <span class="material-symbols-outlined text-outline">bed</span>
+            </div>
+            <div>
+              <h3 class="font-headline-lg text-headline-lg text-text-main">
+                124
+              </h3>
+              <p
+                class="font-body-sm text-body-sm text-status-success mt-1 flex items-center"
+              >
+                <span class="material-symbols-outlined text-[14px] mr-1"
+                  >arrow_upward</span
+                >
+                All operational
+              </p>
+            </div>
+          </div>
+          <!-- Available Rooms -->
+          <div
+            class="bg-surface-container-lowest rounded-lg border border-border-subtle p-card-padding soft-shadow flex flex-col justify-between"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <p
+                class="font-label-md text-label-md text-text-muted uppercase tracking-wider"
+              >
+                Available Rooms
+              </p>
+              <span class="material-symbols-outlined text-outline">key</span>
+            </div>
+            <div>
+              <h3 class="font-headline-lg text-headline-lg text-text-main">
+                32
+              </h3>
+              <p class="font-body-sm text-body-sm text-text-muted mt-1">
+                25% of total
+              </p>
+            </div>
+          </div>
+          <!-- Occupied Rooms -->
+          <div
+            class="bg-surface-container-lowest rounded-lg border border-border-subtle p-card-padding soft-shadow flex flex-col justify-between"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <p
+                class="font-label-md text-label-md text-text-muted uppercase tracking-wider"
+              >
+                Occupied Rooms
+              </p>
+              <span class="material-symbols-outlined text-outline"
+                >meeting_room</span
+              >
+            </div>
+            <div>
+              <h3 class="font-headline-lg text-headline-lg text-text-main">
+                92
+              </h3>
+              <p class="font-body-sm text-body-sm text-text-muted mt-1">
+                75% occupancy rate
+              </p>
+            </div>
+          </div>
+          <!-- Total Revenue -->
+          <div
+            class="bg-cream-surface rounded-lg border border-border-subtle p-card-padding soft-shadow flex flex-col justify-between"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <p
+                class="font-label-md text-label-md text-text-main uppercase tracking-wider font-semibold"
+              >
+                Total Revenue
+              </p>
+              <span class="material-symbols-outlined text-primary"
+                >payments</span
+              >
+            </div>
+            <div>
+              <h3 class="font-headline-lg text-headline-lg text-primary">
+                $42,500
+              </h3>
+              <p
+                class="font-body-sm text-body-sm text-text-main opacity-80 mt-1 flex items-center"
+              >
+                <span class="material-symbols-outlined text-[14px] mr-1"
+                  >trending_up</span
+                >
+                +12% vs last week
+              </p>
+            </div>
+          </div>
+        </div>
+        <!-- Secondary Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter-lg mb-8">
+          <div
+            class="bg-surface-container-lowest rounded border border-border-subtle px-6 py-4 flex items-center justify-between col-span-1"
+          >
+            <div>
+              <p class="font-label-sm text-label-sm text-text-muted uppercase">
+                Today's Booking
+              </p>
+              <p class="font-headline-md text-headline-md text-text-main">18</p>
+            </div>
+            <div
+              class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-text-muted"
+            >
+              <span class="material-symbols-outlined">book_online</span>
+            </div>
+          </div>
+          <div
+            class="bg-surface-container-lowest rounded border border-border-subtle px-6 py-4 flex items-center justify-between col-span-1"
+          >
+            <div>
+              <p class="font-label-sm text-label-sm text-text-muted uppercase">
+                Today's Check In
+              </p>
+              <p class="font-headline-md text-headline-md text-text-main">24</p>
+            </div>
+            <div
+              class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container"
+            >
+              <span class="material-symbols-outlined">login</span>
+            </div>
+          </div>
+          <div
+            class="bg-surface-container-lowest rounded border border-border-subtle px-6 py-4 flex items-center justify-between col-span-1"
+          >
+            <div>
+              <p class="font-label-sm text-label-sm text-text-muted uppercase">
+                Today's Check Out
+              </p>
+              <p class="font-headline-md text-headline-md text-text-main">15</p>
+            </div>
+            <div
+              class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container"
+            >
+              <span class="material-symbols-outlined">logout</span>
+            </div>
+          </div>
+          <div
+            class="bg-surface-container-lowest rounded border border-border-subtle px-6 py-4 flex items-center justify-between col-span-1"
+          >
+            <div>
+              <p class="font-label-sm text-label-sm text-text-muted uppercase">
+                Average Rating
+              </p>
+              <div class="flex items-center gap-1">
+                <p class="font-headline-md text-headline-md text-text-main">
+                  4.8
+                </p>
+                <span
+                  class="material-symbols-outlined text-status-warning text-[20px]"
+                  data-weight="fill"
+                  >star</span
+                >
+              </div>
+            </div>
+            <div
+              class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-status-warning"
+            >
+              <span class="material-symbols-outlined">reviews</span>
+            </div>
+          </div>
+        </div>
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter-lg mb-8">
+          <!-- Booking Statistics -->
+          <div
+            class="bg-surface-container-lowest rounded-lg border border-border-subtle p-card-padding soft-shadow lg:col-span-1"
+          >
+            <h3 class="font-title-lg text-title-lg text-text-main mb-6">
+              Booking Statistics
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-outline-variant"></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Pending</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">12</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-3 h-3 rounded-full bg-status-warning opacity-70"
+                  ></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Unpaid</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">5</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-status-success"></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Paid</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">45</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-primary"></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Checked In</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">92</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-text-muted"></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Checked Out</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">15</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-status-error"></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Cancelled</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">3</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-outline"></div>
+                  <span class="font-body-sm text-body-sm text-text-muted"
+                    >Expired</span
+                  >
+                </div>
+                <span class="font-label-md text-label-md">1</span>
+              </div>
+            </div>
+          </div>
+          <!-- Revenue Analysis -->
+          <div
+            class="bg-surface-container-lowest rounded-lg border border-border-subtle p-card-padding soft-shadow lg:col-span-2 flex flex-col"
+          >
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="font-title-lg text-title-lg text-text-main">
+                Revenue Analysis
+              </h3>
+              <div class="flex gap-2">
+                <button
+                  class="px-3 py-1 text-label-sm font-label-sm rounded-full bg-surface-variant text-text-main border border-outline-variant"
+                >
+                  Daily
+                </button>
+                <button
+                  class="px-3 py-1 text-label-sm font-label-sm rounded-full bg-primary text-white"
+                >
+                  Monthly
+                </button>
+                <button
+                  class="px-3 py-1 text-label-sm font-label-sm rounded-full bg-transparent text-text-muted hover:bg-surface-variant transition-colors"
+                >
+                  Yearly
+                </button>
+              </div>
+            </div>
+            <!-- Faux Chart Area -->
+            <div
+              class="flex-1 relative min-h-[200px] border-b border-l border-border-subtle pl-4 pb-4 flex items-end"
+            >
+              <!-- Y-axis labels -->
+              <div
+                class="absolute left-[-30px] top-0 bottom-4 flex flex-col justify-between text-label-sm text-text-muted"
+              >
+                <span class="">$60k</span>
+                <span class="">$40k</span>
+                <span class="">$20k</span>
+                <span class="">$0</span>
+              </div>
+              <!-- Grid lines -->
+              <div
+                class="absolute inset-0 left-4 bottom-4 flex flex-col justify-between pointer-events-none"
+              >
+                <div
+                  class="w-full border-t border-border-subtle border-dashed opacity-50"
+                ></div>
+                <div
+                  class="w-full border-t border-border-subtle border-dashed opacity-50"
+                ></div>
+                <div
+                  class="w-full border-t border-border-subtle border-dashed opacity-50"
+                ></div>
+                <div class="w-full"></div>
+                <!-- Bottom line is handled by parent border -->
+              </div>
+              <!-- Bars -->
+              <div
+                class="w-full h-full flex items-end justify-around relative z-10 px-2 pt-4"
+              >
+                <div
+                  class="w-[8%] bg-primary-fixed rounded-t h-[40%] hover:bg-primary transition-colors relative group cursor-pointer"
+                >
+                  <div
+                    class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface text-text-main text-label-sm px-2 py-1 rounded border border-border-subtle shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  >
+                    $24k
+                  </div>
+                </div>
+                <div
+                  class="w-[8%] bg-primary-fixed rounded-t h-[55%] hover:bg-primary transition-colors relative group cursor-pointer"
+                ></div>
+                <div
+                  class="w-[8%] bg-primary-fixed rounded-t h-[45%] hover:bg-primary transition-colors relative group cursor-pointer"
+                ></div>
+                <div
+                  class="w-[8%] bg-primary rounded-t h-[75%] hover:bg-surface-tint transition-colors relative group cursor-pointer"
+                >
+                  <div
+                    class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface text-text-main text-label-sm px-2 py-1 rounded border border-border-subtle shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  >
+                    $45k
+                  </div>
+                </div>
+                <div
+                  class="w-[8%] bg-primary-fixed rounded-t h-[60%] hover:bg-primary transition-colors relative group cursor-pointer"
+                ></div>
+                <div
+                  class="w-[8%] bg-primary-fixed rounded-t h-[85%] hover:bg-primary transition-colors relative group cursor-pointer"
+                ></div>
+                <div
+                  class="w-[8%] bg-primary-fixed rounded-t h-[50%] hover:bg-primary transition-colors relative group cursor-pointer"
+                ></div>
+              </div>
+              <!-- X-axis labels -->
+              <div
+                class="absolute -bottom-6 left-4 right-0 flex justify-around text-label-sm text-text-muted"
+              >
+                <span class="">Apr</span>
+                <span class="">May</span>
+                <span class="">Jun</span>
+                <span class="">Jul</span>
+                <span class="">Aug</span>
+                <span class="">Sep</span>
+                <span class="">Oct</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Recent Bookings Table -->
+        <div
+          class="bg-surface-container-lowest rounded-lg border border-border-subtle overflow-hidden soft-shadow mb-8"
+        >
+          <div
+            class="p-card-padding border-b border-border-subtle flex justify-between items-center bg-surface"
+          >
+            <h3 class="font-title-lg text-title-lg text-text-main">
+              Recent Bookings
+            </h3>
+            <button
+              class="text-primary font-label-md text-label-md hover:underline"
+            >
+              View All
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-cream-surface border-b border-border-subtle">
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Booking Code
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Guest
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Room
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Check In
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Check Out
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Amount
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Payment Status
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider"
+                  >
+                    Booking Status
+                  </th>
+                  <th
+                    class="p-4 font-label-md text-label-md text-text-muted uppercase tracking-wider text-center"
+                  >
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody
+                class="divide-y divide-border-subtle bg-surface-container-lowest"
+              >
+                <tr class="hover:bg-[#A8BBA2]/10 transition-colors">
+                  <td
+                    class="p-4 font-body-sm text-body-sm text-text-main font-medium"
+                  >
+                    #HL-8942
+                  </td>
+                  <td class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden"
+                      >
+                        <img
+                          alt="Guest Avatar"
+                          class="w-full h-full object-cover"
+                          data-alt="A small circular portrait photo of a sophisticated older gentleman with a neat grey beard, wearing a casual linen shirt, neutral background, professional portrait."
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1J-tHFzt5HJiN28H2bGGXhd1cWZvS03wbWBKLv1mfka0QB93OSyLD11ZpvSMB-WaLtkKeS6wPfQ0YG1h8fKZffFY_jJCCxwFeDXu4Cyg3UOl9nBsk_9YDqLWNRGvBrgtCZB0befOEHgVNmJaVOhYUs07tLcN1y8a3JLImFI_J11PN_QPWZxT0SJed_26sxnE72XcCFR01m6QGWrH8-tHCvqe_hQionK1WeCoV0SbFtAP_YvXzz7zRYQ"
+                        />
+                      </div>
+                      <span class="font-body-sm text-body-sm text-text-main"
+                        >Arthur Pendelton</span
+                      >
+                    </div>
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Deluxe King - 402
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 24, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 28, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-main">
+                    $1,250
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#E4EBE0] text-[#4A5D43] font-label-sm text-label-sm"
+                      >Paid</span
+                    >
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#E8EDEA] text-[#2D312C] font-label-sm text-label-sm border border-border-subtle"
+                      >Checked In</span
+                    >
+                  </td>
+                  <td class="p-4 text-center">
+                    <button
+                      class="text-text-muted hover:text-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-[#A8BBA2]/10 transition-colors">
+                  <td
+                    class="p-4 font-body-sm text-body-sm text-text-main font-medium"
+                  >
+                    #HL-8943
+                  </td>
+                  <td class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden flex items-center justify-center text-text-muted font-label-md"
+                      >
+                        ES
+                      </div>
+                      <span class="font-body-sm text-body-sm text-text-main"
+                        >Elena Sterling</span
+                      >
+                    </div>
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Suite - 501
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 24, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 26, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-main">
+                    $850
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#FFF0E0] text-[#9B5235] font-label-sm text-label-sm"
+                      >Unpaid</span
+                    >
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#F6F3EF] text-[#6B6E6A] font-label-sm text-label-sm border border-border-subtle"
+                      >Pending</span
+                    >
+                  </td>
+                  <td class="p-4 text-center">
+                    <button
+                      class="text-text-muted hover:text-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-[#A8BBA2]/10 transition-colors">
+                  <td
+                    class="p-4 font-body-sm text-body-sm text-text-main font-medium"
+                  >
+                    #HL-8944
+                  </td>
+                  <td class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden"
+                      >
+                        <img
+                          alt="Guest Avatar"
+                          class="w-full h-full object-cover"
+                          data-alt="A small circular portrait photo of a young professional woman smiling slightly, wearing a beige blazer, soft natural lighting, plain background."
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuATbUKGAcuFuDKzkzrXx_ba6uENeeZpnEHrOLcDPdRd8mZnDinnYRpszxwf0ie_MUkFrnDkZUNPkaON253rc5isYXViaJQgUXItChDpCsKOBfJFvv4Ph4LNyPj7ryXe2A8ZQUb4Ql355e5TMe2dTdDrVGtuja3btVeFdlRTpA06VOqhxtnszmy4xXUNJJCWhF17aH5PnGAPLis8OrOWESdWgGNB1TJ_MAUS9h4a9ukvUIY1XDTJt82QDA"
+                        />
+                      </div>
+                      <span class="font-body-sm text-body-sm text-text-main"
+                        >Marcus Chen</span
+                      >
+                    </div>
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Standard - 215
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 22, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 24, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-main">
+                    $450
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#E4EBE0] text-[#4A5D43] font-label-sm text-label-sm"
+                      >Paid</span
+                    >
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#F0EDE9] text-[#6B6E6A] font-label-sm text-label-sm border border-border-subtle"
+                      >Checked Out</span
+                    >
+                  </td>
+                  <td class="p-4 text-center">
+                    <button
+                      class="text-text-muted hover:text-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-[#A8BBA2]/10 transition-colors">
+                  <td
+                    class="p-4 font-body-sm text-body-sm text-text-main font-medium"
+                  >
+                    #HL-8945
+                  </td>
+                  <td class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden flex items-center justify-center text-text-muted font-label-md"
+                      >
+                        DR
+                      </div>
+                      <span class="font-body-sm text-body-sm text-text-main"
+                        >David Reyes</span
+                      >
+                    </div>
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Ocean View - 310
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 25, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-muted">
+                    Oct 30, 2023
+                  </td>
+                  <td class="p-4 font-body-sm text-body-sm text-text-main">
+                    $1,800
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#E4EBE0] text-[#4A5D43] font-label-sm text-label-sm"
+                      >Paid</span
+                    >
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded bg-[#F6F3EF] text-[#6B6E6A] font-label-sm text-label-sm border border-border-subtle"
+                      >Pending</span
+                    >
+                  </td>
+                  <td class="p-4 text-center">
+                    <button
+                      class="text-text-muted hover:text-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div
+      id="snapdom-sandbox"
+      data-snapdom-sandbox="true"
+      aria-hidden="true"
+      style="
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+        width: 0px;
+        height: 0px;
+        overflow: hidden;
+      "
+    ></div>
+  </body>
+</html>

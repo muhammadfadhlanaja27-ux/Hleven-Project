@@ -12,12 +12,14 @@ import { Toaster } from "react-hot-toast";
 import Navbar from "./components/layouts/NavBar";
 import Footer from "./components/layouts/Footer";
 import SuperAdminLayout from "./components/super-admin/SuperAdminLayout";
-import AdminHotelLayout from "./components/layouts/AdminHotelLayout";
+import AdminHotelLayout from "./components/admin-hotel/AdminHotelLayout";
 
 // User / Public Pages
 import LandingPage from "./pages/user/LandingPage";
+import HotelList from "./pages/user/HotelList";
+import RoomDetail from "./pages/user/RoomDetail";
 import Login from "./pages/auth/Login";
-import Register from "./Pages/auth/Register";
+import Register from "./pages/auth/Register";
 import UserProfile from "./pages/user/UserProfile";
 import HotelDetail from "./pages/user/HotelDetail";
 import BookingPage from "./pages/user/BookingPage";
@@ -26,9 +28,14 @@ import BookingHistory from "./pages/user/BookingHistory";
 // Admin Hotel pages
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
 import Dashboard from "./pages/admin-hotel/Dashboard";
+import HotelInformation from "./pages/admin-hotel/HotelInformation";
+import FacilityManager from "./pages/admin-hotel/FacilityManager";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
 import BookingList from "./pages/admin-hotel/BookingList";
+import ReviewManager from "./pages/admin-hotel/ReviewManager";
+import RevenueReport from "./pages/admin-hotel/Reports";
+import AdminProfile from "./pages/admin-hotel/Profile";
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
@@ -138,9 +145,14 @@ function App() {
           <Route element={<AdminHotelProtectedRoute />}>
             <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
+              <Route path="/admin/hotel" element={<HotelInformation />} />
+              <Route path="/admin/facilities" element={<FacilityManager />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
               <Route path="/admin/bookings" element={<BookingList />} />
+              <Route path="/admin/reviews" element={<ReviewManager />} />
+              <Route path="/admin/revenue" element={<RevenueReport />} />
+              <Route path="/admin/profile" element={<AdminProfile />} />
             </Route>
           </Route>
 

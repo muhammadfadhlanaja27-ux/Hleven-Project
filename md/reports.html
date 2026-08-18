@@ -1,0 +1,1182 @@
+<!doctype html>
+
+<html class="light" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Revenue Report - H'Leven Admin</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Newsreader:wght@400;500;600&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#506147",
+              "tertiary-container": "#ad6042",
+              "on-secondary-container": "#566752",
+              "inverse-primary": "#baccad",
+              "secondary-container": "#d2e5cb",
+              "on-background": "#1c1c1a",
+              "on-primary-fixed": "#111f0b",
+              "status-error": "#9B5235",
+              "border-subtle": "#E5E1DA",
+              "inverse-on-surface": "#f3f0ec",
+              "on-primary-fixed-variant": "#3b4b33",
+              "outline-variant": "#c4c8be",
+              "on-surface-variant": "#444840",
+              "primary-fixed": "#d6e8c8",
+              "on-tertiary-container": "#fffbff",
+              "surface-container-low": "#f6f3ef",
+              "on-tertiary-fixed": "#370d00",
+              "tertiary-fixed": "#ffdbce",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#b9ccb2",
+              "on-secondary-fixed-variant": "#3a4b38",
+              "surface-container": "#f0ede9",
+              "surface-dim": "#dcdad6",
+              "text-main": "#2D312C",
+              "surface-tint": "#53634a",
+              surface: "#fcf9f5",
+              "on-error-container": "#93000a",
+              error: "#ba1a1a",
+              "text-muted": "#6B6E6A",
+              "on-secondary": "#ffffff",
+              "sidebar-bg": "#2D312C",
+              secondary: "#52634e",
+              "surface-container-high": "#eae8e4",
+              "on-tertiary-fixed-variant": "#743419",
+              "surface-container-highest": "#e5e2de",
+              "sidebar-text": "#D1D5D1",
+              "secondary-fixed": "#d5e8cd",
+              "cream-surface": "#F2EBE1",
+              "surface-bright": "#fcf9f5",
+              "on-error": "#ffffff",
+              "on-primary-container": "#f8ffee",
+              "status-success": "#6D7E63",
+              "inverse-surface": "#31302e",
+              "primary-fixed-dim": "#baccad",
+              "status-warning": "#D48C45",
+              "error-container": "#ffdad6",
+              "tertiary-fixed-dim": "#ffb59a",
+              outline: "#757870",
+              tertiary: "#8f482c",
+              "on-secondary-fixed": "#101f0f",
+              background: "#fcf9f5",
+              "surface-variant": "#e5e2de",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-surface": "#1c1c1a",
+              "primary-container": "#69795f",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              "sidebar-width": "260px",
+              "card-padding": "24px",
+              "gutter-md": "16px",
+              "base-unit": "4px",
+              "gutter-lg": "24px",
+              "container-margin": "32px",
+              "sidebar-collapsed": "80px",
+            },
+            fontFamily: {
+              "body-sm": ["Inter"],
+              "title-lg": ["Inter"],
+              "headline-md": ["Newsreader"],
+              "label-md": ["Inter"],
+              "label-sm": ["Inter"],
+              "body-md": ["Inter"],
+              "headline-lg": ["Newsreader"],
+              "display-lg": ["Newsreader"],
+              "headline-lg-mobile": ["Newsreader"],
+            },
+            fontSize: {
+              "body-sm": [
+                "14px",
+                {
+                  lineHeight: "20px",
+                  fontWeight: "400",
+                },
+              ],
+              "title-lg": [
+                "18px",
+                {
+                  lineHeight: "28px",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-md": [
+                "24px",
+                {
+                  lineHeight: "32px",
+                  fontWeight: "500",
+                },
+              ],
+              "label-md": [
+                "12px",
+                {
+                  lineHeight: "16px",
+                  letterSpacing: "0.05em",
+                  fontWeight: "600",
+                },
+              ],
+              "label-sm": [
+                "11px",
+                {
+                  lineHeight: "14px",
+                  fontWeight: "500",
+                },
+              ],
+              "body-md": [
+                "16px",
+                {
+                  lineHeight: "24px",
+                  fontWeight: "400",
+                },
+              ],
+              "headline-lg": [
+                "32px",
+                {
+                  lineHeight: "40px",
+                  fontWeight: "600",
+                },
+              ],
+              "display-lg": [
+                "40px",
+                {
+                  lineHeight: "48px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg-mobile": [
+                "28px",
+                {
+                  lineHeight: "36px",
+                  fontWeight: "600",
+                },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .elevation-soft {
+        box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.04);
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background text-on-background font-body-md text-body-md antialiased h-screen overflow-hidden flex"
+  >
+    <!-- SideNavBar -->
+    <aside
+      class="hidden md:flex bg-sidebar-bg dark:bg-sidebar-bg fixed left-0 top-0 h-full w-sidebar-width flex-col h-full py-6 z-50 transition-transform duration-300"
+    >
+      <div class="px-6 mb-8 flex items-center gap-4">
+        <div
+          class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0"
+        >
+          <span
+            class="material-symbols-outlined text-primary-fixed"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >hotel</span
+          >
+        </div>
+        <div>
+          <h1
+            class="text-headline-md font-headline-md text-on-primary dark:text-primary-fixed leading-tight tracking-tight"
+          >
+            H'Leven Admin
+          </h1>
+          <p
+            class="text-label-md font-label-md text-sidebar-text mt-1 opacity-80"
+          >
+            Management Suite
+          </p>
+        </div>
+      </div>
+      <div class="px-4 mb-6">
+        <button
+          class="w-full bg-primary text-on-primary hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant rounded-lg py-3 px-4 flex items-center justify-center gap-2 transition-colors font-label-md text-label-md"
+        >
+          <span class="material-symbols-outlined text-[18px]">add</span>
+          New Booking
+        </button>
+      </div>
+      <nav class="flex-1 px-2 space-y-1 overflow-y-auto">
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+            >dashboard</span
+          >
+          <span class="text-body-md font-body-md">Dashboard</span>
+        </a>
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+            >hotel</span
+          >
+          <span class="text-body-md font-body-md">Hotel</span>
+        </a>
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+            >bed</span
+          >
+          <span class="text-body-md font-body-md">Rooms</span>
+        </a>
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+            >pool</span
+          >
+          <span class="text-body-md font-body-md">Facilities</span>
+        </a>
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+            >calendar_month</span
+          >
+          <span class="text-body-md font-body-md">Bookings</span>
+        </a>
+        <a
+          class="bg-primary text-on-primary border-l-4 border-primary px-4 py-3 flex items-center gap-3 rounded-r-lg opacity-90 transition-all duration-200"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px]"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >monitoring</span
+          >
+          <span class="text-body-md font-body-md font-medium">Reports</span>
+        </a>
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+            >notifications</span
+          >
+          <span class="text-body-md font-body-md">Notifications</span>
+        </a>
+      </nav>
+      <div
+        class="mt-auto px-2 space-y-1 pt-6 border-t border-outline-variant/20 mx-4"
+      >
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] group-hover:rotate-45 transition-transform duration-300"
+            >settings</span
+          >
+          <span class="text-body-md font-body-md">Settings</span>
+        </a>
+        <a
+          class="text-sidebar-text hover:text-on-primary px-4 py-3 flex items-center gap-3 transition-colors rounded-lg hover:bg-primary-fixed-variant dark:hover:bg-on-primary-fixed-variant group"
+          href="#"
+        >
+          <span class="material-symbols-outlined text-[20px]">logout</span>
+          <span class="text-body-md font-body-md">Log Out</span>
+        </a>
+      </div>
+    </aside>
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col md:ml-sidebar-width h-full w-full">
+      <!-- TopNavBar -->
+      <header
+        class="bg-surface dark:bg-surface-dim fixed top-0 right-0 w-full md:w-[calc(100%-260px)] h-20 border-b border-border-subtle dark:border-outline-variant shadow-sm z-40 flex justify-between items-center px-gutter-lg transition-all duration-300"
+      >
+        <!-- Mobile Menu Toggle (Visible only on mobile) -->
+        <button
+          class="md:hidden p-2 text-on-surface hover:bg-surface-variant rounded-full transition-colors mr-2"
+        >
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <!-- Navigation Links (Desktop) -->
+        <nav class="hidden md:flex items-end h-full pt-8 gap-8">
+          <a
+            class="text-on-surface-variant dark:text-surface-variant pb-2 hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-md text-label-md uppercase tracking-wider relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full"
+            href="#"
+            >Overview</a
+          >
+          <a
+            class="text-primary font-semibold border-b-2 border-primary pb-2 scale-95 transition-transform font-label-md text-label-md uppercase tracking-wider"
+            href="#"
+            >Reports</a
+          >
+          <a
+            class="text-on-surface-variant dark:text-surface-variant pb-2 hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-md text-label-md uppercase tracking-wider relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full"
+            href="#"
+            >Activity</a
+          >
+        </nav>
+        <div class="flex-1 md:hidden">
+          <h2
+            class="text-headline-md font-headline-md font-semibold text-on-surface truncate"
+          >
+            H'Leven Admin
+          </h2>
+        </div>
+        <!-- Trailing Actions -->
+        <div class="flex items-center gap-4">
+          <button
+            class="hidden sm:flex p-2 text-on-surface-variant hover:text-primary hover:bg-surface-variant rounded-full transition-colors"
+          >
+            <span class="material-symbols-outlined">search</span>
+          </button>
+          <button
+            class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-variant rounded-full transition-colors relative"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+            <span
+              class="absolute top-1 right-1 w-2 h-2 bg-status-error rounded-full"
+            ></span>
+          </button>
+          <button
+            class="hidden sm:flex p-2 text-on-surface-variant hover:text-primary hover:bg-surface-variant rounded-full transition-colors"
+          >
+            <span class="material-symbols-outlined">help_outline</span>
+          </button>
+          <button
+            class="hidden lg:flex bg-primary text-on-primary hover:bg-on-primary-fixed-variant rounded-lg py-2 px-4 items-center gap-2 transition-colors font-label-md text-label-md"
+          >
+            Check-in Guest
+          </button>
+          <div
+            class="w-10 h-10 rounded-full bg-cream-surface border border-border-subtle overflow-hidden shrink-0 cursor-pointer hover:border-primary transition-colors"
+          >
+            <img
+              alt="Administrator Profile"
+              class="w-full h-full object-cover"
+              data-alt="A sophisticated, high-quality corporate headshot of a hospitality administrator in a luxury hotel setting. The lighting is soft and flattering, highlighting a professional yet approachable demeanor. The color palette is warm and natural, aligning with the organic, minimalist aesthetic of the H'Leven brand. The background is a slightly blurred, high-end hotel lobby environment."
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwvaR3NyOu61kL-jIS8AO-InHxN5jjupsj-WHIc3cppRogogy_GuSuWfwLBy0TfOE5gWFk1v8o9Ka-_appJpfmsappTTkzd2qlUE1CPtkxxDVJv4LR0eFKj3iRfvx27yAOP-vYW7x2VuPa2v2ob2h-Wve1jQ4hZRLl73iPZehWnLJ3cjF8nEp3Y3v9kD7JB7sk8NoyORaTUeGWMOvwoEBiK0V3gzNSWOZ2lYKUrMr9V7sBuig3bwSZ-g"
+            />
+          </div>
+        </div>
+      </header>
+      <!-- Main Canvas -->
+      <main
+        class="flex-1 overflow-y-auto mt-20 p-4 md:p-container-margin bg-background pb-24 md:pb-container-margin"
+      >
+        <div class="max-w-[1440px] mx-auto space-y-8">
+          <!-- Page Header & Period Selector -->
+          <div
+            class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-border-subtle"
+          >
+            <div>
+              <h2
+                class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-text-main mb-2"
+              >
+                Revenue Report
+              </h2>
+              <p class="text-body-md font-body-md text-text-muted">
+                Monitor and analyze your hotel's revenue performance.
+              </p>
+            </div>
+            <div
+              class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+            >
+              <div
+                class="flex items-center bg-white rounded-lg border border-border-subtle p-1 elevation-soft"
+              >
+                <button
+                  class="px-4 py-2 text-label-sm font-label-sm text-text-muted hover:bg-surface-container rounded-md transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  class="px-4 py-2 text-label-sm font-label-sm text-text-muted hover:bg-surface-container rounded-md transition-colors"
+                >
+                  This Week
+                </button>
+                <button
+                  class="px-4 py-2 text-label-sm font-label-sm bg-primary text-on-primary rounded-md shadow-sm transition-colors"
+                >
+                  This Month
+                </button>
+                <button
+                  class="px-4 py-2 text-label-sm font-label-sm text-text-muted hover:bg-surface-container rounded-md transition-colors hidden xl:block"
+                >
+                  Last Month
+                </button>
+                <button
+                  class="px-4 py-2 text-label-sm font-label-sm text-text-muted hover:bg-surface-container rounded-md transition-colors hidden xl:block"
+                >
+                  This Year
+                </button>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  class="flex items-center gap-2 bg-white border border-border-subtle px-4 py-2.5 rounded-lg text-body-sm font-body-sm text-text-main hover:border-primary transition-colors elevation-soft whitespace-nowrap"
+                >
+                  <span
+                    class="material-symbols-outlined text-[18px] text-text-muted"
+                    >calendar_today</span
+                  >
+                  Aug 1 - Aug 18, 2026
+                </button>
+                <button
+                  class="flex items-center gap-2 bg-white border border-border-subtle px-4 py-2.5 rounded-lg text-label-md font-label-md text-text-main hover:bg-surface-container transition-colors elevation-soft whitespace-nowrap"
+                >
+                  Export Report
+                  <span class="material-symbols-outlined text-[18px]"
+                    >expand_more</span
+                  >
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Bento Grid Layout for Dashboard content -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <!-- KPI Cards (Top Row) -->
+            <div
+              class="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              <!-- Total Revenue -->
+              <div
+                class="bg-white rounded-xl p-card-padding border border-border-subtle elevation-soft relative overflow-hidden group"
+              >
+                <div
+                  class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-6xl text-primary"
+                    >payments</span
+                  >
+                </div>
+                <div
+                  class="flex justify-between items-start mb-4 relative z-10"
+                >
+                  <h3
+                    class="text-body-sm font-body-sm text-text-muted uppercase tracking-wider font-semibold"
+                  >
+                    Total Revenue
+                  </h3>
+                  <div
+                    class="bg-secondary-container text-on-secondary-container px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined text-[14px]"
+                      >trending_up</span
+                    >
+                    +12.5%
+                  </div>
+                </div>
+                <div class="relative z-10">
+                  <span
+                    class="text-headline-lg-mobile font-headline-lg-mobile md:text-headline-lg md:font-headline-lg text-text-main block mb-1"
+                    >Rp 84.500.000</span
+                  >
+                  <span class="text-label-sm font-label-sm text-text-muted"
+                    >vs Rp 75.100.000 last period</span
+                  >
+                </div>
+              </div>
+              <!-- Paid Revenue -->
+              <div
+                class="bg-white rounded-xl p-card-padding border border-border-subtle elevation-soft relative overflow-hidden group"
+              >
+                <div
+                  class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+                >
+                  <span
+                    class="material-symbols-outlined text-6xl text-status-success"
+                    >check_circle</span
+                  >
+                </div>
+                <div
+                  class="flex justify-between items-start mb-4 relative z-10"
+                >
+                  <h3
+                    class="text-body-sm font-body-sm text-text-muted uppercase tracking-wider font-semibold"
+                  >
+                    Paid Revenue
+                  </h3>
+                </div>
+                <div class="relative z-10">
+                  <span
+                    class="text-headline-lg-mobile font-headline-lg-mobile md:text-headline-lg md:font-headline-lg text-text-main block mb-1"
+                    >Rp 78.250.000</span
+                  >
+                  <div
+                    class="w-full bg-surface-container rounded-full h-1.5 mt-3"
+                  >
+                    <div
+                      class="bg-status-success h-1.5 rounded-full"
+                      style="width: 92%"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Pending Revenue -->
+              <div
+                class="bg-white rounded-xl p-card-padding border border-border-subtle elevation-soft relative overflow-hidden group"
+              >
+                <div
+                  class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+                >
+                  <span
+                    class="material-symbols-outlined text-6xl text-status-warning"
+                    >schedule</span
+                  >
+                </div>
+                <div
+                  class="flex justify-between items-start mb-4 relative z-10"
+                >
+                  <h3
+                    class="text-body-sm font-body-sm text-text-muted uppercase tracking-wider font-semibold"
+                  >
+                    Pending Revenue
+                  </h3>
+                </div>
+                <div class="relative z-10">
+                  <span
+                    class="text-headline-lg-mobile font-headline-lg-mobile md:text-headline-lg md:font-headline-lg text-text-main block mb-1"
+                    >Rp 6.250.000</span
+                  >
+                  <div
+                    class="w-full bg-surface-container rounded-full h-1.5 mt-3"
+                  >
+                    <div
+                      class="bg-status-warning h-1.5 rounded-full"
+                      style="width: 8%"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Total Bookings & Avg Value -->
+              <div
+                class="bg-surface-bright rounded-xl border border-border-subtle elevation-soft flex flex-col justify-between"
+              >
+                <div
+                  class="p-4 border-b border-border-subtle flex justify-between items-center bg-cream-surface rounded-t-xl"
+                >
+                  <div>
+                    <h3
+                      class="text-label-sm font-label-sm text-text-muted uppercase tracking-wider"
+                    >
+                      Total Bookings
+                    </h3>
+                    <span
+                      class="text-headline-md font-headline-md text-text-main"
+                      >128</span
+                    >
+                  </div>
+                  <span class="material-symbols-outlined text-text-muted"
+                    >book_online</span
+                  >
+                </div>
+                <div class="p-4 flex justify-between items-center">
+                  <div>
+                    <h3
+                      class="text-label-sm font-label-sm text-text-muted uppercase tracking-wider"
+                    >
+                      Avg. Booking Value
+                    </h3>
+                    <span class="text-title-lg font-title-lg text-text-main"
+                      >Rp 660.000</span
+                    >
+                  </div>
+                  <span class="material-symbols-outlined text-text-muted"
+                    >receipt_long</span
+                  >
+                </div>
+              </div>
+            </div>
+            <!-- Main Chart Area -->
+            <div
+              class="md:col-span-8 bg-white rounded-xl border border-border-subtle elevation-soft p-card-padding flex flex-col"
+            >
+              <div class="flex justify-between items-center mb-6">
+                <div>
+                  <h3 class="text-title-lg font-title-lg text-text-main">
+                    Revenue Overview
+                  </h3>
+                  <p class="text-body-sm font-body-sm text-text-muted">
+                    Daily revenue performance for August 2026
+                  </p>
+                </div>
+                <div class="flex bg-surface-container rounded-lg p-1">
+                  <button
+                    class="px-3 py-1 text-label-sm font-label-sm bg-white rounded shadow-sm text-text-main"
+                  >
+                    Daily
+                  </button>
+                  <button
+                    class="px-3 py-1 text-label-sm font-label-sm text-text-muted hover:text-text-main transition-colors"
+                  >
+                    Weekly
+                  </button>
+                </div>
+              </div>
+              <!-- Placeholder for Chart -->
+              <div
+                class="flex-1 min-h-[300px] w-full bg-surface-container-low rounded-lg border border-dashed border-outline-variant relative flex items-center justify-center overflow-hidden group"
+              >
+                <!-- Abstract Representation of an Area Chart -->
+                <div
+                  class="absolute inset-0 opacity-50 bg-gradient-to-t from-primary/10 to-transparent"
+                ></div>
+                <!-- Simplified visual representation since we can't use complex SVGs easily without bloating -->
+                <div
+                  class="w-full h-full p-4 flex items-end justify-between gap-1"
+                >
+                  <div
+                    class="w-full bg-primary/20 rounded-t-sm"
+                    style="height: 30%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/30 rounded-t-sm"
+                    style="height: 45%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/40 rounded-t-sm"
+                    style="height: 35%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/50 rounded-t-sm"
+                    style="height: 60%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/60 rounded-t-sm"
+                    style="height: 50%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/70 rounded-t-sm"
+                    style="height: 80%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/80 rounded-t-sm"
+                    style="height: 65%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary rounded-t-sm"
+                    style="height: 90%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/90 rounded-t-sm"
+                    style="height: 75%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/80 rounded-t-sm"
+                    style="height: 85%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/70 rounded-t-sm"
+                    style="height: 55%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary/60 rounded-t-sm"
+                    style="height: 40%"
+                  ></div>
+                </div>
+                <div
+                  class="absolute inset-0 flex items-center justify-center bg-white/80 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+                >
+                  <p
+                    class="text-body-sm font-body-sm text-text-muted flex items-center gap-2"
+                  >
+                    <span class="material-symbols-outlined">data_usage</span>
+                    Interactive chart component would render here
+                  </p>
+                </div>
+              </div>
+            </div>
+            <!-- Breakdown & Insights Area -->
+            <div class="md:col-span-4 flex flex-col gap-6">
+              <!-- Revenue by Room Type (Donut Chart representation) -->
+              <div
+                class="bg-white rounded-xl border border-border-subtle elevation-soft p-card-padding"
+              >
+                <h3 class="text-title-lg font-title-lg text-text-main mb-6">
+                  Revenue by Room Type
+                </h3>
+                <div class="flex items-center gap-6 mb-6">
+                  <!-- Abstract Donut -->
+                  <div
+                    class="relative w-24 h-24 shrink-0 rounded-full border-8 border-surface-container flex items-center justify-center"
+                  >
+                    <div
+                      class="absolute inset-0 rounded-full border-8 border-primary"
+                      style="
+                        clip-path: polygon(
+                          50% 50%,
+                          100% 0,
+                          100% 100%,
+                          0 100%,
+                          0 50%
+                        );
+                        border-right-color: transparent;
+                        border-bottom-color: transparent;
+                        transform: rotate(45deg);
+                      "
+                    ></div>
+                    <div
+                      class="absolute inset-0 rounded-full border-8 border-tertiary-container"
+                      style="
+                        clip-path: polygon(50% 50%, 0 0, 100% 0);
+                        transform: rotate(45deg);
+                      "
+                    ></div>
+                    <span class="text-body-sm font-body-sm text-text-muted"
+                      >100%</span
+                    >
+                  </div>
+                  <div class="flex-1 space-y-3">
+                    <div
+                      class="flex justify-between items-center text-body-sm font-body-sm"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-primary"></span>
+                        <span class="text-text-main">Deluxe</span>
+                      </div>
+                      <span class="font-medium">38.5%</span>
+                    </div>
+                    <div
+                      class="flex justify-between items-center text-body-sm font-body-sm"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="w-3 h-3 rounded-full bg-tertiary-container"
+                        ></span>
+                        <span class="text-text-main">Suite</span>
+                      </div>
+                      <span class="font-medium">36.4%</span>
+                    </div>
+                    <div
+                      class="flex justify-between items-center text-body-sm font-body-sm"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="w-3 h-3 rounded-full bg-surface-container-high"
+                        ></span>
+                        <span class="text-text-main">Standard</span>
+                      </div>
+                      <span class="font-medium">25.1%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Weekday vs Weekend -->
+              <div
+                class="bg-white rounded-xl border border-border-subtle elevation-soft p-card-padding flex-1"
+              >
+                <h3 class="text-title-lg font-title-lg text-text-main mb-4">
+                  Pricing Dynamics
+                </h3>
+                <div class="space-y-4">
+                  <div>
+                    <div
+                      class="flex justify-between text-body-sm font-body-sm mb-1"
+                    >
+                      <span class="text-text-muted">Weekday Revenue</span>
+                      <span class="font-medium">Rp 48.200.000</span>
+                    </div>
+                    <div class="w-full bg-surface-container rounded-full h-2">
+                      <div
+                        class="bg-primary h-2 rounded-full"
+                        style="width: 57%"
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div
+                      class="flex justify-between text-body-sm font-body-sm mb-1"
+                    >
+                      <span class="text-text-muted">Weekend Revenue</span>
+                      <span class="font-medium">Rp 36.300.000</span>
+                    </div>
+                    <div class="w-full bg-surface-container rounded-full h-2">
+                      <div
+                        class="bg-tertiary-container h-2 rounded-full"
+                        style="width: 43%"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="mt-6 bg-cream-surface rounded-lg p-4 border border-border-subtle"
+                >
+                  <h4
+                    class="text-label-sm font-label-sm text-text-main uppercase tracking-wider mb-2"
+                  >
+                    Key Insight
+                  </h4>
+                  <p class="text-body-sm font-body-sm text-text-muted italic">
+                    Weekend rates are driving disproportionate value relative to
+                    occupancy volume.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <!-- Financial Breakdown (Spanning full width) -->
+            <div
+              class="md:col-span-12 bg-white rounded-xl border border-border-subtle elevation-soft p-card-padding"
+            >
+              <h3 class="text-title-lg font-title-lg text-text-main mb-6">
+                Financial Breakdown
+              </h3>
+              <div
+                class="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0"
+              >
+                <div
+                  class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg w-full md:w-auto flex-1 border border-border-subtle"
+                >
+                  <span
+                    class="text-label-sm font-label-sm text-text-muted uppercase tracking-wider mb-1"
+                    >Gross Revenue</span
+                  >
+                  <span class="text-headline-md font-headline-md text-text-main"
+                    >Rp 84.500.000</span
+                  >
+                </div>
+                <div
+                  class="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-surface-container text-text-muted shrink-0 mx-2"
+                >
+                  <span class="material-symbols-outlined">remove</span>
+                </div>
+                <div
+                  class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg w-full md:w-auto flex-1 border border-border-subtle relative overflow-hidden"
+                >
+                  <div
+                    class="absolute left-0 top-0 bottom-0 w-1 bg-status-warning"
+                  ></div>
+                  <span
+                    class="text-label-sm font-label-sm text-text-muted uppercase tracking-wider mb-1"
+                    >Discounts</span
+                  >
+                  <span class="text-title-lg font-title-lg text-text-main"
+                    >Rp 2.500.000</span
+                  >
+                </div>
+                <div
+                  class="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-surface-container text-text-muted shrink-0 mx-2"
+                >
+                  <span class="material-symbols-outlined">remove</span>
+                </div>
+                <div
+                  class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg w-full md:w-auto flex-1 border border-border-subtle relative overflow-hidden"
+                >
+                  <div
+                    class="absolute left-0 top-0 bottom-0 w-1 bg-status-error"
+                  ></div>
+                  <span
+                    class="text-label-sm font-label-sm text-text-muted uppercase tracking-wider mb-1"
+                    >Refunds</span
+                  >
+                  <span class="text-title-lg font-title-lg text-text-main"
+                    >Rp 1.000.000</span
+                  >
+                </div>
+                <div
+                  class="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-surface-container text-text-muted shrink-0 mx-2"
+                >
+                  <span class="material-symbols-outlined text-primary"
+                    >drag_handle</span
+                  >
+                  <!-- Equals sign approximation -->
+                </div>
+                <div
+                  class="flex flex-col items-center p-6 bg-cream-surface rounded-lg w-full md:w-auto flex-[1.5] border border-primary/20 shadow-sm relative overflow-hidden"
+                >
+                  <div
+                    class="absolute right-0 top-0 bottom-0 w-2 bg-primary"
+                  ></div>
+                  <span
+                    class="text-label-sm font-label-sm text-primary uppercase tracking-wider mb-1 font-bold"
+                    >Net Revenue</span
+                  >
+                  <span class="text-headline-lg font-headline-lg text-text-main"
+                    >Rp 81.000.000</span
+                  >
+                </div>
+              </div>
+            </div>
+            <!-- Revenue Details Table -->
+            <div
+              class="md:col-span-12 bg-white rounded-xl border border-border-subtle elevation-soft overflow-hidden"
+            >
+              <div
+                class="p-card-padding border-b border-border-subtle flex justify-between items-center bg-surface-container-low"
+              >
+                <h3 class="text-title-lg font-title-lg text-text-main">
+                  Revenue Details by Room
+                </h3>
+                <div class="relative">
+                  <input
+                    class="pl-9 pr-4 py-2 border border-border-subtle rounded-lg text-body-sm font-body-sm focus:ring-1 focus:ring-primary focus:border-primary bg-white w-64"
+                    placeholder="Search rooms..."
+                    type="text"
+                  />
+                  <span
+                    class="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-text-muted"
+                    >search</span
+                  >
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-cream-surface border-b border-border-subtle">
+                      <th
+                        class="py-3 px-6 text-label-md font-label-md text-text-main uppercase tracking-wider"
+                      >
+                        Room Name
+                      </th>
+                      <th
+                        class="py-3 px-6 text-label-md font-label-md text-text-main uppercase tracking-wider"
+                      >
+                        Type
+                      </th>
+                      <th
+                        class="py-3 px-6 text-label-md font-label-md text-text-main uppercase tracking-wider text-right"
+                      >
+                        Bookings
+                      </th>
+                      <th
+                        class="py-3 px-6 text-label-md font-label-md text-text-main uppercase tracking-wider text-right"
+                      >
+                        Nights
+                      </th>
+                      <th
+                        class="py-3 px-6 text-label-md font-label-md text-text-main uppercase tracking-wider text-right"
+                      >
+                        Revenue
+                      </th>
+                      <th
+                        class="py-3 px-6 text-label-md font-label-md text-text-main uppercase tracking-wider text-center"
+                      >
+                        % of Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    class="text-body-sm font-body-sm divide-y divide-border-subtle"
+                  >
+                    <tr
+                      class="hover:bg-primary-fixed/10 transition-colors group"
+                    >
+                      <td class="py-4 px-6 font-medium text-text-main">
+                        Ocean View Deluxe 101
+                      </td>
+                      <td class="py-4 px-6 text-text-muted">Deluxe</td>
+                      <td class="py-4 px-6 text-right">24</td>
+                      <td class="py-4 px-6 text-right">52</td>
+                      <td
+                        class="py-4 px-6 text-right font-medium text-text-main"
+                      >
+                        Rp 18.200.000
+                      </td>
+                      <td class="py-4 px-6">
+                        <div class="flex items-center gap-2 justify-end">
+                          <span class="text-text-muted text-xs">21.5%</span>
+                          <div
+                            class="w-16 bg-surface-container rounded-full h-1.5"
+                          >
+                            <div
+                              class="bg-primary h-1.5 rounded-full"
+                              style="width: 21.5%"
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr
+                      class="hover:bg-primary-fixed/10 transition-colors group"
+                    >
+                      <td class="py-4 px-6 font-medium text-text-main">
+                        Presidential Suite 501
+                      </td>
+                      <td class="py-4 px-6 text-text-muted">Suite</td>
+                      <td class="py-4 px-6 text-right">8</td>
+                      <td class="py-4 px-6 text-right">20</td>
+                      <td
+                        class="py-4 px-6 text-right font-medium text-text-main"
+                      >
+                        Rp 25.000.000
+                      </td>
+                      <td class="py-4 px-6">
+                        <div class="flex items-center gap-2 justify-end">
+                          <span class="text-text-muted text-xs">29.5%</span>
+                          <div
+                            class="w-16 bg-surface-container rounded-full h-1.5"
+                          >
+                            <div
+                              class="bg-tertiary-container h-1.5 rounded-full"
+                              style="width: 29.5%"
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr
+                      class="hover:bg-primary-fixed/10 transition-colors group"
+                    >
+                      <td class="py-4 px-6 font-medium text-text-main">
+                        Garden Standard 205
+                      </td>
+                      <td class="py-4 px-6 text-text-muted">Standard</td>
+                      <td class="py-4 px-6 text-right">35</td>
+                      <td class="py-4 px-6 text-right">70</td>
+                      <td
+                        class="py-4 px-6 text-right font-medium text-text-main"
+                      >
+                        Rp 14.000.000
+                      </td>
+                      <td class="py-4 px-6">
+                        <div class="flex items-center gap-2 justify-end">
+                          <span class="text-text-muted text-xs">16.5%</span>
+                          <div
+                            class="w-16 bg-surface-container rounded-full h-1.5"
+                          >
+                            <div
+                              class="bg-surface-container-high h-1.5 rounded-full"
+                              style="width: 16.5%"
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr
+                      class="hover:bg-primary-fixed/10 transition-colors group"
+                    >
+                      <td class="py-4 px-6 font-medium text-text-main">
+                        City View Deluxe 302
+                      </td>
+                      <td class="py-4 px-6 text-text-muted">Deluxe</td>
+                      <td class="py-4 px-6 text-right">18</td>
+                      <td class="py-4 px-6 text-right">38</td>
+                      <td
+                        class="py-4 px-6 text-right font-medium text-text-main"
+                      >
+                        Rp 13.300.000
+                      </td>
+                      <td class="py-4 px-6">
+                        <div class="flex items-center gap-2 justify-end">
+                          <span class="text-text-muted text-xs">15.7%</span>
+                          <div
+                            class="w-16 bg-surface-container rounded-full h-1.5"
+                          >
+                            <div
+                              class="bg-primary h-1.5 rounded-full"
+                              style="width: 15.7%"
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr
+                      class="hover:bg-primary-fixed/10 transition-colors group"
+                    >
+                      <td class="py-4 px-6 font-medium text-text-main">
+                        Honeymoon Suite 405
+                      </td>
+                      <td class="py-4 px-6 text-text-muted">Suite</td>
+                      <td class="py-4 px-6 text-right">5</td>
+                      <td class="py-4 px-6 text-right">12</td>
+                      <td
+                        class="py-4 px-6 text-right font-medium text-text-main"
+                      >
+                        Rp 14.000.000
+                      </td>
+                      <td class="py-4 px-6">
+                        <div class="flex items-center gap-2 justify-end">
+                          <span class="text-text-muted text-xs">16.8%</span>
+                          <div
+                            class="w-16 bg-surface-container rounded-full h-1.5"
+                          >
+                            <div
+                              class="bg-tertiary-container h-1.5 rounded-full"
+                              style="width: 16.8%"
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div
+                class="p-4 border-t border-border-subtle flex items-center justify-between bg-surface-container-low"
+              >
+                <span class="text-body-sm font-body-sm text-text-muted"
+                  >Showing 1 to 5 of 24 entries</span
+                >
+                <div class="flex gap-1">
+                  <button
+                    class="p-1 rounded border border-border-subtle text-text-muted hover:bg-white disabled:opacity-50"
+                    disabled=""
+                  >
+                    <span class="material-symbols-outlined text-[18px]"
+                      >chevron_left</span
+                    >
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded border border-primary bg-primary text-on-primary text-body-sm font-body-sm"
+                  >
+                    1
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded border border-border-subtle bg-white text-text-main hover:bg-surface-container text-body-sm font-body-sm"
+                  >
+                    2
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded border border-border-subtle bg-white text-text-main hover:bg-surface-container text-body-sm font-body-sm"
+                  >
+                    3
+                  </button>
+                  <span class="px-2 py-1 text-text-muted">...</span>
+                  <button
+                    class="p-1 rounded border border-border-subtle bg-white text-text-main hover:bg-surface-container"
+                  >
+                    <span class="material-symbols-outlined text-[18px]"
+                      >chevron_right</span
+                    >
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
