@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialKey = getCacheKey("/super-admin/users", { search: "", role: "", status: "" });
+  const cachedInitialUsers = getCachedData(initialKey)?.data || getCachedData(initialKey) || null;
+
+  const [users, setUsers] = useState(Array.isArray(cachedInitialUsers) ? cachedInitialUsers : []);
+  const [loading, setLoading] = useState(!cachedInitialUsers);
   const [error, setError] = useState(null);
 
   // Filter States
@@ -27,23 +31,43 @@ const UserManagement = () => {
   });
 
   // Fetch Users
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get("/super-admin/users", {
-        params: {
-          search: search,
-          role: roleFilter,
-          status: statusFilter,
-        },
-      });
+  const fetchUsers = async (forceRefresh = false) => {
+    const key = getCacheKey("/super-admin/users", {
+      search: search,
+      role: roleFilter,
+      status: statusFilter,
+    });
+    const cached = getCachedData(key);
 
-      const data = response.data.data || response.data || [];
+    if (!forceRefresh && cached) {
+      const data = cached.data || cached || [];
+      setUsers(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } else if (users.length === 0 || forceRefresh) {
+      if (users.length === 0) setLoading(true);
+    }
+
+    try {
+      setError(null);
+      const response = await cachedGet(
+        "/super-admin/users",
+        {
+          params: {
+            search: search,
+            role: roleFilter,
+            status: statusFilter,
+          },
+        },
+        forceRefresh
+      );
+
+      const data = response.data?.data || response.data || [];
       setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Gagal mengambil data user:", err);
-      setError("Gagal memuat data pengguna. Pastikan server backend berjalan.");
+      if (users.length === 0) {
+        setError("Gagal memuat data pengguna. Pastikan server backend berjalan.");
+      }
     } finally {
       setLoading(false);
     }
@@ -51,8 +75,8 @@ const UserManagement = () => {
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchUsers();
-    }, 400);
+      fetchUsers(false);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [search, roleFilter, statusFilter]);
@@ -75,8 +99,10 @@ const UserManagement = () => {
         status: newStatus,
       });
 
+      invalidateCache("/super-admin/users");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Status pengguna berhasil diperbarui!");
-      fetchUsers();
+      fetchUsers(true);
     } catch (err) {
       console.error("Gagal update status:", err);
       toast.error(
@@ -113,6 +139,8 @@ const UserManagement = () => {
 
       await api.post("/super-admin/users", payload);
 
+      invalidateCache("/super-admin/users");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Admin Hotel berhasil ditambahkan!");
       setFormData({
         name: "",
@@ -121,7 +149,7 @@ const UserManagement = () => {
         password_confirmation: "",
       });
       setIsModalOpen(false);
-      fetchUsers();
+      fetchUsers(true);
     } catch (err) {
       console.error("Gagal menambah admin:", err);
       toast.error(err.response?.data?.message || "Gagal menambahkan Admin Hotel.");
@@ -230,7 +258,7 @@ const UserManagement = () => {
 
           {/* Refresh Button */}
           <button
-            onClick={fetchUsers}
+            onClick={() => fetchUsers(true)}
             title="Refresh Data"
             className="p-2.5 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-colors shadow-sm"
           >

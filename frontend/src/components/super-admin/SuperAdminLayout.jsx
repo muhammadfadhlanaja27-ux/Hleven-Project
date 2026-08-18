@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import SuperAdminSidebar from "./SuperAdminSidebar";
 import SuperAdminHeader from "./SuperAdminHeader";
+import { invalidateCache } from "../../services/apiCache";
 
 const SuperAdminLayout = () => {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const SuperAdminLayout = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    invalidateCache();
     navigate("/super-admin/login");
   };
 

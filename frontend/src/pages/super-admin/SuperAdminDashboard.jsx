@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { cachedGet, getCachedData, getCacheKey } from '../../services/apiCache';
 import { toast } from 'react-hot-toast';
 import {
   LineChart,
@@ -25,35 +26,47 @@ const formatCurrency = (num) => {
 };
 
 const SuperAdminDashboard = () => {
-  const [summary, setSummary] = useState(null);
-  const [activities, setActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedSummary = getCachedData(getCacheKey('/super-admin/dashboard'))?.data || null;
+  const cachedActivities = getCachedData(getCacheKey('/super-admin/dashboard/recent-activities'))?.data || [];
+
+  const [summary, setSummary] = useState(cachedSummary);
+  const [activities, setActivities] = useState(cachedActivities);
+  const [loading, setLoading] = useState(!cachedSummary);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(false);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      setIsRefreshing(true);
+    } else if (!summary) {
+      setLoading(true);
+    }
     setError(false);
     try {
       const [summaryRes, activitiesRes] = await Promise.all([
-        api.get('/super-admin/dashboard'),
-        api.get('/super-admin/dashboard/recent-activities'),
+        cachedGet('/super-admin/dashboard', {}, forceRefresh),
+        cachedGet('/super-admin/dashboard/recent-activities', {}, forceRefresh),
       ]);
-      setSummary(summaryRes.data.data);
-      setActivities(activitiesRes.data.data);
+      setSummary(summaryRes.data?.data || summaryRes.data || null);
+      setActivities(activitiesRes.data?.data || activitiesRes.data || []);
+      if (forceRefresh) {
+        toast.success('Data dashboard berhasil diperbarui');
+      }
     } catch (err) {
       console.error('Gagal mengambil data dashboard:', err);
-      setError(true);
+      if (!summary) setError(true);
       toast.error('Gagal memuat data dashboard. Silakan coba lagi.');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(false);
   }, []);
 
-  if (loading) {
+  if (loading && !summary) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center space-y-4">
@@ -64,12 +77,12 @@ const SuperAdminDashboard = () => {
     );
   }
 
-  if (error) {
+  if (error && !summary) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <p className="font-hanken text-[#ba1a1a] font-semibold text-[16px]">Terjadi kesalahan saat memuat data.</p>
         <button
-          onClick={fetchDashboardData}
+          onClick={() => fetchDashboardData(true)}
           className="px-4 py-2 bg-[#768875] text-[#ffffff] rounded-lg hover:opacity-90 transition font-hanken text-[14px] font-semibold"
         >
           Coba Lagi
@@ -86,11 +99,12 @@ const SuperAdminDashboard = () => {
           System Overview
         </h2>
         <button
-          onClick={fetchDashboardData}
-          className="flex items-center gap-2 px-3 py-1.5 border border-[#E5E0D8] rounded bg-white text-[#434842] hover:bg-gray-50 transition-colors font-hanken text-[12px] font-semibold uppercase tracking-[0.05em]"
+          onClick={() => fetchDashboardData(true)}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-3 py-1.5 border border-[#E5E0D8] rounded bg-white text-[#434842] hover:bg-gray-50 disabled:opacity-50 transition-colors font-hanken text-[12px] font-semibold uppercase tracking-[0.05em]"
         >
-          <span className="material-symbols-outlined text-[16px]">refresh</span>
-          Refresh
+          <span className={`material-symbols-outlined text-[16px] ${isRefreshing ? 'animate-spin' : ''}`}>refresh</span>
+          {isRefreshing ? 'Memperbarui...' : 'Refresh'}
         </button>
       </div>
 

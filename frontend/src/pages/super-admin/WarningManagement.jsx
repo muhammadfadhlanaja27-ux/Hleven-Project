@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 
 const WarningManagement = () => {
-  const [warnings, setWarnings] = useState([]);
-  const [hotels, setHotels] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialWarningKey = getCacheKey("/super-admin/warnings");
+  const initialHotelKey = getCacheKey("/super-admin/hotels");
+  const cachedWarnings = getCachedData(initialWarningKey)?.data || getCachedData(initialWarningKey) || null;
+  const cachedHotels = getCachedData(initialHotelKey)?.data || getCachedData(initialHotelKey) || null;
+
+  const [warnings, setWarnings] = useState(Array.isArray(cachedWarnings) ? cachedWarnings : []);
+  const [hotels, setHotels] = useState(Array.isArray(cachedHotels) ? cachedHotels : []);
+  const [loading, setLoading] = useState(!cachedWarnings);
   const [error, setError] = useState(false);
 
   // Search & Filter
@@ -29,25 +35,35 @@ const WarningManagement = () => {
   const [selectedWarning, setSelectedWarning] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const fetchWarnings = async () => {
+  const fetchWarnings = async (forceRefresh = false) => {
+    const key = getCacheKey("/super-admin/warnings");
+    const cached = getCachedData(key);
+
+    if (!forceRefresh && cached) {
+      const data = cached.data || cached || [];
+      setWarnings(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } else if (warnings.length === 0 || forceRefresh) {
+      if (warnings.length === 0) setLoading(true);
+    }
+
     try {
-      setLoading(true);
       setError(false);
-      const response = await api.get("/super-admin/warnings");
+      const response = await cachedGet("/super-admin/warnings", {}, forceRefresh);
       const data = response.data?.data || response.data || [];
       setWarnings(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Gagal mengambil data warning:", err);
-      setError(true);
+      if (warnings.length === 0) setError(true);
       toast.error("Gagal memuat data peringatan.");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchHotels = async () => {
+  const fetchHotels = async (forceRefresh = false) => {
     try {
-      const response = await api.get("/super-admin/hotels");
+      const response = await cachedGet("/super-admin/hotels", {}, forceRefresh);
       const data = response.data?.data || response.data || [];
       setHotels(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -56,8 +72,8 @@ const WarningManagement = () => {
   };
 
   useEffect(() => {
-    fetchWarnings();
-    fetchHotels();
+    fetchWarnings(false);
+    fetchHotels(false);
   }, []);
 
   // Submit Buat Warning
@@ -71,10 +87,12 @@ const WarningManagement = () => {
     setIsSubmitting(true);
     try {
       await api.post("/super-admin/warnings", newWarning);
+      invalidateCache("/super-admin/warnings");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Peringatan kepatuhan berhasil dikirim ke hotel!");
       setIsModalOpen(false);
       setNewWarning({ hotel_id: "", title: "", message: "" });
-      fetchWarnings();
+      fetchWarnings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal membuat surat peringatan.");
     } finally {
@@ -89,11 +107,13 @@ const WarningManagement = () => {
 
     try {
       await api.patch(`/super-admin/warnings/${id}/status`, { status: "resolved" });
+      invalidateCache("/super-admin/warnings");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Status peringatan berhasil diubah menjadi Resolved!");
       if (selectedWarning && selectedWarning.id === id) {
         setSelectedWarning((prev) => ({ ...prev, status: "resolved" }));
       }
-      fetchWarnings();
+      fetchWarnings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memperbarui status.");
     }
@@ -165,7 +185,7 @@ const WarningManagement = () => {
 
           {/* Refresh Button */}
           <button
-            onClick={fetchWarnings}
+            onClick={() => fetchWarnings(true)}
             title="Refresh Data"
             className="flex items-center gap-1.5 px-3 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
           >

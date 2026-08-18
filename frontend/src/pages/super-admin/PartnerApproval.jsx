@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 
 const PartnerApproval = () => {
-  const [partners, setPartners] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialKey = getCacheKey("/super-admin/partners");
+  const cachedInitialPartners = getCachedData(initialKey)?.data || getCachedData(initialKey) || null;
+
+  const [partners, setPartners] = useState(Array.isArray(cachedInitialPartners) ? cachedInitialPartners : []);
+  const [loading, setLoading] = useState(!cachedInitialPartners);
   const [error, setError] = useState(false);
 
   // Search & Filter
@@ -26,16 +30,26 @@ const PartnerApproval = () => {
   const [rejectLoading, setRejectLoading] = useState(false);
 
   // Fetch partners
-  const fetchPartners = async () => {
+  const fetchPartners = async (forceRefresh = false) => {
+    const key = getCacheKey("/super-admin/partners");
+    const cached = getCachedData(key);
+
+    if (!forceRefresh && cached) {
+      const data = cached.data || cached || [];
+      setPartners(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } else if (partners.length === 0 || forceRefresh) {
+      if (partners.length === 0) setLoading(true);
+    }
+
     try {
-      setLoading(true);
       setError(false);
-      const response = await api.get("/super-admin/partners");
+      const response = await cachedGet("/super-admin/partners", {}, forceRefresh);
       const data = response.data?.data || response.data || [];
       setPartners(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Gagal mengambil data pengajuan:", err);
-      setError(true);
+      if (partners.length === 0) setError(true);
       toast.error("Gagal memuat data pengajuan mitra.");
     } finally {
       setLoading(false);
@@ -43,7 +57,7 @@ const PartnerApproval = () => {
   };
 
   useEffect(() => {
-    fetchPartners();
+    fetchPartners(false);
   }, []);
 
   const handleApprove = async (id) => {
@@ -52,11 +66,13 @@ const PartnerApproval = () => {
 
     try {
       await api.patch(`/super-admin/partners/${id}/approve`);
+      invalidateCache("/super-admin/partners");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Pengajuan mitra berhasil disetujui!");
       if (selectedPartner && selectedPartner.id === id) {
         setSelectedPartner((prev) => ({ ...prev, status: "Approved" }));
       }
-      fetchPartners();
+      fetchPartners(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal menyetujui pengajuan.");
     }
@@ -80,12 +96,14 @@ const PartnerApproval = () => {
       await api.patch(`/super-admin/partners/${rejectPartnerId}/reject`, {
         reason: rejectReason,
       });
+      invalidateCache("/super-admin/partners");
+      invalidateCache("/super-admin/dashboard");
       toast.success("Pengajuan mitra berhasil ditolak.");
       setIsRejectModalOpen(false);
       if (selectedPartner && selectedPartner.id === rejectPartnerId) {
         setSelectedPartner((prev) => ({ ...prev, status: "Rejected" }));
       }
-      fetchPartners();
+      fetchPartners(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal menolak pengajuan.");
     } finally {
@@ -173,7 +191,7 @@ const PartnerApproval = () => {
 
           {/* Refresh Button */}
           <button
-            onClick={fetchPartners}
+            onClick={() => fetchPartners(true)}
             title="Refresh Data"
             className="flex items-center gap-1.5 px-3 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
           >

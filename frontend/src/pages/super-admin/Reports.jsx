@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 import {
   LineChart,
@@ -13,19 +14,25 @@ import {
 } from "recharts";
 
 const Reports = () => {
-  const [loading, setLoading] = useState(true);
+  // State untuk Filter Tanggal
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const cachedBookings = getCachedData(getCacheKey("/reports/bookings"))?.data || null;
+  const cachedRevenue = getCachedData(getCacheKey("/reports/revenue"))?.data || null;
+  const cachedUsers = getCachedData(getCacheKey("/reports/users"))?.data || null;
+
+  const hasCache = !!(cachedBookings || cachedRevenue || cachedUsers);
+
+  const [loading, setLoading] = useState(!hasCache);
   const [error, setError] = useState(false);
 
   // State untuk data laporan
   const [data, setData] = useState({
-    bookings: {},
-    revenue: {},
-    users: {},
+    bookings: cachedBookings || {},
+    revenue: cachedRevenue || {},
+    users: cachedUsers || {},
   });
-
-  // State untuk Filter Tanggal
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   // State untuk Export
   const [exportType, setExportType] = useState("booking");
@@ -40,20 +47,38 @@ const Reports = () => {
     }).format(number || 0);
   };
 
-  const fetchReports = async () => {
-    try {
-      setLoading(true);
-      setError(false);
+  const fetchReports = async (forceRefresh = false) => {
+    const params = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
 
-      const params = {};
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
+    const bKey = getCacheKey("/reports/bookings", params);
+    const rKey = getCacheKey("/reports/revenue", params);
+    const uKey = getCacheKey("/reports/users", params);
+
+    const bCached = getCachedData(bKey);
+    const rCached = getCachedData(rKey);
+    const uCached = getCachedData(uKey);
+
+    if (!forceRefresh && (bCached || rCached || uCached)) {
+      setData({
+        bookings: bCached?.data || bCached || {},
+        revenue: rCached?.data || rCached || {},
+        users: uCached?.data || uCached || {},
+      });
+      setLoading(false);
+    } else if (!hasCache || forceRefresh) {
+      if (!data.bookings.total && !data.revenue.total_revenue) setLoading(true);
+    }
+
+    try {
+      setError(false);
 
       // Menjalankan request API secara bersamaan
       const [bookingRes, revenueRes, userRes] = await Promise.all([
-        api.get("/reports/bookings", { params }),
-        api.get("/reports/revenue", { params }),
-        api.get("/reports/users", { params }),
+        cachedGet("/reports/bookings", { params }, forceRefresh),
+        cachedGet("/reports/revenue", { params }, forceRefresh),
+        cachedGet("/reports/users", { params }, forceRefresh),
       ]);
 
       setData({
@@ -61,9 +86,12 @@ const Reports = () => {
         revenue: revenueRes.data?.data || revenueRes.data || {},
         users: userRes.data?.data || userRes.data || {},
       });
+      if (forceRefresh) {
+        toast.success("Data laporan berhasil diperbarui");
+      }
     } catch (err) {
       console.error("Gagal mengambil data laporan:", err);
-      setError(true);
+      if (!data.bookings.total && !data.revenue.total_revenue) setError(true);
       toast.error("Gagal memuat data laporan. Pastikan server backend berjalan.");
     } finally {
       setLoading(false);
@@ -71,7 +99,7 @@ const Reports = () => {
   };
 
   useEffect(() => {
-    fetchReports();
+    fetchReports(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
@@ -133,7 +161,7 @@ const Reports = () => {
         </div>
 
         <button
-          onClick={fetchReports}
+          onClick={() => fetchReports(true)}
           className="flex items-center gap-1.5 px-3.5 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
