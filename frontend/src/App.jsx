@@ -13,7 +13,10 @@ import Login from './Pages/Auth/Login';
 import Register from './Pages/Auth/Register';
 import UserProfile from './pages/user/UserProfile';
 import HotelDetail from './pages/user/HotelDetail';
+import HotelList from './pages/user/HotelList';
+import RoomDetail from './pages/user/RoomDetail';
 import BookingPage from "./pages/user/BookingPage";
+import BookingHistory from "./pages/user/BookingHistory";
 
 // Admin Hotel pages
 import AdminLogin from './pages/auth/admin-hotel/AdminLogin';
@@ -107,7 +110,10 @@ function App() {
           {/* GRUP 1: Rute Publik & User */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/hotels" element={<HotelList />} />
             <Route path="/hotels/:id" element={<HotelDetail />} />
+            <Route path="/hotels/:hotelId/rooms/:roomId" element={<RoomDetail />} />
+            <Route path="/rooms/:hotelId/:roomId" element={<RoomDetail />} />
             
             {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
             <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
@@ -115,6 +121,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/booking-history" element={<BookingHistory />} />
           </Route>
 
           {/* GRUP 2: Rute Admin Hotel */}
