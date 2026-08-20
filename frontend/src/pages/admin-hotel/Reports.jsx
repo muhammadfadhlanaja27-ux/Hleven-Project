@@ -13,7 +13,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { cachedGet } from "../../services/apiCache";
+import api from "../../services/api";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const formatRp = (value) => {
@@ -29,6 +29,8 @@ const formatRpShort = (value) => {
 };
 
 // ─── Date Helpers ─────────────────────────────────────────────────────────────
+const today = new Date();
+
 const getPeriodRange = (period) => {
   const now = new Date();
   const d = new Date(now);
@@ -48,42 +50,38 @@ const getPeriodRange = (period) => {
       sun.setHours(23, 59, 59);
       return { start: mon, end: sun };
     }
-    case "thisMonth": {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      return { start, end };
-    }
-    case "lastMonth": {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
-      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-      return { start, end };
-    }
-    case "thisYear": {
-      const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
-      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-      return { start, end };
-    }
-    case "all": {
-      return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
-    }
-    default: {
-      return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
-    }
+    case "thisMonth":
+      return {
+        start: new Date(d.getFullYear(), d.getMonth(), 1),
+        end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59),
+      };
+    case "lastMonth":
+      return {
+        start: new Date(d.getFullYear(), d.getMonth() - 1, 1),
+        end: new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59),
+      };
+    case "thisYear":
+      return {
+        start: new Date(d.getFullYear(), 0, 1),
+        end: new Date(d.getFullYear(), 11, 31, 23, 59, 59),
+      };
+    default:
+      return {
+        start: new Date(d.getFullYear(), d.getMonth(), 1),
+        end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59),
+      };
   }
 };
 
 const getPreviousPeriodRange = (period) => {
-  const now = new Date();
+  const d = new Date(today);
   switch (period) {
     case "today": {
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-      const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
-      const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
-      return { start, end };
+      const y = new Date(d);
+      y.setDate(y.getDate() - 1);
+      return { start: new Date(y.setHours(0, 0, 0, 0)), end: new Date(y.setHours(23, 59, 59)) };
     }
     case "thisWeek": {
-      const d = new Date(now);
       const day = d.getDay();
       const lastMon = new Date(d);
       lastMon.setDate(d.getDate() - ((day + 6) % 7) - 7);
@@ -93,26 +91,26 @@ const getPreviousPeriodRange = (period) => {
       lastSun.setHours(23, 59, 59);
       return { start: lastMon, end: lastSun };
     }
-    case "thisMonth": {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
-      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-      return { start, end };
-    }
-    case "lastMonth": {
-      const start = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0);
-      const end = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59);
-      return { start, end };
-    }
-    case "thisYear": {
-      const start = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0);
-      const end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
-      return { start, end };
-    }
-    default: {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
-      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-      return { start, end };
-    }
+    case "thisMonth":
+      return {
+        start: new Date(d.getFullYear(), d.getMonth() - 1, 1),
+        end: new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59),
+      };
+    case "lastMonth":
+      return {
+        start: new Date(d.getFullYear(), d.getMonth() - 2, 1),
+        end: new Date(d.getFullYear(), d.getMonth() - 1, 0, 23, 59, 59),
+      };
+    case "thisYear":
+      return {
+        start: new Date(d.getFullYear() - 1, 0, 1),
+        end: new Date(d.getFullYear() - 1, 11, 31, 23, 59, 59),
+      };
+    default:
+      return {
+        start: new Date(d.getFullYear(), d.getMonth() - 1, 1),
+        end: new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59),
+      };
   }
 };
 
@@ -203,7 +201,7 @@ export default function RevenueReport() {
   const [chartPeriod, setChartPeriod] = useState("daily");
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isFromCache, setIsFromCache] = useState(false);
+  const [allBookings, setAllBookings] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
   const [detailSort, setDetailSort] = useState({ col: "date", dir: "desc" });
   const [detailPage, setDetailPage] = useState(1);
@@ -221,79 +219,93 @@ export default function RevenueReport() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Fetch report data
   useEffect(() => {
-    fetchBookingsData();
-  }, []);
-
-  const fetchBookingsData = async (forceRefresh = false) => {
-    setLoading(true);
-    try {
-      const { data, fromCache } = await cachedGet("/admin/bookings", {}, forceRefresh);
-      setIsFromCache(fromCache);
-
-      if (data && data.status === "success") {
-        const mapped = (data.data || []).map((b) => {
-          const roomType = b.booking_rooms?.[0]?.room_type || {};
-
-          let statusLabel = "Pending";
-          if (b.status === "confirmed") statusLabel = "Confirmed";
-          else if (b.status === "checked_in") statusLabel = "Checked In";
-          else if (b.status === "completed") statusLabel = "Checked Out";
-          else if (b.status === "cancelled") statusLabel = "Cancelled";
-
-          let paymentStatusLabel = "Unpaid";
-          if (b.payment?.payment_status === "success") paymentStatusLabel = "Paid";
-          else if (b.payment?.payment_status === "pending") paymentStatusLabel = "Pending";
-          else if (b.payment?.payment_status === "refunded") paymentStatusLabel = "Refunded";
-
-          const checkInDate = b.check_in ? b.check_in.slice(0, 10) : (b.created_at ? b.created_at.slice(0, 10) : "");
-          const roomNameStr = roomType.name || "Standard Room";
-          const roomTypeStr = roomType.name || "Standard";
-
-          return {
-            id: b.id,
-            bookingCode: b.booking_code || `BK-${b.id}`,
-            bookingDate: b.created_at ? b.created_at.slice(0, 10) : "",
-            checkIn: checkInDate,
-            checkOut: b.check_out ? b.check_out.slice(0, 10) : "",
-            guestName: b.user ? b.user.name : "Guest",
-            guestPhone: b.user ? b.user.phone : "—",
-            room: {
-              name: roomNameStr,
-              type: roomTypeStr,
-              weekdayPrice: Number(roomType.weekday_price) || 0,
-              weekendPrice: Number(roomType.weekend_price) || 0,
-            },
-            guests: b.guests_count || 1,
-            nights: b.nights_count || 1,
-            totalAmount: Number(b.total_amount) || 0,
-            bookingStatus: statusLabel,
-            paymentStatus: paymentStatusLabel,
-            weekdayNights: b.weekday_nights || 1,
-            weekendNights: b.weekend_nights || 0,
-            discount: Number(b.discount_amount) || 0,
-            roomPriceSum: Number(b.total_amount) || 0,
-            additionalCharges: 0,
-          };
-        });
-
-        setBookings(mapped);
+    const fetchReportData = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get("/admin/bookings");
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) {
+          const mapped = list.map((b) => {
+            const total = Number(
+              b.total_price ||
+                b.total_amount ||
+                b.payment?.amount ||
+                b.payment?.gross_amount ||
+                0
+            );
+            const isPaid =
+              b.payment?.status === "success" ||
+              b.payment?.payment_status === "paid" ||
+              b.payment_status === "paid" ||
+              b.status === "confirmed" ||
+              b.status === "checked_in" ||
+              b.status === "completed";
+            const firstRoom =
+              b.booking_rooms?.[0]?.room_type ||
+              b.bookingRooms?.[0]?.roomType ||
+              {};
+            return {
+              id: b.id,
+              bookingCode: b.booking_code || `BK-${b.id}`,
+              checkIn:
+                b.check_in_date ||
+                b.check_in ||
+                new Date().toISOString().split("T")[0],
+              checkOut:
+                b.check_out_date ||
+                b.check_out ||
+                new Date().toISOString().split("T")[0],
+              weekdayNights: Number(b.weekday_nights || b.nights || 1),
+              weekendNights: Number(b.weekend_nights || 0),
+              roomPriceSum: total,
+              additionalCharges: 0,
+              discount: 0,
+              totalAmount: total,
+              bookingStatus:
+                b.status === "completed"
+                  ? "Checked Out"
+                  : b.status === "checked_in"
+                  ? "Checked In"
+                  : b.status === "confirmed"
+                  ? "Confirmed"
+                  : b.status === "cancelled"
+                  ? "Cancelled"
+                  : "Pending",
+              paymentStatus: isPaid ? "Paid" : "Pending",
+              paymentMethod: b.payment?.payment_method || "Transfer",
+              room: {
+                id: firstRoom.id || 1,
+                name: firstRoom.name || "Room",
+                type: firstRoom.name?.toLowerCase().includes("suite")
+                  ? "Suite"
+                  : firstRoom.name?.toLowerCase().includes("deluxe")
+                  ? "Deluxe"
+                  : "Standard",
+                weekdayPrice: Number(firstRoom.weekday_price || 0),
+                weekendPrice: Number(firstRoom.weekend_price || 0),
+              },
+              guest: {
+                name: b.user?.name || b.guest_name || "Guest",
+              },
+            };
+          });
+          setAllBookings(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load report data:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Gagal memuat data laporan.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchReportData();
+  }, [selectedPeriod]);
 
   // Reset page when period changes
   useEffect(() => {
     setDetailPage(1);
   }, [selectedPeriod]);
-
-  // ─── Filtered Data ─────────────────────────────────────────────────────────
-  const allBookings = bookings;
   const range = getPeriodRange(selectedPeriod);
   const prevRange = getPreviousPeriodRange(selectedPeriod);
 
