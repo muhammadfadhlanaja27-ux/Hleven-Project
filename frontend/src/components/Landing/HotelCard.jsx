@@ -93,7 +93,7 @@ const HotelCard = ({ hotel }) => {
         <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
           <span className="material-symbols-outlined text-sm">location_on</span>
           <span className="font-body-md text-sm truncate">
-            {hotel.address || hotel.city || "Bandung, Jawa Barat"}
+            {hotel.address || (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) || "Bandung, Jawa Barat"}
           </span>
         </div>
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { mockHotels } from "../../data/mockHotels";
 import api from "../../services/api";
 
 const DEFAULT_IMAGES = [
@@ -22,25 +21,47 @@ const HotelDetail = () => {
   useEffect(() => {
     const fetchHotelDetail = async () => {
       setLoading(true);
-      const foundMock = mockHotels.find((h) => String(h.id) === String(id)) || mockHotels[0];
 
       try {
         const response = await api.get(`/hotels/${id}`);
         if (response.data && response.data.data) {
           const apiData = response.data.data;
+          
+          const mappedRooms = (apiData.room_types || []).map((rt, idx) => {
+            const thumbnailPhoto = rt.photos && rt.photos.length > 0 
+              ? (rt.photos.find(p => p.is_thumbnail) || rt.photos[0]) 
+              : null;
+            const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
+            const roomImage = photoPath 
+              ? (photoPath.startsWith('http') ? photoPath : `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`)
+              : DEFAULT_IMAGES[idx % DEFAULT_IMAGES.length];
+
+            return {
+              id: rt.id,
+              name: rt.name,
+              price: rt.weekday_price,
+              weekday_price: rt.weekday_price,
+              weekend_price: rt.weekend_price,
+              thumbnail: roomImage,
+              capacity: `${rt.capacity_adult} Dewasa, ${rt.capacity_child} Anak`,
+              description: rt.description,
+              bed: rt.description?.includes("Bed") ? rt.description : "1 King Bed",
+              breakfast: rt.breakfast,
+              smoking_area: rt.smoking_area,
+              stock: rt.stock
+            };
+          });
+
           setHotel({
-            ...foundMock,
             ...apiData,
-            rooms: (foundMock && foundMock.rooms && foundMock.rooms.length > 0)
-              ? foundMock.rooms
-              : (apiData.rooms || apiData.room_types || [])
+            rooms: mappedRooms
           });
         } else {
-          setHotel(foundMock);
+          setHotel(null);
         }
       } catch (err) {
-        console.warn("Backend Error / Menggunakan Data Fallback MockHotels.");
-        setHotel(foundMock);
+        console.error("Backend Error / Gagal memuat data hotel:", err);
+        setHotel(null);
       } finally {
         setLoading(false);
       }
@@ -111,7 +132,8 @@ const HotelDetail = () => {
   };
 
   const roomsList = hotel.rooms || [];
-  const hotelAddress = hotel.address || `${hotel.city || 'Bandung'}, Jawa Barat`;
+  const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";
+  const hotelAddress = hotel.address || `${hotelCityName}, Jawa Barat`;
   const ratingValue = hotel.rating || hotel.average_rating || 4.8;
   const starCount = Math.floor(Number(ratingValue));
 
@@ -231,7 +253,7 @@ const HotelDetail = () => {
               <div className="prose max-w-none text-[#444842] font-body-md text-base leading-relaxed space-y-4">
                 <p className="font-headline-md text-lg text-[#645b4f] leading-relaxed">
                   {hotel.description ||
-                    `Terletak di lokasi strategis ${hotel.city || 'Bandung'}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
+                    `Terletak di lokasi strategis ${hotelCityName}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
                 </p>
                 <p className="text-sm md:text-base text-[#444842]">
                   Nikmati fasilitas kelas dunia, mulai dari kamar berdesain elegan, layanan resepsionis 24 jam, kolam renang dengan pemandangan menakjubkan, hingga pilihan restoran bersantap dengan hidangan lezat. Destinasi sempurna bagi Anda yang mencari ketenangan dan pengalaman tak terlupakan.
@@ -284,7 +306,7 @@ const HotelDetail = () => {
                       location_on
                     </span>
                     <span className="font-label-sm text-xs font-bold text-[#1e1b16] mt-1 bg-white/90 px-3 py-1 rounded-full shadow-sm">
-                      {hotel.city || "Bandung"}
+                      {hotelCityName}
                     </span>
                   </div>
                 </div>

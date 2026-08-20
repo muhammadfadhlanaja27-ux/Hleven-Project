@@ -15,7 +15,7 @@ class HotelController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Hotel::with(['city', 'photos', 'facilities'])
+        $query = Hotel::with(['city', 'photos', 'facilities', 'roomTypes'])
             ->where('status', 'active');
 
         if ($request->has('search')) {

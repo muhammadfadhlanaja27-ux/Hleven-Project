@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import HotelCard from "../../components/landing/HotelCard";
-import { mockHotels } from "../../data/mockHotels";
 import api from "../../services/api";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
@@ -25,7 +24,7 @@ const LandingPage = () => {
   const [sortBy, setSortBy] = useState("recommendation");
   const [visibleCount, setVisibleCount] = useState(6);
 
-  // Fetch Hotels (Backend API with Fallback to Mock)
+  // Fetch Hotels (Backend API without Mock)
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
@@ -33,28 +32,13 @@ const LandingPage = () => {
         const response = await api.get("/hotels");
         if (response.data && (response.data.data || Array.isArray(response.data))) {
           const apiHotels = response.data.data || response.data;
-          if (apiHotels.length > 0) {
-            // Merge with mock to guarantee facility & price data availability
-            const mergedHotels = apiHotels.map((apiH, idx) => {
-              const mockRef = mockHotels[idx % mockHotels.length];
-              return {
-                ...mockRef,
-                ...apiH,
-                facilities: apiH.facilities || mockRef.facilities,
-                starting_price: apiH.starting_price || apiH.price || mockRef.starting_price,
-                rating: apiH.rating || apiH.average_rating || mockRef.rating
-              };
-            });
-            setHotels(mergedHotels);
-          } else {
-            setHotels(mockHotels);
-          }
+          setHotels(apiHotels);
         } else {
-          setHotels(mockHotels);
+          setHotels([]);
         }
       } catch (err) {
-        console.warn("Backend API Error/Offline. Menggunakan mockHotels fallback.", err);
-        setHotels(mockHotels);
+        console.error("Backend API Error:", err);
+        setHotels([]);
       } finally {
         setLoading(false);
       }
@@ -97,7 +81,8 @@ const LandingPage = () => {
         if (searchTerm.trim()) {
           const query = searchTerm.toLowerCase();
           const matchName = hotel.name?.toLowerCase().includes(query);
-          const matchCity = hotel.city?.toLowerCase().includes(query);
+          const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
+          const matchCity = cityStr?.toLowerCase().includes(query);
           const matchAddress = hotel.address?.toLowerCase().includes(query);
           if (!matchName && !matchCity && !matchAddress) return false;
         }
