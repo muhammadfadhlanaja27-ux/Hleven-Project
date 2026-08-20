@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import { cachedGet } from '../../services/apiCache';
 
 // ─── Helper: Format Rupiah ────────────────────────────────────────────────────
 const fmt = (val) =>
@@ -79,12 +80,12 @@ export default function Dashboard() {
     fetchStats();
   }, []);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/admin/hotel/dashboard');
-      const data = res.data?.data;
+      const { data: resData } = await cachedGet('/admin/hotel/dashboard', {}, forceRefresh);
+      const data = resData?.data;
       if (!data) throw new Error('Format data tidak valid dari server.');
       setStats(data);
     } catch (err) {

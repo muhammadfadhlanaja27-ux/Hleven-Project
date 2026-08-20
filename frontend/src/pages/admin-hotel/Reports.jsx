@@ -13,7 +13,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { INITIAL_BOOKINGS } from "../../utils/bookingData";
+import { cachedGet } from "../../services/apiCache";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const formatRp = (value) => {
@@ -29,13 +29,15 @@ const formatRpShort = (value) => {
 };
 
 // ─── Date Helpers ─────────────────────────────────────────────────────────────
-const today = new Date("2026-08-18");
-
 const getPeriodRange = (period) => {
-  const d = new Date(today);
+  const now = new Date();
+  const d = new Date(now);
   switch (period) {
-    case "today":
-      return { start: new Date(d.setHours(0, 0, 0, 0)), end: new Date(today.setHours(23, 59, 59)) };
+    case "today": {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      return { start, end };
+    }
     case "thisWeek": {
       const day = d.getDay();
       const mon = new Date(d);
@@ -46,35 +48,76 @@ const getPeriodRange = (period) => {
       sun.setHours(23, 59, 59);
       return { start: mon, end: sun };
     }
-    case "thisMonth":
-      return { start: new Date(2026, 7, 1), end: new Date(2026, 7, 31, 23, 59) };
-    case "lastMonth":
-      return { start: new Date(2026, 6, 1), end: new Date(2026, 6, 31, 23, 59) };
-    case "thisYear":
-      return { start: new Date(2026, 0, 1), end: new Date(2026, 11, 31, 23, 59) };
-    default:
-      return { start: new Date(2026, 7, 1), end: new Date(2026, 7, 31, 23, 59) };
+    case "thisMonth": {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      return { start, end };
+    }
+    case "lastMonth": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      return { start, end };
+    }
+    case "thisYear": {
+      const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+      return { start, end };
+    }
+    case "all": {
+      return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
+    }
+    default: {
+      return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
+    }
   }
 };
 
 const getPreviousPeriodRange = (period) => {
+  const now = new Date();
   switch (period) {
-    case "today":
-      return { start: new Date(2026, 7, 17), end: new Date(2026, 7, 17, 23, 59) };
-    case "thisWeek":
-      return { start: new Date(2026, 7, 4), end: new Date(2026, 7, 10, 23, 59) };
-    case "thisMonth":
-      return { start: new Date(2026, 6, 1), end: new Date(2026, 6, 31, 23, 59) };
-    case "lastMonth":
-      return { start: new Date(2026, 5, 1), end: new Date(2026, 5, 30, 23, 59) };
-    case "thisYear":
-      return { start: new Date(2025, 0, 1), end: new Date(2025, 11, 31, 23, 59) };
-    default:
-      return { start: new Date(2026, 6, 1), end: new Date(2026, 6, 31, 23, 59) };
+    case "today": {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+      const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+      return { start, end };
+    }
+    case "thisWeek": {
+      const d = new Date(now);
+      const day = d.getDay();
+      const lastMon = new Date(d);
+      lastMon.setDate(d.getDate() - ((day + 6) % 7) - 7);
+      lastMon.setHours(0, 0, 0, 0);
+      const lastSun = new Date(lastMon);
+      lastSun.setDate(lastMon.getDate() + 6);
+      lastSun.setHours(23, 59, 59);
+      return { start: lastMon, end: lastSun };
+    }
+    case "thisMonth": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      return { start, end };
+    }
+    case "lastMonth": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59);
+      return { start, end };
+    }
+    case "thisYear": {
+      const start = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+      return { start, end };
+    }
+    default: {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      return { start, end };
+    }
   }
 };
 
 const isInRange = (dateStr, range) => {
+  if (!dateStr) return false;
   const d = new Date(dateStr);
   return d >= range.start && d <= range.end;
 };
@@ -156,9 +199,11 @@ const Skeleton = ({ className }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RevenueReport() {
-  const [selectedPeriod, setSelectedPeriod] = useState("thisMonth");
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
   const [chartPeriod, setChartPeriod] = useState("daily");
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFromCache, setIsFromCache] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [detailSort, setDetailSort] = useState({ col: "date", dir: "desc" });
   const [detailPage, setDetailPage] = useState(1);
@@ -176,12 +221,71 @@ export default function RevenueReport() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Simulate loading
   useEffect(() => {
+    fetchBookingsData();
+  }, []);
+
+  const fetchBookingsData = async (forceRefresh = false) => {
     setLoading(true);
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, [selectedPeriod]);
+    try {
+      const { data, fromCache } = await cachedGet("/admin/bookings", {}, forceRefresh);
+      setIsFromCache(fromCache);
+
+      if (data && data.status === "success") {
+        const mapped = (data.data || []).map((b) => {
+          const roomType = b.booking_rooms?.[0]?.room_type || {};
+
+          let statusLabel = "Pending";
+          if (b.status === "confirmed") statusLabel = "Confirmed";
+          else if (b.status === "checked_in") statusLabel = "Checked In";
+          else if (b.status === "completed") statusLabel = "Checked Out";
+          else if (b.status === "cancelled") statusLabel = "Cancelled";
+
+          let paymentStatusLabel = "Unpaid";
+          if (b.payment?.payment_status === "success") paymentStatusLabel = "Paid";
+          else if (b.payment?.payment_status === "pending") paymentStatusLabel = "Pending";
+          else if (b.payment?.payment_status === "refunded") paymentStatusLabel = "Refunded";
+
+          const checkInDate = b.check_in ? b.check_in.slice(0, 10) : (b.created_at ? b.created_at.slice(0, 10) : "");
+          const roomNameStr = roomType.name || "Standard Room";
+          const roomTypeStr = roomType.name || "Standard";
+
+          return {
+            id: b.id,
+            bookingCode: b.booking_code || `BK-${b.id}`,
+            bookingDate: b.created_at ? b.created_at.slice(0, 10) : "",
+            checkIn: checkInDate,
+            checkOut: b.check_out ? b.check_out.slice(0, 10) : "",
+            guestName: b.user ? b.user.name : "Guest",
+            guestPhone: b.user ? b.user.phone : "—",
+            room: {
+              name: roomNameStr,
+              type: roomTypeStr,
+              weekdayPrice: Number(roomType.weekday_price) || 0,
+              weekendPrice: Number(roomType.weekend_price) || 0,
+            },
+            guests: b.guests_count || 1,
+            nights: b.nights_count || 1,
+            totalAmount: Number(b.total_amount) || 0,
+            bookingStatus: statusLabel,
+            paymentStatus: paymentStatusLabel,
+            weekdayNights: b.weekday_nights || 1,
+            weekendNights: b.weekend_nights || 0,
+            discount: Number(b.discount_amount) || 0,
+            roomPriceSum: Number(b.total_amount) || 0,
+            additionalCharges: 0,
+          };
+        });
+
+        setBookings(mapped);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memuat data laporan.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Reset page when period changes
   useEffect(() => {
@@ -189,18 +293,18 @@ export default function RevenueReport() {
   }, [selectedPeriod]);
 
   // ─── Filtered Data ─────────────────────────────────────────────────────────
-  const allBookings = INITIAL_BOOKINGS;
+  const allBookings = bookings;
   const range = getPeriodRange(selectedPeriod);
   const prevRange = getPreviousPeriodRange(selectedPeriod);
 
   const filteredBookings = useMemo(
-    () => allBookings.filter((b) => isInRange(b.checkIn, range)),
-    [selectedPeriod]
+    () => (selectedPeriod === "all" ? allBookings : allBookings.filter((b) => isInRange(b.checkIn, range))),
+    [allBookings, selectedPeriod]
   );
 
   const prevBookings = useMemo(
     () => allBookings.filter((b) => isInRange(b.checkIn, prevRange)),
-    [selectedPeriod]
+    [allBookings, selectedPeriod]
   );
 
   const stats = useMemo(() => calcRevenue(filteredBookings), [filteredBookings]);
@@ -364,6 +468,7 @@ export default function RevenueReport() {
 
   // ─── Period Labels ─────────────────────────────────────────────────────────
   const periodLabels = {
+    all: "All Time",
     today: "Today",
     thisWeek: "This Week",
     thisMonth: "This Month",
@@ -392,14 +497,34 @@ export default function RevenueReport() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Cache Status Badge */}
+          {isFromCache && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43] border border-[#c4c8be]/40">
+              <span className="w-2 h-2 rounded-full bg-[#506147] animate-pulse" />
+              Cached Data
+            </span>
+          )}
+
+          {/* Refresh Button */}
+          <button
+            onClick={() => fetchBookingsData(true)}
+            title="Refresh data from server"
+            className="flex items-center gap-1.5 bg-white border border-[#E5E1DA] px-3 py-2 rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#f0ede9] transition-colors shadow-sm"
+          >
+            <span className={`material-symbols-outlined text-[18px] ${loading ? "animate-spin" : ""}`}>
+              refresh
+            </span>
+            Refresh
+          </button>
+
           {/* Period Selector */}
-          <div className="flex items-center bg-white rounded-lg border border-[#E5E1DA] p-1 shadow-sm">
+          <div className="flex items-center bg-white rounded-lg border border-[#E5E1DA] p-1 shadow-sm overflow-x-auto">
             {Object.entries(periodLabels).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setSelectedPeriod(key)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
                   selectedPeriod === key
                     ? "bg-[#506147] text-white shadow-sm"
                     : "text-[#6B6E6A] hover:bg-[#f0ede9]"

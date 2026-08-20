@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\Hotel;
+use App\Models\City;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class SuperAdminUserService
 {
@@ -50,6 +53,19 @@ class SuperAdminUserService
                 // PERBAIKAN UTAMA: Menggunakan huruf kecil agar lolos constraint Supabase
                 'status' => 'active'
             ]);
+
+            if ($user->role === 'admin_hotel') {
+                $hotelName = !empty($data['hotel_name']) ? $data['hotel_name'] : 'Hotel ' . $user->name;
+                Hotel::create([
+                    'admin_id' => $user->id,
+                    'city_id' => City::first()?->id ?? 1,
+                    'name' => $hotelName,
+                    'slug' => Str::slug($hotelName) . '-' . $user->id,
+                    'description' => 'Deskripsi hotel baru untuk ' . $hotelName,
+                    'address' => 'Alamat hotel baru',
+                    'status' => 'active',
+                ]);
+            }
 
             ActivityLog::create([
                 'user_id' => $superAdmin->id,

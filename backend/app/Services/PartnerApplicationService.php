@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\PartnerApplication;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\Hotel;
+use App\Models\City;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -14,10 +16,10 @@ class PartnerApplicationService
     public function approveApplication(PartnerApplication $application, User $admin): void
     {
         DB::transaction(function () use ($application, $admin) {
-            // Ubah status menjadi Approved[cite: 1]
+            // Ubah status menjadi Approved
             $application->update(['status' => 'Approved']);
 
-            // Buat akun Admin Hotel secara otomatis (Opsional sesuai alur PARTNER-006)[cite: 1]
+            // Buat akun Admin Hotel secara otomatis (Opsional sesuai alur PARTNER-006)
             $password = Str::random(10); // Generate random password, bisa dikirim via email nantinya
             $hotelAdmin = User::create([
                 'name' => $application->owner_name,
@@ -28,7 +30,18 @@ class PartnerApplicationService
                 'phone' => $application->phone
             ]);
 
-            // Catat Activity Log[cite: 1]
+            // Buat Hotel yang terikat ke User tersebut
+            Hotel::create([
+                'admin_id' => $hotelAdmin->id,
+                'city_id' => City::first()?->id ?? 1,
+                'name' => $application->hotel_name,
+                'slug' => Str::slug($application->hotel_name) . '-' . $hotelAdmin->id,
+                'description' => 'Deskripsi hotel baru untuk ' . $application->hotel_name,
+                'address' => 'Alamat hotel baru',
+                'status' => 'active',
+            ]);
+
+            // Catat Activity Log
             ActivityLog::create([
                 'user_id' => $admin->id,
                 'activity' => 'Approve Partner',
@@ -36,7 +49,7 @@ class PartnerApplicationService
                 'ip_address' => request()->ip()
             ]);
 
-            // TODO: Integrasi pengiriman email kredensial (password) ke pemilik hotel via Queue (Checkpoint 2)[cite: 1]
+            // TODO: Integrasi pengiriman email kredensial (password) ke pemilik hotel via Queue (Checkpoint 2)
         });
     }
 

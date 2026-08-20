@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import api from "../../services/api";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 // Icon selector options
 const ICON_OPTIONS = [
@@ -24,8 +26,8 @@ const ICON_OPTIONS = [
 const initialHotelFacilities = [
   {
     id: "h-1",
-    name: "Free High-Speed Wi-Fi",
-    description: "Free Wi-Fi available throughout the hotel.",
+    name: "High-Speed Wi-Fi (All Areas)",
+    description: "High-speed internet accessible in all hotel areas.",
     status: "active",
     icon: "wifi",
     updatedAt: "24 Oct 2023",
@@ -114,6 +116,47 @@ export default function FacilityManager() {
   // Local Data State
   const [hotelFacilities, setHotelFacilities] = useState(initialHotelFacilities);
   const [roomFacilities, setRoomFacilities] = useState(initialRoomFacilities);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFacilities();
+  }, []);
+
+  const fetchFacilities = async (forceRefresh = false) => {
+    setLoading(true);
+    try {
+      const { data: resData } = await cachedGet("/facilities", {}, forceRefresh);
+      if (resData && resData.data && Array.isArray(resData.data)) {
+        const hotelList = resData.data
+          .filter((f) => f.category === "Hotel")
+          .map((f) => ({
+            id: f.id,
+            name: f.name,
+            description: f.description || "",
+            status: "active",
+            icon: f.icon || "wifi",
+            updatedAt: "Today",
+          }));
+        const roomList = resData.data
+          .filter((f) => f.category === "Room" || f.category === "Bathroom")
+          .map((f) => ({
+            id: f.id,
+            name: f.name,
+            description: f.description || "",
+            status: "active",
+            icon: f.icon || "ac_unit",
+            updatedAt: "Today",
+          }));
+
+        if (hotelList.length > 0) setHotelFacilities(hotelList);
+        if (roomList.length > 0) setRoomFacilities(roomList);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -239,6 +282,7 @@ export default function FacilityManager() {
           setRoomFacilities((prev) => [newFacility, ...prev]);
           toast.success("Room facility created successfully.");
         }
+        invalidateCache("/facilities");
       } else if (modalMode === "edit" && selectedFacility) {
         const updatedFacility = {
           ...selectedFacility,
@@ -264,6 +308,7 @@ export default function FacilityManager() {
           );
           toast.success("Room facility updated successfully.");
         }
+        invalidateCache("/facilities");
       }
 
       handleCloseModal();
@@ -288,6 +333,7 @@ export default function FacilityManager() {
         );
         toast.success("Room facility deleted successfully.");
       }
+      invalidateCache("/facilities");
       handleCloseModal();
     }, 400);
   };

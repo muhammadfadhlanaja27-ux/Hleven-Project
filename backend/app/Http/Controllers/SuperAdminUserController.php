@@ -67,7 +67,8 @@ class SuperAdminUserController extends Controller
             'password' => 'required|string|min:8',
             'role' => 'required|in:admin_hotel,user,super_admin',
             'phone' => 'nullable|string|max:20',
-            'status' => 'nullable|in:active,blocked,inactive'
+            'status' => 'nullable|in:active,blocked,inactive',
+            'hotel_name' => 'nullable|string|max:255'
         ]);
 
         try {
