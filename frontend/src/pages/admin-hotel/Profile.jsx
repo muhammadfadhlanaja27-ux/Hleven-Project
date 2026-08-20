@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import api from "../../services/api";
 
-// ─── Initial Mock Data ────────────────────────────────────────────────────────
+// ─── Initial Fallback Data ───────────────────────────────────────────────────
 const INITIAL_PROFILE = {
-  name: "Muhammad Fadhlan",
+  name: "Admin Hotel",
   email: "admin@example.com",
   phone: "+62 812 3456 7890",
   role: "Hotel Administrator",
-  avatar: null, // Data URL or null
+  avatar: null,
 
   hotel: {
-    name: "Grand Horizon Hotel",
-    email: "info@grandhorizonhotel.com",
+    name: "Grand H'Leven Hotel",
+    email: "info@grandhleven.com",
     phone: "+62 22 1234567",
     address: "Jl. Example No. 123",
     city: "Bandung",
@@ -31,6 +32,29 @@ const INITIAL_PROFILE = {
   },
 };
 
+const getInitialUser = () => {
+  try {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      return {
+        ...INITIAL_PROFILE,
+        name: u.name || "Admin Hotel",
+        email: u.email || "admin@example.com",
+        phone: u.phone || "",
+        role:
+          u.role === "admin_hotel"
+            ? "Hotel Administrator"
+            : u.role || "Hotel Administrator",
+        avatar: u.avatar || null,
+      };
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return INITIAL_PROFILE;
+};
+
 // ─── Password Strength Evaluator ──────────────────────────────────────────────
 const evaluatePasswordStrength = (pwd) => {
   if (!pwd) return { score: 0, label: "Weak", color: "bg-gray-200", text: "text-gray-400" };
@@ -48,17 +72,7 @@ const evaluatePasswordStrength = (pwd) => {
 
 export default function Profile() {
   // ─── Local State ────────────────────────────────────────────────────────────
-  const [profile, setProfile] = useState(() => {
-    const saved = localStorage.getItem("admin_hotel_profile");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return INITIAL_PROFILE;
-  });
+  const [profile, setProfile] = useState(getInitialUser);
 
   // Account Edit State
   const [editAccount, setEditAccount] = useState(false);
@@ -99,23 +113,51 @@ export default function Profile() {
   const avatarInputRef = useRef(null);
   const hotelLogoInputRef = useRef(null);
 
-  // Sync to localStorage for persistence
+  // Fetch real profile from backend
   useEffect(() => {
-    localStorage.setItem("admin_hotel_profile", JSON.stringify(profile));
-    // Also sync user name & email to existing 'user' localStorage key for layout header
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const u = JSON.parse(userStr);
-        u.name = profile.name;
-        u.email = profile.email;
-        if (profile.avatar) u.avatar = profile.avatar;
-        localStorage.setItem("user", JSON.stringify(u));
+    const fetchProfileData = async () => {
+      try {
+        const [profileRes, hotelRes] = await Promise.allSettled([
+          api.get("/profile"),
+          api.get("/admin/hotel/profile"),
+        ]);
+
+        if (profileRes.status === "fulfilled" && profileRes.value.data) {
+          const u = profileRes.value.data.data || profileRes.value.data.user || profileRes.value.data;
+          if (u) {
+            setProfile((prev) => ({
+              ...prev,
+              name: u.name || prev.name,
+              email: u.email || prev.email,
+              phone: u.phone || prev.phone,
+              avatar: u.avatar_url || (u.avatar ? `http://localhost:8000/storage/${u.avatar}` : prev.avatar),
+            }));
+          }
+        }
+
+        if (hotelRes.status === "fulfilled" && hotelRes.value.data) {
+          const h = hotelRes.value.data.data || hotelRes.value.data;
+          if (h) {
+            setProfile((prev) => ({
+              ...prev,
+              hotel: {
+                ...prev.hotel,
+                name: h.name || prev.hotel.name,
+                description: h.description || prev.hotel.description,
+                address: h.address || prev.hotel.address,
+                city: h.city?.name || h.city || prev.hotel.city,
+                phone: h.phone || prev.hotel.phone,
+              },
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
       }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [profile]);
+    };
+
+    fetchProfileData();
+  }, []);
 
   // Keep form states in sync when profile updates
   useEffect(() => {
@@ -129,7 +171,7 @@ export default function Profile() {
   }, [profile]);
 
   // ─── Image Handlers ─────────────────────────────────────────────────────────
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -139,9 +181,24 @@ export default function Profile() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfile((prev) => ({ ...prev, avatar: reader.result }));
-        toast.success("Profile photo updated successfully.");
       };
       reader.readAsDataURL(file);
+
+      try {
+        const formData = new FormData();
+        formData.append("avatar", file);
+        const nameParts = profile.name.trim().split(" ");
+        formData.append("first_name", nameParts[0]);
+        formData.append("last_name", nameParts.slice(1).join(" ") || "");
+        formData.append("email", profile.email);
+        await api.put("/user/profile", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        toast.success("Profile photo updated successfully.");
+      } catch (err) {
+        console.error(err);
+        toast.error("Gagal mengunggah foto profil ke server.");
+      }
     }
   };
 
@@ -194,22 +251,56 @@ export default function Profile() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSaveAccount = (e) => {
+  const handleSaveAccount = async (e) => {
     e.preventDefault();
     if (!validateAccountForm()) return;
 
     setSavingAccount(true);
-    setTimeout(() => {
+
+    try {
+      const nameParts = accountForm.name.trim().split(" ");
+      const first_name = nameParts[0];
+      const last_name = nameParts.slice(1).join(" ") || "";
+
+      const res = await api.put("/user/profile", {
+        first_name,
+        last_name,
+        email: accountForm.email.trim(),
+        phone: accountForm.phone.trim(),
+      });
+
+      const updatedUser =
+        res.data?.user || res.data?.data || {};
+
+      try {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const mergedUser = {
+          ...localUser,
+          name: updatedUser.name || accountForm.name.trim(),
+          email: updatedUser.email || accountForm.email.trim(),
+          phone: updatedUser.phone || accountForm.phone.trim(),
+        };
+        localStorage.setItem("user", JSON.stringify(mergedUser));
+      } catch (err) {
+        console.error(err);
+      }
+
       setProfile((prev) => ({
         ...prev,
         name: accountForm.name.trim(),
         email: accountForm.email.trim(),
         phone: accountForm.phone.trim(),
       }));
-      setSavingAccount(false);
+
       setEditAccount(false);
       toast.success("Profile updated successfully.");
-    }, 600);
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || "Gagal memperbarui profil.";
+      toast.error(msg);
+    } finally {
+      setSavingAccount(false);
+    }
   };
 
   const handleCancelAccount = () => {
@@ -254,20 +345,32 @@ export default function Profile() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSaveHotel = (e) => {
+  const handleSaveHotel = async (e) => {
     e.preventDefault();
     if (!validateHotelForm()) return;
 
     setSavingHotel(true);
-    setTimeout(() => {
+
+    try {
+      await api.post("/admin/hotel/profile", {
+        name: hotelForm.name.trim(),
+        description: hotelForm.description?.trim() || "",
+        address: hotelForm.address.trim(),
+        phone: hotelForm.phone.trim(),
+      });
+
       setProfile((prev) => ({
         ...prev,
         hotel: { ...hotelForm },
       }));
-      setSavingHotel(false);
       setEditHotel(false);
       toast.success("Hotel information updated successfully.");
-    }, 600);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memperbarui informasi hotel.");
+    } finally {
+      setSavingHotel(false);
+    }
   };
 
   const handleCancelHotel = () => {
@@ -306,18 +409,30 @@ export default function Profile() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleUpdatePassword = (e) => {
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (!validatePasswordForm()) return;
 
     setUpdatingPassword(true);
-    setTimeout(() => {
-      setUpdatingPassword(false);
+
+    try {
+      await api.put("/user/change-password", {
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      });
+
       setShowPasswordModal(false);
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setPasswordErrors({});
       toast.success("Password updated successfully.");
-    }, 700);
+    } catch (err) {
+      console.error(err);
+      const msg =
+        err.response?.data?.message || "Gagal mengubah kata sandi.";
+      toast.error(msg);
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   const pwdStrength = evaluatePasswordStrength(passwordForm.newPassword);
@@ -467,7 +582,7 @@ export default function Profile() {
                       ? "border-red-400 focus:ring-red-200"
                       : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
                   }`}
-                  placeholder="e.g. Muhammad Fadhlan"
+                  placeholder="e.g. Name"
                 />
                 {accountErrors.name && (
                   <p className="text-xs text-red-500 mt-1 flex items-center gap-1">

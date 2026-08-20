@@ -2,11 +2,52 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet, invalidateCache } from "../../services/apiCache";
-import { getStoredRoomFacilities } from "../../utils/roomData";
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
+
+const normalizeRoom = (r) => {
+  let photos = [];
+  if (Array.isArray(r.photos)) {
+    photos = r.photos.map((p) => {
+      const imgPath = p.image_path || p.url || "";
+      const fullUrl = imgPath.startsWith("http")
+        ? imgPath
+        : `http://localhost:8000/storage/${imgPath}`;
+      return {
+        id: p.id,
+        url: fullUrl,
+        name: p.name || (imgPath ? imgPath.split("/").pop() : "room.jpg"),
+      };
+    });
+  }
+
+  const facIds = Array.isArray(r.facilities)
+    ? r.facilities.map((f) => f.id)
+    : r.facilityIds || [];
+
+  return {
+    id: r.id,
+    name: r.name || "",
+    type: r.name?.toLowerCase().includes("suite")
+      ? "Suite"
+      : r.name?.toLowerCase().includes("deluxe")
+      ? "Deluxe"
+      : "Standard",
+    description: r.description || "",
+    weekday_price: Number(r.weekday_price || 0),
+    weekend_price: Number(r.weekend_price || 0),
+    capacity: Number(r.capacity_adult || r.capacity || 2),
+    capacity_adult: Number(r.capacity_adult || 2),
+    capacity_child: Number(r.capacity_child || 0),
+    stock: Number(r.stock || 0),
+    occupied: Number(r.occupied || 0),
+    facilityIds: facIds,
+    facilities: r.facilities || [],
+    photos: photos,
+    status: Number(r.stock || 0) > 0 ? "Available" : "Occupied",
+  };
+};
 
 export default function RoomList() {
   const navigate = useNavigate();
@@ -43,51 +84,30 @@ export default function RoomList() {
     loadData();
   }, []);
 
-  const loadData = async (forceRefresh = false) => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const { data: responseData } = await cachedGet("/hotel/rooms", {}, forceRefresh);
-      const loadedFacilities = getStoredRoomFacilities();
-      let dbFacilities = loadedFacilities;
-      try {
-        const { data: facData } = await cachedGet("/facilities?category=Room", {}, forceRefresh);
-        dbFacilities = facData?.data || loadedFacilities;
-      } catch (err) {
-        console.error("Gagal memuat facilities dari API, fallback ke mock", err);
-      }
+      const [roomsRes, facilitiesRes] = await Promise.allSettled([
+        api.get("/hotel/room-types"),
+        api.get("/facilities"),
+      ]);
 
-      if (responseData && responseData.success) {
-        const dbRooms = responseData.data.map((room) => ({
-          id: room.id,
-          name: room.name,
-          type: room.name,
-          description: room.description || "",
-          weekday_price: Number(room.weekday_price),
-          weekend_price: Number(room.weekend_price),
-          capacity: Number(room.capacity_adult),
-          stock: Number(room.stock),
-          occupied: 0,
-          facilityIds: (room.facilities || []).map((f) => f.id),
-          photos: (room.photos || []).map((p, idx) => ({
-            id: p.id,
-            url: p.photo ? (p.photo.startsWith("http") ? p.photo : `http://localhost:8000/storage/${p.photo}`) : "",
-            name: p.photo ? p.photo.split("/").pop() : `photo-${idx}`
-          })),
-          status: room.stock > 0 ? "Available" : "Occupied",
-        }));
-        setRooms(dbRooms);
+      if (roomsRes.status === "fulfilled" && roomsRes.value.data) {
+        const rawRooms =
+          roomsRes.value.data.data || roomsRes.value.data || [];
+        setRooms(Array.isArray(rawRooms) ? rawRooms.map(normalizeRoom) : []);
       }
-      setRoomFacilities(dbFacilities);
+      if (facilitiesRes.status === "fulfilled" && facilitiesRes.value.data) {
+        const rawFac =
+          facilitiesRes.value.data.data || facilitiesRes.value.data || [];
+        setRoomFacilities(Array.isArray(rawFac) ? rawFac : []);
+      }
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memuat data kamar");
+      toast.error("Gagal memuat data kamar dari server.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const updateRoomsState = (newRooms) => {
-    setRooms(newRooms);
   };
 
   // Map Facility IDs to Objects
@@ -239,19 +259,17 @@ export default function RoomList() {
         weekday_price: Number(editValues.weekday_price),
         weekend_price: Number(editValues.weekend_price),
         adult_capacity: Number(editValues.capacity),
-        child_capacity: 0,
         stock: Number(editValues.stock),
-        facilities: editValues.facilityIds,
+        facilities: editValues.facilityIds || [],
       });
 
       toast.success("Room updated successfully.");
-      invalidateCache("/hotel/rooms");
-      invalidateCache("/admin/hotel/dashboard");
-      await loadData(true);
       setEditingRoom(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Gagal memperbarui kamar.");
+      loadData();
+    } catch (error) {
+      console.error(error);
+      const msg = error.response?.data?.message || "Failed to update room.";
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
@@ -265,16 +283,15 @@ export default function RoomList() {
     try {
       await api.delete(`/admin/rooms/${deletingRoom.id}`);
       toast.success("Room deleted successfully.");
-      invalidateCache("/hotel/rooms");
-      invalidateCache("/admin/hotel/dashboard");
-      await loadData(true);
       setDeletingRoom(null);
       if (viewingRoom && viewingRoom.id === deletingRoom.id) {
         setViewingRoom(null);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Gagal menghapus kamar.");
+      loadData();
+    } catch (error) {
+      console.error(error);
+      const msg = error.response?.data?.message || "Failed to delete room.";
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
