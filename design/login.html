@@ -1,13 +1,14 @@
-<!DOCTYPE html><html class="light" lang="en"><head>
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>H'Leven - Login</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com" rel="preconnect">
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
@@ -162,7 +163,34 @@
         }
     </style>
 </head>
-<body class="bg-background min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop font-body-md text-on-surface">
+<body class="bg-background min-h-screen flex flex-col font-body-md text-on-surface">
+<!-- Header -->
+<header class="w-full sticky top-0 bg-off-white dark:bg-surface-dim border-b border-warm-beige/30 shadow-sm shadow-forest-green/5 z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto z-50">
+<div class="flex items-center gap-6">
+<a class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim" href="#">H'Leven</a>
+<div class="hidden lg:flex items-center bg-surface-variant/50 rounded-full px-4 py-2">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md p-0 w-32 focus:w-48 transition-all text-on-surface" placeholder="Search..." type="text"/>
+</div>
+</div>
+<nav class="hidden md:flex items-center gap-6 font-body-md">
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-2 py-1 rounded" href="#">Hotels</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-2 py-1 rounded" href="#">Resorts</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-2 py-1 rounded" href="#">Our Story</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-2 py-1 rounded" href="#">Promotions</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden sm:flex text-on-surface-variant hover:text-forest-green transition-colors hover:bg-warm-beige/10 p-2 rounded-full active:scale-[0.99] duration-200">
+<span class="material-symbols-outlined">person</span>
+</button>
+<button class="bg-forest-green hover:bg-secondary text-on-primary px-4 py-2 rounded-DEFAULT font-label-md transition-colors active:scale-[0.99] duration-200 shadow-sm">
+                Book Now
+            </button>
+</div>
+</div>
+</header>
+<div class="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop">
 <main class="w-full max-w-[1000px] bg-surface-container-lowest rounded-xl shadow-sm shadow-forest-green/5 overflow-hidden flex flex-col md:flex-row relative z-10 border border-warm-beige/30">
 <!-- Left Side: Image -->
 <div class="hidden md:block md:w-1/2 relative bg-surface-dim">
@@ -185,18 +213,18 @@
 <form action="#" class="space-y-stack-md" method="POST">
 <!-- Email Input -->
 <div class="floating-input w-full">
-<input class="w-full rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-on-surface" id="email" name="email" placeholder=" " required="" type="email">
+<input class="w-full rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-on-surface" id="email" name="email" placeholder=" " required="" type="email"/>
 <label class="font-label-md text-label-md" for="email">Email Address</label>
 </div>
 <!-- Password Input -->
 <div class="floating-input w-full">
-<input class="w-full rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-on-surface" id="password" name="password" placeholder=" " required="" type="password">
+<input class="w-full rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-on-surface" id="password" name="password" placeholder=" " required="" type="password"/>
 <label class="font-label-md text-label-md" for="password">Password</label>
 </div>
 <!-- Remember Me & Forgot Password -->
 <div class="flex items-center justify-between pt-stack-sm">
 <div class="flex items-center">
-<input class="h-4 w-4 rounded border-warm-beige text-forest-green focus:ring-forest-green bg-surface-container-lowest" id="remember-me" name="remember-me" type="checkbox">
+<input class="h-4 w-4 rounded border-warm-beige text-forest-green focus:ring-forest-green bg-surface-container-lowest" id="remember-me" name="remember-me" type="checkbox"/>
 <label class="ml-2 block font-label-md text-label-md text-on-surface-variant" for="remember-me">
                             Remember me
                         </label>
@@ -223,4 +251,35 @@
 </div>
 </div>
 </main>
+</div>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-highest dark:bg-inverse-surface border-t border-warm-beige/20 mt-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter w-full px-margin-desktop py-section-gap max-w-container-max mx-auto">
+<div class="col-span-1 md:col-span-2">
+<div class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim mb-4">H'Leven</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 max-w-sm">Experience unparalleled luxury and comfort at our handpicked locations around the world.</p>
+</div>
+<div>
+<h4 class="font-label-md text-label-md font-bold mb-4 text-on-surface">Company</h4>
+<ul class="space-y-2 font-label-sm text-label-sm">
+<li><a class="text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Our Story</a></li>
+<li><a class="text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Careers</a></li>
+<li><a class="text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Contact Us</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-md text-label-md font-bold mb-4 text-on-surface">Legal</h4>
+<ul class="space-y-2 font-label-sm text-label-sm">
+<li><a class="text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Terms of Service</a></li>
+<li><a class="text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Support Center</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-warm-beige/20 py-6 px-margin-desktop">
+<div class="max-w-container-max mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+<p class="font-label-sm text-label-sm text-on-surface-variant">© 2024 H'Leven Hospitality Group. All rights reserved.</p>
+</div>
+</div>
+</footer>
 </body></html>

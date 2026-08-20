@@ -18,8 +18,8 @@ import AdminHotelLayout from "./components/admin-hotel/AdminHotelLayout";
 import LandingPage from "./pages/user/LandingPage";
 import HotelList from "./pages/user/HotelList";
 import RoomDetail from "./pages/user/RoomDetail";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
+import Login from "./Pages/Auth/Login";
+import Register from "./Pages/Auth/Register";
 import UserProfile from "./pages/user/UserProfile";
 import HotelDetail from "./pages/user/HotelDetail";
 import BookingPage from "./pages/user/BookingPage";
@@ -131,7 +131,7 @@ function App() {
             <Route path="/hotels/:id" element={<HotelDetail />} />
             <Route path="/hotels/:hotelId/rooms/:roomId" element={<RoomDetail />} />
             <Route path="/rooms/:hotelId/:roomId" element={<RoomDetail />} />
-            
+
             {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
             <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
 
