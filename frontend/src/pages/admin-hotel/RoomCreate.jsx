@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import {
-  getStoredRooms,
-  saveStoredRooms,
-  getStoredRoomFacilities,
-} from "../../utils/roomData";
+import api from "../../services/api";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
+import { getStoredRoomFacilities } from "../../utils/roomData";
 
 export default function RoomCreate() {
   const navigate = useNavigate();
@@ -31,9 +29,22 @@ export default function RoomCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const facilities = getStoredRoomFacilities();
-    setRoomFacilities(facilities);
+    fetchFacilities();
   }, []);
+
+  const fetchFacilities = async () => {
+    try {
+      const { data: resData } = await cachedGet("/facilities?category=Room");
+      if (resData && resData.success) {
+        setRoomFacilities(resData.data);
+      } else {
+        setRoomFacilities(getStoredRoomFacilities());
+      }
+    } catch (err) {
+      console.error("Gagal memuat facilities dari API, fallback ke mock", err);
+      setRoomFacilities(getStoredRoomFacilities());
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -61,6 +72,7 @@ export default function RoomCreate() {
       id: `p-create-${Date.now()}-${idx}`,
       url: URL.createObjectURL(file),
       name: file.name,
+      file: file,
     }));
 
     setFormData((prev) => ({
@@ -85,10 +97,6 @@ export default function RoomCreate() {
       newErrors.name = "Room name is required.";
     }
 
-    if (!formData.type) {
-      newErrors.type = "Please select a room type.";
-    }
-
     if (!formData.weekday_price || Number(formData.weekday_price) <= 0) {
       newErrors.weekday_price = "Weekday price must be greater than 0.";
     }
@@ -108,7 +116,7 @@ export default function RoomCreate() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
@@ -119,30 +127,42 @@ export default function RoomCreate() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const existingRooms = getStoredRooms();
-      const newRoom = {
-        id: Date.now(),
-        name: formData.name.trim(),
-        type: formData.type,
-        description: formData.description.trim(),
-        weekday_price: Number(formData.weekday_price),
-        weekend_price: Number(formData.weekend_price),
-        capacity: Number(formData.capacity),
-        stock: Number(formData.stock),
-        occupied: 0,
-        facilityIds: formData.facilityIds,
-        photos: formData.photos,
-        status: "Available",
-      };
+    try {
+      const data = new FormData();
+      data.append("name", formData.name.trim());
+      data.append("description", formData.description.trim());
+      data.append("weekday_price", formData.weekday_price);
+      data.append("weekend_price", formData.weekend_price);
+      data.append("stock", formData.stock);
+      data.append("adult_capacity", formData.capacity);
+      data.append("child_capacity", 0);
 
-      const updatedRooms = [newRoom, ...existingRooms];
-      saveStoredRooms(updatedRooms);
+      formData.facilityIds.forEach((id) => {
+        data.append("facilities[]", id);
+      });
 
-      setIsSubmitting(false);
-      toast.success("Room created successfully.");
+      formData.photos.forEach((photo) => {
+        if (photo.file) {
+          data.append("photos[]", photo.file);
+        }
+      });
+
+      await api.post("/admin/hotels/1/rooms", data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      toast.success("Kamar berhasil ditambahkan!");
+      invalidateCache("/hotel/rooms");
+      invalidateCache("/admin/hotel/dashboard");
       navigate("/admin/rooms");
-    }, 600);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menambahkan kamar baru.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

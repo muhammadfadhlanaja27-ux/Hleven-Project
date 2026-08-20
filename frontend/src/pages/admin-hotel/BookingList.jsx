@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import {
-  getStoredBookings,
-  saveStoredBookings,
-} from "../../utils/bookingData";
-import {
-  getStoredRooms,
-  saveStoredRooms,
-} from "../../utils/roomData";
+import api from "../../services/api";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
+import { getStoredRooms } from "../../utils/roomData";
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
@@ -16,6 +11,7 @@ export default function BookingList() {
   // State Management
   const [bookings, setBookings] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Search & Filters State
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,16 +37,82 @@ export default function BookingList() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const loadedBookings = getStoredBookings();
-    const loadedRooms = getStoredRooms();
-    setBookings(loadedBookings);
-    setRooms(loadedRooms);
+  const loadData = async (forceRefresh = false) => {
+    setLoading(true);
+    try {
+      const { data: responseData } = await cachedGet("/admin/bookings", {}, forceRefresh);
+      if (responseData && responseData.status === "success") {
+        const dbBookings = responseData.data.map((b) => {
+          const roomType = b.booking_rooms?.[0]?.room_type || {};
+          let statusLabel = "Pending";
+          if (b.status === "confirmed") statusLabel = "Confirmed";
+          else if (b.status === "checked_in") statusLabel = "Checked In";
+          else if (b.status === "completed") statusLabel = "Checked Out";
+          else if (b.status === "cancelled") statusLabel = "Cancelled";
+
+          let paymentStatusLabel = "Unpaid";
+          if (b.payment?.payment_status === "success") paymentStatusLabel = "Paid";
+          else if (b.payment?.payment_status === "pending") paymentStatusLabel = "Pending";
+
+          return {
+            id: b.id,
+            bookingCode: b.booking_code || "BK-0000",
+            bookingDate: new Date(b.created_at).toLocaleString("en-US", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true
+            }),
+            guest: {
+              name: b.user?.name || "Tamu HLeven",
+              email: b.user?.email || "",
+              phone: b.user?.phone || "",
+              identityNumber: b.special_request || "N/A",
+              gender: "Male"
+            },
+            room: {
+              id: roomType.id || 1,
+              name: roomType.name || "Kamar Pilihan",
+              type: roomType.name || "Kamar",
+              capacity: roomType.capacity_adult || 2,
+              weekdayPrice: Number(roomType.weekday_price || 0),
+              weekendPrice: Number(roomType.weekend_price || 0)
+            },
+            checkIn: b.check_in,
+            checkOut: b.check_out,
+            nights: b.total_night || 1,
+            weekdayNights: b.total_night || 1,
+            weekendNights: 0,
+            roomPriceSum: Number(b.subtotal || 0),
+            additionalCharges: 0,
+            discount: 0,
+            totalAmount: Number(b.grand_total || 0),
+            bookingStatus: statusLabel,
+            paymentStatus: paymentStatusLabel,
+            paymentMethod: b.payment?.payment_method || "N/A",
+            transactionId: b.payment?.transaction_id || "N/A",
+            bookingSource: "Website",
+            timeline: [
+              { event: "Booking Created", timestamp: new Date(b.created_at).toLocaleString("en-GB") }
+            ]
+          };
+        });
+        setBookings(dbBookings);
+      }
+      const loadedRooms = getStoredRooms();
+      setRooms(loadedRooms);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memuat data booking.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateBookingsState = (newBookings) => {
     setBookings(newBookings);
-    saveStoredBookings(newBookings);
   };
 
   // Update room stock in localStorage when check in / check out occurs
@@ -154,7 +216,7 @@ export default function BookingList() {
   );
 
   // Check In Handler
-  const handleConfirmCheckIn = () => {
+  const handleConfirmCheckIn = async () => {
     if (!confirmCheckInBooking) return;
 
     if (confirmCheckInBooking.paymentStatus !== "Paid") {
@@ -164,140 +226,75 @@ export default function BookingList() {
     }
 
     setIsProcessing(true);
-
-    setTimeout(() => {
-      const todayStr = new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }) + ", 02:00 PM";
-
-      const updated = bookings.map((b) => {
-        if (b.id === confirmCheckInBooking.id) {
-          return {
-            ...b,
-            bookingStatus: "Checked In",
-            timeline: [
-              ...(b.timeline || []),
-              { event: "Checked In", timestamp: todayStr },
-            ],
-          };
-        }
-        return b;
+    try {
+      await api.patch(`/admin/bookings/${confirmCheckInBooking.id}/status`, {
+        status: "checked_in",
       });
-
-      updateBookingsState(updated);
-      updateRoomOccupiedStock(confirmCheckInBooking.room.id, 1);
-
-      if (viewingBooking && viewingBooking.id === confirmCheckInBooking.id) {
-        setViewingBooking((prev) => ({
-          ...prev,
-          bookingStatus: "Checked In",
-          timeline: [
-            ...(prev.timeline || []),
-            { event: "Checked In", timestamp: todayStr },
-          ],
-        }));
-      }
-
-      setIsProcessing(false);
-      setConfirmCheckInBooking(null);
       toast.success("Guest checked in successfully.");
-    }, 500);
+      invalidateCache("/admin/bookings");
+      invalidateCache("/admin/hotel/dashboard");
+      await loadData(true);
+      setConfirmCheckInBooking(null);
+      setViewingBooking(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal melakukan Check In.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Check Out Handler
-  const handleConfirmCheckOut = () => {
+  const handleConfirmCheckOut = async () => {
     if (!confirmCheckOutBooking) return;
 
     setIsProcessing(true);
-
-    setTimeout(() => {
-      const todayStr = new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }) + ", 11:30 AM";
-
-      const updated = bookings.map((b) => {
-        if (b.id === confirmCheckOutBooking.id) {
-          return {
-            ...b,
-            bookingStatus: "Checked Out",
-            timeline: [
-              ...(b.timeline || []),
-              { event: "Checked Out", timestamp: todayStr },
-            ],
-          };
-        }
-        return b;
+    try {
+      await api.patch(`/admin/bookings/${confirmCheckOutBooking.id}/status`, {
+        status: "completed",
       });
-
-      updateBookingsState(updated);
-      updateRoomOccupiedStock(confirmCheckOutBooking.room.id, -1);
-
-      if (viewingBooking && viewingBooking.id === confirmCheckOutBooking.id) {
-        setViewingBooking((prev) => ({
-          ...prev,
-          bookingStatus: "Checked Out",
-          timeline: [
-            ...(prev.timeline || []),
-            { event: "Checked Out", timestamp: todayStr },
-          ],
-        }));
-      }
-
-      setIsProcessing(false);
-      setConfirmCheckOutBooking(null);
       toast.success("Guest checked out successfully.");
-    }, 500);
+      invalidateCache("/admin/bookings");
+      invalidateCache("/admin/hotel/dashboard");
+      await loadData(true);
+      setConfirmCheckOutBooking(null);
+      setViewingBooking(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal melakukan Check Out.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Cancel Handler
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!confirmCancelBooking) return;
 
     setIsProcessing(true);
-
-    setTimeout(() => {
-      const todayStr = new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }) + ", 05:00 PM";
-
-      const updated = bookings.map((b) => {
-        if (b.id === confirmCancelBooking.id) {
-          return {
-            ...b,
-            bookingStatus: "Cancelled",
-            timeline: [
-              ...(b.timeline || []),
-              { event: "Booking Cancelled", timestamp: todayStr },
-            ],
-          };
-        }
-        return b;
+    try {
+      await api.patch(`/admin/bookings/${confirmCancelBooking.id}/status`, {
+        status: "cancelled",
       });
-
-      updateBookingsState(updated);
-
-      if (viewingBooking && viewingBooking.id === confirmCancelBooking.id) {
-        setViewingBooking((prev) => ({
-          ...prev,
-          bookingStatus: "Cancelled",
-          timeline: [
-            ...(prev.timeline || []),
-            { event: "Booking Cancelled", timestamp: todayStr },
-          ],
-        }));
-      }
-
-      setIsProcessing(false);
-      setConfirmCancelBooking(null);
       toast.success("Booking cancelled successfully.");
-    }, 400);
+      await loadData();
+      setConfirmCancelBooking(null);
+      setViewingBooking(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal membatalkan booking.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#506147]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
