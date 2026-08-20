@@ -236,7 +236,6 @@ export default function RoomList() {
 
     const errs = {};
     if (!editValues.name.trim()) errs.name = "Room name is required.";
-    if (!editValues.type) errs.type = "Room type is required.";
     if (!editValues.weekday_price || Number(editValues.weekday_price) <= 0)
       errs.weekday_price = "Weekday price must be greater than 0.";
     if (!editValues.weekend_price || Number(editValues.weekend_price) <= 0)
@@ -297,6 +296,14 @@ export default function RoomList() {
       setIsSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#506147]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">

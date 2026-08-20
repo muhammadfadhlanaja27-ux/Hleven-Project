@@ -7,6 +7,7 @@ use App\Models\Review;
 use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Carbon;
 
 class ReviewController extends Controller
 {
@@ -30,7 +31,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $reviews
+            'data'   => $reviews
         ]);
     }
 
@@ -52,13 +53,14 @@ class ReviewController extends Controller
         }
 
         $review->update([
-            'reply' => $request->reply
+            'reply'    => $request->reply,
+            'reply_at' => Carbon::now(),
         ]);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Reply sent successfully',
-            'data' => $review
+            'data'    => $review
         ]);
     }
 

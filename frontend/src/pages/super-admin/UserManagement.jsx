@@ -25,6 +25,7 @@ const UserManagement = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
+    hotel_name: "",
     email: "",
     password: "",
     password_confirmation: "",
@@ -131,6 +132,7 @@ const UserManagement = () => {
     try {
       const payload = {
         name: formData.name,
+        hotel_name: formData.hotel_name,
         email: formData.email,
         password: formData.password,
         role: "admin_hotel",
@@ -141,9 +143,10 @@ const UserManagement = () => {
 
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Admin Hotel berhasil ditambahkan!");
+      toast.success("Admin Hotel & Properti berhasil ditambahkan!");
       setFormData({
         name: "",
+        hotel_name: "",
         email: "",
         password: "",
         password_confirmation: "",
@@ -499,7 +502,7 @@ const UserManagement = () => {
             <form onSubmit={handleCreateAdmin} className="space-y-4">
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Nama Lengkap
+                  Nama Lengkap Admin
                 </label>
                 <input
                   type="text"
@@ -508,6 +511,22 @@ const UserManagement = () => {
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
+                  Nama Hotel / Properti
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Grand H'Leven Hotel & Resort"
+                  value={formData.hotel_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hotel_name: e.target.value })
                   }
                   className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all"
                 />

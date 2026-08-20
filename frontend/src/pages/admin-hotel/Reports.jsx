@@ -32,10 +32,14 @@ const formatRpShort = (value) => {
 const today = new Date();
 
 const getPeriodRange = (period) => {
-  const d = new Date(today);
+  const now = new Date();
+  const d = new Date(now);
   switch (period) {
-    case "today":
-      return { start: new Date(d.setHours(0, 0, 0, 0)), end: new Date(today.setHours(23, 59, 59)) };
+    case "today": {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      return { start, end };
+    }
     case "thisWeek": {
       const day = d.getDay();
       const mon = new Date(d);
@@ -111,6 +115,7 @@ const getPreviousPeriodRange = (period) => {
 };
 
 const isInRange = (dateStr, range) => {
+  if (!dateStr) return false;
   const d = new Date(dateStr);
   return d >= range.start && d <= range.end;
 };
@@ -192,8 +197,9 @@ const Skeleton = ({ className }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RevenueReport() {
-  const [selectedPeriod, setSelectedPeriod] = useState("thisMonth");
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
   const [chartPeriod, setChartPeriod] = useState("daily");
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [allBookings, setAllBookings] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
@@ -304,13 +310,13 @@ export default function RevenueReport() {
   const prevRange = getPreviousPeriodRange(selectedPeriod);
 
   const filteredBookings = useMemo(
-    () => allBookings.filter((b) => isInRange(b.checkIn, range)),
-    [selectedPeriod]
+    () => (selectedPeriod === "all" ? allBookings : allBookings.filter((b) => isInRange(b.checkIn, range))),
+    [allBookings, selectedPeriod]
   );
 
   const prevBookings = useMemo(
     () => allBookings.filter((b) => isInRange(b.checkIn, prevRange)),
-    [selectedPeriod]
+    [allBookings, selectedPeriod]
   );
 
   const stats = useMemo(() => calcRevenue(filteredBookings), [filteredBookings]);
@@ -474,6 +480,7 @@ export default function RevenueReport() {
 
   // ─── Period Labels ─────────────────────────────────────────────────────────
   const periodLabels = {
+    all: "All Time",
     today: "Today",
     thisWeek: "This Week",
     thisMonth: "This Month",
@@ -502,14 +509,34 @@ export default function RevenueReport() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Cache Status Badge */}
+          {isFromCache && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43] border border-[#c4c8be]/40">
+              <span className="w-2 h-2 rounded-full bg-[#506147] animate-pulse" />
+              Cached Data
+            </span>
+          )}
+
+          {/* Refresh Button */}
+          <button
+            onClick={() => fetchBookingsData(true)}
+            title="Refresh data from server"
+            className="flex items-center gap-1.5 bg-white border border-[#E5E1DA] px-3 py-2 rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#f0ede9] transition-colors shadow-sm"
+          >
+            <span className={`material-symbols-outlined text-[18px] ${loading ? "animate-spin" : ""}`}>
+              refresh
+            </span>
+            Refresh
+          </button>
+
           {/* Period Selector */}
-          <div className="flex items-center bg-white rounded-lg border border-[#E5E1DA] p-1 shadow-sm">
+          <div className="flex items-center bg-white rounded-lg border border-[#E5E1DA] p-1 shadow-sm overflow-x-auto">
             {Object.entries(periodLabels).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setSelectedPeriod(key)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
                   selectedPeriod === key
                     ? "bg-[#506147] text-white shadow-sm"
                     : "text-[#6B6E6A] hover:bg-[#f0ede9]"

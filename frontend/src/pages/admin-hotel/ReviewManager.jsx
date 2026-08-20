@@ -82,7 +82,6 @@ export default function ReviewManager() {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState("all");
-  const [roomTypeFilter, setRoomTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
 
@@ -92,7 +91,7 @@ export default function ReviewManager() {
   const [isReplying, setIsReplying] = useState(false);
 
   useEffect(() => {
-    loadReviews();
+    fetchReviews();
   }, []);
 
   const loadReviews = async () => {
@@ -154,7 +153,7 @@ export default function ReviewManager() {
 
   // DYNAMIC CALCULATIONS (Never hardcoded)
   const totalReviews = reviews.length;
-  const unreadCount = reviews.filter((r) => !r.isRead).length;
+  const unreadCount = reviews.filter((r) => !readIds.has(r.id)).length;
 
   const count5Star = reviews.filter((r) => r.rating === 5).length;
   const count4Star = reviews.filter((r) => r.rating === 4).length;
@@ -173,10 +172,11 @@ export default function ReviewManager() {
   // Filter Logic
   const filteredReviews = reviews.filter((r) => {
     const q = searchQuery.toLowerCase();
+    const guestName = r.guest?.name || "";
+    const comment = r.comment || "";
     const matchesSearch =
-      r.guest.name.toLowerCase().includes(q) ||
-      r.room.name.toLowerCase().includes(q) ||
-      r.comment.toLowerCase().includes(q);
+      guestName.toLowerCase().includes(q) ||
+      comment.toLowerCase().includes(q);
 
     let matchesRating = true;
     if (ratingFilter === "5") matchesRating = r.rating === 5;
@@ -186,25 +186,29 @@ export default function ReviewManager() {
     else if (ratingFilter === "1") matchesRating = r.rating === 1;
     else if (ratingFilter === "3below") matchesRating = r.rating <= 3;
 
-    const matchesRoomType =
-      roomTypeFilter === "all"
-        ? true
-        : r.room.type.toLowerCase() === roomTypeFilter.toLowerCase();
-
     let matchesDate = true;
-    if (dateFilter === "today") matchesDate = r.reviewDate === "2026-08-18";
+    const today = new Date().toISOString().slice(0, 10);
+    if (dateFilter === "today") matchesDate = (r.created_at || "").slice(0, 10) === today;
 
-    return matchesSearch && matchesRating && matchesRoomType && matchesDate;
+    return matchesSearch && matchesRating && matchesDate;
   });
 
   // Sorting Logic
   const sortedReviews = [...filteredReviews].sort((a, b) => {
-    if (sortBy === "newest") return new Date(b.reviewDate) - new Date(a.reviewDate);
-    if (sortBy === "oldest") return new Date(a.reviewDate) - new Date(b.reviewDate);
+    if (sortBy === "newest") return new Date(b.created_at) - new Date(a.created_at);
+    if (sortBy === "oldest") return new Date(a.created_at) - new Date(b.created_at);
     if (sortBy === "highest") return b.rating - a.rating;
     if (sortBy === "lowest") return a.rating - b.rating;
     return 0;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#506147]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
@@ -356,17 +360,6 @@ export default function ReviewManager() {
               <option value="3below">3 &amp; Below</option>
             </select>
 
-            {/* Room Type Filter */}
-            <select
-              value={roomTypeFilter}
-              onChange={(e) => setRoomTypeFilter(e.target.value)}
-              className="px-3 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-xs font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer"
-            >
-              <option value="all">Room Type: All</option>
-              <option value="Standard">Standard</option>
-              <option value="Deluxe">Deluxe</option>
-              <option value="Suite">Suite</option>
-            </select>
 
             {/* Date Filter */}
             <select
@@ -402,24 +395,28 @@ export default function ReviewManager() {
         {sortedReviews.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {sortedReviews.map((review) => {
-              const guestInitials = review.guest.name
+              const isUnread = !readIds.has(review.id);
+              const guestInitials = (review.guest?.name || "G")
                 .split(" ")
                 .map((n) => n[0])
                 .join("")
                 .slice(0, 2)
                 .toUpperCase();
+              const dateStr = review.created_at
+                ? new Date(review.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
+                : "";
 
               return (
                 <div
                   key={review.id}
-                  className={`rounded-xl border p-6 shadow-sm flex flex-col justify-between gap-4 transition-all relative ${
-                    !review.isRead
+                  className={`rounded-xl border p-6 shadow-sm flex flex-col gap-4 transition-all relative ${
+                    isUnread
                       ? "bg-[#F2EBE1]/40 border-[#506147]/40 ring-1 ring-[#506147]/20"
                       : "bg-white border-[#E5E1DA]"
                   }`}
                 >
                   {/* Unread Indicator Badge */}
-                  {!review.isRead && (
+                  {isUnread && (
                     <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#506147] text-white">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       Unread
@@ -429,28 +426,18 @@ export default function ReviewManager() {
                   {/* Review Header */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      {review.guest.avatar ? (
-                        <img
-                          src={review.guest.avatar}
-                          alt={review.guest.name}
-                          className="w-11 h-11 rounded-full object-cover border border-[#E5E1DA] shrink-0"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-full bg-[#f0ede9] text-[#506147] font-bold text-sm flex items-center justify-center border border-[#E5E1DA] shrink-0">
-                          {guestInitials}
-                        </div>
-                      )}
-
+                      <div className="w-11 h-11 rounded-full bg-[#f0ede9] text-[#506147] font-bold text-sm flex items-center justify-center border border-[#E5E1DA] shrink-0">
+                        {guestInitials}
+                      </div>
                       <div>
                         <h4 className="font-semibold text-[#2D312C] text-base leading-snug">
-                          {review.guest.name}
+                          {review.guest?.name || "Guest"}
                         </h4>
                         <p className="text-xs text-[#6B6E6A]">
-                          {review.room.name} ({review.room.type}) • {review.reviewDate}
+                          {review.booking_code ? `Booking: ${review.booking_code} • ` : ""}{dateStr}
                         </p>
                       </div>
                     </div>
-
                     <div className="shrink-0">{renderStars(review.rating)}</div>
                   </div>
 
@@ -459,14 +446,46 @@ export default function ReviewManager() {
                     &quot;{review.comment}&quot;
                   </p>
 
-                  {/* Actions Footer */}
-                  <div className="pt-4 border-t border-[#E5E1DA] flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold text-[#6B6E6A]">
-                      Booking Code: <span className="text-[#2D312C]">{review.booking.code}</span>
-                    </span>
+                  {/* Reply Display */}
+                  {review.reply && (
+                    <div className="bg-[#E4EBE0] rounded-lg p-3 border border-[#c4c8be]/40 text-xs">
+                      <span className="font-bold text-[#4A5D43] block mb-1">Hotel Reply:</span>
+                      <p className="text-[#2D312C]">{review.reply}</p>
+                    </div>
+                  )}
 
+                  {/* Inline Reply Form */}
+                  {replyingId === review.id && (
+                    <div className="flex flex-col gap-2">
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        rows={3}
+                        placeholder="Write your reply..."
+                        className="w-full px-3 py-2 text-sm border border-[#E5E0D8] rounded-lg bg-[#fcf9f5] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSendReply(review.id)}
+                          disabled={isSendingReply}
+                          className="px-4 py-1.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors disabled:opacity-50"
+                        >
+                          {isSendingReply ? "Sending..." : "Send Reply"}
+                        </button>
+                        <button
+                          onClick={() => { setReplyingId(null); setReplyText(""); }}
+                          className="px-4 py-1.5 bg-[#f0ede9] text-[#2D312C] text-xs font-semibold rounded-lg hover:bg-[#e5e2de] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions Footer */}
+                  <div className="pt-3 border-t border-[#E5E1DA] flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      {!review.isRead && (
+                      {isUnread && (
                         <button
                           onClick={() => handleMarkAsRead(review.id)}
                           className="px-3 py-1.5 bg-[#f0ede9] text-[#2D312C] text-xs font-semibold rounded-lg hover:bg-[#e5e2de] transition-colors"
@@ -474,15 +493,28 @@ export default function ReviewManager() {
                           Mark as Read
                         </button>
                       )}
-
+                      {!review.reply && replyingId !== review.id && (
+                        <button
+                          onClick={() => { setReplyingId(review.id); setReplyText(""); }}
+                          className="px-3 py-1.5 bg-[#E4EBE0] text-[#4A5D43] text-xs font-semibold rounded-lg hover:bg-[#d4e0d0] transition-colors"
+                        >
+                          Reply
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenDetail(review)}
                         className="px-3 py-1.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors"
                       >
                         View Detail
                       </button>
-
-
+                      <button
+                        onClick={() => handleDeleteReview(review.id)}
+                        className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors border border-red-200"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -510,13 +542,11 @@ export default function ReviewManager() {
 
               {searchQuery ||
               ratingFilter !== "all" ||
-              roomTypeFilter !== "all" ||
               dateFilter !== "all" ? (
                 <button
                   onClick={() => {
                     setSearchQuery("");
                     setRatingFilter("all");
-                    setRoomTypeFilter("all");
                     setDateFilter("all");
                   }}
                   className="mt-2 px-4 py-2 bg-[#f0ede9] text-[#2D312C] rounded-lg text-xs font-semibold hover:bg-[#e5e2de] transition-colors"
@@ -543,39 +573,33 @@ export default function ReviewManager() {
                 </h3>
                 {renderStars(viewingReview.rating)}
               </div>
-
               <button
-                  onClick={() => setViewingReview(null)}
-                  className="p-1.5 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[20px]">close</span>
-                </button>
+                onClick={() => setViewingReview(null)}
+                className="p-1.5 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
             </div>
 
             {/* Content */}
             <div className="p-6 overflow-y-auto space-y-6 text-sm">
               {/* Section 1: Guest Information */}
               <div className="bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] p-5 space-y-3">
-                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                  Guest Information
-                </h4>
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Guest Information</h4>
                 <div className="flex items-center gap-4">
-                  {viewingReview.guest.avatar ? (
-                    <img
-                      src={viewingReview.guest.avatar}
-                      alt={viewingReview.guest.name}
-                      className="w-12 h-12 rounded-full object-cover border border-[#E5E1DA]"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#4A5D43] font-bold text-sm flex items-center justify-center border border-[#E5E1DA]">
-                      {viewingReview.guest.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-
+                  <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#4A5D43] font-bold text-sm flex items-center justify-center border border-[#E5E1DA]">
+                    {(viewingReview.guest?.name || "G").slice(0, 2).toUpperCase()}
+                  </div>
                   <div className="text-xs space-y-0.5">
-                    <p className="font-bold text-[#2D312C] text-sm">{viewingReview.guest.name}</p>
-                    <p className="text-[#6B6E6A]">{viewingReview.guest.email || "guest@example.com"}</p>
-                    <p className="text-[#6B6E6A]">{viewingReview.guest.phone || "—"}</p>
+                    <p className="font-bold text-[#2D312C] text-sm">{viewingReview.guest?.name || "Guest"}</p>
+                    {viewingReview.booking_code && (
+                      <p className="text-[#6B6E6A]">Booking: {viewingReview.booking_code}</p>
+                    )}
+                    <p className="text-[#6B6E6A]">
+                      {viewingReview.created_at
+                        ? new Date(viewingReview.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
+                        : ""}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -586,7 +610,9 @@ export default function ReviewManager() {
                   <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
                     Review Comment &amp; Rating
                   </h4>
-                  <span className="text-xs text-[#6B6E6A] font-semibold">{viewingReview.reviewDate}</span>
+                  <span className="text-xs text-[#6B6E6A] font-semibold">
+                    {viewingReview.created_at ? new Date(viewingReview.created_at).toLocaleDateString() : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {renderStars(viewingReview.rating)}
@@ -597,25 +623,32 @@ export default function ReviewManager() {
                 </p>
               </div>
 
-              {/* Section 3: Room & Booking Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-[#E5E1DA] p-4 shadow-sm text-xs space-y-1">
-                  <span className="text-[10px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">
-                    Room Information
-                  </span>
-                  <p className="font-bold text-[#2D312C] text-sm">{viewingReview.room.name}</p>
-                  <p className="text-[#6B6E6A]">Type: {viewingReview.room.type}</p>
-                  <p className="text-[#6B6E6A]">Stayed: {viewingReview.room.checkIn} - {viewingReview.room.checkOut}</p>
-                </div>
-
-                <div className="bg-white rounded-xl border border-[#E5E1DA] p-4 shadow-sm text-xs space-y-1">
-                  <span className="text-[10px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">
-                    Booking Relation
-                  </span>
-                  <p className="font-bold text-[#2D312C] text-sm">{viewingReview.booking.code}</p>
-                  <p className="text-[#506147] font-semibold">Status: {viewingReview.booking.status}</p>
-                  <p className="text-[#6B6E6A]">Verified Stayed Guest</p>
-                </div>
+              {/* Section 3: Hotel Reply */}
+              <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 space-y-3 shadow-sm">
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Hotel Reply</h4>
+                {viewingReview.reply ? (
+                  <p className="text-sm text-[#444840] leading-relaxed bg-[#E4EBE0] p-4 rounded-xl border border-[#c4c8be]/40">
+                    {viewingReview.reply}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-[#6B6E6A]">No reply yet. Write a response below:</p>
+                    <textarea
+                      value={replyingId === viewingReview.id ? replyText : ""}
+                      onChange={(e) => { setReplyingId(viewingReview.id); setReplyText(e.target.value); }}
+                      rows={3}
+                      placeholder="Write your reply to this guest..."
+                      className="w-full px-3 py-2 text-sm border border-[#E5E0D8] rounded-lg bg-[#fcf9f5] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 resize-none"
+                    />
+                    <button
+                      onClick={() => handleSendReply(viewingReview.id)}
+                      disabled={isSendingReply}
+                      className="px-5 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors disabled:opacity-50"
+                    >
+                      {isSendingReply ? "Sending..." : "Send Reply"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Section 4: Hotel Reply */}

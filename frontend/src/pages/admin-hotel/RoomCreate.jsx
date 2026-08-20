@@ -40,6 +40,20 @@ export default function RoomCreate() {
     fetchFacilities();
   }, []);
 
+  const fetchFacilities = async () => {
+    try {
+      const { data: resData } = await cachedGet("/facilities?category=Room");
+      if (resData && resData.success) {
+        setRoomFacilities(resData.data);
+      } else {
+        setRoomFacilities(getStoredRoomFacilities());
+      }
+    } catch (err) {
+      console.error("Gagal memuat facilities dari API, fallback ke mock", err);
+      setRoomFacilities(getStoredRoomFacilities());
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -68,6 +82,7 @@ export default function RoomCreate() {
       id: `p-create-${Date.now()}-${idx}`,
       url: URL.createObjectURL(file),
       name: file.name,
+      file: file,
     }));
 
     setFormData((prev) => ({
@@ -91,10 +106,6 @@ export default function RoomCreate() {
 
     if (!formData.name.trim()) {
       newErrors.name = "Room name is required.";
-    }
-
-    if (!formData.type) {
-      newErrors.type = "Please select a room type.";
     }
 
     if (!formData.weekday_price || Number(formData.weekday_price) <= 0) {

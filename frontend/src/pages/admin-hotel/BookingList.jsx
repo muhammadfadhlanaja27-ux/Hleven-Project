@@ -318,6 +318,14 @@ export default function BookingList() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#506147]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
       {/* Page Header */}
