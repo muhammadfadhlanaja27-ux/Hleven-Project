@@ -1,13 +1,15 @@
-<!DOCTYPE html><html class="light" lang="en"><head>
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>H'Leven - Register</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com" rel="preconnect">
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -118,7 +120,21 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
-<!-- TopNavBar Suppressed: Transactional Screen Intent -->
+<header class="w-full sticky top-0 bg-off-white border-b border-warm-beige/30 shadow-sm shadow-forest-green/5 z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="text-headline-md font-headline-md font-bold text-forest-green">H'Leven</div>
+<nav class="hidden md:flex space-x-8">
+<a class="text-on-surface-variant font-medium hover:text-forest-green hover:bg-warm-beige/10 px-3 py-1 rounded transition-colors" href="#">Hotels</a>
+<a class="text-on-surface-variant font-medium hover:text-forest-green hover:bg-warm-beige/10 px-3 py-1 rounded transition-colors" href="#">Resorts</a>
+<a class="text-on-surface-variant font-medium hover:text-forest-green hover:bg-warm-beige/10 px-3 py-1 rounded transition-colors" href="#">Our Story</a>
+<a class="text-on-surface-variant font-medium hover:text-forest-green hover:bg-warm-beige/10 px-3 py-1 rounded transition-colors" href="#">Promotions</a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-forest-green hover:text-forest-green hover:bg-warm-beige/10 p-2 rounded-full transition-colors active:scale-[0.99] duration-200" type="button">person</button>
+<button class="bg-forest-green hover:bg-primary text-on-primary font-label-md text-label-md px-6 py-2.5 rounded-DEFAULT transition-all duration-200 active:scale-[0.99]">Book Now</button>
+</div>
+</div>
+</header>
 <main class="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop py-section-gap">
 <div class="w-full max-w-container-max grid grid-cols-1 md:grid-cols-2 bg-surface-container-low rounded-xl overflow-hidden shadow-sm shadow-forest-green/5 border border-warm-beige/30 min-h-[700px]">
 <!-- Image Side -->
@@ -146,21 +162,21 @@
 <label class="block font-label-md text-label-md text-forest-green mb-1" for="fullName">Full Name</label>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">person</span>
-<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="fullName" placeholder="John Doe" required="" type="text">
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="fullName" placeholder="John Doe" required="" type="text"/>
 </div>
 </div>
 <div>
 <label class="block font-label-md text-label-md text-forest-green mb-1" for="email">Email Address</label>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">mail</span>
-<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="email" placeholder="john@example.com" required="" type="email">
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="email" placeholder="john@example.com" required="" type="email"/>
 </div>
 </div>
 <div>
 <label class="block font-label-md text-label-md text-forest-green mb-1" for="phone">Phone Number</label>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">call</span>
-<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="phone" placeholder="+1 (555) 000-0000" type="tel">
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="phone" placeholder="+1 (555) 000-0000" type="tel"/>
 </div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
@@ -168,20 +184,20 @@
 <label class="block font-label-md text-label-md text-forest-green mb-1" for="password">Password</label>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">lock</span>
-<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="password" placeholder="••••••••" required="" type="password">
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="password" placeholder="••••••••" required="" type="password"/>
 </div>
 </div>
 <div>
 <label class="block font-label-md text-label-md text-forest-green mb-1" for="confirmPassword">Confirm</label>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">lock_reset</span>
-<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="confirmPassword" placeholder="••••••••" required="" type="password">
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-highest border-warm-beige rounded-DEFAULT font-body-md text-body-md text-text-main focus:border-forest-green focus:ring-1 focus:ring-forest-green outline-none transition-colors" id="confirmPassword" placeholder="••••••••" required="" type="password"/>
 </div>
 </div>
 </div>
 <div class="flex items-start mt-stack-md">
 <div class="flex items-center h-5">
-<input class="w-4 h-4 text-forest-green border-warm-beige rounded focus:ring-forest-green bg-surface-container-highest" id="terms" type="checkbox">
+<input class="w-4 h-4 text-forest-green border-warm-beige rounded focus:ring-forest-green bg-surface-container-highest" id="terms" type="checkbox"/>
 </div>
 <div class="ml-3 text-sm">
 <label class="font-body-md text-body-md text-on-surface-variant" for="terms">I agree to the <a class="text-forest-green hover:underline" href="#">Terms and Conditions</a></label>
@@ -197,5 +213,25 @@
 </div>
 </div>
 </main>
-<!-- Footer Suppressed: Transactional Screen Intent -->
+<footer class="w-full bg-surface-container-highest border-t border-warm-beige/20">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter w-full px-margin-desktop py-section-gap max-w-container-max mx-auto">
+<div class="col-span-1 md:col-span-1">
+<h2 class="text-headline-md font-headline-md font-bold text-forest-green mb-4">H'Leven</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">© 2024 H'Leven Hospitality Group. All rights reserved.</p>
+</div>
+<div class="col-span-1 md:col-span-3 flex flex-wrap gap-8 md:justify-end">
+<div class="flex flex-col gap-4">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-forest-green transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-forest-green transition-colors" href="#">Terms of Service</a>
+</div>
+<div class="flex flex-col gap-4">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-forest-green transition-colors" href="#">Support Center</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-forest-green transition-colors" href="#">Careers</a>
+</div>
+<div class="flex flex-col gap-4">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-forest-green transition-colors" href="#">Contact Us</a>
+</div>
+</div>
+</div>
+</footer>
 </body></html>
