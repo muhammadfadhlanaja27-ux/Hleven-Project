@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import HotelCard from "../../components/landing/HotelCard";
-import { mockHotels } from "../../data/mockHotels";
 import api from "../../services/api";
 
 const HotelList = () => {
@@ -23,27 +22,13 @@ const HotelList = () => {
         const response = await api.get("/hotels");
         if (response.data && (response.data.data || Array.isArray(response.data))) {
           const apiHotels = response.data.data || response.data;
-          if (apiHotels.length > 0) {
-            const mergedHotels = apiHotels.map((apiH, idx) => {
-              const mockRef = mockHotels[idx % mockHotels.length];
-              return {
-                ...mockRef,
-                ...apiH,
-                facilities: apiH.facilities || mockRef.facilities,
-                starting_price: apiH.starting_price || apiH.price || mockRef.starting_price,
-                rating: apiH.rating || apiH.average_rating || mockRef.rating
-              };
-            });
-            setHotels(mergedHotels);
-          } else {
-            setHotels(mockHotels);
-          }
+          setHotels(apiHotels);
         } else {
-          setHotels(mockHotels);
+          setHotels([]);
         }
       } catch (err) {
-        console.warn("Backend Error / Fallback ke mockHotels:", err);
-        setHotels(mockHotels);
+        console.error("Backend Error:", err);
+        setHotels([]);
       } finally {
         setLoading(false);
       }
@@ -79,7 +64,8 @@ const HotelList = () => {
         if (searchTerm.trim()) {
           const query = searchTerm.toLowerCase();
           const matchName = hotel.name?.toLowerCase().includes(query);
-          const matchCity = hotel.city?.toLowerCase().includes(query);
+          const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
+          const matchCity = cityStr?.toLowerCase().includes(query);
           const matchAddress = hotel.address?.toLowerCase().includes(query);
           if (!matchName && !matchCity && !matchAddress) return false;
         }

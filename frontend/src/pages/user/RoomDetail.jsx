@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { mockHotels } from "../../data/mockHotels";
 import api from "../../services/api";
 
 const DEFAULT_ROOM_IMAGES = [
@@ -33,33 +32,52 @@ const RoomDetail = () => {
       const targetHotelId = hotelId || "1";
       const targetRoomId = roomId || "101";
 
-      const foundMockHotel = mockHotels.find((h) => String(h.id) === String(targetHotelId)) || mockHotels[0];
-      const foundMockRoom = (foundMockHotel.rooms || []).find((r) => String(r.id) === String(targetRoomId)) || foundMockHotel.rooms[0] || {
-        id: 101,
-        name: "Executive Suite with Private Pool",
-        price: 3200000,
-        capacity: "2 Tamu",
-        bed: "1 King Bed",
-        sqm: "80 sqm"
-      };
-
       try {
         const response = await api.get(`/hotels/${targetHotelId}`);
         if (response.data && response.data.data) {
           const apiHotel = response.data.data;
-          const apiRooms = apiHotel.rooms || apiHotel.room_types || [];
-          const apiRoom = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || foundMockRoom;
+          const apiRooms = apiHotel.room_types || [];
+          const matchedRoomType = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || apiRooms[0];
 
-          setHotel({ ...foundMockHotel, ...apiHotel });
-          setRoom({ ...foundMockRoom, ...apiRoom });
+          if (matchedRoomType) {
+            const thumbnailPhoto = matchedRoomType.photos && matchedRoomType.photos.length > 0 
+              ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0]) 
+              : null;
+            const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
+            const roomImage = photoPath 
+              ? (photoPath.startsWith('http') ? photoPath : `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`)
+              : null;
+
+            const mappedRoom = {
+              id: matchedRoomType.id,
+              name: matchedRoomType.name,
+              price: matchedRoomType.weekday_price,
+              weekday_price: matchedRoomType.weekday_price,
+              weekend_price: matchedRoomType.weekend_price,
+              thumbnail: roomImage,
+              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+              description: matchedRoomType.description,
+              bed: matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed",
+              breakfast: matchedRoomType.breakfast,
+              smoking_area: matchedRoomType.smoking_area,
+              stock: matchedRoomType.stock,
+              photos: matchedRoomType.photos || []
+            };
+
+            setHotel(apiHotel);
+            setRoom(mappedRoom);
+          } else {
+            setHotel(apiHotel);
+            setRoom(null);
+          }
         } else {
-          setHotel(foundMockHotel);
-          setRoom(foundMockRoom);
+          setHotel(null);
+          setRoom(null);
         }
       } catch (err) {
-        console.warn("Backend API Error/Offline. Menggunakan mock data.", err);
-        setHotel(foundMockHotel);
-        setRoom(foundMockRoom);
+        console.error("Backend API Error/Offline:", err);
+        setHotel(null);
+        setRoom(null);
       } finally {
         setLoading(false);
       }

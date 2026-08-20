@@ -15,6 +15,26 @@ class Hotel extends Model
         'average_rating', 'total_review', 'latitude', 'longitude', 'status'
     ];
 
+    protected $appends = ['starting_price', 'thumbnail'];
+
+    public function getStartingPriceAttribute()
+    {
+        if ($this->relationLoaded('roomTypes')) {
+            return $this->roomTypes->min('weekday_price') ?? 0;
+        }
+        return $this->roomTypes()->min('weekday_price') ?? 0;
+    }
+
+    public function getThumbnailAttribute()
+    {
+        if ($this->relationLoaded('photos')) {
+            $thumbnailPhoto = $this->photos->firstWhere('is_thumbnail', true) ?? $this->photos->first();
+            return $thumbnailPhoto ? $thumbnailPhoto->photo : null;
+        }
+        $thumbnailPhoto = $this->photos()->where('is_thumbnail', true)->first() ?? $this->photos()->first();
+        return $thumbnailPhoto ? $thumbnailPhoto->photo : null;
+    }
+
     public function admin()
     {
         return $this->belongsTo(User::class, 'admin_id');

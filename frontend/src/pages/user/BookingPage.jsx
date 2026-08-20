@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { mockHotels } from "../../data/mockHotels";
 import api from "../../services/api";
 
 const QR_CODE_IMAGE = "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80";
@@ -60,31 +59,38 @@ const BookingPage = () => {
       const targetHotelId = hotelId || "1";
       const targetRoomId = roomId || "101";
 
-      const foundMockHotel = mockHotels.find((h) => String(h.id) === String(targetHotelId)) || mockHotels[0];
-      const foundMockRoom = (foundMockHotel.rooms || []).find((r) => String(r.id) === String(targetRoomId)) || foundMockHotel.rooms[0] || {
-        id: 101,
-        name: "Executive Suite dengan Kolam Renang Pribadi",
-        price: 3200000,
-        capacity: "2 Tamu"
-      };
-
       try {
         const response = await api.get(`/hotels/${targetHotelId}`);
         if (response.data && response.data.data) {
           const apiHotel = response.data.data;
-          const apiRooms = apiHotel.rooms || apiHotel.room_types || [];
-          const apiRoom = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || foundMockRoom;
+          const apiRooms = apiHotel.room_types || [];
+          const matchedRoomType = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || apiRooms[0];
 
-          setHotel({ ...foundMockHotel, ...apiHotel });
-          setRoom({ ...foundMockRoom, ...apiRoom });
+          if (matchedRoomType) {
+            const mappedRoom = {
+              id: matchedRoomType.id,
+              name: matchedRoomType.name,
+              price: matchedRoomType.weekday_price,
+              weekday_price: matchedRoomType.weekday_price,
+              weekend_price: matchedRoomType.weekend_price,
+              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+              description: matchedRoomType.description,
+            };
+
+            setHotel(apiHotel);
+            setRoom(mappedRoom);
+          } else {
+            setHotel(apiHotel);
+            setRoom(null);
+          }
         } else {
-          setHotel(foundMockHotel);
-          setRoom(foundMockRoom);
+          setHotel(null);
+          setRoom(null);
         }
       } catch (err) {
-        console.warn("Backend Error / Fallback ke mockHotels.", err);
-        setHotel(foundMockHotel);
-        setRoom(foundMockRoom);
+        console.error("Backend Error / Gagal memuat data booking:", err);
+        setHotel(null);
+        setRoom(null);
       } finally {
         setLoading(false);
       }
