@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Hotel;
 use App\Models\RoomType;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,12 +19,13 @@ class RoomController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel;
+        // Fallback ke hotel pertama jika relasi user->hotel null (single-hotel system)
+        $hotel = $user->hotel ?? Hotel::first();
 
         if (!$hotel) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hotel tidak ditemukan untuk user ini.',
+                'message' => 'Hotel tidak ditemukan.',
             ], 404);
         }
 
@@ -33,7 +36,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Daftar kamar berhasil dimuat',
-            'data' => $rooms,
+            'data'    => $rooms,
         ], 200);
     }
 
@@ -43,52 +46,52 @@ class RoomController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel;
+        $hotel = $user->hotel ?? Hotel::first();
 
         if (!$hotel) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hotel tidak ditemukan untuk user ini.',
+                'message' => 'Hotel tidak ditemukan.',
             ], 404);
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'weekday_price' => 'required|numeric|min:0',
-            'weekend_price' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
+            'name'           => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'weekday_price'  => 'required|numeric|min:0',
+            'weekend_price'  => 'required|numeric|min:0',
+            'stock'          => 'required|integer|min:0',
             'capacity_adult' => 'required|integer|min:1',
             'capacity_child' => 'required|integer|min:0',
-            'breakfast' => 'boolean',
-            'smoking_area' => 'boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+            'breakfast'      => 'boolean',
+            'smoking_area'   => 'boolean',
+            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
         $room = RoomType::create([
-            'hotel_id' => $hotel->id,
-            'name' => $request->name,
-            'description' => $request->description,
-            'weekday_price' => $request->weekday_price,
-            'weekend_price' => $request->weekend_price,
-            'stock' => $request->stock,
+            'hotel_id'       => $hotel->id,
+            'name'           => $request->name,
+            'description'    => $request->description,
+            'weekday_price'  => $request->weekday_price,
+            'weekend_price'  => $request->weekend_price,
+            'stock'          => $request->stock,
             'capacity_adult' => $request->capacity_adult,
             'capacity_child' => $request->capacity_child,
-            'breakfast' => $request->breakfast ?? false,
-            'smoking_area' => $request->smoking_area ?? false,
+            'breakfast'      => $request->breakfast ?? false,
+            'smoking_area'   => $request->smoking_area ?? false,
         ]);
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('rooms', 'public');
             $room->photos()->create([
-                'photo' => $path,
+                'photo'        => $path,
                 'is_thumbnail' => true,
             ]);
         }
@@ -96,7 +99,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil ditambahkan',
-            'data' => $room->load('photos'),
+            'data'    => $room->load('photos'),
         ], 201);
     }
 
@@ -117,7 +120,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Detail kamar berhasil dimuat',
-            'data' => $room,
+            'data'    => $room,
         ], 200);
     }
 
@@ -136,21 +139,21 @@ class RoomController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'weekday_price' => 'sometimes|required|numeric|min:0',
-            'weekend_price' => 'sometimes|required|numeric|min:0',
-            'stock' => 'sometimes|required|integer|min:0',
+            'name'           => 'sometimes|required|string|max:255',
+            'description'    => 'nullable|string',
+            'weekday_price'  => 'sometimes|required|numeric|min:0',
+            'weekend_price'  => 'sometimes|required|numeric|min:0',
+            'stock'          => 'sometimes|required|integer|min:0',
             'capacity_adult' => 'sometimes|required|integer|min:1',
             'capacity_child' => 'sometimes|required|integer|min:0',
-            'breakfast' => 'boolean',
-            'smoking_area' => 'boolean',
+            'breakfast'      => 'boolean',
+            'smoking_area'   => 'boolean',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
@@ -159,7 +162,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil diperbarui',
-            'data' => $room,
+            'data'    => $room,
         ], 200);
     }
 
@@ -168,28 +171,42 @@ class RoomController extends Controller
      */
     public function destroy($id): JsonResponse
     {
-        $room = RoomType::find($id);
+        try {
+            $room = RoomType::find($id);
 
-        if (!$room) {
+            if (!$room) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kamar tidak ditemukan',
+                ], 404);
+            }
+
+            // Hapus berkas foto fisik dari storage
+            foreach ($room->photos as $photo) {
+                if ($photo->photo && Storage::disk('public')->exists($photo->photo)) {
+                    Storage::disk('public')->delete($photo->photo);
+                }
+                $photo->delete();
+            }
+
+            $room->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Kamar berhasil dihapus',
+            ], 200);
+
+        } catch (QueryException $e) {
+            // Menangkap Foreign Key Constraint Violation agar tidak crash Error 500
             return response()->json([
                 'success' => false,
-                'message' => 'Kamar tidak ditemukan',
-            ], 404);
+                'message' => 'Kamar tidak dapat dihapus karena masih terikat dengan data pemesanan/transaksi.',
+            ], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Hapus foto terkait
-        foreach ($room->photos as $photo) {
-            if (Storage::disk('public')->exists($photo->photo)) {
-                Storage::disk('public')->delete($photo->photo);
-            }
-            $photo->delete();
-        }
-
-        $room->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Kamar berhasil dihapus',
-        ], 200);
     }
 }

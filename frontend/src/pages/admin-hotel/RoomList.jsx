@@ -10,7 +10,7 @@ const normalizeRoom = (r) => {
   let photos = [];
   if (Array.isArray(r.photos)) {
     photos = r.photos.map((p) => {
-      const imgPath = p.image_path || p.url || "";
+      const imgPath = p.photo || p.image_path || p.url || "";
       const fullUrl = imgPath.startsWith("http")
         ? imgPath
         : `http://localhost:8000/storage/${imgPath}`;
@@ -88,16 +88,16 @@ export default function RoomList() {
     setLoading(true);
     try {
       const [roomsRes, facilitiesRes] = await Promise.allSettled([
-        api.get("/hotel/room-types"),
+        api.get("/admin/rooms"),
         api.get("/facilities"),
       ]);
 
-      if (roomsRes.status === "fulfilled" && roomsRes.value.data) {
+      if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {
         const rawRooms =
           roomsRes.value.data.data || roomsRes.value.data || [];
         setRooms(Array.isArray(rawRooms) ? rawRooms.map(normalizeRoom) : []);
       }
-      if (facilitiesRes.status === "fulfilled" && facilitiesRes.value.data) {
+      if (facilitiesRes.status === "fulfilled" && facilitiesRes.value?.data) {
         const rawFac =
           facilitiesRes.value.data.data || facilitiesRes.value.data || [];
         setRoomFacilities(Array.isArray(rawFac) ? rawFac : []);
@@ -173,7 +173,8 @@ export default function RoomList() {
       description: room.description || "",
       weekday_price: room.weekday_price,
       weekend_price: room.weekend_price,
-      capacity: room.capacity,
+      capacity_adult: room.capacity_adult || room.capacity || 2,
+      capacity_child: room.capacity_child || 0,
       stock: room.stock,
       occupied: room.occupied || 0,
       facilityIds: room.facilityIds || [],
@@ -203,7 +204,7 @@ export default function RoomList() {
     });
   };
 
-  // Edit Photo Upload Simulation
+  // Edit Photo Upload
   const handleEditPhotoUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -218,7 +219,7 @@ export default function RoomList() {
       ...prev,
       photos: [...(prev.photos || []), ...newPhotos],
     }));
-    toast.success(`${files.length} foto berhasil diunggah!`);
+    toast.success(`${files.length} foto berhasil ditambahkan!`);
   };
 
   // Remove Photo from Edit Form
@@ -240,8 +241,8 @@ export default function RoomList() {
       errs.weekday_price = "Weekday price must be greater than 0.";
     if (!editValues.weekend_price || Number(editValues.weekend_price) <= 0)
       errs.weekend_price = "Weekend price must be greater than 0.";
-    if (!editValues.capacity || Number(editValues.capacity) < 1)
-      errs.capacity = "Capacity must be at least 1.";
+    if (!editValues.capacity_adult || Number(editValues.capacity_adult) < 1)
+      errs.capacity_adult = "Adult capacity must be at least 1.";
     if (!editValues.stock || Number(editValues.stock) < 1)
       errs.stock = "Stock must be at least 1.";
 
@@ -258,9 +259,9 @@ export default function RoomList() {
         description: editValues.description.trim(),
         weekday_price: Number(editValues.weekday_price),
         weekend_price: Number(editValues.weekend_price),
-        adult_capacity: Number(editValues.capacity),
+        capacity_adult: Number(editValues.capacity_adult),
+        capacity_child: Number(editValues.capacity_child || 0),
         stock: Number(editValues.stock),
-        facilities: editValues.facilityIds || [],
       });
 
       toast.success("Room updated successfully.");
@@ -376,7 +377,6 @@ export default function RoomList() {
               <option value="all">Status: All</option>
               <option value="available">Available</option>
               <option value="occupied">Occupied</option>
-              <option value="unavailable">Unavailable</option>
             </select>
 
             {/* Capacity */}
@@ -564,13 +564,9 @@ export default function RoomList() {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
                             Available
                           </span>
-                        ) : room.status === "Occupied" ? (
+                        ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FFF0E0] text-[#9B5235]">
                             Occupied
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0EDE9] text-[#6B6E6A] border border-[#E5E1DA]">
-                            Unavailable
                           </span>
                         )}
                       </td>
@@ -705,13 +701,10 @@ export default function RoomList() {
         )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL 1: ROOM DETAIL                                                      */}
-      {/* ========================================================================= */}
+      {/* MODAL 1: ROOM DETAIL */}
       {viewingRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            {/* Detail Header */}
             <div className="px-6 py-5 border-b border-[#E5E1DA] bg-[#fcf9f5] flex justify-between items-center">
               <div>
                 <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">
@@ -744,9 +737,7 @@ export default function RoomList() {
               </div>
             </div>
 
-            {/* Detail Content */}
             <div className="p-6 overflow-y-auto space-y-6 text-sm">
-              {/* Section 1: Room Information */}
               <div className="bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] p-5 space-y-3">
                 <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
                   Room Information
@@ -770,7 +761,6 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Section 2: Pricing */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl border border-[#E5E1DA] p-4 shadow-sm">
                   <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">
@@ -790,7 +780,6 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Section 3: Availability */}
               <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-3">
                 <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
                   Room Availability Breakdown
@@ -813,7 +802,6 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Section 4: Facilities */}
               <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-3">
                 <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
                   Room Facilities
@@ -833,7 +821,6 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Section 5: Photos Lightbox */}
               {viewingRoom.photos?.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
@@ -860,9 +847,7 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 2: EDIT ROOM                                                        */}
-      {/* ========================================================================= */}
+      {/* MODAL 2: EDIT ROOM */}
       {editingRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -880,7 +865,6 @@ export default function RoomList() {
             </div>
 
             <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-6">
-              {/* Basic Info */}
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
                   1. Room Information
@@ -925,7 +909,6 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Pricing */}
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
                 <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
                   2. Room Pricing
@@ -957,23 +940,34 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Capacity & Stock */}
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
                 <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
                   3. Capacity &amp; Availability
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-[#2D312C]">Capacity (Guests) *</label>
+                    <label className="text-xs font-semibold text-[#2D312C]">Adult Capacity *</label>
                     <input
                       type="number"
-                      name="capacity"
-                      value={editValues.capacity}
+                      name="capacity_adult"
+                      value={editValues.capacity_adult}
                       onChange={handleEditChange}
                       min="1"
                       className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
                     />
-                    {editErrors.capacity && <span className="text-xs text-[#ba1a1a]">{editErrors.capacity}</span>}
+                    {editErrors.capacity_adult && <span className="text-xs text-[#ba1a1a]">{editErrors.capacity_adult}</span>}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Child Capacity</label>
+                    <input
+                      type="number"
+                      name="capacity_child"
+                      value={editValues.capacity_child}
+                      onChange={handleEditChange}
+                      min="0"
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
+                    />
                   </div>
 
                   <div className="flex flex-col gap-1">
@@ -989,12 +983,8 @@ export default function RoomList() {
                     {editErrors.stock && <span className="text-xs text-[#ba1a1a]">{editErrors.stock}</span>}
                   </div>
                 </div>
-                <p className="text-[11px] text-[#6B6E6A] italic">
-                  Note: Available stock dihitung otomatis ({Math.max(0, Number(editValues.stock) - Number(editValues.occupied))} unit).
-                </p>
               </div>
 
-              {/* Room Facilities */}
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
                 <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
                   4. Room Facilities
@@ -1002,7 +992,6 @@ export default function RoomList() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-[#E5E1DA] rounded-xl bg-[#fcf9f5]">
                   {roomFacilities.map((fac) => {
                     const isChecked = (editValues.facilityIds || []).includes(fac.id);
-                    const isInactive = fac.status === "inactive";
                     return (
                       <label
                         key={fac.id}
@@ -1010,12 +999,11 @@ export default function RoomList() {
                           isChecked
                             ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]"
                             : "border-[#E5E1DA] bg-white text-[#2D312C]"
-                        } ${isInactive && !isChecked ? "opacity-40 cursor-not-allowed" : ""}`}
+                        }`}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          disabled={isInactive && !isChecked}
                           onChange={() => handleEditFacilityToggle(fac.id)}
                           className="accent-[#506147]"
                         />
@@ -1027,35 +1015,6 @@ export default function RoomList() {
                 </div>
               </div>
 
-              {/* Room Photos */}
-              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    5. Room Photos
-                  </h4>
-                  <label className="px-3 py-1.5 bg-[#506147] text-white text-xs font-semibold rounded-lg cursor-pointer hover:bg-[#3b4b33] transition-colors">
-                    + Upload Photo
-                    <input type="file" multiple accept="image/*" onChange={handleEditPhotoUpload} className="hidden" />
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {(editValues.photos || []).map((photo) => (
-                    <div key={photo.id} className="relative aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E1DA] group">
-                      <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(photo.id)}
-                        className="absolute top-1.5 right-1.5 p-1 bg-[#ba1a1a] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">close</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
               <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
                 <button
                   type="button"
@@ -1079,9 +1038,7 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 3: DELETE CONFIRMATION                                              */}
-      {/* ========================================================================= */}
+      {/* MODAL 3: DELETE CONFIRMATION */}
       {deletingRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
@@ -1094,7 +1051,7 @@ export default function RoomList() {
                   Delete Room?
                 </h3>
                 <p className="text-xs text-[#6B6E6A] mt-1 leading-relaxed">
-                  Are you sure you want to delete <strong className="text-[#2D312C]">&quot;{deletingRoom.name}&quot;</strong>? This action cannot be undone.
+                  Are you sure you want to delete <strong className="text-[#2D312C]">&quot;{deletingRoom.name}&quot;</strong>? Action ini tidak dapat dibatalkan.
                 </p>
               </div>
             </div>
@@ -1121,9 +1078,7 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* LIGHTBOX PREVIEW MODAL                                                    */}
-      {/* ========================================================================= */}
+      {/* LIGHTBOX PREVIEW MODAL */}
       {previewPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="relative max-w-4xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
