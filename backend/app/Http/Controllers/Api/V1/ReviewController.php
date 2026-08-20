@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Review;
+use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -13,15 +14,19 @@ class ReviewController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $hotel = $user->hotel;
+        $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
 
         if (!$hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $reviews = Review::whereHas('booking.rooms.roomType', function($q) use ($hotel) {
-            $q->where('hotel_id', $hotel->id);
-        })->with(['user', 'booking.rooms.roomType'])->latest()->get();
+        $reviews = Review::where('hotel_id', $hotel->id)
+            ->orWhereHas('booking', function($q) use ($hotel) {
+                $q->where('hotel_id', $hotel->id);
+            })
+            ->with(['user', 'booking.bookingRooms.roomType'])
+            ->latest()
+            ->get();
 
         return response()->json([
             'status' => 'success',

@@ -1,14 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import {
-  getStoredRooms,
-  saveStoredRooms,
-  getStoredRoomFacilities,
-} from "../../utils/roomData";
+import api from "../../services/api";
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
+
+const normalizeRoom = (r) => {
+  let photos = [];
+  if (Array.isArray(r.photos)) {
+    photos = r.photos.map((p) => {
+      const imgPath = p.image_path || p.url || "";
+      const fullUrl = imgPath.startsWith("http")
+        ? imgPath
+        : `http://localhost:8000/storage/${imgPath}`;
+      return {
+        id: p.id,
+        url: fullUrl,
+        name: p.name || (imgPath ? imgPath.split("/").pop() : "room.jpg"),
+      };
+    });
+  }
+
+  const facIds = Array.isArray(r.facilities)
+    ? r.facilities.map((f) => f.id)
+    : r.facilityIds || [];
+
+  return {
+    id: r.id,
+    name: r.name || "",
+    type: r.name?.toLowerCase().includes("suite")
+      ? "Suite"
+      : r.name?.toLowerCase().includes("deluxe")
+      ? "Deluxe"
+      : "Standard",
+    description: r.description || "",
+    weekday_price: Number(r.weekday_price || 0),
+    weekend_price: Number(r.weekend_price || 0),
+    capacity: Number(r.capacity_adult || r.capacity || 2),
+    capacity_adult: Number(r.capacity_adult || 2),
+    capacity_child: Number(r.capacity_child || 0),
+    stock: Number(r.stock || 0),
+    occupied: Number(r.occupied || 0),
+    facilityIds: facIds,
+    facilities: r.facilities || [],
+    photos: photos,
+    status: Number(r.stock || 0) > 0 ? "Available" : "Occupied",
+  };
+};
 
 export default function RoomList() {
   const navigate = useNavigate();
@@ -16,6 +55,7 @@ export default function RoomList() {
   // State Management
   const [rooms, setRooms] = useState([]);
   const [roomFacilities, setRoomFacilities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Search, Filter & Sort State
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,17 +84,30 @@ export default function RoomList() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const loadedRooms = getStoredRooms();
-    const loadedFacilities = getStoredRoomFacilities();
-    setRooms(loadedRooms);
-    setRoomFacilities(loadedFacilities);
-  };
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [roomsRes, facilitiesRes] = await Promise.allSettled([
+        api.get("/hotel/room-types"),
+        api.get("/facilities"),
+      ]);
 
-  // Sync state to localStorage
-  const updateRoomsState = (newRooms) => {
-    setRooms(newRooms);
-    saveStoredRooms(newRooms);
+      if (roomsRes.status === "fulfilled" && roomsRes.value.data) {
+        const rawRooms =
+          roomsRes.value.data.data || roomsRes.value.data || [];
+        setRooms(Array.isArray(rawRooms) ? rawRooms.map(normalizeRoom) : []);
+      }
+      if (facilitiesRes.status === "fulfilled" && facilitiesRes.value.data) {
+        const rawFac =
+          facilitiesRes.value.data.data || facilitiesRes.value.data || [];
+        setRoomFacilities(Array.isArray(rawFac) ? rawFac : []);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memuat data kamar dari server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Map Facility IDs to Objects
@@ -178,7 +231,7 @@ export default function RoomList() {
   };
 
   // Save Edit Submit
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
 
     const errs = {};
@@ -200,54 +253,49 @@ export default function RoomList() {
 
     setIsSaving(true);
 
-    setTimeout(() => {
-      const stockNum = Number(editValues.stock);
-      const occupiedNum = Number(editValues.occupied);
-      const availNum = Math.max(0, stockNum - occupiedNum);
-      const calculatedStatus =
-        availNum === 0 ? "Occupied" : editValues.status || "Available";
+    try {
+      await api.put(`/admin/rooms/${editingRoom.id}`, {
+        name: editValues.name.trim(),
+        description: editValues.description.trim(),
+        weekday_price: Number(editValues.weekday_price),
+        weekend_price: Number(editValues.weekend_price),
+        adult_capacity: Number(editValues.capacity),
+        stock: Number(editValues.stock),
+        facilities: editValues.facilityIds || [],
+      });
 
-      const updatedRooms = rooms.map((r) =>
-        r.id === editingRoom.id
-          ? {
-              ...r,
-              name: editValues.name.trim(),
-              type: editValues.type,
-              description: editValues.description.trim(),
-              weekday_price: Number(editValues.weekday_price),
-              weekend_price: Number(editValues.weekend_price),
-              capacity: Number(editValues.capacity),
-              stock: stockNum,
-              occupied: occupiedNum,
-              facilityIds: editValues.facilityIds,
-              photos: editValues.photos,
-              status: calculatedStatus,
-            }
-          : r
-      );
-
-      updateRoomsState(updatedRooms);
-      setIsSaving(false);
-      setEditingRoom(null);
       toast.success("Room updated successfully.");
-    }, 500);
+      setEditingRoom(null);
+      loadData();
+    } catch (error) {
+      console.error(error);
+      const msg = error.response?.data?.message || "Failed to update room.";
+      toast.error(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Delete Room Action
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deletingRoom) return;
 
     setIsSaving(true);
-    setTimeout(() => {
-      const updatedRooms = rooms.filter((r) => r.id !== deletingRoom.id);
-      updateRoomsState(updatedRooms);
-      setIsSaving(false);
+    try {
+      await api.delete(`/admin/rooms/${deletingRoom.id}`);
+      toast.success("Room deleted successfully.");
       setDeletingRoom(null);
       if (viewingRoom && viewingRoom.id === deletingRoom.id) {
         setViewingRoom(null);
       }
-      toast.success("Room deleted successfully.");
-    }, 400);
+      loadData();
+    } catch (error) {
+      console.error(error);
+      const msg = error.response?.data?.message || "Failed to delete room.";
+      toast.error(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

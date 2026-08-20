@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import api from "../../services/api";
 
 const initialPhotos = [
   {
@@ -44,11 +45,11 @@ const initialHotelData = {
   city: "Bandung",
   phone: "+62 812 3456 7890",
   email: "contact@hleven.com",
-  rating: "4.8",
-  totalReviews: "128",
+  rating: "0.0",
+  totalReviews: "0",
   location: "Bandung, Jawa Barat",
   propertyType: "Luxury Boutique Resort",
-  yearBuilt: "2018",
+  yearBuilt: "2020",
   website: "www.hleven.com",
   photos: initialPhotos,
 };
@@ -60,9 +61,101 @@ export default function HotelInformation() {
   const [formPhotos, setFormPhotos] = useState(initialPhotos);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [previewPhoto, setPreviewPhoto] = useState(null);
 
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    fetchHotelInfo();
+  }, []);
+
+  const fetchHotelInfo = async () => {
+    setLoading(true);
+    try {
+      const [profileRes, reviewsRes] = await Promise.allSettled([
+        api.get("/admin/hotel/profile"),
+        api.get("/hotel/reviews"),
+      ]);
+
+      let reviewsData = [];
+      if (reviewsRes.status === "fulfilled" && reviewsRes.value.data) {
+        reviewsData =
+          reviewsRes.value.data.data || reviewsRes.value.data || [];
+      }
+
+      const totalReviewsCount = Array.isArray(reviewsData) ? reviewsData.length : 0;
+      const sumRating = Array.isArray(reviewsData)
+        ? reviewsData.reduce((acc, r) => acc + (Number(r.rating) || 0), 0)
+        : 0;
+      const dynamicAvgRating =
+        totalReviewsCount > 0
+          ? (sumRating / totalReviewsCount).toFixed(1)
+          : "0.0";
+
+      if (profileRes.status === "fulfilled" && profileRes.value.data) {
+        const raw = profileRes.value.data.data || profileRes.value.data;
+        if (raw) {
+          const mappedPhotos = (raw.photos || []).map((p, idx) => {
+            const imgPath = p.image_path || p.url || "";
+            const fullUrl = imgPath.startsWith("http")
+              ? imgPath
+              : `http://localhost:8000/storage/${imgPath}`;
+            return {
+              id: p.id || `photo-${idx}`,
+              name: imgPath ? imgPath.split("/").pop() : `Photo_${idx + 1}.jpg`,
+              url: fullUrl,
+              size: "2.5 MB",
+              uploadedAt: "Recent",
+              isPrimary: idx === 0,
+            };
+          });
+
+          const currentRating =
+            dynamicAvgRating !== "0.0"
+              ? dynamicAvgRating
+              : raw.average_rating
+              ? Number(raw.average_rating).toFixed(1)
+              : "0.0";
+
+          const currentTotalReviews =
+            totalReviewsCount > 0
+              ? String(totalReviewsCount)
+              : String(raw.total_review || 0);
+
+          const updatedData = {
+            name: raw.name || "Grand H'Leven Hotel",
+            description:
+              raw.description ||
+              "Hotel nyaman dengan fasilitas lengkap untuk kebutuhan perjalanan bisnis maupun liburan.",
+            address: raw.address || "Jl. Example No. 123",
+            city: raw.city?.name || raw.city || "Bandung",
+            phone: raw.phone || "+62 812 3456 7890",
+            email: raw.email || "contact@hleven.com",
+            rating: currentRating,
+            totalReviews: currentTotalReviews,
+            location:
+              raw.address ||
+              (raw.city?.name
+                ? `${raw.city.name}, Indonesia`
+                : "Bandung, Jawa Barat"),
+            propertyType: "Luxury Boutique Resort",
+            yearBuilt: "2020",
+            website: "www.hleven.com",
+            photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
+          };
+
+          setHotelData(updatedData);
+          setFormValues(updatedData);
+          setFormPhotos(updatedData.photos);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load hotel info:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Toggle ke mode edit
   const handleStartEdit = () => {
@@ -135,7 +228,6 @@ export default function HotelInformation() {
   const handleDeletePhoto = (photoId) => {
     setFormPhotos((prev) => {
       const filtered = prev.filter((p) => p.id !== photoId);
-      // Jika foto primary dihapus, buat foto pertama sisanya menjadi primary
       if (filtered.length > 0 && !filtered.some((p) => p.isPrimary)) {
         filtered[0].isPrimary = true;
       }
@@ -183,7 +275,7 @@ export default function HotelInformation() {
   };
 
   // Submit Handler
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
@@ -195,16 +287,26 @@ export default function HotelInformation() {
     setIsSaving(true);
     setErrors({});
 
-    // Simulasikan simpan data (600ms)
-    setTimeout(() => {
+    try {
+      await api.post("/admin/hotel/profile", {
+        name: formValues.name.trim(),
+        description: formValues.description.trim(),
+        address: formValues.address.trim(),
+        phone: formValues.phone.trim(),
+      });
+
       setHotelData({
         ...formValues,
         photos: formPhotos,
       });
-      setIsSaving(false);
       setIsEditing(false);
       toast.success("Hotel information updated successfully.");
-    }, 600);
+    } catch (err) {
+      console.error("Failed to update hotel profile:", err);
+      toast.error("Gagal memperbarui profil hotel.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const primaryPhoto =

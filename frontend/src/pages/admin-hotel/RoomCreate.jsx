@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import {
-  getStoredRooms,
-  saveStoredRooms,
-  getStoredRoomFacilities,
-} from "../../utils/roomData";
+import api from "../../services/api";
 
 export default function RoomCreate() {
   const navigate = useNavigate();
@@ -13,6 +9,7 @@ export default function RoomCreate() {
 
   // Shared Room Facilities list
   const [roomFacilities, setRoomFacilities] = useState([]);
+  const [rawFiles, setRawFiles] = useState([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -31,8 +28,16 @@ export default function RoomCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const facilities = getStoredRoomFacilities();
-    setRoomFacilities(facilities);
+    const fetchFacilities = async () => {
+      try {
+        const res = await api.get("/facilities");
+        const list = res.data?.data || res.data || [];
+        setRoomFacilities(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.error("Failed to load facilities:", err);
+      }
+    };
+    fetchFacilities();
   }, []);
 
   const handleChange = (e) => {
@@ -57,6 +62,8 @@ export default function RoomCreate() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    setRawFiles((prev) => [...prev, ...files]);
+
     const newPhotos = files.map((file, idx) => ({
       id: `p-create-${Date.now()}-${idx}`,
       url: URL.createObjectURL(file),
@@ -70,11 +77,12 @@ export default function RoomCreate() {
     toast.success(`${files.length} foto berhasil diunggah!`);
   };
 
-  const handleRemovePhoto = (photoId) => {
+  const handleRemovePhoto = (photoId, index) => {
     setFormData((prev) => ({
       ...prev,
       photos: prev.photos.filter((p) => p.id !== photoId),
     }));
+    setRawFiles((prev) => prev.filter((_, idx) => idx !== index));
     toast.success("Foto dihapus.");
   };
 
@@ -108,7 +116,7 @@ export default function RoomCreate() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
@@ -119,30 +127,38 @@ export default function RoomCreate() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const existingRooms = getStoredRooms();
-      const newRoom = {
-        id: Date.now(),
-        name: formData.name.trim(),
-        type: formData.type,
-        description: formData.description.trim(),
-        weekday_price: Number(formData.weekday_price),
-        weekend_price: Number(formData.weekend_price),
-        capacity: Number(formData.capacity),
-        stock: Number(formData.stock),
-        occupied: 0,
-        facilityIds: formData.facilityIds,
-        photos: formData.photos,
-        status: "Available",
-      };
+    try {
+      const payload = new FormData();
+      payload.append("name", formData.name.trim());
+      payload.append("description", formData.description.trim());
+      payload.append("weekday_price", formData.weekday_price);
+      payload.append("weekend_price", formData.weekend_price);
+      payload.append("adult_capacity", formData.capacity);
+      payload.append("child_capacity", 0);
+      payload.append("stock", formData.stock);
 
-      const updatedRooms = [newRoom, ...existingRooms];
-      saveStoredRooms(updatedRooms);
+      (formData.facilityIds || []).forEach((fId, idx) => {
+        payload.append(`facilities[${idx}]`, fId);
+      });
 
-      setIsSubmitting(false);
+      (rawFiles || []).forEach((file) => {
+        payload.append("photos[]", file);
+      });
+
+      await api.post("/hotel/room-types", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
       toast.success("Room created successfully.");
       navigate("/admin/rooms");
-    }, 600);
+    } catch (error) {
+      console.error("Failed to create room:", error);
+      const msg =
+        error.response?.data?.message || "Gagal membuat tipe kamar di server.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

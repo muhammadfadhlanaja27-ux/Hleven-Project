@@ -39,6 +39,11 @@ class User extends Authenticatable
         return implode(' ', $parts);
     }
 
+    public function hotel()
+    {
+        return $this->hasOne(Hotel::class, 'admin_id');
+    }
+
     public function hotels()
     {
         return $this->hasMany(Hotel::class, 'admin_id');

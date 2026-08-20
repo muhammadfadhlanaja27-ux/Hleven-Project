@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { getStoredReviews, saveStoredReviews } from "../../utils/reviewData";
+import api from "../../services/api";
 
 // Helper to render star icons
 const renderStars = (rating) => {
@@ -31,8 +31,53 @@ const renderStars = (rating) => {
   return <div className="flex items-center gap-0.5">{stars}</div>;
 };
 
+const normalizeReview = (r) => {
+  const guestUser = r.user || r.booking?.user || {};
+  const roomType =
+    r.booking?.rooms?.[0]?.room_type ||
+    r.booking?.bookingRooms?.[0]?.roomType ||
+    r.room ||
+    {};
+  const booking = r.booking || {};
+
+  return {
+    id: r.id,
+    guestId: guestUser.id || `g-${r.id}`,
+    guest: {
+      name: guestUser.name || "Guest",
+      email: guestUser.email || "-",
+      phone: guestUser.phone || "-",
+      avatar: guestUser.avatar_url || (guestUser.avatar ? (guestUser.avatar.startsWith("http") ? guestUser.avatar : `http://localhost:8000/storage/${guestUser.avatar}`) : null),
+    },
+    roomId: roomType.id || 1,
+    room: {
+      id: roomType.id || 1,
+      name: roomType.name || "Room",
+      type: roomType.name?.toLowerCase().includes("suite")
+        ? "Suite"
+        : roomType.name?.toLowerCase().includes("deluxe")
+        ? "Deluxe"
+        : "Standard",
+      checkIn: booking.check_in_date || "Recent Stay",
+      checkOut: booking.check_out_date || "Recent Stay",
+    },
+    booking: {
+      code: booking.booking_code || `BK-${r.id}`,
+      status: booking.status || "Completed",
+    },
+    rating: Number(r.rating || 5),
+    comment: r.comment || r.review || "No comment provided.",
+    reply: r.reply || null,
+    reviewDate: r.created_at
+      ? new Date(r.created_at).toISOString().split("T")[0]
+      : "Recent",
+    isRead: Boolean(r.is_read || r.reply),
+  };
+};
+
 export default function ReviewManager() {
   const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,20 +88,69 @@ export default function ReviewManager() {
 
   // Modal States
   const [viewingReview, setViewingReview] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
 
   useEffect(() => {
     loadReviews();
   }, []);
 
-  const loadReviews = () => {
-    const loaded = getStoredReviews();
-    setReviews(loaded);
+  const loadReviews = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/hotel/reviews");
+      const list = res.data?.data || res.data || [];
+      setReviews(Array.isArray(list) ? list.map(normalizeReview) : []);
+    } catch (err) {
+      console.error("Failed to load reviews:", err);
+      toast.error("Gagal memuat ulasan tamu dari server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateReviewsState = (newReviews) => {
-    setReviews(newReviews);
-    saveStoredReviews(newReviews);
+  const handleSendReply = async (reviewId) => {
+    if (!replyText.trim()) {
+      toast.error("Silakan isi balasan ulasan.");
+      return;
+    }
+    setIsReplying(true);
+    try {
+      await api.post(`/hotel/reviews/${reviewId}/reply`, {
+        reply: replyText.trim(),
+      });
+      toast.success("Balasan ulasan berhasil dikirim.");
+      setReplyText("");
+      if (viewingReview) {
+        setViewingReview((prev) => ({ ...prev, reply: replyText.trim() }));
+      }
+      loadReviews();
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal mengirim balasan ulasan.");
+    } finally {
+      setIsReplying(false);
+    }
   };
+
+  // Mark single review as read
+  const handleMarkAsRead = (reviewId) => {
+    setReviews((prev) =>
+      prev.map((r) => (r.id === reviewId ? { ...r, isRead: true } : r))
+    );
+    toast.success("Review marked as read.");
+  };
+
+  // View Detail Handler (auto mark as read)
+  const handleOpenDetail = (review) => {
+    setReviews((prev) =>
+      prev.map((r) => (r.id === review.id ? { ...r, isRead: true } : r))
+    );
+    setReplyText(review.reply || "");
+    setViewingReview({ ...review, isRead: true });
+  };
+
+
 
   // DYNAMIC CALCULATIONS (Never hardcoded)
   const totalReviews = reviews.length;
@@ -69,33 +163,12 @@ export default function ReviewManager() {
   const count1Star = reviews.filter((r) => r.rating === 1).length;
 
   const sumRating = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
-  const averageRating = totalReviews > 0 ? (sumRating / totalReviews).toFixed(1) : "0.0";
+  const averageRating =
+    totalReviews > 0 ? (sumRating / totalReviews).toFixed(1) : "0.0";
 
   // Percentage calculations
   const getPercentage = (count) =>
     totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
-
-  // Mark single review as read
-  const handleMarkAsRead = (reviewId) => {
-    const updated = reviews.map((r) =>
-      r.id === reviewId ? { ...r, isRead: true } : r
-    );
-    updateReviewsState(updated);
-    toast.success("Review marked as read.");
-  };
-
-  // View Detail Handler (auto mark as read)
-  const handleOpenDetail = (review) => {
-    if (!review.isRead) {
-      const updated = reviews.map((r) =>
-        r.id === review.id ? { ...r, isRead: true } : r
-      );
-      updateReviewsState(updated);
-    }
-    setViewingReview({ ...review, isRead: true });
-  };
-
-
 
   // Filter Logic
   const filteredReviews = reviews.filter((r) => {
@@ -543,6 +616,51 @@ export default function ReviewManager() {
                   <p className="text-[#506147] font-semibold">Status: {viewingReview.booking.status}</p>
                   <p className="text-[#6B6E6A]">Verified Stayed Guest</p>
                 </div>
+              </div>
+
+              {/* Section 4: Hotel Reply */}
+              <div className="bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] p-5 space-y-3">
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
+                  Hotel Management Reply
+                </h4>
+                {viewingReview.reply ? (
+                  <div className="p-4 bg-white border border-[#E5E1DA] rounded-xl text-xs space-y-2">
+                    <div className="flex items-center gap-2 text-[#506147] font-bold">
+                      <span className="material-symbols-outlined text-[16px]">reply</span>
+                      Your Reply:
+                    </div>
+                    <p className="text-[#444840] leading-relaxed">{viewingReview.reply}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      rows={3}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Write a warm, professional reply to this guest's review..."
+                      className="w-full p-3 text-xs bg-white border border-[#E5E1DA] rounded-xl text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleSendReply(viewingReview.id)}
+                        disabled={isReplying}
+                        className="px-4 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isReplying ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-[16px]">send</span>
+                            Submit Reply
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
