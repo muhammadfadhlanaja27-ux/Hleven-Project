@@ -20,6 +20,7 @@ export default function RoomCreate() {
     weekend_price: "",
     capacity: "",
     stock: "",
+    is_refundable: true,
     facilityIds: [],
     photos: [],
   });
@@ -55,11 +56,18 @@ export default function RoomCreate() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  const handleRefundChange = (isRefundable) => {
+    setFormData((prev) => ({ ...prev, is_refundable: isRefundable }));
   };
 
   const handleFacilityToggle = (facilityId) => {
@@ -147,6 +155,7 @@ export default function RoomCreate() {
       payload.append("adult_capacity", formData.capacity);
       payload.append("child_capacity", 0);
       payload.append("stock", formData.stock);
+      payload.append("is_refundable", formData.is_refundable ? "1" : "0");
 
       (formData.facilityIds || []).forEach((fId, idx) => {
         payload.append(`facilities[${idx}]`, fId);
@@ -428,6 +437,81 @@ export default function RoomCreate() {
                   {errors.stock}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* Refund Policy Section */}
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <h4 className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Refund Policy
+              </h4>
+              <span className="text-[#ba1a1a] text-xs">*</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleRefundChange(true)}
+                disabled={isSubmitting}
+                className={`relative flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                  formData.is_refundable === true
+                    ? "border-[#506147] bg-[#E4EBE0] shadow-sm"
+                    : "border-[#E5E1DA] bg-white hover:border-[#c4c8be]"
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 border-2 ${
+                  formData.is_refundable === true
+                    ? "border-[#506147] bg-[#506147]"
+                    : "border-[#c4c8be] bg-white"
+                }`}>
+                  {formData.is_refundable === true && (
+                    <span className="w-2 h-2 rounded-full bg-white"></span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#4F6F52] text-[18px]">
+                      verified
+                    </span>
+                    Bisa Refund
+                  </span>
+                  <p className="text-xs text-[#6B6E6A] leading-relaxed">
+                    Tamu bisa melakukan pembatalan &amp; pengembalian dana penuh sesuai kebijakan (misal: maks. H-3 sebelum check-in).
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleRefundChange(false)}
+                disabled={isSubmitting}
+                className={`relative flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                  formData.is_refundable === false
+                    ? "border-[#ba1a1a] bg-[#ffdad6]/30 shadow-sm"
+                    : "border-[#E5E1DA] bg-white hover:border-[#c4c8be]"
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 border-2 ${
+                  formData.is_refundable === false
+                    ? "border-[#ba1a1a] bg-[#ba1a1a]"
+                    : "border-[#c4c8be] bg-white"
+                }`}>
+                  {formData.is_refundable === false && (
+                    <span className="w-2 h-2 rounded-full bg-white"></span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#ba1a1a] text-[18px]">
+                      block
+                    </span>
+                    Tidak Bisa Refund
+                  </span>
+                  <p className="text-xs text-[#6B6E6A] leading-relaxed">
+                    Pembayaran bersifat non-refundable. Tamu tidak dapat mengembalikan dana apabila membatalkan reservasi.
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
 

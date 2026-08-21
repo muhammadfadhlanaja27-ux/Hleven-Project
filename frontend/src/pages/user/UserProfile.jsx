@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
 const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
 
@@ -78,12 +79,21 @@ const UserProfile = () => {
       navigate("/login");
     }
 
-    // Try fetching user bookings from API
+    // Try fetching user bookings from API (cached short TTL)
     const fetchUserBookings = async () => {
       try {
-        const res = await api.get("/user/bookings");
-        if (res.data && res.data.data && res.data.data.length > 0) {
-          setBookings(res.data.data);
+        const TTL_30DETIK = 30 * 1000;
+        const { data: responseData, fromCache } = await cachedGet(
+          "/user/bookings",
+          {},
+          false,
+          TTL_30DETIK
+        );
+        if (responseData && responseData.data && responseData.data.length > 0) {
+          setBookings(responseData.data);
+        }
+        if (fromCache) {
+          console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
         }
       } catch (err) {
         // Keep default mock bookings on offline/API fail

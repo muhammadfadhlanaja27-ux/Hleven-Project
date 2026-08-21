@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
 const QR_CODE_IMAGE = "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80";
 
@@ -19,8 +19,9 @@ const INITIAL_BOOKINGS = [
     nights: 2,
     tax_and_fees: 1470000,
     total_price: 8470000,
-    status: "Paid", // 'Paid' | 'Checked Out' | 'Cancelled'
-    payment_method: "QRIS Instant"
+    status: "Paid",
+    payment_method: "QRIS Instant",
+    is_refundable: true,
   },
   {
     id: "HLVN-44102-BX",
@@ -37,7 +38,8 @@ const INITIAL_BOOKINGS = [
     tax_and_fees: 1764000,
     total_price: 10164000,
     status: "Checked Out",
-    payment_method: "BCA Virtual Account"
+    payment_method: "BCA Virtual Account",
+    is_refundable: false,
   },
   {
     id: "HLVN-11920-CX",
@@ -54,7 +56,8 @@ const INITIAL_BOOKINGS = [
     tax_and_fees: 0,
     total_price: 0,
     status: "Cancelled",
-    payment_method: "Refunded"
+    payment_method: "Refunded",
+    is_refundable: true,
   }
 ];
 
@@ -81,9 +84,18 @@ const BookingHistory = () => {
 
     const fetchApiBookings = async () => {
       try {
-        const response = await api.get("/user/bookings");
-        if (response.data && response.data.data && response.data.data.length > 0) {
-          setBookings(response.data.data);
+        const TTL_30DETIK = 30 * 1000;
+        const { data: responseData, fromCache } = await cachedGet(
+          "/user/bookings",
+          {},
+          false,
+          TTL_30DETIK
+        );
+        if (responseData && responseData.data && responseData.data.length > 0) {
+          setBookings(responseData.data);
+        }
+        if (fromCache) {
+          console.debug("[Cache Hit] BookingHistory loaded from cache (30s TTL)");
         }
       } catch (err) {
         // Fallback to INITIAL_BOOKINGS when API is unavailable
@@ -313,6 +325,19 @@ const BookingHistory = () => {
                           <span className="material-symbols-outlined text-sm">bed</span>
                           {item.room_name}
                         </p>
+                        <div className="mt-2">
+                          {item.is_refundable ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
+                              <span className="material-symbols-outlined text-[12px]">verified</span>
+                              Bisa Refund
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold text-[10px] uppercase tracking-wider">
+                              <span className="material-symbols-outlined text-[12px]">block</span>
+                              Non-Refundable
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="text-left sm:text-right mt-2 sm:mt-0">
@@ -511,6 +536,19 @@ const BookingHistory = () => {
                     <p className="font-body-md text-xs text-[#444842] mt-1">
                       1 Kamar • 2 Tamu • Termasuk Sarapan Pagi
                     </p>
+                    <div className="mt-2">
+                      {(selectedBooking.is_refundable === undefined || selectedBooking.is_refundable) ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
+                          <span className="material-symbols-outlined text-[12px]">verified</span>
+                          Booking Bisa Direfund
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold text-[10px] uppercase tracking-wider">
+                          <span className="material-symbols-outlined text-[12px]">block</span>
+                          Non-Refundable
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Dates Grid */}

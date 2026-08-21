@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
 const DEFAULT_ROOM_IMAGES = [
   "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80",
@@ -33,9 +33,9 @@ const RoomDetail = () => {
       const targetRoomId = roomId || "101";
 
       try {
-        const response = await api.get(`/hotels/${targetHotelId}`);
-        if (response.data && response.data.data) {
-          const apiHotel = response.data.data;
+        const { data: responseData, fromCache } = await cachedGet(`/hotels/${targetHotelId}`);
+        if (responseData && responseData.data) {
+          const apiHotel = responseData.data;
           const apiRooms = apiHotel.room_types || [];
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || apiRooms[0];
 
@@ -60,6 +60,7 @@ const RoomDetail = () => {
               bed: matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed",
               breakfast: matchedRoomType.breakfast,
               smoking_area: matchedRoomType.smoking_area,
+              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
               stock: matchedRoomType.stock,
               photos: matchedRoomType.photos || []
             };
@@ -73,6 +74,9 @@ const RoomDetail = () => {
         } else {
           setHotel(null);
           setRoom(null);
+        }
+        if (fromCache) {
+          console.debug(`[Cache Hit] RoomDetail hotel=${targetHotelId} room=${targetRoomId} loaded from cache`);
         }
       } catch (err) {
         console.error("Backend API Error/Offline:", err);
@@ -171,6 +175,22 @@ const RoomDetail = () => {
                   <span className="material-symbols-outlined text-lg text-[#778873]">aspect_ratio</span>
                   {room?.sqm || "80 sqm"}
                 </div>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#DCCFC0]"></div>
+                {room?.is_refundable ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20">
+                    <span className="material-symbols-outlined text-[#4F6F52] text-[16px]">verified</span>
+                    <span className="text-[#4F6F52] font-bold text-xs uppercase tracking-wider">
+                      Bisa Refund
+                    </span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20">
+                    <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">block</span>
+                    <span className="text-[#ba1a1a] font-bold text-xs uppercase tracking-wider">
+                      Tidak Bisa Refund
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -353,7 +373,15 @@ const RoomDetail = () => {
                   <span className="material-symbols-outlined text-[#747871] mt-0.5">event_busy</span>
                   <div>
                     <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Pembatalan</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Pembatalan gratis hingga 3 hari sebelum jadwal kedatangan.</p>
+                    {room?.is_refundable ? (
+                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                        <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.
+                      </p>
+                    ) : (
+                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                        <span className="font-bold text-[#ba1a1a]">Tidak dapat dibatalkan:</span> Kamar ini bersifat non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.
+                      </p>
+                    )}
                   </div>
                 </li>
               </ul>
@@ -369,6 +397,32 @@ const RoomDetail = () => {
                 </span>
                 <span className="font-body-md text-xs text-[#444842]">/ malam</span>
               </div>
+
+              {room?.is_refundable ? (
+                <div className="mb-6 p-3 rounded-xl bg-[#4F6F52]/10 border border-[#4F6F52]/20 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#4F6F52] text-[18px] mt-0.5 flex-shrink-0">verified</span>
+                  <div>
+                    <p className="font-label-md text-xs font-bold text-[#4F6F52] uppercase tracking-wider">
+                      Bisa Refund
+                    </p>
+                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                      Pengembalian dana penuh jika dibatalkan H-3 sebelum check-in.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6 p-3 rounded-xl bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#ba1a1a] text-[18px] mt-0.5 flex-shrink-0">block</span>
+                  <div>
+                    <p className="font-label-md text-xs font-bold text-[#ba1a1a] uppercase tracking-wider">
+                      Non-Refundable
+                    </p>
+                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                      Reservasi tidak dapat dikembalikan dananya jika dibatalkan.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Dates Input Controls */}
               <div className="flex flex-col gap-4 mb-6">

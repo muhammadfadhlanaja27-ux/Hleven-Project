@@ -12,7 +12,8 @@ class RoomType extends Model
 
     protected $fillable = [
         'hotel_id', 'name', 'description', 'weekday_price', 'weekend_price',
-        'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area'
+        'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
+        'is_refundable'
     ];
 
     public function hotel()

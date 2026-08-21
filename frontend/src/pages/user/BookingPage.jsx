@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
 const QR_CODE_IMAGE = "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80";
 
@@ -52,7 +52,7 @@ const BookingPage = () => {
     }
   }, []);
 
-  // Fetch Hotel & Room Data
+  // Fetch Hotel & Room Data (Cached with shorter TTL for booking flow)
   useEffect(() => {
     const fetchBookingData = async () => {
       setLoading(true);
@@ -60,9 +60,15 @@ const BookingPage = () => {
       const targetRoomId = roomId || "101";
 
       try {
-        const response = await api.get(`/hotels/${targetHotelId}`);
-        if (response.data && response.data.data) {
-          const apiHotel = response.data.data;
+        const TTL_2MENIT = 2 * 60 * 1000;
+        const { data: responseData, fromCache } = await cachedGet(
+          `/hotels/${targetHotelId}`,
+          {},
+          false,
+          TTL_2MENIT
+        );
+        if (responseData && responseData.data) {
+          const apiHotel = responseData.data;
           const apiRooms = apiHotel.room_types || [];
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || apiRooms[0];
 
@@ -75,6 +81,7 @@ const BookingPage = () => {
               weekend_price: matchedRoomType.weekend_price,
               capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
               description: matchedRoomType.description,
+              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
             };
 
             setHotel(apiHotel);
@@ -86,6 +93,9 @@ const BookingPage = () => {
         } else {
           setHotel(null);
           setRoom(null);
+        }
+        if (fromCache) {
+          console.debug(`[Cache Hit] BookingPage hotel=${targetHotelId} room=${targetRoomId} loaded from cache (2min TTL)`);
         }
       } catch (err) {
         console.error("Backend Error / Gagal memuat data booking:", err);
@@ -366,6 +376,33 @@ const BookingPage = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Refund Alert Card */}
+              {room?.is_refundable ? (
+                <div className="p-3 rounded-xl bg-[#4F6F52]/10 border border-[#4F6F52]/20 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[#4F6F52] text-[18px] mt-0.5 flex-shrink-0">verified</span>
+                  <div className="text-left">
+                    <p className="font-label-md text-xs font-bold text-[#4F6F52] uppercase tracking-wider">
+                      Reservasi Bisa Direfund
+                    </p>
+                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                      Pembatalan gratis &amp; pengembalian dana penuh tersedia sampai H-3 sebelum check-in.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[#ba1a1a] text-[18px] mt-0.5 flex-shrink-0">block</span>
+                  <div className="text-left">
+                    <p className="font-label-md text-xs font-bold text-[#ba1a1a] uppercase tracking-wider">
+                      Non-Refundable
+                    </p>
+                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                      Kamar ini tidak dapat dikembalikan dananya apabila Anda membatalkan pesanan.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <hr className="border-t border-[#DCCFC0]/50" />
 
