@@ -51,6 +51,7 @@ class RoomTypeController extends Controller
             'stock' => 'required|integer|min:0',
             'adult_capacity' => 'required|integer|min:1',
             'child_capacity' => 'nullable|integer|min:0',
+            'is_refundable' => 'nullable|boolean',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
             'photos' => 'nullable|array',
@@ -71,6 +72,7 @@ class RoomTypeController extends Controller
             'stock' => $request->stock,
             'capacity_adult' => $request->adult_capacity,
             'capacity_child' => $request->child_capacity ?? 0,
+            'is_refundable' => $request->boolean('is_refundable', true),
         ]);
 
         // 2. Simpan relasi fasilitas ke tabel pivot `room_facilities`
@@ -80,9 +82,12 @@ class RoomTypeController extends Controller
 
         // 3. Simpan multiple foto jika ada
         if ($request->hasFile('photos')) {
-            foreach ($request->file('photos') as $photo) {
+            foreach ($request->file('photos') as $idx => $photo) {
                 $path = $photo->store('room_types', 'public');
-                $roomType->photos()->create(['image_path' => $path]);
+                $roomType->photos()->create([
+                    'photo' => $path,
+                    'is_thumbnail' => $idx === 0,
+                ]);
             }
         }
 
@@ -129,6 +134,7 @@ class RoomTypeController extends Controller
             'stock' => 'sometimes|integer|min:0',
             'adult_capacity' => 'sometimes|integer|min:1',
             'child_capacity' => 'nullable|integer|min:0',
+            'is_refundable' => 'nullable|boolean',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
         ]);
@@ -148,6 +154,9 @@ class RoomTypeController extends Controller
         }
         if ($request->has('child_capacity')) {
             $updateData['capacity_child'] = $request->child_capacity;
+        }
+        if ($request->has('is_refundable')) {
+            $updateData['is_refundable'] = $request->boolean('is_refundable');
         }
 
         $roomType->update($updateData);
