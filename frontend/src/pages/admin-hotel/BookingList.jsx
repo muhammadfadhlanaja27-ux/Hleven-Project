@@ -273,7 +273,7 @@ export default function BookingList() {
     setIsProcessing(true);
     try {
       await api.patch(`/admin/bookings/${confirmCheckOutBooking.id}/status`, {
-        status: "completed",
+        status: "checked_out",
       });
       toast.success("Guest checked out successfully.");
       setConfirmCheckOutBooking(null);

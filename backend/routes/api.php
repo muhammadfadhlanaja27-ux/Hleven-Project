@@ -82,6 +82,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
         });
 
+        // --- Booking User ---
+        Route::middleware('role:user')->group(function () {
+            Route::get('/user/bookings', [BookingController::class, 'userBookings']);
+            Route::post('/bookings', [BookingController::class, 'store']);
+        });
+
         // --- Pembayaran User ---
         Route::middleware('role:user')->prefix('payments')->group(function () {
             Route::get('/{id}', [PaymentController::class, 'show']);

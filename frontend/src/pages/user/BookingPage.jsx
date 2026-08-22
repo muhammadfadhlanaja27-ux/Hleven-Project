@@ -2,7 +2,39 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
 
-const QR_CODE_IMAGE = "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80";
+const QR_CODE_PLACEHOLDER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+      <rect width='200' height='200' fill='white'/>
+      <g fill='#1e1b16'>
+        <rect x='20' y='20' width='50' height='50'/>
+        <rect x='130' y='20' width='50' height='50'/>
+        <rect x='20' y='130' width='50' height='50'/>
+        <rect x='30' y='30' width='10' height='10' fill='white'/>
+        <rect x='140' y='30' width='10' height='10' fill='white'/>
+        <rect x='30' y='140' width='10' height='10' fill='white'/>
+        <rect x='80' y='20' width='10' height='10'/>
+        <rect x='100' y='30' width='10' height='10'/>
+        <rect x='20' y='80' width='10' height='10'/>
+        <rect x='40' y='100' width='10' height='10'/>
+        <rect x='60' y='80' width='10' height='10'/>
+        <rect x='80' y='100' width='10' height='10'/>
+        <rect x='100' y='80' width='10' height='10'/>
+        <rect x='120' y='90' width='10' height='10'/>
+        <rect x='140' y='100' width='10' height='10'/>
+        <rect x='160' y='80' width='10' height='10'/>
+        <rect x='180' y='100' width='10' height='10'/>
+        <rect x='80' y='120' width='10' height='10'/>
+        <rect x='100' y='140' width='10' height='10'/>
+        <rect x='120' y='130' width='10' height='10'/>
+        <rect x='140' y='150' width='10' height='10'/>
+        <rect x='160' y='140' width='10' height='10'/>
+        <rect x='100' y='160' width='10' height='10'/>
+        <rect x='120' y='180' width='10' height='10'/>
+      </g>
+    </svg>
+  `);
 
 const BookingPage = () => {
   const { hotelId, roomId } = useParams();
@@ -73,6 +105,21 @@ const BookingPage = () => {
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || apiRooms[0];
 
           if (matchedRoomType) {
+            const thumbnailPhoto = matchedRoomType.photos && matchedRoomType.photos.length > 0
+              ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0])
+              : null;
+            const roomPhotoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
+            const roomImage = roomPhotoPath
+              ? (roomPhotoPath.startsWith('http') ? roomPhotoPath : `http://localhost:8000/storage/${roomPhotoPath.replace(/^\//, '')}`)
+              : null;
+
+            const hotelThumbRaw = apiHotel.thumbnail;
+            const hotelImage = hotelThumbRaw
+              ? (typeof hotelThumbRaw === 'object'
+                  ? (hotelThumbRaw.photo || hotelThumbRaw.url || null)
+                  : (hotelThumbRaw.startsWith('http') ? hotelThumbRaw : `http://localhost:8000/storage/${String(hotelThumbRaw).replace(/^\//, '')}`))
+              : null;
+
             const mappedRoom = {
               id: matchedRoomType.id,
               name: matchedRoomType.name,
@@ -82,9 +129,10 @@ const BookingPage = () => {
               capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
               description: matchedRoomType.description,
               is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
+              thumbnail: roomImage,
             };
 
-            setHotel(apiHotel);
+            setHotel({ ...apiHotel, thumbnail: hotelImage });
             setRoom(mappedRoom);
           } else {
             setHotel(apiHotel);
@@ -358,11 +406,18 @@ const BookingPage = () => {
 
               {/* Room Info Card */}
               <div className="bg-white rounded-xl overflow-hidden flex border border-[#DCCFC0]/40">
-                <img
-                  src={room?.thumbnail || hotel?.thumbnail || QR_CODE_IMAGE}
-                  alt={room?.name}
-                  className="w-1/3 object-cover min-h-[90px]"
-                />
+                {(room?.thumbnail || hotel?.thumbnail) ? (
+                  <img
+                    src={room?.thumbnail || hotel?.thumbnail}
+                    alt={room?.name}
+                    className="w-1/3 object-cover min-h-[90px]"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-1/3 min-h-[90px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#778873] text-4xl opacity-60">no_photography</span>
+                  </div>
+                )}
                 <div className="p-3 flex flex-col justify-center w-2/3 text-left">
                   <span className="font-label-sm text-[11px] font-bold text-[#778873] uppercase tracking-wider mb-0.5">
                     {hotel?.name || "H'Leven Resort"}
@@ -587,7 +642,7 @@ const BookingPage = () => {
                 <div className="bg-white border-2 border-[#778873] p-4 rounded-2xl shadow-sm mb-6 flex flex-col items-center">
                   <div className="w-48 h-48 bg-white border border-[#DCCFC0]/40 p-2 rounded-xl flex items-center justify-center">
                     <img
-                      src={QR_CODE_IMAGE}
+                      src={QR_CODE_PLACEHOLDER}
                       alt="QR Code QRIS"
                       className="w-full h-full object-contain mix-blend-multiply"
                     />

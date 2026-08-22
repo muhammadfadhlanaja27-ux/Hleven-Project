@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
-
 const Navbar = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -38,9 +36,9 @@ const Navbar = () => {
   };
 
   const getAvatarUrl = () => {
-    if (!user) return DEFAULT_AVATAR;
+    if (!user) return null;
     const avatarPath = user.avatar || user.avatar_url || user.avatarPreview;
-    if (!avatarPath) return DEFAULT_AVATAR;
+    if (!avatarPath) return null;
     if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://") || avatarPath.startsWith("data:") || avatarPath.startsWith("blob:")) {
       return avatarPath;
     }
@@ -53,6 +51,15 @@ const Navbar = () => {
     if (user.name) return user.name.split(" ")[0];
     return "User";
   };
+
+  const getUserInitial = () => {
+    if (!user) return "U";
+    const fullName = user.name || `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    const word = fullName || user.email || "U";
+    return word.charAt(0).toUpperCase();
+  };
+
+  const avatarUrl = getAvatarUrl();
 
   return (
     <header className="w-full sticky top-0 bg-[#FDF6ED] border-b border-[#DCCFC0]/30 shadow-sm shadow-[#778873]/5 z-50">
