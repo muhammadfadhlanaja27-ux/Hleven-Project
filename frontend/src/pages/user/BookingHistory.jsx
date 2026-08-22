@@ -2,7 +2,39 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
 
-const QR_CODE_IMAGE = "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80";
+const QR_CODE_PLACEHOLDER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+      <rect width='200' height='200' fill='white'/>
+      <g fill='#1e1b16'>
+        <rect x='20' y='20' width='50' height='50'/>
+        <rect x='130' y='20' width='50' height='50'/>
+        <rect x='20' y='130' width='50' height='50'/>
+        <rect x='30' y='30' width='10' height='10' fill='white'/>
+        <rect x='140' y='30' width='10' height='10' fill='white'/>
+        <rect x='30' y='140' width='10' height='10' fill='white'/>
+        <rect x='80' y='20' width='10' height='10'/>
+        <rect x='100' y='30' width='10' height='10'/>
+        <rect x='20' y='80' width='10' height='10'/>
+        <rect x='40' y='100' width='10' height='10'/>
+        <rect x='60' y='80' width='10' height='10'/>
+        <rect x='80' y='100' width='10' height='10'/>
+        <rect x='100' y='80' width='10' height='10'/>
+        <rect x='120' y='90' width='10' height='10'/>
+        <rect x='140' y='100' width='10' height='10'/>
+        <rect x='160' y='80' width='10' height='10'/>
+        <rect x='180' y='100' width='10' height='10'/>
+        <rect x='80' y='120' width='10' height='10'/>
+        <rect x='100' y='140' width='10' height='10'/>
+        <rect x='120' y='130' width='10' height='10'/>
+        <rect x='140' y='150' width='10' height='10'/>
+        <rect x='160' y='140' width='10' height='10'/>
+        <rect x='100' y='160' width='10' height='10'/>
+        <rect x='120' y='180' width='10' height='10'/>
+      </g>
+    </svg>
+  `);
 
 const INITIAL_BOOKINGS = [
   {
@@ -10,7 +42,7 @@ const INITIAL_BOOKINGS = [
     hotel_id: 1,
     hotel_name: "The Sanctuary at Ubud Resort",
     room_name: "Executive Suite dengan Kolam Renang Pribadi",
-    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    image: null,
     check_in: "Jumat, 15 Nov 2024",
     check_out: "Minggu, 17 Nov 2024",
     guest_name: "Eleanor Vance",
@@ -28,7 +60,7 @@ const INITIAL_BOOKINGS = [
     hotel_id: 2,
     hotel_name: "Maison H'Leven Luxury Heritage",
     room_name: "Classic Balcony Suite",
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    image: null,
     check_in: "Rabu, 05 Agt 2024",
     check_out: "Sabtu, 08 Agt 2024",
     guest_name: "Eleanor Vance",
@@ -46,7 +78,7 @@ const INITIAL_BOOKINGS = [
     hotel_id: 3,
     hotel_name: "Oasis Resort & Spa Bali",
     room_name: "Water Villa Sunset View",
-    image: "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
+    image: null,
     check_in: "Senin, 20 Mei 2024",
     check_out: "Senin, 27 Mei 2024",
     guest_name: "Eleanor Vance",
@@ -300,12 +332,22 @@ const BookingHistory = () => {
                   }`}
                 >
                   {/* Thumbnail Image with Status Badge Overlay */}
-                  <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px]">
-                    <img
-                      src={item.image || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80"}
-                      alt={item.hotel_name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.hotel_name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                        <span className="material-symbols-outlined text-[#778873] text-5xl mb-2 opacity-60">image_not_supported</span>
+                        <p className="font-label-md text-[11px] font-bold text-[#778873] uppercase tracking-wider">
+                          Belum Ada Foto
+                        </p>
+                      </div>
+                    )}
                     <div className="absolute top-4 left-4 z-10">
                       {getStatusBadge(item.status)}
                     </div>
@@ -482,7 +524,7 @@ const BookingHistory = () => {
                 <div className="flex flex-col items-center justify-center order-2 md:order-1 border-t md:border-t-0 md:border-r border-[#DCCFC0]/60 pt-6 md:pt-0 md:pr-8 text-center">
                   <div className="bg-[#FDF6ED] p-4 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm">
                     <img
-                      src={QR_CODE_IMAGE}
+                      src={QR_CODE_PLACEHOLDER}
                       alt="QR Code Tiket"
                       className="w-44 h-44 object-contain mix-blend-multiply"
                     />

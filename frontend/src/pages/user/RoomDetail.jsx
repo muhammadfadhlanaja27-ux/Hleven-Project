@@ -2,13 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
 
-const DEFAULT_ROOM_IMAGES = [
-  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80"
-];
-
 const RoomDetail = () => {
   const { hotelId, roomId } = useParams();
   const navigate = useNavigate();
@@ -105,19 +98,24 @@ const RoomDetail = () => {
   const taxAndFees = Math.round(subtotalPrice * 0.21);
   const totalPrice = subtotalPrice + taxAndFees;
 
-  const getImageUrl = (photoItem, fallbackIdx = 0) => {
-    if (!photoItem) return DEFAULT_ROOM_IMAGES[fallbackIdx % DEFAULT_ROOM_IMAGES.length];
+  const [imgErrors, setImgErrors] = useState({});
+
+  const getImageUrl = (photoItem) => {
+    if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
-    if (!path) return DEFAULT_ROOM_IMAGES[fallbackIdx % DEFAULT_ROOM_IMAGES.length];
+    if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
     return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
   };
 
-  const photosList = room?.photos && room.photos.length > 0
-    ? room.photos.map((p, i) => getImageUrl(p, i))
-    : (hotel?.photos && hotel.photos.length > 0
-        ? hotel.photos.map((p, i) => getImageUrl(p, i))
-        : DEFAULT_ROOM_IMAGES);
+  const roomPhotoUrls = (room?.photos || []).map(getImageUrl).filter(Boolean);
+  const hotelPhotoUrls = (hotel?.photos || []).map(getImageUrl).filter(Boolean);
+  const rawPhotosList = roomPhotoUrls.length > 0 ? roomPhotoUrls : hotelPhotoUrls;
+  const thumbFallback = room?.thumbnail;
+  let photosList = rawPhotosList;
+  if (photosList.length === 0 && thumbFallback) {
+    photosList = [thumbFallback];
+  }
 
   const handleReserve = (e) => {
     e.preventDefault();
@@ -205,62 +203,96 @@ const RoomDetail = () => {
         </section>
 
         {/* Hero Photo Mosaic Gallery */}
-        <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
-          {/* Main Hero Photo (Left 2 cols x 2 rows) */}
-          <div className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-[#e8e2d9]">
-            <img
-              src={photosList[0]}
-              alt="Main Bedroom View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-              onClick={() => setShowPhotoModal(true)}
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[0]; }}
-            />
-          </div>
-
-          {/* Sub Photo 1: Bathroom */}
-          <div className="hidden md:block relative group overflow-hidden bg-[#e8e2d9]">
-            <img
-              src={photosList[1] || photosList[0]}
-              alt="Bathroom View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-              onClick={() => setShowPhotoModal(true)}
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[1]; }}
-            />
-          </div>
-
-          {/* Sub Photo 2: Private Pool */}
-          <div className="hidden md:block relative group overflow-hidden bg-[#e8e2d9]">
-            <img
-              src={photosList[2] || photosList[0]}
-              alt="Private Pool View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-              onClick={() => setShowPhotoModal(true)}
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[2]; }}
-            />
-          </div>
-
-          {/* Sub Photo 3: Living Area with View All Photos Overlay */}
-          <div className="hidden md:block md:col-span-2 relative group overflow-hidden bg-[#e8e2d9] cursor-pointer">
-            <img
-              src={photosList[3] || photosList[0]}
-              alt="Living Area View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[3]; }}
-            />
-            <div
-              onClick={() => setShowPhotoModal(true)}
-              className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors group-hover:bg-black/40"
-            >
-              <button
-                type="button"
-                className="bg-[#FDF6ED] text-[#778873] px-6 py-3 rounded-full font-label-md text-sm font-semibold flex items-center gap-2 shadow-md hover:bg-white transition-all transform hover:-translate-y-0.5"
-              >
-                <span className="material-symbols-outlined text-lg">grid_view</span>
-                View All {photosList.length} Photos
-              </button>
+        {photosList.length > 0 ? (
+          <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
+            {/* Main Hero Photo (Left 2 cols x 2 rows) */}
+            <div className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+              {!imgErrors[0] ? (
+                <img
+                  src={photosList[0]}
+                  alt="Main Bedroom View"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                  onError={() => setImgErrors((p) => ({ ...p, 0: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-7xl opacity-50">no_photography</span>
+                </div>
+              )}
             </div>
-          </div>
-        </section>
+
+            {/* Sub Photo 1 */}
+            <div className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+              {(photosList[1] || photosList[0]) && !imgErrors[1] ? (
+                <img
+                  src={photosList[1] || photosList[0]}
+                  alt="Room Detail 1"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                  onError={() => setImgErrors((p) => ({ ...p, 1: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
+                </div>
+              )}
+            </div>
+
+            {/* Sub Photo 2 */}
+            <div className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+              {(photosList[2] || photosList[0]) && !imgErrors[2] ? (
+                <img
+                  src={photosList[2] || photosList[0]}
+                  alt="Room Detail 2"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                  onError={() => setImgErrors((p) => ({ ...p, 2: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
+                </div>
+              )}
+            </div>
+
+            {/* Sub Photo 3 with Gallery Overlay */}
+            <div className="hidden md:block md:col-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer">
+              {(photosList[3] || photosList[0]) && !imgErrors[3] ? (
+                <img
+                  src={photosList[3] || photosList[0]}
+                  alt="Room Detail 3"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
+                  onError={() => setImgErrors((p) => ({ ...p, 3: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
+                </div>
+              )}
+              <div
+                onClick={() => setShowPhotoModal(true)}
+                className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors group-hover:bg-black/40"
+              >
+                <button
+                  type="button"
+                  className="bg-[#FDF6ED] text-[#778873] px-6 py-3 rounded-full font-label-md text-sm font-semibold flex items-center gap-2 shadow-md hover:bg-white transition-all transform hover:-translate-y-0.5"
+                >
+                  <span className="material-symbols-outlined text-lg">grid_view</span>
+                  View All {photosList.length} Photos
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
+            <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">image_not_supported</span>
+            <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">Belum Ada Foto Kamar</h3>
+            <p className="font-body-md text-sm text-[#444842] max-w-md">
+              Admin hotel belum mengunggah foto untuk tipe kamar ini.
+            </p>
+          </section>
+        )}
 
         {/* Main Content Layout: Details vs Sticky Booking Card */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
@@ -517,13 +549,20 @@ const RoomDetail = () => {
                 ✕
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {photosList.map((photo, i) => (
-                <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
-                  <img src={photo} alt={`Foto Kamar ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
+            {photosList.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {photosList.map((photo, i) => (
+                  <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
+                    <img src={photo} alt={`Foto Kamar ${i + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">image_not_supported</span>
+                <p className="font-label-md text-sm font-bold text-[#778873]">Belum ada foto yang diunggah.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

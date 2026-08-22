@@ -317,17 +317,18 @@ const HotelDetail = () => {
                 Lokasi
               </h2>
               <div className="rounded-2xl overflow-hidden shadow-sm border border-[#DCCFC0]/40 bg-[#faf3ea]">
-                <div className="w-full h-56 bg-[#eee7de] relative overflow-hidden flex items-center justify-center">
-                  <img
-                    src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=80"
-                    alt="Peta Lokasi"
-                    className="w-full h-full object-cover opacity-80"
-                  />
-                  <div className="absolute inset-0 bg-[#778873]/10 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="material-symbols-outlined text-4xl text-[#778873] drop-shadow">
+                <div className="w-full h-56 bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] relative overflow-hidden flex items-center justify-center border-b border-[#DCCFC0]/40">
+                  <div className="absolute inset-0 opacity-30">
+                    <svg className="w-full h-full" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M0,50 Q50,30 100,50 T200,50 L200,100 Q150,80 100,100 T0,100 Z" fill="#778873" fillOpacity="0.2" />
+                      <path d="M0,120 Q50,100 100,120 T200,120 L200,170 Q150,150 100,170 T0,170 Z" fill="#778873" fillOpacity="0.15" />
+                    </svg>
+                  </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                    <span className="material-symbols-outlined text-5xl text-[#778873] drop-shadow-sm mb-1">
                       location_on
                     </span>
-                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] mt-1 bg-white/90 px-3 py-1 rounded-full shadow-sm">
+                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] bg-white/90 px-3 py-1 rounded-full shadow-sm">
                       {hotelCityName}
                     </span>
                   </div>

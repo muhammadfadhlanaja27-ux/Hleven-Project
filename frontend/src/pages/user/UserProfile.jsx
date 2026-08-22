@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 
-const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
-
 const UserProfile = () => {
   const navigate = useNavigate();
 
@@ -148,7 +146,7 @@ const UserProfile = () => {
         formData.append("avatar", avatarFile);
       }
 
-      const response = await api.post("/user/profile", formData, {
+      const response = await api.put("/user/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
@@ -270,13 +268,21 @@ const UserProfile = () => {
             <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
               
               {/* Avatar Circle with Upload Trigger */}
-              <div className="relative w-24 h-24 rounded-full bg-[#778873]/10 flex items-center justify-center text-[#778873] mb-4 border-2 border-[#778873]/20 overflow-hidden group">
-                <img
-                  src={avatarPreview || DEFAULT_AVATAR}
-                  alt={fullNameDisplay}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
-                />
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden group shadow-md">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt={fullNameDisplay}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="font-headline-xl text-3xl font-bold">
+                    {fullNameDisplay && fullNameDisplay.trim()
+                      ? fullNameDisplay.trim().charAt(0).toUpperCase()
+                      : "U"}
+                  </span>
+                )}
                 <label
                   htmlFor="avatar-upload-input"
                   className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-xs font-semibold"

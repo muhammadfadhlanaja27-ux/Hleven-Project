@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80";
-
 const HotelCard = ({ hotel }) => {
+  const [imgError, setImgError] = useState(false);
+
   const getImageUrl = () => {
-    if (!hotel) return DEFAULT_IMAGE;
+    if (!hotel) return null;
     if (hotel.thumbnail) {
       if (hotel.thumbnail.startsWith('http')) return hotel.thumbnail;
       return `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, '')}`;
@@ -18,8 +18,11 @@ const HotelCard = ({ hotel }) => {
         return `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`;
       }
     }
-    return DEFAULT_IMAGE;
+    return null;
   };
+
+  const imageUrl = !imgError ? getImageUrl() : null;
+  const hasValidImage = !!imageUrl;
 
   const getPrice = () => {
     const rawPrice = hotel.starting_price || hotel.price || (hotel.rooms && hotel.rooms[0]?.price) || 500000;
@@ -67,13 +70,24 @@ const HotelCard = ({ hotel }) => {
   return (
     <div className="bg-[#FDF6ED] rounded-2xl overflow-hidden shadow-sm shadow-[#778873]/10 border border-[#DCCFC0]/40 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col h-full text-left">
       {/* Image Header with Rating Badge */}
-      <div className="relative h-48 overflow-hidden bg-[#eee7de]">
-        <img
-          src={getImageUrl()}
-          alt={hotel.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => { e.target.src = DEFAULT_IMAGE; }}
-        />
+      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+        {hasValidImage ? (
+          <img
+            src={imageUrl}
+            alt={hotel.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+            <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">
+              image_not_supported
+            </span>
+            <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
+              Belum Ada Foto
+            </p>
+          </div>
+        )}
         <div className="absolute top-4 right-4 bg-[#fff8f0]/90 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
           <span className="material-symbols-outlined text-[#A1BC98] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
             star

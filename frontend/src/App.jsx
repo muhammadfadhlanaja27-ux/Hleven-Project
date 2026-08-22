@@ -69,7 +69,7 @@ const AdminHotelProtectedRoute = () => {
   const userString = localStorage.getItem("user");
 
   if (!token || !userString) {
-    return <Navigate to="/super-admin/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   try {

@@ -102,10 +102,20 @@ class HotelController extends Controller
     /**
      * Memperbarui profil hotel (Admin Hotel)
      */
-    public function update(Request $request): JsonResponse
+    public function update(Request $request, $id = null): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel ?? Hotel::first();
+
+        if ($id) {
+            $userHotels = [$user->hotel->id ?? null] + ($user->hotels->pluck('id')->toArray() ?? []);
+            if (!in_array($id, array_filter($userHotels))) {
+                $hotel = Hotel::first();
+            } else {
+                $hotel = Hotel::find($id);
+            }
+        } else {
+            $hotel = $user->hotel ?? Hotel::first();
+        }
 
         if (!$hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
