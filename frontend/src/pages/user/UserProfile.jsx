@@ -42,10 +42,7 @@ const QR_CODE_PLACEHOLDER =
 const UserProfile = () => {
   const navigate = useNavigate();
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState("personal"); // 'personal' | 'history'
-  // Navigation Tab State
-  const [activeTab, setActiveTab] = useState("partner"); // 'partner' | 'personal' | 'history'
+  const [activeTab, setActiveTab] = useState("partner");
   const [partnerApplication, setPartnerApplication] = useState(null);
   const [partnerLoading, setPartnerLoading] = useState(false);
 
@@ -78,7 +75,54 @@ const UserProfile = () => {
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
-  // Load User Data & Fetch API Bookings
+  // Load User Data, Bookings, Partner Status
+  const fetchUserBookings = async () => {
+    try {
+      const TTL_30DETIK = 30 * 1000;
+      const { data: responseData, fromCache } = await cachedGet(
+        "/user/bookings",
+        {},
+        false,
+        TTL_30DETIK
+      );
+      if (responseData && responseData.data && responseData.data.length > 0) {
+        setBookings(responseData.data);
+      }
+      if (fromCache) {
+        console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
+      }
+    } catch (err) {
+      console.warn("Gagal memuat booking history dari API.", err);
+    }
+  };
+
+  const fetchPartnerStatus = async () => {
+    setPartnerLoading(true);
+    try {
+      const res = await api.get("/user/partner-application");
+      const data = res.data?.data || res.data;
+      if (data && (data.id || data.application_number || data.status)) {
+        setPartnerApplication(data);
+      } else {
+        setPartnerApplication(null);
+      }
+    } catch (err) {
+      try {
+        const saved = localStorage.getItem("partner_app_submission");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setPartnerApplication(parsed);
+        } else {
+          setPartnerApplication(null);
+        }
+      } catch (e) {
+        setPartnerApplication(null);
+      }
+    } finally {
+      setPartnerLoading(false);
+    }
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -104,86 +148,10 @@ const UserProfile = () => {
       }
     } else {
       navigate("/login");
+      return;
     }
-
-    fetchApiBookings();
-  }, [navigate]);
-
-  const fetchApiBookings = async () => {
-    try {
-      const TTL_30DETIK = 30 * 1000;
-      const { data: responseData } = await cachedGet(
-        "/user/bookings",
-        {},
-        false,
-        TTL_30DETIK
-      );
-      if (responseData && responseData.data) {
-        setBookings(responseData.data);
-      }
-    } catch (err) {
-      console.warn("Gagal memuat booking history dari API.", err);
-    }
-  };
-
-    // Try fetching user bookings from API (cached short TTL)
-    const fetchUserBookings = async () => {
-      try {
-        const TTL_30DETIK = 30 * 1000;
-        const { data: responseData, fromCache } = await cachedGet(
-          "/user/bookings",
-          {},
-          false,
-          TTL_30DETIK
-        );
-        if (responseData && responseData.data && responseData.data.length > 0) {
-          setBookings(responseData.data);
-        }
-        if (fromCache) {
-          console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
-        }
-      } catch (err) {
-        // Keep default mock bookings on offline/API fail
-      }
-    };
 
     fetchUserBookings();
-
-    // Fetch Partner Application status dari API (jika tersedia), fallback ke localStorage
-    const fetchPartnerStatus = async () => {
-      setPartnerLoading(true);
-      try {
-        // API YANG DIBUTUHKAN (BELUM TERSEDIA):
-        // GET /api/v1/user/partner-application
-        // Response: { success, data: { id, application_number, status, hotel_name, hotel_type, created_at, rejection_reason, revision_notes, ...semua field form } }
-        const res = await api.get("/user/partner-application");
-        const data = res.data?.data || res.data;
-        if (data && (data.id || data.application_number || data.status)) {
-          setPartnerApplication(data);
-        } else {
-          setPartnerApplication(null);
-        }
-      } catch (err) {
-        // Fallback: coba baca dari localStorage jika API belum ada
-        try {
-          const saved = localStorage.getItem("partner_app_submission");
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            // Override status untuk simulasi keperluan testing (opsional, hapus jika API sudah ada):
-            // parsed.status = "needs_revision";
-            // parsed.revision_notes = "Mohon scan KTP diperjelas dan unggah dokumen SIUP yang masih berlaku.";
-            setPartnerApplication(parsed);
-          } else {
-            setPartnerApplication(null);
-          }
-        } catch (e) {
-          setPartnerApplication(null);
-        }
-      } finally {
-        setPartnerLoading(false);
-      }
-    };
-
     fetchPartnerStatus();
   }, [navigate]);
 
@@ -311,10 +279,8 @@ const UserProfile = () => {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setMessage({ type: "success", text: "🔑 Kata sandi berhasil diperbarui!" });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      const errMsg = err.response?.data?.message || "Gagal memperbarui kata sandi. Periksa kata sandi saat ini.";
+      setMessage({ type: "error", text: `⚠️ ${errMsg}` });
     } finally {
       setPwdLoading(false);
     }
@@ -332,7 +298,7 @@ const UserProfile = () => {
       toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
       setCancelModalBooking(null);
       setCancelReason("");
-      fetchApiBookings();
+      fetchUserBookings();
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
     } finally {
@@ -358,9 +324,13 @@ const UserProfile = () => {
     }
 
     if (sortBy === "newest") {
-      result.reverse();
+      result = [...result].reverse();
+    } else if (sortBy === "oldest") {
+      // no-op, biarkan urutan asli (asumsi data dari API oldest-first)
     } else if (sortBy === "price_high") {
-      result.sort((a, b) => Number(b.total_price || b.grand_total || 0) - Number(a.total_price || a.grand_total || 0));
+      result = [...result].sort((a, b) => Number(b.total_price || b.grand_total || 0) - Number(a.total_price || a.grand_total || 0));
+    } else if (sortBy === "price_low") {
+      result = [...result].sort((a, b) => Number(a.total_price || a.grand_total || 0) - Number(b.total_price || b.grand_total || 0));
     }
 
     return result;
@@ -594,7 +564,7 @@ const UserProfile = () => {
               />
             )}
             
-            {activeTab === "personal" ? (
+            {activeTab === "personal" && (
               <>
                 {/* Personal Information Section */}
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
@@ -748,7 +718,9 @@ const UserProfile = () => {
                   </form>
                 </section>
               </>
-            ) : (
+            )}
+
+            {activeTab === "history" && (
               /* Booking History View */
               <div className="flex flex-col gap-6">
                 
