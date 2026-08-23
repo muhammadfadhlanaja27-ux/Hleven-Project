@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\BookingRoom;
 use App\Models\Hotel;
 use App\Models\RoomType;
 use Illuminate\Database\QueryException;
@@ -14,24 +15,48 @@ use Illuminate\Support\Facades\Validator;
 class RoomController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource (Dukungan pencarian dinamis stok untuk User).
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        // Fallback ke hotel pertama jika relasi user->hotel null (single-hotel system)
-        $hotel = $user->hotel ?? Hotel::first();
 
-        if (!$hotel) {
+        // 1. Ambil hotel_id dari query param (user) atau dari user model (admin fallback)
+        $hotelId = $request->query('hotel_id');
+        if (!$hotelId) {
+            $hotel = $user?->hotel ?? Hotel::first();
+            $hotelId = $hotel?->id;
+        }
+
+        if (!$hotelId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Hotel tidak ditemukan.',
             ], 404);
         }
 
-        $rooms = RoomType::where('hotel_id', $hotel->id)
+        $checkIn  = $request->query('check_in');
+        $checkOut = $request->query('check_out');
+
+        $rooms = RoomType::where('hotel_id', $hotelId)
             ->with(['photos', 'facilities'])
-            ->get();
+            ->get()
+            ->map(function ($room) use ($checkIn, $checkOut) {
+                // Jika user mengirimkan tanggal check_in & check_out, hitung stok aktif
+                if ($checkIn && $checkOut) {
+                    $bookedQty = BookingRoom::where('room_type_id', $room->id)
+                        ->whereHas('booking', function ($q) use ($checkIn, $checkOut) {
+                            $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed'])
+                              ->where('check_in', '<', $checkOut)
+                              ->where('check_out', '>', $checkIn);
+                        })->sum('qty');
+
+                    $room->available_stock = max(0, $room->stock - $bookedQty);
+                } else {
+                    $room->available_stock = $room->stock;
+                }
+                return $room;
+            });
 
         return response()->json([
             'success' => true,

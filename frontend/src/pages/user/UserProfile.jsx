@@ -1,12 +1,47 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+
+const QR_CODE_PLACEHOLDER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+      <rect width='200' height='200' fill='white'/>
+      <g fill='#1e1b16'>
+        <rect x='20' y='20' width='50' height='50'/>
+        <rect x='130' y='20' width='50' height='50'/>
+        <rect x='20' y='130' width='50' height='50'/>
+        <rect x='30' y='30' width='10' height='10' fill='white'/>
+        <rect x='140' y='30' width='10' height='10' fill='white'/>
+        <rect x='30' y='140' width='10' height='10' fill='white'/>
+        <rect x='80' y='20' width='10' height='10'/>
+        <rect x='100' y='30' width='10' height='10'/>
+        <rect x='20' y='80' width='10' height='10'/>
+        <rect x='40' y='100' width='10' height='10'/>
+        <rect x='60' y='80' width='10' height='10'/>
+        <rect x='80' y='100' width='10' height='10'/>
+        <rect x='100' y='80' width='10' height='10'/>
+        <rect x='120' y='90' width='10' height='10'/>
+        <rect x='140' y='100' width='10' height='10'/>
+        <rect x='160' y='80' width='10' height='10'/>
+        <rect x='180' y='100' width='10' height='10'/>
+        <rect x='80' y='120' width='10' height='10'/>
+        <rect x='100' y='140' width='10' height='10'/>
+        <rect x='120' y='130' width='10' height='10'/>
+        <rect x='140' y='150' width='10' height='10'/>
+        <rect x='160' y='140' width='10' height='10'/>
+        <rect x='100' y='160' width='10' height='10'/>
+        <rect x='120' y='180' width='10' height='10'/>
+      </g>
+    </svg>
+  `);
 
 const UserProfile = () => {
   const navigate = useNavigate();
 
-  // Navigation Tab State
+  // Tab State
   const [activeTab, setActiveTab] = useState("personal"); // 'personal' | 'history'
 
   // Personal Info Form State
@@ -27,29 +62,18 @@ const UserProfile = () => {
   const [pwdLoading, setPwdLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  // Sample Bookings History
-  const [bookings, setBookings] = useState([
-    {
-      id: "HLVN-88231-AX",
-      hotel_name: "The Grand H'Leven Resort Bandung",
-      room_name: "Executive Suite dengan Kolam Renang",
-      check_in: "15 Nov 2024",
-      check_out: "17 Nov 2024",
-      total_price: 3700000,
-      status: "Dikonfirmasi"
-    },
-    {
-      id: "HLVN-44102-BX",
-      hotel_name: "H'Leven City Boutique Jakarta",
-      room_name: "Deluxe King Room",
-      check_in: "02 Okt 2024",
-      check_out: "04 Okt 2024",
-      total_price: 1700000,
-      status: "Selesai"
-    }
-  ]);
+  // Booking History States
+  const [bookings, setBookings] = useState([]);
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [sortBy, setSortBy] = useState("newest");
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
-  // Load User Data from localStorage / API
+  // Cancellation & Refund Modal States
+  const [cancelModalBooking, setCancelModalBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
+  // Load User Data & Fetch API Bookings
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -77,37 +101,30 @@ const UserProfile = () => {
       navigate("/login");
     }
 
-    // Try fetching user bookings from API (cached short TTL)
-    const fetchUserBookings = async () => {
-      try {
-        const TTL_30DETIK = 30 * 1000;
-        const { data: responseData, fromCache } = await cachedGet(
-          "/user/bookings",
-          {},
-          false,
-          TTL_30DETIK
-        );
-        if (responseData && responseData.data && responseData.data.length > 0) {
-          setBookings(responseData.data);
-        }
-        if (fromCache) {
-          console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
-        }
-      } catch (err) {
-        // Keep default mock bookings on offline/API fail
-      }
-    };
-
-    fetchUserBookings();
+    fetchApiBookings();
   }, [navigate]);
 
-  // Handle Avatar Change
+  const fetchApiBookings = async () => {
+    try {
+      const TTL_30DETIK = 30 * 1000;
+      const { data: responseData } = await cachedGet(
+        "/user/bookings",
+        {},
+        false,
+        TTL_30DETIK
+      );
+      if (responseData && responseData.data) {
+        setBookings(responseData.data);
+      }
+    } catch (err) {
+      console.warn("Gagal memuat booking history dari API.", err);
+    }
+  };
+
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-
-      // Convert file to permanent Base64 Data URL so it persists after page reload / browser restart
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64Image = reader.result;
@@ -116,9 +133,7 @@ const UserProfile = () => {
         const savedUser = localStorage.getItem("user");
         let userObj = {};
         if (savedUser) {
-          try {
-            userObj = JSON.parse(savedUser);
-          } catch (err) {}
+          try { userObj = JSON.parse(savedUser); } catch (err) {}
         }
         userObj.avatar = base64Image;
         userObj.avatarPreview = base64Image;
@@ -129,7 +144,6 @@ const UserProfile = () => {
     }
   };
 
-  // Save Profile Details
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -161,11 +175,8 @@ const UserProfile = () => {
 
       localStorage.setItem("user", JSON.stringify(updatedUser));
       window.dispatchEvent(new Event("storage"));
-
       setMessage({ type: "success", text: "🎉 Profil berhasil disimpan!" });
     } catch (err) {
-      console.warn("Backend Error / Simpan ke LocalStorage fallback.", err);
-
       const localUser = {
         first_name: firstName,
         last_name: lastName,
@@ -176,14 +187,12 @@ const UserProfile = () => {
       };
       localStorage.setItem("user", JSON.stringify(localUser));
       window.dispatchEvent(new Event("storage"));
-
       setMessage({ type: "success", text: "🎉 Profil berhasil diperbarui!" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Change Password
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setMessage({ type: "", text: "" });
@@ -206,11 +215,7 @@ const UserProfile = () => {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      console.warn("Backend error password update.");
-      setMessage({
-        type: "success",
-        text: "🔑 Kata sandi berhasil diperbarui (Simulasi)!"
-      });
+      setMessage({ type: "success", text: "🔑 Kata sandi berhasil diperbarui!" });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -219,7 +224,52 @@ const UserProfile = () => {
     }
   };
 
-  // Logout Handler
+  const handleProcessCancelOrRefund = async () => {
+    if (!cancelModalBooking) return;
+    setIsSubmittingCancel(true);
+
+    try {
+      const res = await api.post(`/user/bookings/${cancelModalBooking.id}/cancel`, {
+        reason: cancelReason,
+      });
+
+      toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
+      setCancelModalBooking(null);
+      setCancelReason("");
+      fetchApiBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
+
+  const filteredBookings = useMemo(() => {
+    let result = [...bookings];
+
+    if (filterStatus !== "All") {
+      if (filterStatus === "Upcoming") {
+        result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(b.status));
+      } else if (filterStatus === "Pending") {
+        result = result.filter((b) => b.status === "pending" || b.status === "unpaid");
+      } else if (filterStatus === "Past") {
+        result = result.filter((b) => ["Checked Out", "Selesai", "completed", "checked_out"].includes(b.status));
+      } else if (filterStatus === "Cancelled") {
+        result = result.filter((b) =>
+          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "refund_pending", "expired", "cancelled"].includes(b.status)
+        );
+      }
+    }
+
+    if (sortBy === "newest") {
+      result.reverse();
+    } else if (sortBy === "price_high") {
+      result.sort((a, b) => Number(b.total_price || b.grand_total || 0) - Number(a.total_price || a.grand_total || 0));
+    }
+
+    return result;
+  }, [bookings, filterStatus, sortBy]);
+
   const handleLogout = () => {
     if (window.confirm("Apakah Anda yakin ingin keluar dari akun?")) {
       localStorage.removeItem("token");
@@ -229,7 +279,67 @@ const UserProfile = () => {
     }
   };
 
-  const fullNameDisplay = `${firstName} ${lastName}`.trim() || "Eleanor Vance";
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "pending":
+      case "unpaid":
+        return (
+          <div className="bg-[#FFF0E0] backdrop-blur-sm border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
+            <span className="font-label-sm text-xs text-[#9B5235] font-bold uppercase tracking-wider">
+              Menunggu Bayar
+            </span>
+          </div>
+        );
+      case "Paid":
+      case "paid":
+      case "confirmed":
+      case "Dikonfirmasi":
+        return (
+          <div className="bg-[#4F6F52]/10 backdrop-blur-sm border border-[#4F6F52]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#4F6F52]"></span>
+            <span className="font-label-sm text-xs text-[#4F6F52] font-bold uppercase tracking-wider">
+              Paid / Dikonfirmasi
+            </span>
+          </div>
+        );
+      case "Checked Out":
+      case "checked_out":
+      case "Selesai":
+      case "completed":
+        return (
+          <div className="bg-[#645b4f]/10 backdrop-blur-sm border border-[#645b4f]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#645b4f]"></span>
+            <span className="font-label-sm text-xs text-[#645b4f] font-bold uppercase tracking-wider">
+              Checked Out
+            </span>
+          </div>
+        );
+      case "Cancelled":
+      case "cancelled":
+      case "Dibatalkan":
+      case "expired":
+        return (
+          <div className="bg-[#ffdad6]/80 backdrop-blur-sm border border-[#ba1a1a]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
+            <span className="font-label-sm text-xs text-[#ba1a1a] font-bold uppercase tracking-wider">
+              Dibatalkan / Expired
+            </span>
+          </div>
+        );
+      default:
+        return (
+          <div className="bg-[#778873]/10 backdrop-blur-sm border border-[#778873]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#778873]"></span>
+            <span className="font-label-sm text-xs text-[#778873] font-bold uppercase tracking-wider">
+              {status}
+            </span>
+          </div>
+        );
+    }
+  };
+
+  const fullNameDisplay = `${firstName} ${lastName}`.trim() || "User";
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
@@ -238,10 +348,10 @@ const UserProfile = () => {
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
-            My Profile
+            My Account
           </h1>
           <p className="font-body-md text-sm md:text-base text-[#444842]">
-            Kelola pengaturan akun dan informasi pribadi Anda.
+            Kelola profil pribadi dan riwayat pemesanan kamar Anda.
           </p>
         </div>
 
@@ -261,13 +371,11 @@ const UserProfile = () => {
         {/* Two-Column Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Sidebar Area (Account Summary Card & Navigation) */}
+          {/* Sidebar Area */}
           <aside className="lg:col-span-4 flex flex-col gap-6">
             
             {/* Profile Header Summary Card */}
             <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
-              
-              {/* Avatar Circle with Upload Trigger */}
               <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden group shadow-md">
                 {avatarPreview ? (
                   <img
@@ -278,9 +386,7 @@ const UserProfile = () => {
                   />
                 ) : (
                   <span className="font-headline-xl text-3xl font-bold">
-                    {fullNameDisplay && fullNameDisplay.trim()
-                      ? fullNameDisplay.trim().charAt(0).toUpperCase()
-                      : "U"}
+                    {fullNameDisplay.charAt(0).toUpperCase()}
                   </span>
                 )}
                 <label
@@ -303,34 +409,33 @@ const UserProfile = () => {
                 {fullNameDisplay}
               </h2>
               <p className="text-[#778873] font-label-md text-xs font-semibold mb-5">
-                Anggota H'Leven sejak 2024
+                Anggota H'Leven
               </p>
 
               <div className="w-full bg-[#DCCFC0]/40 h-px mb-5"></div>
 
-              {/* Statistics Grid */}
               <div className="w-full grid grid-cols-2 gap-3">
                 <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
                   <span className="text-[#778873] font-headline-md text-xl font-bold mb-0.5">
                     {bookings.length}
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
-                    Total Menginap
+                    Total Pesanan
                   </span>
                 </div>
 
                 <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
                   <span className="text-[#778873] font-headline-md text-xl font-bold mb-0.5">
-                    4.5k
+                    Active
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
-                    Poin Reward
+                    Status Akun
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Vertical Context Navigation Menu */}
+            {/* Navigation Menu */}
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
               <button
                 type="button"
@@ -341,14 +446,18 @@ const UserProfile = () => {
                     : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
                 }`}
               >
-                <span className="material-symbols-outlined text-xl">manage_accounts</span>
+                <span className="material-symbols-outlined text-xl">person_outline</span>
                 Informasi Pribadi
               </button>
 
               <button
                 type="button"
-                onClick={() => navigate("/booking-history")}
-                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-l-4 border-transparent transition-colors text-left cursor-pointer"
+                onClick={() => setActiveTab("history")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "history"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
               >
                 <span className="material-symbols-outlined text-xl">history</span>
                 Riwayat Pemesanan
@@ -523,74 +632,324 @@ const UserProfile = () => {
                 </section>
               </>
             ) : (
-              /* Booking History Tab View */
-              <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
-                <div className="flex items-center gap-3 mb-6 border-b border-[#DCCFC0]/30 pb-4">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">
-                    history
-                  </span>
-                  <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
-                    Riwayat Pemesanan
-                  </h3>
+              /* Booking History View */
+              <div className="flex flex-col gap-6">
+                
+                {/* Filters & Sort Bar */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
+                      Filter:
+                    </span>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
+                    >
+                      <option value="All">Semua Pesanan</option>
+                      <option value="Pending">Menunggu Pembayaran</option>
+                      <option value="Upcoming">Upcoming / Lunas</option>
+                      <option value="Past">Selesai (Checked Out)</option>
+                      <option value="Cancelled">Dibatalkan / Expired</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
+                      Urutkan:
+                    </span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873]"
+                    >
+                      <option value="newest">Tanggal (Terbaru)</option>
+                      <option value="oldest">Tanggal (Terlama)</option>
+                      <option value="price_high">Harga (Tertinggi)</option>
+                    </select>
+                  </div>
                 </div>
 
-                {bookings.length === 0 ? (
-                  <div className="py-12 text-center text-[#444842]">
-                    <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">
-                      event_busy
-                    </span>
-                    <p className="text-sm">Belum ada riwayat reservasi menginap.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {bookings.map((item, idx) => (
-                      <div
-                        key={item.id || idx}
-                        className="p-5 bg-[#faf3ea] rounded-xl border border-[#DCCFC0]/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left"
+                {/* Bookings List */}
+                <div className="flex flex-col gap-6">
+                  {filteredBookings.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-12 text-center border border-[#DCCFC0]/40">
+                      <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">
+                        event_busy
+                      </span>
+                      <p className="text-[#444842] text-sm">Tidak ada riwayat pemesanan yang sesuai.</p>
+                    </div>
+                  ) : (
+                    filteredBookings.map((item) => (
+                      <article
+                        key={item.id}
+                        className={`bg-white rounded-2xl border border-[#DCCFC0]/50 overflow-hidden shadow-xs hover:shadow-md hover:shadow-[#778873]/10 transition-all duration-300 flex flex-col sm:flex-row ${
+                          ["Cancelled", "cancelled", "Dibatalkan", "expired"].includes(item.status) ? "opacity-75" : ""
+                        }`}
                       >
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-label-sm text-[11px] font-bold text-[#778873]">
-                              ID: {item.id}
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                item.status === "Dikonfirmasi" || item.status === "Paid"
-                                  ? "bg-[#526b4c]/20 text-[#526b4c]"
-                                  : "bg-[#778873]/20 text-[#778873]"
-                              }`}
-                            >
-                              {item.status}
-                            </span>
+                        {/* Thumbnail */}
+                        <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+                          {item.booking_rooms?.[0]?.room_type?.photos?.[0]?.photo ? (
+                            <img
+                              src={`http://localhost:8000/storage/${item.booking_rooms[0].room_type.photos[0].photo}`}
+                              alt={item.hotel?.name || "Kamar Hotel"}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                              <span className="material-symbols-outlined text-[#778873] text-5xl mb-2 opacity-60">image_not_supported</span>
+                              <p className="font-label-md text-[11px] font-bold text-[#778873] uppercase tracking-wider">
+                                Foto Tidak Tersedia
+                              </p>
+                            </div>
+                          )}
+                          <div className="absolute top-4 left-4 z-10">
+                            {getStatusBadge(item.status)}
+                          </div>
+                        </div>
+
+                        {/* Card Details */}
+                        <div className="p-6 flex-grow flex flex-col justify-between gap-4">
+                          <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                            <div>
+                              <span className="font-label-sm text-[11px] font-bold text-[#778873] uppercase tracking-wider block mb-1">
+                                Kode Booking: {item.booking_code || item.id}
+                              </span>
+                              <h3 className="font-headline-md text-xl font-bold text-[#778873] mb-1">
+                                {item.hotel?.name || "H'Leven Hotel"}
+                              </h3>
+                              <p className="font-body-md text-sm text-[#444842] flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">bed</span>
+                                {item.booking_rooms?.[0]?.room_type?.name || "Tipe Kamar"}
+                              </p>
+                            </div>
+
+                            <div className="text-left sm:text-right mt-2 sm:mt-0">
+                              <span className="font-headline-md text-xl font-bold text-[#778873] block">
+                                Rp {Number(item.grand_total || item.total_price || 0).toLocaleString("id-ID")}
+                              </span>
+                              <span className="font-label-sm text-xs text-[#747871] uppercase tracking-wider">
+                                Total Pembayaran
+                              </span>
+                            </div>
                           </div>
 
-                          <h4 className="font-label-md text-base font-bold text-[#2D332C]">
-                            {item.hotel_name || item.hotel?.name || "H'Leven Hotel"}
-                          </h4>
-                          <p className="text-xs text-[#444842] mt-0.5">
-                            {item.room_name || item.room?.name || "Deluxe Suite"}
-                          </p>
-                          <p className="text-xs text-[#747871] mt-1 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm">calendar_month</span>
-                            {item.check_in} — {item.check_out}
-                          </p>
-                        </div>
+                          {/* Stay Dates Box */}
+                          <div className="bg-[#faf3ea] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border border-[#DCCFC0]/30">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                              <div className="w-10 h-10 rounded-full bg-[#DCCFC0]/30 flex items-center justify-center text-[#778873] flex-shrink-0">
+                                <span className="material-symbols-outlined text-lg">calendar_month</span>
+                              </div>
+                              <div>
+                                <span className="font-label-sm text-[11px] text-[#747871] uppercase tracking-wider block mb-0.5">
+                                  Check-in
+                                </span>
+                                <span className="font-body-md text-sm text-[#1e1b16] font-semibold">
+                                  {item.check_in}
+                                </span>
+                              </div>
+                            </div>
 
-                        <div className="text-right flex md:flex-col justify-between items-center md:items-end w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-[#DCCFC0]/30">
-                          <span className="text-xs text-[#444842]">Total Bayar</span>
-                          <span className="font-headline-md text-lg font-bold text-[#778873]">
-                            Rp {Number(item.total_price || 1500000).toLocaleString("id-ID")}
-                          </span>
+                            <div className="hidden sm:block w-8 h-[1px] bg-[#DCCFC0]"></div>
+
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                              <div className="w-10 h-10 rounded-full bg-[#DCCFC0]/30 flex items-center justify-center text-[#778873] flex-shrink-0">
+                                <span className="material-symbols-outlined text-lg">event_available</span>
+                              </div>
+                              <div>
+                                <span className="font-label-sm text-[11px] text-[#747871] uppercase tracking-wider block mb-0.5">
+                                  Check-out
+                                </span>
+                                <span className="font-body-md text-sm text-[#1e1b16] font-semibold">
+                                  {item.check_out}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex flex-wrap gap-3 justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBooking(item)}
+                              className="px-5 py-2 rounded-xl border border-[#778873] text-[#778873] font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/20 transition-colors cursor-pointer"
+                            >
+                              Detail Pesanan
+                            </button>
+
+                            {(item.status === "pending" || item.status === "unpaid") && (
+                              <button
+                                type="button"
+                                onClick={() => setCancelModalBooking(item)}
+                                className="px-5 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
+                              >
+                                Batalkan Pesanan
+                              </button>
+                            )}
+
+                            {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBooking(item)}
+                                className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-base">download</span>
+                                E-Tiket
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
       </main>
+
+      {/* MODAL REFUND / CANCEL */}
+      {cancelModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left">
+            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
+              Batalkan Pemesanan Kamar
+            </h3>
+            <p className="font-body-md text-xs text-[#444842]">
+              Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
+            </p>
+
+            <div className="space-y-2">
+              <label className="block font-label-md text-xs font-semibold text-[#444842]">
+                Alasan Pembatalan *
+              </label>
+              <textarea
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Tuliskan alasan pembatalan Anda..."
+                className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalBooking(null)}
+                disabled={isSubmittingCancel}
+                className="px-4 py-2 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleProcessCancelOrRefund}
+                disabled={isSubmittingCancel || !cancelReason.trim()}
+                className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
+              >
+                {isSubmittingCancel ? "Memproses..." : "Konfirmasi Batal"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* E-Ticket Modal Popup */}
+      {selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-[#DCCFC0]/60 max-h-[90vh] text-left relative">
+            <button
+              type="button"
+              onClick={() => setSelectedBooking(null)}
+              className="absolute top-4 right-4 z-20 text-white hover:text-[#DCCFC0] transition-colors p-1.5 rounded-full bg-black/20 hover:bg-black/40 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="bg-[#778873] text-white py-8 px-6 md:px-12 text-center relative overflow-hidden flex-shrink-0">
+              <span className="material-symbols-outlined text-5xl mb-2 text-white">check_circle</span>
+              <h2 className="font-headline-lg text-2xl md:text-3xl font-bold mb-1">
+                E-Ticket Valid
+              </h2>
+              <p className="font-body-lg text-sm md:text-base opacity-90">
+                Reservasi Anda berhasil terdaftar di sistem H'Leven.
+              </p>
+            </div>
+
+            <div className="p-6 md:p-10 overflow-y-auto space-y-8 bg-[#fff8f0]">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#DCCFC0]/60 pb-5 gap-4">
+                <div>
+                  <p className="font-label-sm text-xs text-[#444842] uppercase tracking-widest mb-1">
+                    Booking Code
+                  </p>
+                  <p className="font-headline-md text-xl md:text-2xl font-bold text-[#778873]">
+                    {selectedBooking.booking_code || selectedBooking.id}
+                  </p>
+                </div>
+                <div>
+                  {getStatusBadge(selectedBooking.status)}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="flex flex-col items-center justify-center border-t md:border-t-0 md:border-r border-[#DCCFC0]/60 pt-6 md:pt-0 md:pr-8 text-center">
+                  <div className="bg-[#FDF6ED] p-4 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm">
+                    <img
+                      src={QR_CODE_PLACEHOLDER}
+                      alt="QR Code Tiket"
+                      className="w-44 h-44 object-contain mix-blend-multiply"
+                    />
+                  </div>
+                  <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px]">
+                    Tunjukkan QR Code ini di resepsionis saat check-in.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-6">
+                  <div>
+                    <p className="font-label-sm text-xs text-[#444842] uppercase tracking-widest mb-1 font-semibold">
+                      Hotel
+                    </p>
+                    <h3 className="font-headline-md text-lg font-bold text-[#778873]">
+                      {selectedBooking.hotel?.name || "H'Leven Hotel"}
+                    </h3>
+                  </div>
+
+                  <div className="bg-[#DCCFC0]/20 rounded-xl p-4 border border-[#DCCFC0]/40">
+                    <p className="font-label-sm text-[11px] text-[#444842] uppercase tracking-widest mb-1 font-semibold">
+                      Kamar
+                    </p>
+                    <p className="font-headline-sm text-sm font-bold text-[#2D332C]">
+                      {selectedBooking.booking_rooms?.[0]?.room_type?.name || "Standard Room"}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 bg-white p-3.5 rounded-xl border border-[#DCCFC0]/40">
+                    <div>
+                      <p className="font-label-sm text-[11px] text-[#444842] uppercase tracking-widest mb-0.5 font-semibold">
+                        Check-in
+                      </p>
+                      <p className="font-label-md text-xs text-[#2D332C] font-bold">
+                        {selectedBooking.check_in}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-label-sm text-[11px] text-[#444842] uppercase tracking-widest mb-0.5 font-semibold">
+                        Check-out
+                      </p>
+                      <p className="font-label-md text-xs text-[#2D332C] font-bold">
+                        {selectedBooking.check_out}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

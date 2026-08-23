@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 
 const QR_CODE_PLACEHOLDER =
@@ -39,6 +41,7 @@ const QR_CODE_PLACEHOLDER =
 const INITIAL_BOOKINGS = [
   {
     id: "HLVN-98234-AX",
+    booking_code: "HLVN-98234-AX",
     hotel_id: 1,
     hotel_name: "The Sanctuary at Ubud Resort",
     room_name: "Executive Suite dengan Kolam Renang Pribadi",
@@ -57,6 +60,7 @@ const INITIAL_BOOKINGS = [
   },
   {
     id: "HLVN-44102-BX",
+    booking_code: "HLVN-44102-BX",
     hotel_id: 2,
     hotel_name: "Maison H'Leven Luxury Heritage",
     room_name: "Classic Balcony Suite",
@@ -75,6 +79,7 @@ const INITIAL_BOOKINGS = [
   },
   {
     id: "HLVN-11920-CX",
+    booking_code: "HLVN-11920-CX",
     hotel_id: 3,
     hotel_name: "Oasis Resort & Spa Bali",
     room_name: "Water Villa Sunset View",
@@ -103,6 +108,11 @@ const BookingHistory = () => {
   const [selectedBooking, setSelectedBooking] = useState(null); // For E-Ticket Modal
   const [user, setUser] = useState(null);
 
+  // Cancellation & Refund Modal States (Phase 1)
+  const [cancelModalBooking, setCancelModalBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
   // Load User & Fetch API Bookings
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -114,28 +124,48 @@ const BookingHistory = () => {
       }
     }
 
-    const fetchApiBookings = async () => {
-      try {
-        const TTL_30DETIK = 30 * 1000;
-        const { data: responseData, fromCache } = await cachedGet(
-          "/user/bookings",
-          {},
-          false,
-          TTL_30DETIK
-        );
-        if (responseData && responseData.data && responseData.data.length > 0) {
-          setBookings(responseData.data);
-        }
-        if (fromCache) {
-          console.debug("[Cache Hit] BookingHistory loaded from cache (30s TTL)");
-        }
-      } catch (err) {
-        // Fallback to INITIAL_BOOKINGS when API is unavailable
-      }
-    };
-
     fetchApiBookings();
   }, []);
+
+  const fetchApiBookings = async () => {
+    try {
+      const TTL_30DETIK = 30 * 1000;
+      const { data: responseData, fromCache } = await cachedGet(
+        "/user/bookings",
+        {},
+        false,
+        TTL_30DETIK
+      );
+      if (responseData && responseData.data && responseData.data.length > 0) {
+        setBookings(responseData.data);
+      }
+      if (fromCache) {
+        console.debug("[Cache Hit] BookingHistory loaded from cache (30s TTL)");
+      }
+    } catch (err) {
+      // Fallback to INITIAL_BOOKINGS when API is unavailable
+    }
+  };
+
+  const handleProcessCancelOrRefund = async () => {
+    if (!cancelModalBooking) return;
+    setIsSubmittingCancel(true);
+
+    try {
+      const res = await api.post(`/user/bookings/${cancelModalBooking.id}/cancel`, {
+        reason: cancelReason,
+      });
+
+      toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
+      setCancelModalBooking(null);
+      setCancelReason("");
+      fetchApiBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
 
   // Filter & Sort Logic
   const filteredBookings = useMemo(() => {
@@ -143,11 +173,15 @@ const BookingHistory = () => {
 
     if (filterStatus !== "All") {
       if (filterStatus === "Upcoming") {
-        result = result.filter((b) => b.status === "Paid" || b.status === "Dikonfirmasi");
+        result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(b.status));
+      } else if (filterStatus === "Pending") {
+        result = result.filter((b) => b.status === "pending");
       } else if (filterStatus === "Past") {
-        result = result.filter((b) => b.status === "Checked Out" || b.status === "Selesai");
+        result = result.filter((b) => ["Checked Out", "Selesai", "completed"].includes(b.status));
       } else if (filterStatus === "Cancelled") {
-        result = result.filter((b) => b.status === "Cancelled" || b.status === "Dibatalkan");
+        result = result.filter((b) =>
+          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "refund_pending"].includes(b.status)
+        );
       }
     }
 
@@ -171,7 +205,18 @@ const BookingHistory = () => {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case "pending":
+        return (
+          <div className="bg-[#FFF0E0] backdrop-blur-sm border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
+            <span className="font-label-sm text-xs text-[#9B5235] font-bold uppercase tracking-wider">
+              Menunggu Bayar
+            </span>
+          </div>
+        );
       case "Paid":
+      case "paid":
+      case "confirmed":
       case "Dikonfirmasi":
         return (
           <div className="bg-[#4F6F52]/10 backdrop-blur-sm border border-[#4F6F52]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
@@ -181,8 +226,18 @@ const BookingHistory = () => {
             </span>
           </div>
         );
+      case "refund_pending":
+        return (
+          <div className="bg-[#E0F2FE] backdrop-blur-sm border border-[#0369A1]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#0369A1]"></span>
+            <span className="font-label-sm text-xs text-[#0369A1] font-bold uppercase tracking-wider">
+              Proses Refund
+            </span>
+          </div>
+        );
       case "Checked Out":
       case "Selesai":
+      case "completed":
         return (
           <div className="bg-[#645b4f]/10 backdrop-blur-sm border border-[#645b4f]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#645b4f]"></span>
@@ -191,8 +246,18 @@ const BookingHistory = () => {
             </span>
           </div>
         );
+      case "cancelled_by_system":
+        return (
+          <div className="bg-[#ffdad6]/80 backdrop-blur-sm border border-[#ba1a1a]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
+            <span className="font-label-sm text-xs text-[#ba1a1a] font-bold uppercase tracking-wider">
+              Kedaluwarsa (Sistem)
+            </span>
+          </div>
+        );
       case "Cancelled":
       case "Dibatalkan":
+      case "cancelled_by_user":
         return (
           <div className="bg-[#ffdad6]/80 backdrop-blur-sm border border-[#ba1a1a]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
@@ -292,9 +357,10 @@ const BookingHistory = () => {
                 className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
               >
                 <option value="All">Semua Pesanan</option>
+                <option value="Pending">Menunggu Pembayaran</option>
                 <option value="Upcoming">Upcoming / Lunas</option>
                 <option value="Past">Selesai (Checked Out)</option>
-                <option value="Cancelled">Dibatalkan</option>
+                <option value="Cancelled">Dibatalkan / Refund</option>
               </select>
             </div>
 
@@ -328,15 +394,15 @@ const BookingHistory = () => {
                 <article
                   key={item.id}
                   className={`bg-white rounded-2xl border border-[#DCCFC0]/50 overflow-hidden shadow-xs hover:shadow-md hover:shadow-[#778873]/10 transition-all duration-300 flex flex-col sm:flex-row ${
-                    item.status === "Cancelled" || item.status === "Dibatalkan" ? "opacity-75" : ""
+                    ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system"].includes(item.status) ? "opacity-75" : ""
                   }`}
                 >
                   {/* Thumbnail Image with Status Badge Overlay */}
                   <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
-                    {item.image ? (
+                    {item.image || item.room?.photos?.[0]?.url ? (
                       <img
-                        src={item.image}
-                        alt={item.hotel_name}
+                        src={item.image || item.room?.photos?.[0]?.url}
+                        alt={item.hotel_name || item.room?.hotel?.name}
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.style.display = 'none'; }}
                       />
@@ -358,17 +424,17 @@ const BookingHistory = () => {
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
                       <div>
                         <span className="font-label-sm text-[11px] font-bold text-[#778873] uppercase tracking-wider block mb-1">
-                          ID Order: {item.id}
+                          ID Order: {item.booking_code || item.id}
                         </span>
                         <h3 className="font-headline-md text-xl font-bold text-[#778873] mb-1">
-                          {item.hotel_name}
+                          {item.hotel_name || item.room?.hotel?.name || "H'Leven Resort"}
                         </h3>
                         <p className="font-body-md text-sm text-[#444842] flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">bed</span>
-                          {item.room_name}
+                          {item.room_name || item.room?.name}
                         </p>
                         <div className="mt-2">
-                          {item.is_refundable ? (
+                          {(item.is_refundable === undefined || item.is_refundable) ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
                               <span className="material-symbols-outlined text-[12px]">verified</span>
                               Bisa Refund
@@ -425,7 +491,7 @@ const BookingHistory = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
+                    {/* Dynamic Actions */}
                     <div className="flex flex-wrap gap-3 justify-end pt-1">
                       <button
                         type="button"
@@ -435,16 +501,38 @@ const BookingHistory = () => {
                         View Details
                       </button>
 
-                      {item.status === "Paid" || item.status === "Dikonfirmasi" ? (
+                      {item.status === "pending" && (
                         <button
                           type="button"
-                          onClick={() => setSelectedBooking(item)}
-                          className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          onClick={() => setCancelModalBooking(item)}
+                          className="px-5 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-base">download</span>
-                          Download E-Ticket
+                          Batalkan Pesanan
                         </button>
-                      ) : (
+                      )}
+
+                      {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBooking(item)}
+                            className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base">download</span>
+                            Download E-Ticket
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setCancelModalBooking(item)}
+                            className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
+                          >
+                            Ajukan Refund
+                          </button>
+                        </>
+                      )}
+
+                      {!["Paid", "paid", "confirmed", "Dikonfirmasi", "pending"].includes(item.status) && (
                         <button
                           type="button"
                           onClick={() => navigate(`/hotels/${item.hotel_id || 1}`)}
@@ -462,6 +550,52 @@ const BookingHistory = () => {
           </div>
         </section>
       </main>
+
+      {/* MODAL REFUND / CANCEL (Phase 1) */}
+      {cancelModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
+            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
+              {cancelModalBooking.status === "pending" ? "Batalkan Pesanan" : "Pengajuan Refund"}
+            </h3>
+            <p className="font-body-md text-xs text-[#444842]">
+              Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
+            </p>
+
+            <div className="space-y-2">
+              <label className="block font-label-md text-xs font-semibold text-[#444842]">
+                Alasan Pembatalan / Refund *
+              </label>
+              <textarea
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Tuliskan alasan lengkap..."
+                className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalBooking(null)}
+                disabled={isSubmittingCancel}
+                className="px-4 py-2 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleProcessCancelOrRefund}
+                disabled={isSubmittingCancel || !cancelReason.trim()}
+                className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
+              >
+                {isSubmittingCancel ? "Memproses..." : "Konfirmasi Pembatalan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* E-Ticket Modal Popup (ticket.html design) */}
       {selectedBooking && (
@@ -503,7 +637,7 @@ const BookingHistory = () => {
                     Booking Reference
                   </p>
                   <p className="font-headline-md text-xl md:text-2xl font-bold text-[#778873]">
-                    {selectedBooking.id}
+                    {selectedBooking.booking_code || selectedBooking.id}
                   </p>
                 </div>
                 <div className="text-left md:text-right">
@@ -535,7 +669,7 @@ const BookingHistory = () => {
                   <div className="w-full flex flex-col gap-3">
                     <button
                       type="button"
-                      onClick={() => alert(`📥 Mengunduh E-Tiket PDF untuk Order ID ${selectedBooking.id}...`)}
+                      onClick={() => alert(`📥 Mengunduh E-Tiket PDF untuk Order ID ${selectedBooking.booking_code || selectedBooking.id}...`)}
                       className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-lg">download</span>
@@ -559,7 +693,7 @@ const BookingHistory = () => {
                       Destination
                     </p>
                     <h3 className="font-headline-md text-lg font-bold text-[#778873] mb-1">
-                      {selectedBooking.hotel_name || "H'Leven Resort"}
+                      {selectedBooking.hotel_name || selectedBooking.room?.hotel?.name || "H'Leven Resort"}
                     </h3>
                     <p className="font-body-md text-xs text-[#444842] flex items-start gap-1">
                       <span className="material-symbols-outlined text-sm mt-0.5">location_on</span>
@@ -573,7 +707,7 @@ const BookingHistory = () => {
                       Accommodation
                     </p>
                     <p className="font-headline-sm text-sm font-bold text-[#2D332C]">
-                      {selectedBooking.room_name || "Executive Suite dengan Kolam Renang"}
+                      {selectedBooking.room_name || selectedBooking.room?.name || "Executive Suite dengan Kolam Renang"}
                     </p>
                     <p className="font-body-md text-xs text-[#444842] mt-1">
                       1 Kamar • 2 Tamu • Termasuk Sarapan Pagi

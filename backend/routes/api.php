@@ -40,6 +40,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show'])->whereNumber('id');
+    
+    // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
+    Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -85,6 +88,8 @@ Route::prefix('v1')->group(function () {
         // --- Booking User ---
         Route::middleware('role:user')->group(function () {
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
+            Route::post('/user/bookings', [BookingController::class, 'store']);
+            Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']); // Route pembatalan user untuk kembalikan stok
             Route::post('/bookings', [BookingController::class, 'store']);
         });
 

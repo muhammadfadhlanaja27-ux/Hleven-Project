@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
+import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 
 const QR_CODE_PLACEHOLDER =
@@ -41,10 +43,10 @@ const BookingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Search parameters for dates
+  // Search parameters for dates & guests
   const searchParams = new URLSearchParams(location.search);
-  const paramCheckIn = searchParams.get("checkIn");
-  const paramCheckOut = searchParams.get("checkOut");
+  const paramCheckIn = searchParams.get("checkIn") || searchParams.get("check_in");
+  const paramCheckOut = searchParams.get("checkOut") || searchParams.get("check_out");
 
   const todayStr = new Date().toISOString().split("T")[0];
   const next2Days = new Date(Date.now() + 2 * 86400000).toISOString().split("T")[0];
@@ -62,6 +64,13 @@ const BookingPage = () => {
   const [specialRequests, setSpecialRequests] = useState("");
   const [checkInDate, setCheckInDate] = useState(paramCheckIn || todayStr);
   const [checkOutDate, setCheckOutDate] = useState(paramCheckOut || next2Days);
+
+  // Dynamic Guest Input States (Phase 1 Integration)
+  const [adults, setAdults] = useState(Number(searchParams.get("adults")) || 2);
+  const [children, setChildren] = useState(Number(searchParams.get("children")) || 0);
+
+  // Fallback Alternative Suggestions Modal State
+  const [suggestionData, setSuggestionData] = useState(null);
 
   // Payment Modal States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -126,7 +135,9 @@ const BookingPage = () => {
               price: matchedRoomType.weekday_price,
               weekday_price: matchedRoomType.weekday_price,
               weekend_price: matchedRoomType.weekend_price,
-              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+              capacity: `${matchedRoomType.capacity_adult || 2} Dewasa, ${matchedRoomType.capacity_child || 0} Anak`,
+              capacity_adult: matchedRoomType.capacity_adult || 2,
+              capacity_child: matchedRoomType.capacity_child || 0,
               description: matchedRoomType.description,
               is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
               thumbnail: roomImage,
@@ -199,16 +210,63 @@ const BookingPage = () => {
     }
   };
 
-  const handleOpenPaymentModal = (e) => {
+  // Pengecekan Bentrok Tanggal ke Backend Laravel saat Tombol Diklik
+  const handleOpenPaymentModal = async (e) => {
     e.preventDefault();
     if (!fullName || !email || !phone) {
-      alert("Harap lengkapi Data Tamu (Nama, Email, dan No. Telepon).");
+      toast.error("Harap lengkapi Data Tamu (Nama, Email, dan No. Telepon).");
       return;
     }
-    const generatedOrder = `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`;
-    setOrderId(generatedOrder);
-    setPaymentScreen("methods");
-    setShowPaymentModal(true);
+
+    setSubmitting(true);
+    const payload = {
+      hotel_id: hotel?.id || Number(hotelId) || 1,
+      room_type_id: room?.id || Number(roomId) || 101,
+      check_in: checkInDate,
+      check_out: checkOutDate,
+      qty: 1,
+      adults: Number(adults),
+      children: Number(children),
+      guest_name: fullName,
+      guest_email: email,
+      guest_phone: phone,
+      special_request: specialRequests,
+    };
+
+    try {
+      let res;
+      try {
+        res = await api.post("/bookings", payload);
+      } catch (firstErr) {
+        if (firstErr.response?.status === 405) {
+          res = await api.post("/user/bookings", payload);
+        } else {
+          throw firstErr;
+        }
+      }
+
+      if (res.data && res.data.data) {
+        const createdBooking = res.data.data.booking || res.data.data;
+        setOrderId(createdBooking.booking_code || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`);
+        setPaymentScreen("methods");
+        setShowPaymentModal(true);
+      }
+    } catch (err) {
+      const responseData = err.response?.data;
+      const errorMessage = responseData?.message || "Kamar tidak tersedia pada tanggal pilihan Anda.";
+      
+      toast.error(errorMessage);
+
+      if (responseData?.suggestions?.rooms?.length > 0) {
+        setSuggestionData({
+          message: errorMessage,
+          type: responseData.suggestions.type,
+          rooms: responseData.suggestions.rooms,
+        });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSelectPaymentMethod = (method) => {
@@ -216,7 +274,6 @@ const BookingPage = () => {
       setQrisTimer(15 * 60 - 1);
       setPaymentScreen("qris");
     } else {
-      // Direct payment confirmation simulation
       confirmPaymentSuccess(method);
     }
   };
@@ -236,7 +293,7 @@ const BookingPage = () => {
       );
       setSubmitting(false);
       setShowPaymentModal(false);
-      navigate("/");
+      navigate("/profile/bookings");
     }, 600);
   };
 
@@ -279,22 +336,27 @@ const BookingPage = () => {
           {/* Left Column: Guest Data Form & Stay Details */}
           <div className="lg:col-span-7 space-y-8">
             
-            {/* Dates Summary Section */}
-            <section className="bg-white rounded-2xl p-6 border border-[#DCCFC0]/50 shadow-sm">
-              <h2 className="font-headline-md text-xl font-bold text-[#778873] mb-4 flex items-center gap-2">
+            {/* Dates & Dynamic Guest Summary Section */}
+            <section className="bg-white rounded-2xl p-6 border border-[#DCCFC0]/50 shadow-sm space-y-4">
+              <h2 className="font-headline-md text-xl font-bold text-[#778873] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#A1BC98]">calendar_today</span>
-                Detail Menginap
+                Detail Menginap &amp; Tamu
               </h2>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-[#faf3ea] p-4 rounded-xl border border-[#DCCFC0]/40">
                   <span className="font-label-sm text-xs text-[#444842] uppercase tracking-wider block mb-1">
                     Check-in
                   </span>
-                  <div className="font-body-lg text-base font-semibold text-[#2D332C]">
-                    {formatDateLabel(checkInDate)}
-                  </div>
+                  <input
+                    type="date"
+                    value={checkInDate}
+                    min={todayStr}
+                    onChange={(e) => setCheckInDate(e.target.value)}
+                    className="w-full bg-white border border-[#DCCFC0] rounded-lg px-3 py-1.5 text-sm font-semibold text-[#2D332C]"
+                  />
                   <div className="font-label-sm text-xs text-[#444842] mt-1">
-                    Mulai 14:00 WIB
+                    Mulai 14:00 WIB ({formatDateLabel(checkInDate)})
                   </div>
                 </div>
 
@@ -302,12 +364,45 @@ const BookingPage = () => {
                   <span className="font-label-sm text-xs text-[#444842] uppercase tracking-wider block mb-1">
                     Check-out
                   </span>
-                  <div className="font-body-lg text-base font-semibold text-[#2D332C]">
-                    {formatDateLabel(checkOutDate)}
-                  </div>
+                  <input
+                    type="date"
+                    value={checkOutDate}
+                    min={checkInDate || todayStr}
+                    onChange={(e) => setCheckOutDate(e.target.value)}
+                    className="w-full bg-white border border-[#DCCFC0] rounded-lg px-3 py-1.5 text-sm font-semibold text-[#2D332C]"
+                  />
                   <div className="font-label-sm text-xs text-[#444842] mt-1">
-                    Hingga 12:00 WIB
+                    Hingga 12:00 WIB ({formatDateLabel(checkOutDate)})
                   </div>
+                </div>
+              </div>
+
+              {/* Dynamic Guest Inputs (Phase 1) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#DCCFC0]/40">
+                <div className="bg-[#faf3ea] p-4 rounded-xl border border-[#DCCFC0]/40 flex flex-col justify-between">
+                  <label className="font-label-sm text-xs text-[#444842] uppercase tracking-wider block mb-1">
+                    Jumlah Tamu Dewasa
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={adults}
+                    onChange={(e) => setAdults(e.target.value)}
+                    className="w-full bg-white border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm font-semibold text-[#2D332C]"
+                  />
+                </div>
+
+                <div className="bg-[#faf3ea] p-4 rounded-xl border border-[#DCCFC0]/40 flex flex-col justify-between">
+                  <label className="font-label-sm text-xs text-[#444842] uppercase tracking-wider block mb-1">
+                    Jumlah Anak-anak
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={children}
+                    onChange={(e) => setChildren(e.target.value)}
+                    className="w-full bg-white border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm font-semibold text-[#2D332C]"
+                  />
                 </div>
               </div>
             </section>
@@ -387,9 +482,10 @@ const BookingPage = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={submitting}
+                    className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    Lanjut ke Pembayaran
+                    {submitting ? "Memeriksa Ketersediaan..." : "Lanjut ke Pembayaran"}
                     <span className="material-symbols-outlined text-base">arrow_forward</span>
                   </button>
                 </div>
@@ -427,7 +523,7 @@ const BookingPage = () => {
                   </h4>
                   <span className="font-label-sm text-xs text-[#444842] mt-1 flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">group</span>
-                    {room?.capacity || "2 Dewasa"}
+                    {adults} Dewasa, {children} Anak
                   </span>
                 </div>
               </div>
@@ -491,9 +587,10 @@ const BookingPage = () => {
               <button
                 type="button"
                 onClick={handleOpenPaymentModal}
-                className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                disabled={submitting}
+                className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
               >
-                Lanjut ke Pembayaran
+                {submitting ? "Memeriksa Ketersediaan..." : "Lanjut ke Pembayaran"}
                 <span className="material-symbols-outlined text-base">arrow_forward</span>
               </button>
 
@@ -521,7 +618,7 @@ const BookingPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
-                  className="text-white hover:text-[#DCCFC0] transition-colors p-1"
+                  className="text-white hover:text-[#DCCFC0] transition-colors p-1 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-xl">close</span>
                 </button>
@@ -624,7 +721,7 @@ const BookingPage = () => {
                 <button
                   type="button"
                   onClick={() => setPaymentScreen("methods")}
-                  className="text-white hover:text-[#DCCFC0] transition-colors flex items-center gap-1 text-sm"
+                  className="text-white hover:text-[#DCCFC0] transition-colors flex items-center gap-1 text-sm cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-xl">arrow_back</span>
                   Kembali
@@ -671,6 +768,62 @@ const BookingPage = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL REKOMENDASI KAMAR ALTERNATIF */}
+      {suggestionData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left">
+            <div className="flex justify-between items-start border-b border-[#DCCFC0]/60 pb-3">
+              <div>
+                <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
+                  Kamar Tidak Tersedia
+                </h3>
+                <p className="text-xs font-semibold text-[#ba1a1a] mt-1">{suggestionData.message}</p>
+              </div>
+              <button
+                onClick={() => setSuggestionData(null)}
+                className="text-[#6B6E6A] hover:text-[#2D312C] text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="font-body-md text-xs text-[#444842]">
+              {suggestionData.type === "same_hotel"
+                ? "Pilihan kamar lain yang muat dan tersedia di hotel ini:"
+                : "Semua kamar di hotel ini penuh. Berikut opsi kamar di hotel lain sekitar kota ini:"}
+            </p>
+
+            <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto p-1">
+              {suggestionData.rooms.map((altRoom) => (
+                <div
+                  key={altRoom.id}
+                  className="p-4 border border-[#DCCFC0] rounded-xl flex justify-between items-center bg-[#faf3ea] hover:border-[#778873] transition-colors"
+                >
+                  <div className="space-y-1">
+                    <p className="font-headline-sm text-sm font-bold text-[#2D332C]">{altRoom.name}</p>
+                    <p className="font-label-sm text-xs text-[#444842]">
+                      Kapasitas: {altRoom.capacity_adult} Dewasa, {altRoom.capacity_child || 0} Anak
+                    </p>
+                    <p className="font-label-md text-xs font-bold text-[#778873]">
+                      Rp {Number(altRoom.weekday_price || altRoom.price || 0).toLocaleString("id-ID")} / malam
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSuggestionData(null);
+                      navigate(`/booking/${altRoom.hotel_id || hotelId}/${altRoom.id}?checkIn=${checkInDate}&checkOut=${checkOutDate}&adults=${adults}&children=${children}`);
+                    }}
+                    className="px-4 py-2 bg-[#778873] text-white rounded-xl text-xs font-bold hover:bg-[#50604d] transition-colors shadow-xs"
+                  >
+                    Pilih Kamar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
