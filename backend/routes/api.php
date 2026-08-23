@@ -89,7 +89,8 @@ Route::prefix('v1')->group(function () {
         Route::middleware('role:user')->group(function () {
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
             Route::post('/user/bookings', [BookingController::class, 'store']);
-            Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']); // Route pembatalan user untuk kembalikan stok
+            Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+            Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']); // Download E-Tiket PDF
             Route::post('/bookings', [BookingController::class, 'store']);
         });
 
@@ -145,6 +146,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::get('/bookings', [BookingController::class, 'index']); 
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
+    Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']); // Persetujuan/Penolakan Refund Admin
 });
 
 // ==========================================
