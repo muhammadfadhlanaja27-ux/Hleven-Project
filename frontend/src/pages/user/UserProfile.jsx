@@ -4,12 +4,48 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 import { QRCodeSVG } from "qrcode.react";
+import ApplicationStatus from "../../components/mitra/ApplicationStatus";
+
+const QR_CODE_PLACEHOLDER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+      <rect width='200' height='200' fill='white'/>
+      <g fill='#1e1b16'>
+        <rect x='20' y='20' width='50' height='50'/>
+        <rect x='130' y='20' width='50' height='50'/>
+        <rect x='20' y='130' width='50' height='50'/>
+        <rect x='30' y='30' width='10' height='10' fill='white'/>
+        <rect x='140' y='30' width='10' height='10' fill='white'/>
+        <rect x='30' y='140' width='10' height='10' fill='white'/>
+        <rect x='80' y='20' width='10' height='10'/>
+        <rect x='100' y='30' width='10' height='10'/>
+        <rect x='20' y='80' width='10' height='10'/>
+        <rect x='40' y='100' width='10' height='10'/>
+        <rect x='60' y='80' width='10' height='10'/>
+        <rect x='80' y='100' width='10' height='10'/>
+        <rect x='100' y='80' width='10' height='10'/>
+        <rect x='120' y='90' width='10' height='10'/>
+        <rect x='140' y='100' width='10' height='10'/>
+        <rect x='160' y='80' width='10' height='10'/>
+        <rect x='180' y='100' width='10' height='10'/>
+        <rect x='80' y='120' width='10' height='10'/>
+        <rect x='100' y='140' width='10' height='10'/>
+        <rect x='120' y='130' width='10' height='10'/>
+        <rect x='140' y='150' width='10' height='10'/>
+        <rect x='160' y='140' width='10' height='10'/>
+        <rect x='100' y='160' width='10' height='10'/>
+        <rect x='120' y='180' width='10' height='10'/>
+      </g>
+    </svg>
+  `);
 
 const UserProfile = () => {
   const navigate = useNavigate();
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState("personal"); // 'personal' | 'history'
+  const [activeTab, setActiveTab] = useState("partner");
+  const [partnerApplication, setPartnerApplication] = useState(null);
+  const [partnerLoading, setPartnerLoading] = useState(false);
 
   // Personal Info Form State
   const [firstName, setFirstName] = useState("");
@@ -40,7 +76,54 @@ const UserProfile = () => {
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
-  // Load User Data & Fetch API Bookings
+  // Load User Data, Bookings, Partner Status
+  const fetchUserBookings = async () => {
+    try {
+      const TTL_30DETIK = 30 * 1000;
+      const { data: responseData, fromCache } = await cachedGet(
+        "/user/bookings",
+        {},
+        false,
+        TTL_30DETIK
+      );
+      if (responseData && responseData.data && responseData.data.length > 0) {
+        setBookings(responseData.data);
+      }
+      if (fromCache) {
+        console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
+      }
+    } catch (err) {
+      console.warn("Gagal memuat booking history dari API.", err);
+    }
+  };
+
+  const fetchPartnerStatus = async () => {
+    setPartnerLoading(true);
+    try {
+      const res = await api.get("/user/partner-application");
+      const data = res.data?.data || res.data;
+      if (data && (data.id || data.application_number || data.status)) {
+        setPartnerApplication(data);
+      } else {
+        setPartnerApplication(null);
+      }
+    } catch (err) {
+      try {
+        const saved = localStorage.getItem("partner_app_submission");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setPartnerApplication(parsed);
+        } else {
+          setPartnerApplication(null);
+        }
+      } catch (e) {
+        setPartnerApplication(null);
+      }
+    } finally {
+      setPartnerLoading(false);
+    }
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -66,28 +149,43 @@ const UserProfile = () => {
       }
     } else {
       navigate("/login");
+      return;
     }
 
-    fetchApiBookings();
+    fetchUserBookings();
+    fetchPartnerStatus();
   }, [navigate]);
 
-  const fetchApiBookings = async () => {
-    try {
-      const TTL_30DETIK = 30 * 1000;
-      const { data: responseData } = await cachedGet(
-        "/user/bookings",
-        {},
-        false,
-        TTL_30DETIK
-      );
-      if (responseData && responseData.data) {
-        setBookings(responseData.data);
-      }
-    } catch (err) {
-      console.warn("Gagal memuat booking history dari API.", err);
-    }
+  const handleFixRevision = () => {
+    // Preload data existing ke form pendaftaran
+    navigate("/mitra/daftar", {
+      state: {
+        prefill: {
+          hotel_name: partnerApplication?.hotel_name || "",
+          hotel_type: partnerApplication?.hotel_type || "",
+          hotel_description: partnerApplication?.hotel_description || "",
+          hotel_phone: partnerApplication?.hotel_phone || "",
+          hotel_email: partnerApplication?.hotel_email || "",
+          room_count: partnerApplication?.room_count || "",
+          address: partnerApplication?.address || "",
+          province: partnerApplication?.province || "",
+          city: partnerApplication?.city || "",
+          district: partnerApplication?.district || "",
+          postal_code: partnerApplication?.postal_code || "",
+          maps_url: partnerApplication?.maps_url || "",
+          owner_name: partnerApplication?.owner_name || "",
+          owner_email: partnerApplication?.owner_email || "",
+          owner_phone: partnerApplication?.owner_phone || "",
+          owner_id_number: partnerApplication?.owner_id_number || "",
+          bank_name: partnerApplication?.bank_name || "",
+          bank_account_number: partnerApplication?.bank_account_number || "",
+          bank_account_name: partnerApplication?.bank_account_name || "",
+        },
+      },
+    });
   };
 
+  // Handle Avatar Change
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -182,10 +280,8 @@ const UserProfile = () => {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setMessage({ type: "success", text: "🔑 Kata sandi berhasil diperbarui!" });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      const errMsg = err.response?.data?.message || "Gagal memperbarui kata sandi. Periksa kata sandi saat ini.";
+      setMessage({ type: "error", text: `⚠️ ${errMsg}` });
     } finally {
       setPwdLoading(false);
     }
@@ -203,7 +299,7 @@ const UserProfile = () => {
       toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
       setCancelModalBooking(null);
       setCancelReason("");
-      fetchApiBookings();
+      fetchUserBookings();
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
     } finally {
@@ -254,9 +350,13 @@ const UserProfile = () => {
     }
 
     if (sortBy === "newest") {
-      result.reverse();
+      result = [...result].reverse();
+    } else if (sortBy === "oldest") {
+      // no-op, biarkan urutan asli (asumsi data dari API oldest-first)
     } else if (sortBy === "price_high") {
-      result.sort((a, b) => Number(b.total_price || b.grand_total || 0) - Number(a.total_price || a.grand_total || 0));
+      result = [...result].sort((a, b) => Number(b.total_price || b.grand_total || 0) - Number(a.total_price || a.grand_total || 0));
+    } else if (sortBy === "price_low") {
+      result = [...result].sort((a, b) => Number(a.total_price || a.grand_total || 0) - Number(b.total_price || b.grand_total || 0));
     }
 
     return result;
@@ -431,6 +531,19 @@ const UserProfile = () => {
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
               <button
                 type="button"
+                onClick={() => setActiveTab("partner")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "partner"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
+              >
+                <span className="material-symbols-outlined text-xl">real_estate_agent</span>
+                Status Mitra Hotel
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab("personal")}
                 className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
                   activeTab === "personal"
@@ -468,8 +581,16 @@ const UserProfile = () => {
 
           {/* Main Area: Dynamic Tab Content */}
           <div className="lg:col-span-8 flex flex-col gap-8">
+
+            {activeTab === "partner" && (
+              <ApplicationStatus
+                application={partnerApplication}
+                loading={partnerLoading}
+                onFixRevision={handleFixRevision}
+              />
+            )}
             
-            {activeTab === "personal" ? (
+            {activeTab === "personal" && (
               <>
                 {/* Personal Information Section */}
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
@@ -623,7 +744,9 @@ const UserProfile = () => {
                   </form>
                 </section>
               </>
-            ) : (
+            )}
+
+            {activeTab === "history" && (
               /* Booking History View */
               <div className="flex flex-col gap-6">
                 

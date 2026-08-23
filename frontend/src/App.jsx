@@ -25,6 +25,11 @@ import HotelDetail from "./pages/user/HotelDetail";
 import BookingPage from "./pages/user/BookingPage";
 import BookingHistory from "./pages/user/BookingHistory";
 
+// Mitra Hotel Pages
+import MitraLanding from "./pages/mitra/MitraLanding";
+import MitraRegistration from "./pages/mitra/MitraRegistration";
+import MitraRegistrationSuccess from "./pages/mitra/MitraRegistrationSuccess";
+
 // Admin Hotel pages
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
 import Dashboard from "./pages/admin-hotel/Dashboard";
@@ -139,7 +144,13 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/booking-history" element={<BookingHistory />} />
+
+            {/* Mitra Hotel */}
+            <Route path="/mitra" element={<MitraLanding />} />
+            <Route path="/mitra/sukses" element={<MitraRegistrationSuccess />} />
           </Route>
+          {/* Form Pendaftaran Mitra (layout terpisah: header onboarding) */}
+          <Route path="/mitra/daftar" element={<MitraRegistration />} />
 
           {/* GRUP 2: Rute Admin Hotel */}
           <Route element={<AdminHotelProtectedRoute />}>

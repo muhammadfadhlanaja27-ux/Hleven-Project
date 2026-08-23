@@ -44,6 +44,25 @@ class FacilityController extends Controller
         ], 201);
     }
 
+    // Memperbarui fasilitas (Khusus Super Admin/Admin)
+    public function update(Request $request, $id): JsonResponse
+    {
+        $facility = Facility::findOrFail($id);
+
+        $request->validate([
+            'name'     => 'sometimes|string|max:255|unique:facilities,name,' . $id,
+            'category' => 'sometimes|in:Hotel,Room,Bathroom',
+        ]);
+
+        $facility->update($request->only(['name', 'category']));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Fasilitas berhasil diperbarui',
+            'data'    => $facility,
+        ], 200);
+    }
+
     // Menghapus fasilitas
     public function destroy($id): JsonResponse
     {
