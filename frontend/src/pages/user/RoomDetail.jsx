@@ -377,7 +377,7 @@ const RoomDetail = () => {
                 Kebijakan Kamar
               </h2>
               <ul className="space-y-5">
-                <li class="flex items-start gap-4">
+                <li className="flex items-start gap-4">
                   <span className="material-symbols-outlined text-[#747871] mt-0.5">schedule</span>
                   <div>
                     <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Waktu Check-in &amp; Check-out</h4>
