@@ -1,110 +1,91 @@
 ---
-name: Heritage Hospitality Admin
+name: H'Leven
 colors:
-  surface: '#fcf9f5'
-  surface-dim: '#dcdad6'
-  surface-bright: '#fcf9f5'
+  surface: '#fcf9f4'
+  surface-dim: '#dcdad5'
+  surface-bright: '#fcf9f4'
   surface-container-lowest: '#ffffff'
-  surface-container-low: '#f6f3ef'
+  surface-container-low: '#f6f3ee'
   surface-container: '#f0ede9'
-  surface-container-high: '#eae8e4'
-  surface-container-highest: '#e5e2de'
-  on-surface: '#1c1c1a'
-  on-surface-variant: '#444840'
-  inverse-surface: '#31302e'
-  inverse-on-surface: '#f3f0ec'
-  outline: '#757870'
-  outline-variant: '#c4c8be'
-  surface-tint: '#53634a'
-  primary: '#506147'
+  surface-container-high: '#ebe8e3'
+  surface-container-highest: '#e5e2dd'
+  on-surface: '#1c1c19'
+  on-surface-variant: '#444842'
+  inverse-surface: '#31302d'
+  inverse-on-surface: '#f3f0eb'
+  outline: '#747871'
+  outline-variant: '#c4c8bf'
+  surface-tint: '#52634f'
+  primary: '#50604d'
   on-primary: '#ffffff'
-  primary-container: '#69795f'
-  on-primary-container: '#f8ffee'
-  inverse-primary: '#baccad'
-  secondary: '#52634e'
+  primary-container: '#687965'
+  on-primary-container: '#f7fff1'
+  inverse-primary: '#baccb4'
+  secondary: '#4c6549'
   on-secondary: '#ffffff'
-  secondary-container: '#d2e5cb'
-  on-secondary-container: '#566752'
-  tertiary: '#8f482c'
+  secondary-container: '#cbe7c4'
+  on-secondary-container: '#50694d'
+  tertiary: '#615b54'
   on-tertiary: '#ffffff'
-  tertiary-container: '#ad6042'
+  tertiary-container: '#7a736c'
   on-tertiary-container: '#fffbff'
   error: '#ba1a1a'
   on-error: '#ffffff'
   error-container: '#ffdad6'
   on-error-container: '#93000a'
-  primary-fixed: '#d6e8c8'
-  primary-fixed-dim: '#baccad'
-  on-primary-fixed: '#111f0b'
-  on-primary-fixed-variant: '#3b4b33'
-  secondary-fixed: '#d5e8cd'
-  secondary-fixed-dim: '#b9ccb2'
-  on-secondary-fixed: '#101f0f'
-  on-secondary-fixed-variant: '#3a4b38'
-  tertiary-fixed: '#ffdbce'
-  tertiary-fixed-dim: '#ffb59a'
-  on-tertiary-fixed: '#370d00'
-  on-tertiary-fixed-variant: '#743419'
-  background: '#fcf9f5'
-  on-background: '#1c1c1a'
-  surface-variant: '#e5e2de'
-  sidebar-bg: '#2D312C'
-  sidebar-text: '#D1D5D1'
-  cream-surface: '#F2EBE1'
-  text-main: '#2D312C'
-  text-muted: '#6B6E6A'
-  border-subtle: '#E5E1DA'
-  status-success: '#6D7E63'
-  status-warning: '#D48C45'
-  status-error: '#9B5235'
+  primary-fixed: '#d5e8cf'
+  primary-fixed-dim: '#baccb4'
+  on-primary-fixed: '#111f10'
+  on-primary-fixed-variant: '#3b4b39'
+  secondary-fixed: '#ceeac7'
+  secondary-fixed-dim: '#b3ceac'
+  on-secondary-fixed: '#0a200a'
+  on-secondary-fixed-variant: '#354d33'
+  tertiary-fixed: '#eae1d8'
+  tertiary-fixed-dim: '#cec5bc'
+  on-tertiary-fixed: '#1f1b16'
+  on-tertiary-fixed-variant: '#4b463f'
+  background: '#fcf9f4'
+  on-background: '#1c1c19'
+  surface-variant: '#e5e2dd'
 typography:
   display-lg:
-    fontFamily: Newsreader
-    fontSize: 40px
-    fontWeight: '600'
-    lineHeight: 48px
+    fontFamily: Montserrat
+    fontSize: 48px
+    fontWeight: '700'
+    lineHeight: 60px
     letterSpacing: -0.02em
   headline-lg:
-    fontFamily: Newsreader
+    fontFamily: Montserrat
     fontSize: 32px
     fontWeight: '600'
     lineHeight: 40px
-  headline-md:
-    fontFamily: Newsreader
+  headline-lg-mobile:
+    fontFamily: Montserrat
     fontSize: 24px
-    fontWeight: '500'
+    fontWeight: '600'
     lineHeight: 32px
-  title-lg:
-    fontFamily: Inter
-    fontSize: 18px
+  title-md:
+    fontFamily: Hanken Grotesk
+    fontSize: 20px
     fontWeight: '600'
     lineHeight: 28px
+  body-lg:
+    fontFamily: Hanken Grotesk
+    fontSize: 18px
+    fontWeight: '400'
+    lineHeight: 28px
   body-md:
-    fontFamily: Inter
+    fontFamily: Hanken Grotesk
     fontSize: 16px
     fontWeight: '400'
     lineHeight: 24px
-  body-sm:
-    fontFamily: Inter
-    fontSize: 14px
-    fontWeight: '400'
-    lineHeight: 20px
-  label-md:
-    fontFamily: Inter
-    fontSize: 12px
+  label-sm:
+    fontFamily: Hanken Grotesk
+    fontSize: 13px
     fontWeight: '600'
     lineHeight: 16px
     letterSpacing: 0.05em
-  label-sm:
-    fontFamily: Inter
-    fontSize: 11px
-    fontWeight: '500'
-    lineHeight: 14px
-  headline-lg-mobile:
-    fontFamily: Newsreader
-    fontSize: 28px
-    fontWeight: '600'
-    lineHeight: 36px
 rounded:
   sm: 0.25rem
   DEFAULT: 0.5rem
@@ -113,101 +94,81 @@ rounded:
   xl: 1.5rem
   full: 9999px
 spacing:
-  base-unit: 4px
-  container-margin: 32px
-  gutter-lg: 24px
-  gutter-md: 16px
-  card-padding: 24px
-  sidebar-width: 260px
-  sidebar-collapsed: 80px
+  base: 8px
+  container-max: 1280px
+  gutter: 24px
+  margin-desktop: 64px
+  margin-mobile: 20px
+  stack-sm: 12px
+  stack-md: 24px
+  stack-lg: 48px
 ---
 
 ## Brand & Style
 
-This design system is built for the **H'Leven Admin Hotel dashboard**, a tool designed for operational excellence in hospitality management. The brand personality is **sophisticated, organic, and authoritative**. It balances the high-end boutique feel of a luxury hotel with the precise, functional requirements of an administrative powerhouse.
+The design system is centered on a **Premium Hospitality** narrative, specifically tailored for B2B partner onboarding. The brand personality is welcoming yet authoritative, bridging the gap between high-end aesthetic appeal and professional functional utility. It aims to evoke a sense of trust, tranquility, and exclusivity.
 
-The visual style is a blend of **Minimalism and Tonal Layering**. It leverages a high-end editorial aesthetic through classical serif typography and a nature-inspired color palette. The UI avoids harsh digital blacks, opting instead for deep charcoals and warm creams to create a calm, professional environment that reduces eye strain during long operational shifts.
-
-**Design Principles:**
-- **Refinement over Flash:** Use subtle depth and intentional white space rather than aggressive gradients or animations.
-- **Trust through Clarity:** Information hierarchy is strictly enforced through typographic scale.
-- **Tactile Softness:** Elements feel approachable with soft radii, mimicking the physical comfort of a hotel environment.
+The visual style is a blend of **Modern Corporate** and **Minimalism**. It utilizes expansive whitespace and a nature-inspired palette to create a "breathable" interface. While the consumer-facing side may lean into romantic serifs, this partner portal prioritizes clarity and efficiency through structured layouts and refined sans-serif typography, maintaining luxury through subtle details rather than decorative excess.
 
 ## Colors
 
-The palette is anchored in **Olive Green (#6D7E63)** and **Warm Cream (#F8F5F1)**. This combination provides a premium, "heritage" aesthetic that differentiates the dashboard from standard SaaS blues.
+The palette is derived from an organic, earthy spectrum that signals growth and stability.
 
-- **Primary (Olive):** Used for primary actions, active navigation states, and success indicators.
-- **Secondary (Sage):** Used for hover states, secondary badges, and subtle UI accents.
-- **Tertiary (Terracotta):** Reserved for destructive actions and critical warnings, providing a warm but urgent contrast.
-- **Neutral (Cream/Beige):** The foundational background color. It is warmer than pure white, providing a sophisticated, paper-like quality.
-- **Sidebar (Charcoal):** A deep, desaturated green-black creates a strong structural anchor for the navigation, ensuring it feels distinct from the content area.
+- **Primary (Deep Olive):** Used for primary actions, active states, and key navigational elements. It provides the grounding "professional" weight to the UI.
+- **Secondary (Sage):** Employed for accents, success states, and illustrative backgrounds.
+- **Tertiary (Creamy Beige):** Used for container backgrounds, secondary buttons, and subtle grouping of information.
+- **Neutral (Off-white):** The primary canvas color, chosen to be softer on the eyes than pure white, enhancing the premium feel.
+- **Status Colors:** Use muted versions of standard status colors (e.g., a dusty terracotta for errors) to ensure they do not clash with the natural palette.
 
 ## Typography
 
-This system uses a **dual-font strategy** to balance character with legibility.
+Typography balances the geometric strength of **Montserrat** for headings with the contemporary precision of **Hanken Grotesk** for UI and body text. 
 
-- **Headlines (Newsreader):** A sophisticated serif used for page titles, section headers, and high-level summaries. It evokes the feeling of a premium guest directory or editorial publication.
-- **UI & Data (Inter):** A neutral, highly legible sans-serif used for all functional elements, table data, and form labels. It ensures that complex hotel metrics remain clear and accessible.
-
-**Usage Notes:**
-- Use `display-lg` exclusively for dashboard "Hero" stats (e.g., Total Revenue).
-- `label-md` should be used in ALL-CAPS for table headers and small metadata tags to enhance structural clarity.
-- Maintain a generous line-height for body text to ensure readability during data entry.
+- **Headlines:** Set in Montserrat with slightly tighter letter-spacing for a modern, confident look. Use `display-lg` sparingly for hero sections or onboarding welcome screens.
+- **Body:** Hanken Grotesk provides high legibility for data-heavy onboarding forms and documentation. 
+- **Labels:** Small labels and overlines should use a slightly increased letter-spacing and uppercase styling to provide clear hierarchy in complex forms.
 
 ## Layout & Spacing
 
-The design system utilizes a **Fixed Grid System** for desktop layouts to maintain a "contained" and organized professional feel.
+The design system utilizes a **12-column fluid grid** for desktop, transitioning to a **4-column grid** for mobile. 
 
-- **Grid:** 12-column layout with a 24px gutter.
-- **Margins:** 32px safe-area margins for desktop; 16px for mobile.
-- **Sidebar:** A fixed-width left navigation bar. On mobile, this transitions into a bottom-sheet or full-screen overlay drawer.
-- **Content Blocks:** Information is grouped into cards that follow the 8px spacing rhythm. Vertical spacing between logical sections (e.g., Header to Table) is consistently 32px or 48px.
+- **Generous Whitespace:** To maintain the "Luxurious" feel, vertical spacing between major sections (`stack-lg`) is prioritized to prevent the partner portal from feeling like a cluttered administrative tool.
+- **Alignment:** Content is typically centered within a max-width container for marketing-style pages, while dashboard views utilize a left-aligned sidebar navigation model with a fluid content area.
+- **Gutters:** Standardized 24px gutters ensure breathing room between card-based layouts.
 
 ## Elevation & Depth
 
-Hierarchy is achieved primarily through **Tonal Layering** and **Subtle Ambient Shadows**.
+Visual hierarchy is achieved through **Tonal Layers** supplemented by very soft **Ambient Shadows**.
 
-- **Surface Levels:** 
-  - **Level 0 (Background):** Neutral Cream (#F8F5F1).
-  - **Level 1 (Cards/Panels):** Pure White (#FFFFFF) or light Cream Surface (#F2EBE1).
-- **Shadows:** Avoid heavy dropshadows. Use "Elevated Softness"—a multi-layered shadow with 4% opacity and a high blur radius (16px to 24px) to make cards appear to float gently above the cream background.
-- **Outlines:** Use a 1px border (#E5E1DA) on all cards and input fields to maintain definition without relying on high-contrast shadows.
+- **Level 0 (Base):** The `neutral-off-white` background.
+- **Level 1 (Cards):** Pure white surfaces with a subtle 1px border in `tertiary` or an extremely diffused shadow (0px 4px 20px rgba(0,0,0,0.04)).
+- **Level 2 (Dropdowns/Modals):** High-elevation surfaces with more pronounced shadows to indicate they are floating above the workflow.
+- **Interaction:** Hover states on interactive cards should see a slight increase in shadow depth and a subtle upward shift (-2px) to provide tactile feedback.
 
 ## Shapes
 
-The shape language is **Soft and Approachable**. 
+The shape language is consistently **Rounded**, reflecting a friendly and modern hospitality vibe.
 
-- **Cards & Modals:** Use `rounded-lg` (16px) to create a modern, premium aesthetic.
-- **Buttons & Inputs:** Use `rounded` (8px) for a more structured, functional feel.
-- **Status Badges:** Use `rounded-full` (Pill-shaped) to distinguish them from interactive buttons.
-- **Avatar:** Always circular.
+- **Standard Radius:** 8px (0.5rem) is the default for input fields, buttons, and small components.
+- **Large Radius:** 16px (1rem) is used for main content cards and imagery to soften the overall appearance of the dashboard.
+- **Buttons:** Maintain the 8px radius; avoid fully pill-shaped buttons to keep the "Professional B2B" tone, unless used for secondary tags/chips.
 
 ## Components
 
-### Buttons
-- **Primary:** Solid Olive Green (#6D7E63) with white text. High-contrast, for main actions like "Save Room."
-- **Secondary:** Outlined with a 1px Olive Green border. Used for "Cancel" or "Edit."
-- **Destructive:** Solid Terracotta (#9B5235) with white text. Reserved for "Delete" or "Reject."
-
-### Cards
-- Cards must have a subtle 1px border (#E5E1DA) and a soft ambient shadow. 
-- Dashboard cards should include a small icon in the top right (24px, muted olive) to aid visual scanning.
-
-### Tables
-- **Header:** Background of #F2EBE1 with bold, all-caps Inter labels.
-- **Rows:** Alternating rows are not required; use subtle dividers instead. 
-- **States:** Hovering over a row should apply a light Sage (#A8BBA2) tint at 10% opacity.
-
-### Forms
-- Inputs utilize a light background (#FBFBFB) with an 8px radius.
-- Focus state is indicated by a 2px Olive Green border.
-- Floating labels or clear top-aligned labels are required for accessibility.
-
-### Sidebar
-- Background: Dark Charcoal (#2D312C).
-- Active Item: Olive Green background with a left-edge accent bar.
-- Text: Muted Sage-Grey (#D1D5D1) for inactive; Pure White for active.
-
-### Status Badges
-- Use desaturated, low-contrast variants of the status colors for the background with high-contrast text. (e.g., Success is light sage background with dark olive text).
+- **Buttons:** 
+    - *Primary:* Deep Olive background, white text, 8px radius. High-contrast and bold.
+    - *Secondary:* Transparent with Deep Olive border or Creamy Beige background.
+- **Input Fields:** 
+    - Use "Floating Label" style or clear top-aligned labels. 
+    - Backgrounds should be pure white to pop against the off-white page background. 
+    - 1px border in `tertiary`, changing to `primary` on focus.
+- **Cards:** 
+    - White background, 16px corner radius, subtle 1px border. 
+    - Used to group onboarding steps, property details, or analytics snippets.
+- **Onboarding Progress Bar:** 
+    - A thin, elegant tracker using Sage for completed steps and Deep Olive for the active state.
+- **Chips/Badges:** 
+    - Used for status (e.g., "Pending Approval," "Verified"). 
+    - Use low-saturation background tints of the status color with darker text for readability.
+- **Lists:**
+    - High-density lists should include subtle dividers in `tertiary` and generous horizontal padding (16px-24px).
