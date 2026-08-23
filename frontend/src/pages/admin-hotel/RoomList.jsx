@@ -2,9 +2,103 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
+
+const FACILITY_ICON_MAP = {
+  "AC": "ac_unit",
+  "Air Conditioning": "ac_unit",
+  "AC Area Umum": "ac_unit",
+  "TV": "tv",
+  "Smart TV": "tv",
+  "Television": "tv",
+  "Kamar mandi pribadi": "bathtub",
+  "Private Bathroom": "bathtub",
+  "Bathtub": "bathtub",
+  "Balkon": "balcony",
+  "Private Balcony": "balcony",
+  "Mini fridge": "kitchen",
+  "Mini Refrigerator": "kitchen",
+  "Kulkas Mini": "kitchen",
+  "Pengering Rambut": "lotion",
+  "Meja kerja": "desk",
+  "Work Desk": "desk",
+  "Lemari": "checkroom",
+  "Wardrobe": "checkroom",
+  "Closet": "checkroom",
+  "Lemari Pakaian": "checkroom",
+  "Air mineral": "water_drop",
+  "Mineral Water": "water_drop",
+  "Air Mineral": "water_drop",
+  "Water Heater": "water_drop",
+  "Shower": "shower",
+  "Toilet": "bathtub",
+  "Washtafel": "bathtub",
+  "Wi-Fi": "wifi",
+  "Wi-Fi Gratis": "wifi",
+  "Internet": "wifi",
+  "Kolam renang": "pool",
+  "Swimming Pool": "pool",
+  "Parkir": "local_parking",
+  "Parking": "local_parking",
+  "Restoran": "restaurant",
+  "Restaurant": "restaurant",
+  "Gym": "fitness_center",
+  "Fitness Center": "fitness_center",
+  "Pusat Kebugaran": "fitness_center",
+  "Spa": "hot_tub",
+  "Spa & Massage": "hot_tub",
+  "Resepsionis 24 jam": "concierge",
+  "Reception 24h": "concierge",
+  "Front Desk 24h": "concierge",
+  "Lift": "elevator",
+  "Elevator": "elevator",
+  "Laundry": "local_laundry_service",
+  "Laundry Service": "local_laundry_service",
+  "Safety Box": "lock",
+  "Brankas Kamar": "lock",
+  "Coffee Maker": "local_cafe",
+  "Bar & Lounge": "local_bar",
+  "Room Service": "room_service",
+  "Bed / Room": "bed",
+  "Tempat Tidur": "bed",
+  "Hotel General": "hotel",
+  "Peralatan Mandi Gratis": "bathtub",
+  "Free Toiletries": "bathtub",
+};
+
+const resolveFacilityIcon = (name) => {
+  if (!name) return "bed";
+  if (FACILITY_ICON_MAP[name]) return FACILITY_ICON_MAP[name];
+  const lower = name.toLowerCase();
+  if (lower.includes("ac") || lower.includes("air condition")) return "ac_unit";
+  if (lower.includes("tv") || lower.includes("televisi") || lower.includes("television")) return "tv";
+  if (lower.includes("mandi") || lower.includes("bath") || lower.includes("toilet") || lower.includes("kloset") || lower.includes("wash") || lower.includes("washtafel") || lower.includes("wastafel")) return "bathtub";
+  if (lower.includes("bathtub") || lower.includes("bak")) return "bathtub";
+  if (lower.includes("balkon") || lower.includes("teras") || lower.includes("balcony")) return "balcony";
+  if (lower.includes("kulkas") || lower.includes("fridge") || lower.includes("minibar") || lower.includes("refrigerator")) return "kitchen";
+  if (lower.includes("meja") || lower.includes("kerja") || lower.includes("desk")) return "desk";
+  if (lower.includes("lemari") || lower.includes("wardrobe") || lower.includes("closet")) return "checkroom";
+  if (lower.includes("air mineral") || lower.includes("mineral water") || lower.includes("drink") || lower.includes("botol") || lower.includes("water heater")) return "water_drop";
+  if (lower.includes("shower")) return "shower";
+  if (lower.includes("wifi") || lower.includes("internet")) return "wifi";
+  if (lower.includes("kolam") || lower.includes("pool") || lower.includes("renang")) return "pool";
+  if (lower.includes("parkir") || lower.includes("parking")) return "local_parking";
+  if (lower.includes("restoran") || lower.includes("makan") || lower.includes("restaurant")) return "restaurant";
+  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("kebugaran")) return "fitness_center";
+  if (lower.includes("spa") || lower.includes("massage") || lower.includes("wellness")) return "hot_tub";
+  if (lower.includes("resepsionis") || lower.includes("reception") || lower.includes("24") || lower.includes("front desk")) return "concierge";
+  if (lower.includes("lift") || lower.includes("elevator")) return "elevator";
+  if (lower.includes("laundry") || lower.includes("cuci")) return "local_laundry_service";
+  if (lower.includes("brankas") || lower.includes("safety box") || lower.includes("safe") || lower.includes("lock")) return "lock";
+  if (lower.includes("coffee") || lower.includes("kopi") || lower.includes("tea") || lower.includes("teh")) return "local_cafe";
+  if (lower.includes("bar") || lower.includes("lounge")) return "local_bar";
+  if (lower.includes("room service")) return "room_service";
+  if (lower.includes("bed") || lower.includes("tidur")) return "bed";
+  return "bed";
+};
 
 const normalizeRoom = (r) => {
   let photos = [];
@@ -89,7 +183,7 @@ export default function RoomList() {
     try {
       const [roomsRes, facilitiesRes] = await Promise.allSettled([
         api.get("/admin/rooms"),
-        api.get("/facilities"),
+        cachedGet("/facilities"),
       ]);
 
       if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {
@@ -98,9 +192,14 @@ export default function RoomList() {
         setRooms(Array.isArray(rawRooms) ? rawRooms.map(normalizeRoom) : []);
       }
       if (facilitiesRes.status === "fulfilled" && facilitiesRes.value?.data) {
-        const rawFac =
-          facilitiesRes.value.data.data || facilitiesRes.value.data || [];
-        setRoomFacilities(Array.isArray(rawFac) ? rawFac : []);
+        const cachedResult = facilitiesRes.value;
+        const rawFac = cachedResult?.success
+          ? cachedResult.data
+          : Array.isArray(cachedResult) ? cachedResult : [];
+        const filtered = Array.isArray(rawFac)
+          ? rawFac.filter((f) => f.category === "Room" || f.category === "Bathroom")
+          : [];
+        setRoomFacilities(filtered);
       }
     } catch (err) {
       console.error(err);
@@ -813,11 +912,14 @@ export default function RoomList() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0ede9] rounded-lg text-xs font-semibold text-[#2D312C] border border-[#E5E1DA]"
                     >
                       <span className="material-symbols-outlined text-[16px] text-[#506147]">
-                        {fac.icon || "star"}
+                        {resolveFacilityIcon(fac.name)}
                       </span>
                       {fac.name}
                     </span>
                   ))}
+                  {getFacilitiesForRoom(viewingRoom.facilityIds).length === 0 && (
+                    <span className="text-xs text-[#6B6E6A] italic">Tidak ada fasilitas kamar yang terdaftar.</span>
+                  )}
                 </div>
               </div>
 
@@ -990,6 +1092,11 @@ export default function RoomList() {
                   4. Room Facilities
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-[#E5E1DA] rounded-xl bg-[#fcf9f5]">
+                  {roomFacilities.length === 0 && (
+                    <div className="col-span-full py-4 text-center text-xs text-[#6B6E6A]">
+                      Memuat daftar fasilitas kamar...
+                    </div>
+                  )}
                   {roomFacilities.map((fac) => {
                     const isChecked = (editValues.facilityIds || []).includes(fac.id);
                     return (
@@ -1007,8 +1114,15 @@ export default function RoomList() {
                           onChange={() => handleEditFacilityToggle(fac.id)}
                           className="accent-[#506147]"
                         />
-                        <span className="material-symbols-outlined text-[16px]">{fac.icon || "star"}</span>
+                        <span className="material-symbols-outlined text-[16px] text-[#506147]">
+                          {resolveFacilityIcon(fac.name)}
+                        </span>
                         <span className="truncate">{fac.name}</span>
+                        {fac.category && (
+                          <span className="text-[8px] text-[#757870] ml-auto px-1 py-0.5 bg-[#E5E1DA] rounded-full">
+                            {fac.category === "Room" ? "R" : "B"}
+                          </span>
+                        )}
                       </label>
                     );
                   })}

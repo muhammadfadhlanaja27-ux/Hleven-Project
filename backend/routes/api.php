@@ -82,6 +82,7 @@ Route::prefix('v1')->group(function () {
         // --- Fasilitas (Admin/Super Admin) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
             Route::post('/facilities', [FacilityController::class, 'store']);
+            Route::put('/facilities/{id}', [FacilityController::class, 'update']);
             Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
         });
 

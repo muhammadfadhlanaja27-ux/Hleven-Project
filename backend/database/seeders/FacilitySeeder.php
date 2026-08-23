@@ -10,23 +10,33 @@ class FacilitySeeder extends Seeder
     public function run(): void
     {
         $facilities = [
-            // Hotel Facilities
+            // ===== Hotel Facilities =====
+            ['name' => 'Wi-Fi', 'category' => 'Hotel'],
             ['name' => 'Kolam Renang', 'category' => 'Hotel'],
-            ['name' => 'Wi-Fi Gratis', 'category' => 'Hotel'],
-            ['name' => 'Parkir Gratis', 'category' => 'Hotel'],
+            ['name' => 'Parkir', 'category' => 'Hotel'],
+            ['name' => 'Restoran', 'category' => 'Hotel'],
+            ['name' => 'Gym', 'category' => 'Hotel'],
+            ['name' => 'Spa', 'category' => 'Hotel'],
             ['name' => 'Resepsionis 24 Jam', 'category' => 'Hotel'],
-            ['name' => 'Pusat Kebugaran', 'category' => 'Hotel'],
-            
-            // Room Facilities
+            ['name' => 'Lift', 'category' => 'Hotel'],
+            ['name' => 'Laundry', 'category' => 'Hotel'],
+            ['name' => 'AC Area Umum', 'category' => 'Hotel'],
+
+            // ===== Room Facilities =====
             ['name' => 'AC', 'category' => 'Room'],
-            ['name' => 'TV LED 43 inch', 'category' => 'Room'],
-            ['name' => 'Brankas Kamar', 'category' => 'Room'],
-            ['name' => 'Pembuat Teh/Kopi', 'category' => 'Room'],
-            
-            // Bathroom Facilities
+            ['name' => 'TV', 'category' => 'Room'],
+            ['name' => 'Kamar Mandi Pribadi', 'category' => 'Room'],
+            ['name' => 'Bathtub', 'category' => 'Room'],
+            ['name' => 'Balkon', 'category' => 'Room'],
+            ['name' => 'Mini Fridge', 'category' => 'Room'],
+            ['name' => 'Hair Dryer', 'category' => 'Room'],
+            ['name' => 'Meja Kerja', 'category' => 'Room'],
+            ['name' => 'Lemari', 'category' => 'Room'],
+            ['name' => 'Air Mineral', 'category' => 'Room'],
+
+            // ===== Bathroom Facilities (tetap dipertahankan) =====
             ['name' => 'Water Heater', 'category' => 'Bathroom'],
             ['name' => 'Shower', 'category' => 'Bathroom'],
-            ['name' => 'Bathtub', 'category' => 'Bathroom'],
             ['name' => 'Peralatan Mandi Gratis', 'category' => 'Bathroom'],
         ];
 
