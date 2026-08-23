@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+import ApplicationStatus from "../../components/mitra/ApplicationStatus";
 
 const QR_CODE_PLACEHOLDER =
   "data:image/svg+xml;utf8," +
@@ -43,6 +44,10 @@ const UserProfile = () => {
 
   // Tab State
   const [activeTab, setActiveTab] = useState("personal"); // 'personal' | 'history'
+  // Navigation Tab State
+  const [activeTab, setActiveTab] = useState("partner"); // 'partner' | 'personal' | 'history'
+  const [partnerApplication, setPartnerApplication] = useState(null);
+  const [partnerLoading, setPartnerLoading] = useState(false);
 
   // Personal Info Form State
   const [firstName, setFirstName] = useState("");
@@ -121,6 +126,97 @@ const UserProfile = () => {
     }
   };
 
+    // Try fetching user bookings from API (cached short TTL)
+    const fetchUserBookings = async () => {
+      try {
+        const TTL_30DETIK = 30 * 1000;
+        const { data: responseData, fromCache } = await cachedGet(
+          "/user/bookings",
+          {},
+          false,
+          TTL_30DETIK
+        );
+        if (responseData && responseData.data && responseData.data.length > 0) {
+          setBookings(responseData.data);
+        }
+        if (fromCache) {
+          console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
+        }
+      } catch (err) {
+        // Keep default mock bookings on offline/API fail
+      }
+    };
+
+    fetchUserBookings();
+
+    // Fetch Partner Application status dari API (jika tersedia), fallback ke localStorage
+    const fetchPartnerStatus = async () => {
+      setPartnerLoading(true);
+      try {
+        // API YANG DIBUTUHKAN (BELUM TERSEDIA):
+        // GET /api/v1/user/partner-application
+        // Response: { success, data: { id, application_number, status, hotel_name, hotel_type, created_at, rejection_reason, revision_notes, ...semua field form } }
+        const res = await api.get("/user/partner-application");
+        const data = res.data?.data || res.data;
+        if (data && (data.id || data.application_number || data.status)) {
+          setPartnerApplication(data);
+        } else {
+          setPartnerApplication(null);
+        }
+      } catch (err) {
+        // Fallback: coba baca dari localStorage jika API belum ada
+        try {
+          const saved = localStorage.getItem("partner_app_submission");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            // Override status untuk simulasi keperluan testing (opsional, hapus jika API sudah ada):
+            // parsed.status = "needs_revision";
+            // parsed.revision_notes = "Mohon scan KTP diperjelas dan unggah dokumen SIUP yang masih berlaku.";
+            setPartnerApplication(parsed);
+          } else {
+            setPartnerApplication(null);
+          }
+        } catch (e) {
+          setPartnerApplication(null);
+        }
+      } finally {
+        setPartnerLoading(false);
+      }
+    };
+
+    fetchPartnerStatus();
+  }, [navigate]);
+
+  const handleFixRevision = () => {
+    // Preload data existing ke form pendaftaran
+    navigate("/mitra/daftar", {
+      state: {
+        prefill: {
+          hotel_name: partnerApplication?.hotel_name || "",
+          hotel_type: partnerApplication?.hotel_type || "",
+          hotel_description: partnerApplication?.hotel_description || "",
+          hotel_phone: partnerApplication?.hotel_phone || "",
+          hotel_email: partnerApplication?.hotel_email || "",
+          room_count: partnerApplication?.room_count || "",
+          address: partnerApplication?.address || "",
+          province: partnerApplication?.province || "",
+          city: partnerApplication?.city || "",
+          district: partnerApplication?.district || "",
+          postal_code: partnerApplication?.postal_code || "",
+          maps_url: partnerApplication?.maps_url || "",
+          owner_name: partnerApplication?.owner_name || "",
+          owner_email: partnerApplication?.owner_email || "",
+          owner_phone: partnerApplication?.owner_phone || "",
+          owner_id_number: partnerApplication?.owner_id_number || "",
+          bank_name: partnerApplication?.bank_name || "",
+          bank_account_number: partnerApplication?.bank_account_number || "",
+          bank_account_name: partnerApplication?.bank_account_name || "",
+        },
+      },
+    });
+  };
+
+  // Handle Avatar Change
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -439,6 +535,19 @@ const UserProfile = () => {
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
               <button
                 type="button"
+                onClick={() => setActiveTab("partner")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "partner"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
+              >
+                <span className="material-symbols-outlined text-xl">real_estate_agent</span>
+                Status Mitra Hotel
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab("personal")}
                 className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
                   activeTab === "personal"
@@ -476,6 +585,14 @@ const UserProfile = () => {
 
           {/* Main Area: Dynamic Tab Content */}
           <div className="lg:col-span-8 flex flex-col gap-8">
+
+            {activeTab === "partner" && (
+              <ApplicationStatus
+                application={partnerApplication}
+                loading={partnerLoading}
+                onFixRevision={handleFixRevision}
+              />
+            )}
             
             {activeTab === "personal" ? (
               <>
