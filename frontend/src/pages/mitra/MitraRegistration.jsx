@@ -192,28 +192,10 @@ const MitraRegistration = () => {
         }
       });
 
-      let responseData = null;
-      let useFallback = false;
-      try {
-        // API BELUM TERSEDIA - Catatan kebutuhan backend:
-        // POST /api/v1/partner-applications
-        // Request (multipart/form-data): semua field form + dokumen (doc_ktp, doc_legal, doc_support)
-        // Response: { success, data: { id, application_number, status, created_at, hotel_name } }
-        const res = await api.post("/partner-applications", payload, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        responseData = res.data?.data || res.data;
-      } catch (err) {
-        console.warn("API /partner-applications belum tersedia, pakai simulasi sukses.", err);
-        useFallback = true;
-        responseData = {
-          id: "SIM-" + Date.now(),
-          application_number: "HLVN-MIT-" + Math.floor(100000 + Math.random() * 900000),
-          hotel_name: form.hotel_name,
-          status: "pending",
-          created_at: new Date().toISOString(),
-        };
-      }
+      const res = await api.post("/partner-applications", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const responseData = res.data?.data || res.data;
 
       const savedData = {
         ...responseData,
@@ -223,7 +205,7 @@ const MitraRegistration = () => {
         localStorage.setItem("partner_app_submission", JSON.stringify(savedData));
       } catch (e) {}
 
-      toast.success(useFallback ? "Pengajuan berhasil dikirim (simulasi)." : "Pengajuan berhasil dikirim!");
+      toast.success("Pengajuan berhasil dikirim!");
       navigate("/mitra/sukses", { state: savedData, replace: true });
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Gagal mengirim pengajuan.";

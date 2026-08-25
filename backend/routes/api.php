@@ -103,6 +103,10 @@ Route::prefix('v1')->group(function () {
 
         // --- File Storage ---
         Route::post('/users/{id}/avatar', [FileStorageController::class, 'uploadAvatar']);
+
+        // --- Partner Application (User) ---
+        Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
+        Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
     });
 });
 
