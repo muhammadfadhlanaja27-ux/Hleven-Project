@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\Hotel;
 use App\Models\City;
+use App\Models\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -113,6 +114,13 @@ class PartnerApplicationService
                 'activity' => 'Approve Partner',
                 'description' => "Super Admin menyetujui partner {$application->hotel_name} (App No: {$application->application_number}).",
                 'ip_address' => request()->ip()
+            ]);
+
+            Notification::create([
+                'user_id' => $hotelAdmin->id,
+                'title' => 'Pengajuan Mitra Berhasil',
+                'message' => "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat.",
+                'type' => 'partner_approved',
             ]);
         });
     }
