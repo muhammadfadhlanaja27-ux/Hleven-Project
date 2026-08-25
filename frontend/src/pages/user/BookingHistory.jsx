@@ -38,71 +38,12 @@ const QR_CODE_PLACEHOLDER =
     </svg>
   `);
 
-const INITIAL_BOOKINGS = [
-  {
-    id: "HLVN-98234-AX",
-    booking_code: "HLVN-98234-AX",
-    hotel_id: 1,
-    hotel_name: "The Sanctuary at Ubud Resort",
-    room_name: "Executive Suite dengan Kolam Renang Pribadi",
-    image: null,
-    check_in: "Jumat, 15 Nov 2024",
-    check_out: "Minggu, 17 Nov 2024",
-    guest_name: "Eleanor Vance",
-    guest_email: "eleanor.vance@example.com",
-    price_per_night: 3500000,
-    nights: 2,
-    tax_and_fees: 1470000,
-    total_price: 8470000,
-    status: "Paid",
-    payment_method: "QRIS Instant",
-    is_refundable: true,
-  },
-  {
-    id: "HLVN-44102-BX",
-    booking_code: "HLVN-44102-BX",
-    hotel_id: 2,
-    hotel_name: "Maison H'Leven Luxury Heritage",
-    room_name: "Classic Balcony Suite",
-    image: null,
-    check_in: "Rabu, 05 Agt 2024",
-    check_out: "Sabtu, 08 Agt 2024",
-    guest_name: "Eleanor Vance",
-    guest_email: "eleanor.vance@example.com",
-    price_per_night: 2800000,
-    nights: 3,
-    tax_and_fees: 1764000,
-    total_price: 10164000,
-    status: "Checked Out",
-    payment_method: "BCA Virtual Account",
-    is_refundable: false,
-  },
-  {
-    id: "HLVN-11920-CX",
-    booking_code: "HLVN-11920-CX",
-    hotel_id: 3,
-    hotel_name: "Oasis Resort & Spa Bali",
-    room_name: "Water Villa Sunset View",
-    image: null,
-    check_in: "Senin, 20 Mei 2024",
-    check_out: "Senin, 27 Mei 2024",
-    guest_name: "Eleanor Vance",
-    guest_email: "eleanor.vance@example.com",
-    price_per_night: 4200000,
-    nights: 7,
-    tax_and_fees: 0,
-    total_price: 0,
-    status: "Cancelled",
-    payment_method: "Refunded",
-    is_refundable: true,
-  }
-];
-
 const BookingHistory = () => {
   const navigate = useNavigate();
 
   // Component States
-  const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("All"); // 'All' | 'Paid' | 'Checked Out' | 'Cancelled'
   const [sortBy, setSortBy] = useState("newest"); // 'newest' | 'oldest' | 'price_high'
   const [selectedBooking, setSelectedBooking] = useState(null); // For E-Ticket Modal
@@ -127,23 +68,26 @@ const BookingHistory = () => {
     fetchApiBookings();
   }, []);
 
-  const fetchApiBookings = async () => {
+  const fetchApiBookings = async (forceRefresh = false) => {
+    setBookingsLoading(true);
     try {
       const TTL_30DETIK = 30 * 1000;
       const { data: responseData, fromCache } = await cachedGet(
         "/user/bookings",
         {},
-        false,
+        forceRefresh,
         TTL_30DETIK
       );
-      if (responseData && responseData.data && responseData.data.length > 0) {
-        setBookings(responseData.data);
-      }
+      const result = responseData?.data || responseData || [];
+      setBookings(Array.isArray(result) ? result : []);
       if (fromCache) {
         console.debug("[Cache Hit] BookingHistory loaded from cache (30s TTL)");
       }
     } catch (err) {
-      // Fallback to INITIAL_BOOKINGS when API is unavailable
+      console.warn("Gagal memuat riwayat pemesanan:", err);
+      setBookings([]);
+    } finally {
+      setBookingsLoading(false);
     }
   };
 
@@ -278,72 +222,147 @@ const BookingHistory = () => {
     }
   };
 
+  const getInitialUser = () => {
+    try {
+      const saved = localStorage.getItem("user");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const initialUser = getInitialUser();
+  const initialRole = initialUser?.role || "user";
+  const isAdminOrSuperAdmin =
+    initialRole === "admin_hotel" || initialRole === "super_admin";
+
+  const getAvatarUrl = () => {
+    const a = initialUser?.avatar || initialUser?.avatar_url || initialUser?.avatarPreview;
+    if (!a) return null;
+    if (a.startsWith("http://") || a.startsWith("https://") || a.startsWith("data:") || a.startsWith("blob:")) return a;
+    return `http://localhost:8000/storage/${a.replace(/^\//, "")}`;
+  };
+
+  const fullName =
+    initialUser?.name ||
+    `${initialUser?.first_name || ""} ${initialUser?.last_name || ""}`.trim() ||
+    initialUser?.email ||
+    "User H'Leven";
+  const initialLetter = (fullName.charAt(0) || "U").toUpperCase();
+
+  const accountStatus = (() => {
+    const s = String(initialUser?.status || initialRole || "").toLowerCase();
+    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
+    if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
+    if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
+    if (["super_admin"].includes(s)) return { label: "Super Admin", color: "text-[#778873]" };
+    return { label: "Active", color: "text-[#778873]" };
+  })();
+
+  const userAvatar = getAvatarUrl();
+
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
-      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-16 flex flex-col md:flex-row gap-8 text-left">
-        
-        {/* Sidebar Navigation */}
-        <aside className="w-full md:w-64 flex-shrink-0">
-          <div className="sticky top-24">
-            <h1 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-6">
-              My Account
-            </h1>
-            <nav className="flex flex-col gap-2">
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-12 flex flex-col text-left">
+        <div className="mb-8">
+          <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
+            My Account
+          </h1>
+          <p className="font-body-md text-sm md:text-base text-[#444842]">
+            Kelola profil pribadi dan riwayat pemesanan kamar Anda.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <aside className="lg:col-span-4 flex flex-col gap-6">
+            <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden shadow-md">
+                {userAvatar ? (
+                  <img
+                    src={userAvatar}
+                    alt={fullName}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = "none"; }}
+                  />
+                ) : (
+                  <span className="font-headline-xl text-3xl font-bold">
+                    {initialLetter}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="font-headline-md text-xl font-bold text-[#2D332C] mb-1">
+                {fullName}
+              </h2>
+              <p className="text-[#778873] font-label-md text-xs font-semibold mb-5">
+                Anggota H&apos;Leven
+              </p>
+
+              <div className="w-full bg-[#DCCFC0]/40 h-px mb-5"></div>
+
+              <div className="w-full grid grid-cols-2 gap-3">
+                <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
+                  <span className="text-[#778873] font-headline-md text-xl font-bold mb-0.5">
+                    {bookings.length}
+                  </span>
+                  <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
+                    Total Pesanan
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
+                  <span className={`font-headline-md text-xl font-bold mb-0.5 ${accountStatus.color}`}>
+                    {accountStatus.label}
+                  </span>
+                  <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
+                    Status Akun
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
+              {!isAdminOrSuperAdmin && (
+                <Link
+                  to="/profile"
+                  state={{ defaultTab: "partner" }}
+                  className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    real_estate_agent
+                  </span>
+                  Status Mitra Hotel
+                </Link>
+              )}
+
               <Link
                 to="/profile"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#444842] hover:bg-[#DCCFC0]/30 hover:text-[#778873] transition-colors group font-label-md text-sm font-semibold"
+                state={{ defaultTab: "personal" }}
+                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
               >
-                <span className="material-symbols-outlined text-[#747871] group-hover:text-[#778873] transition-colors">
-                  person_outline
-                </span>
-                Personal Information
+                <span className="material-symbols-outlined text-xl">person_outline</span>
+                Informasi Pribadi
               </Link>
 
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#DCCFC0]/40 text-[#778873] border-l-4 border-[#778873] shadow-xs font-label-md text-sm font-bold">
-                <span className="material-symbols-outlined text-[#778873]">history</span>
-                Booking History
+              <div
+                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left bg-[#778873]/10 text-[#778873] border-[#778873]"
+              >
+                <span className="material-symbols-outlined text-xl">history</span>
+                Riwayat Pemesanan
               </div>
 
-              <a
-                href="#payment"
-                onClick={(e) => { e.preventDefault(); alert("Fitur Payment Methods tersimpan."); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#444842] hover:bg-[#DCCFC0]/30 hover:text-[#778873] transition-colors group font-label-md text-sm font-semibold"
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-6 py-4 text-[#ba1a1a] hover:bg-[#ffdad6]/30 font-label-md text-sm font-semibold transition-colors border-l-4 border-transparent mt-2 border-t border-[#DCCFC0]/30 text-left cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[#747871] group-hover:text-[#778873] transition-colors">
-                  credit_card
-                </span>
-                Payment Methods
-              </a>
-
-              <a
-                href="#preferences"
-                onClick={(e) => { e.preventDefault(); alert("Fitur Preferences tersimpan."); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#444842] hover:bg-[#DCCFC0]/30 hover:text-[#778873] transition-colors group font-label-md text-sm font-semibold"
-              >
-                <span className="material-symbols-outlined text-[#747871] group-hover:text-[#778873] transition-colors">
-                  tune
-                </span>
-                Preferences
-              </a>
-
-              <div className="mt-4 pt-4 border-t border-[#DCCFC0]/50">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[#ba1a1a] hover:bg-[#ffdad6]/20 transition-colors group font-label-md text-sm font-semibold text-left cursor-pointer"
-                >
-                  <span className="material-symbols-outlined group-hover:text-[#ba1a1a] transition-colors">
-                    logout
-                  </span>
-                  Sign Out
-                </button>
-              </div>
+                <span className="material-symbols-outlined text-xl">logout</span>
+                Keluar (Sign Out)
+              </button>
             </nav>
-          </div>
-        </aside>
+          </aside>
 
-        {/* Main Content Area */}
-        <section className="flex-grow flex flex-col gap-6">
+          <div className="lg:col-span-8 flex flex-col gap-8">
+            <section className="flex-grow flex flex-col gap-6">
           
           {/* Filters & Sort Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
@@ -382,7 +401,28 @@ const BookingHistory = () => {
 
           {/* Bookings List */}
           <div className="flex flex-col gap-6">
-            {filteredBookings.length === 0 ? (
+            {bookingsLoading ? (
+              <>
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-[#DCCFC0]/50 overflow-hidden shadow-xs flex flex-col sm:flex-row animate-pulse"
+                  >
+                    <div className="sm:w-1/3 h-48 sm:h-auto min-h-[180px] bg-[#e8e2d9]"></div>
+                    <div className="p-6 flex-grow flex flex-col justify-between gap-4">
+                      <div className="h-5 w-1/3 bg-[#e8e2d9] rounded mb-3"></div>
+                      <div className="h-6 w-2/3 bg-[#e8e2d9] rounded mb-2"></div>
+                      <div className="h-4 w-1/2 bg-[#e8e2d9] rounded mb-4"></div>
+                      <div className="h-16 w-full bg-[#faf3ea] rounded-xl mb-4"></div>
+                      <div className="flex justify-end gap-3">
+                        <div className="h-8 w-28 bg-[#e8e2d9] rounded-xl"></div>
+                        <div className="h-8 w-32 bg-[#e8e2d9] rounded-xl"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : filteredBookings.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-[#DCCFC0]/40">
                 <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">
                   event_busy
@@ -548,7 +588,9 @@ const BookingHistory = () => {
               ))
             )}
           </div>
-        </section>
+            </section>
+          </div>
+        </div>
       </main>
 
       {/* MODAL REFUND / CANCEL (Phase 1) */}
