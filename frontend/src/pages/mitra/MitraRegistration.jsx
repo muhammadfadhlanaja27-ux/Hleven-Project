@@ -719,7 +719,7 @@ const MitraRegistration = () => {
             onClick={saveExit}
             className="text-[#444842] hover:text-[#50604d] transition-colors flex items-center gap-2"
           >
-            <span className="font-label-sm text-[11px] md:text-xs font-bold tracking-wider hidden sm:inline">Simpan &amp; Keluar</span>
+            <span className="font-label-sm text-[11px] md:text-xs font-bold tracking-wider hidden sm:inline">Keluar</span>
             <span className="material-symbols-outlined text-[20px]">exit_to_app</span>
           </button>
         </div>

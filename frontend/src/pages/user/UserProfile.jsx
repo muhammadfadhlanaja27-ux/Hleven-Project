@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
@@ -41,8 +41,36 @@ const QR_CODE_PLACEHOLDER =
 
 const UserProfile = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const defaultTabFromRoute = location.state?.defaultTab;
 
-  const [activeTab, setActiveTab] = useState("partner");
+  // Parse initial user role SEKALI saat mount (sebelum useState init)
+  // untuk menentukan default tab dan visibilitas fitur mitra
+  const getInitialUser = () => {
+    try {
+      const saved = localStorage.getItem("user");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const initialUser = getInitialUser();
+  const initialRole = initialUser?.role || "user";
+  const isAdminOrSuperAdmin =
+    initialRole === "admin_hotel" || initialRole === "super_admin";
+
+  // Default tab: jika admin hotel/super admin, default ke "personal"
+  // (karena admin tidak perlu daftar mitra), user biasa tetap ke "partner"
+  const [activeTab, setActiveTab] = useState(() => {
+    if (defaultTabFromRoute) {
+      if (isAdminOrSuperAdmin && defaultTabFromRoute === "partner") return "personal";
+      if (["personal", "history", "partner"].includes(defaultTabFromRoute)) {
+        return defaultTabFromRoute;
+      }
+    }
+    return isAdminOrSuperAdmin ? "personal" : "partner";
+  });
+  const [currentUserRole, setCurrentUserRole] = useState(initialRole);
   const [partnerApplication, setPartnerApplication] = useState(null);
   const [partnerLoading, setPartnerLoading] = useState(false);
 
@@ -85,14 +113,14 @@ const UserProfile = () => {
         false,
         TTL_30DETIK
       );
-      if (responseData && responseData.data && responseData.data.length > 0) {
-        setBookings(responseData.data);
-      }
+      const result = responseData?.data || responseData || [];
+      setBookings(Array.isArray(result) ? result : []);
       if (fromCache) {
         console.debug("[Cache Hit] UserProfile bookings loaded from cache (30s TTL)");
       }
     } catch (err) {
       console.warn("Gagal memuat booking history dari API.", err);
+      setBookings([]);
     }
   };
 
@@ -129,11 +157,21 @@ const UserProfile = () => {
       try {
         const u = JSON.parse(savedUser);
         const nameParts = (u.name || "").split(" ");
+        const role = u.role || "user";
 
+        setCurrentUserRole(role);
         setFirstName(u.first_name || nameParts[0] || "");
         setLastName(u.last_name || nameParts.slice(1).join(" ") || "");
         setEmail(u.email || "");
         setPhone(u.phone || "");
+
+        // Jika role adalah admin_hotel/super_admin → paksa activeTab ke "personal"
+        // (fitur daftar mitra tidak tersedia untuk admin)
+        const isAdmin =
+          role === "admin_hotel" || role === "super_admin";
+        if (isAdmin) {
+          setActiveTab((prev) => (prev === "partner" ? "personal" : prev));
+        }
 
         const avatarPath = u.avatar || u.avatarPreview || u.avatar_url;
         if (avatarPath) {
@@ -152,8 +190,19 @@ const UserProfile = () => {
     }
 
     fetchUserBookings();
-    fetchPartnerStatus();
-  }, [navigate]);
+
+    // Hanya fetch status pendaftaran mitra jika user adalah user biasa (bukan admin)
+    // Admin hotel/super admin SUDAH menjadi bagian dari operasional hotel,
+    // sehingga tidak perlu (dan tidak bisa) mendaftar sebagai mitra lagi.
+    if (
+      currentUserRole !== "admin_hotel" &&
+      currentUserRole !== "super_admin"
+    ) {
+      fetchPartnerStatus();
+    } else {
+      setPartnerApplication(null);
+    }
+  }, [navigate, currentUserRole]);
 
   const handleFixRevision = () => {
     // Preload data existing ke form pendaftaran
@@ -406,6 +455,16 @@ const UserProfile = () => {
   };
 
   const fullNameDisplay = `${firstName} ${lastName}`.trim() || "User";
+  const accountStatus = useMemo(() => {
+    const rawStatus = initialUser?.status || currentUserRole || null;
+    if (!rawStatus) return "Active";
+    const s = String(rawStatus).toLowerCase();
+    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return "Nonaktif";
+    if (["pending", "waiting", "review"].includes(s)) return "Menunggu";
+    if (["admin_hotel"].includes(s)) return "Admin Hotel";
+    if (["super_admin"].includes(s)) return "Super Admin";
+    return "Active";
+  }, [initialUser, currentUserRole]);
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
@@ -491,8 +550,16 @@ const UserProfile = () => {
                 </div>
 
                 <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
-                  <span className="text-[#778873] font-headline-md text-xl font-bold mb-0.5">
-                    Active
+                  <span
+                    className={`font-headline-md text-xl font-bold mb-0.5 ${
+                      accountStatus === "Nonaktif"
+                        ? "text-[#ba1a1a]"
+                        : accountStatus === "Menunggu"
+                        ? "text-[#9B5235]"
+                        : "text-[#778873]"
+                    }`}
+                  >
+                    {accountStatus}
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
                     Status Akun
@@ -503,18 +570,27 @@ const UserProfile = () => {
 
             {/* Navigation Menu */}
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab("partner")}
-                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
-                  activeTab === "partner"
-                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
-                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
-                }`}
-              >
-                <span className="material-symbols-outlined text-xl">real_estate_agent</span>
-                Status Mitra Hotel
-              </button>
+              {/* Fitur "Daftar / Status Mitra Hotel" HANYA ditampilkan untuk user biasa (role user).
+                  Admin Hotel (role admin_hotel) dan Super Admin (role super_admin) SUDAH menjadi
+                  bagian dari operasional hotel, sehingga tidak boleh (dan tidak perlu) mendaftar
+                  sebagai mitra hotel lagi. Ketika role adalah admin, button ini di-hidden. */}
+              {currentUserRole !== "admin_hotel" &&
+                currentUserRole !== "super_admin" && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("partner")}
+                    className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                      activeTab === "partner"
+                        ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                        : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-xl">
+                      real_estate_agent
+                    </span>
+                    Status Mitra Hotel
+                  </button>
+                )}
 
               <button
                 type="button"
@@ -556,13 +632,17 @@ const UserProfile = () => {
           {/* Main Area: Dynamic Tab Content */}
           <div className="lg:col-span-8 flex flex-col gap-8">
 
-            {activeTab === "partner" && (
-              <ApplicationStatus
-                application={partnerApplication}
-                loading={partnerLoading}
-                onFixRevision={handleFixRevision}
-              />
-            )}
+            {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
+                Untuk admin_hotel / super_admin — fitur ini tidak tersedia. */}
+            {currentUserRole !== "admin_hotel" &&
+              currentUserRole !== "super_admin" &&
+              activeTab === "partner" && (
+                <ApplicationStatus
+                  application={partnerApplication}
+                  loading={partnerLoading}
+                  onFixRevision={handleFixRevision}
+                />
+              )}
             
             {activeTab === "personal" && (
               <>

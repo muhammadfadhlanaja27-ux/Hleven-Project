@@ -1,34 +1,41 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
-/**
- * SuperAdminHeader – top navigation bar for Super Admin layout.
- * Height: 72px (as per design). Includes a hamburger button for mobile that
- * triggers the sidebar toggle via the onMenuClick callback.
- */
 const SuperAdminHeader = ({ onMenuClick }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Get user data from localStorage for avatar/name
-  let userName = "Super Admin";
-  try {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.name) {
-      userName = user.name;
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        setCurrentUser(JSON.parse(userStr));
+      }
+    } catch (e) {
+      console.error("Failed to parse user from localStorage", e);
     }
-  } catch (e) {
-    // fallback
-  }
+  }, [location]);
+
+  const getPageTitle = () => {
+    const pathname = location.pathname;
+    if (pathname.includes("/users")) return "Manajemen User";
+    if (pathname.includes("/hotels")) return "Manajemen Hotel";
+    if (pathname.includes("/facilities")) return "Manajemen Fasilitas";
+    if (pathname.includes("/master")) return "Master Data";
+    if (pathname.includes("/bookings")) return "Manajemen Pesanan";
+    if (pathname.includes("/reviews")) return "Manajemen Ulasan";
+    if (pathname.includes("/transactions")) return "Transaksi";
+    if (pathname.includes("/reports")) return "Laporan";
+    if (pathname.includes("/profile")) return "Profile";
+    return "Dashboard Overview";
+  };
 
   return (
-    <header
-      className="flex items-center justify-between shrink-0 bg-[#F9F6F1] border-b border-[#E5E0D8] px-6 sticky top-0 z-10 w-full font-hanken"
-      style={{ height: "72px" }}
-    >
-      <div className="flex items-center gap-4">
-        {/* Mobile menu button */}
+    <header className="bg-[#fcf9f5] h-16 border-b border-[#E5E1DA] flex justify-between items-center px-6 sm:px-8 z-40 shrink-0 font-['Hanken_Grotesk',sans-serif]">
+      <div className="flex items-center gap-2">
         <button
-          className="lg:hidden text-[#191c1b] hover:text-[#4f604f] transition-colors p-1"
+          className="lg:hidden text-[#2D312C] hover:text-[#506147] transition-colors p-1 mr-1"
           aria-label="Open navigation menu"
           onClick={onMenuClick}
         >
@@ -37,34 +44,49 @@ const SuperAdminHeader = ({ onMenuClick }) => {
           </span>
         </button>
 
-        {/* Title – hidden on mobile */}
-        <span className="font-newsreader text-[20px] font-medium leading-[1.4] text-[#191c1b] tracking-wider hidden lg:block font-['Newsreader',serif]">
-          H'Leven Super Admin
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-1.5 mr-3 pl-2 pr-3 h-9 rounded-lg text-[#506147] hover:bg-[#E4EBE0] hover:text-[#4A5D43] transition-colors border border-transparent hover:border-[#506147]/20 focus:outline-none"
+          title="Kembali ke halaman utama"
+        >
+          <span className="material-symbols-outlined text-[20px] leading-none">
+            arrow_back
+          </span>
+          <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">
+            Homepage
+          </span>
+        </button>
+
+        <span className="text-[#6B6E6A] text-xs font-semibold uppercase tracking-wider">
+          Super Admin Portal
+        </span>
+        <span className="text-[#c4c8be]">/</span>
+        <span className="text-[#2D312C] text-sm font-semibold">
+          {getPageTitle()}
         </span>
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Action Button */}
-        <button
-          onClick={() => navigate("/super-admin/dashboard")}
-          className="flex items-center gap-2 bg-[#768875] text-[#ffffff] px-4 py-2 rounded-lg font-hanken text-[14px] font-semibold tracking-[0.01em] leading-[1] font-['Hanken_Grotesk',sans-serif] hover:opacity-90 transition-opacity active:scale-95 duration-150"
+        <Link
+          to="/super-admin/profile"
+          className="flex items-center gap-3 pl-3 border-l border-[#E5E1DA] hover:opacity-80 transition-opacity"
         >
-          Admin Portal
-        </button>
-
-        {/* User avatar button -> links to profile */}
-        <button
-          type="button"
-          onClick={() => navigate("/super-admin/profile")}
-          title={`Profil ${userName} (Klik untuk Pengaturan Profil)`}
-          className="w-10 h-10 rounded-full bg-[#edeeec] flex items-center justify-center hover:bg-[#e7e8e7] hover:ring-2 hover:ring-[#768875] transition-all overflow-hidden border border-[#E5E0D8] cursor-pointer"
-        >
-          <img
-            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f604f&color=fff`}
-            alt={userName}
-            className="w-full h-full object-cover"
-          />
-        </button>
+          <div className="w-8 h-8 rounded-full bg-[#F2EBE1] border border-[#E5E1DA] text-[#506147] font-semibold text-xs flex items-center justify-center shadow-sm uppercase overflow-hidden">
+            {currentUser?.avatar ? (
+              <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              currentUser?.name ? currentUser.name.slice(0, 2) : "SA"
+            )}
+          </div>
+          <div className="hidden sm:block text-left">
+            <p className="text-xs font-semibold text-[#2D312C] leading-none">
+              {currentUser?.name || "Super Admin"}
+            </p>
+            <p className="text-[10px] text-[#6B6E6A] leading-tight mt-0.5">
+              {currentUser?.email || "superadmin@hleven.com"}
+            </p>
+          </div>
+        </Link>
       </div>
     </header>
   );
