@@ -15,6 +15,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class BookingController extends Controller
 {
@@ -54,11 +55,11 @@ class BookingController extends Controller
         ]);
     }
 
-    // Mengubah status booking & Mengembalikan stok jika dibatalkan/expired
+    // Mengubah status booking & Mengembalikan stok jika dibatalkan/expired/refunded
     public function updateStatus(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:pending,unpaid,paid,checked_in,checked_out,cancelled,expired,refunded'
+            'status' => 'required|in:pending,unpaid,paid,checked_in,checked_out,cancelled,expired,refunded,refund_pending'
         ]);
 
         if ($validator->fails()) {
@@ -77,9 +78,9 @@ class BookingController extends Controller
         DB::beginTransaction();
         try {
             $cancelStatuses = ['cancelled', 'expired', 'refunded'];
-            $activeStatuses = ['pending', 'unpaid', 'paid', 'confirmed', 'checked_in'];
+            $activeStatuses = ['pending', 'unpaid', 'paid', 'confirmed', 'checked_in', 'refund_pending'];
 
-            // Jika status berubah dari aktif menjadi batal/expired, kembalikan stok
+            // Jika status berubah dari aktif menjadi batal/expired/refunded, kembalikan stok
             if (in_array($newStatus, $cancelStatuses) && in_array($oldStatus, $activeStatuses)) {
                 $checkIn  = Carbon::parse($booking->check_in);
                 $checkOut = Carbon::parse($booking->check_out);
@@ -124,7 +125,7 @@ class BookingController extends Controller
         }
     }
 
-    // Pembatalan booking langsung oleh user
+    // Pembatalan booking atau Pengajuan Refund oleh user
     public function cancelBooking(Request $request, $id)
     {
         $user = $request->user();
@@ -136,12 +137,83 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
-        if (!in_array($booking->status, ['unpaid', 'pending'])) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan'], 400);
+        // Jika belum dibayar, langsung batalkan & kembalikan stok
+        if (in_array($booking->status, ['unpaid', 'pending'])) {
+            $request->merge(['status' => 'cancelled']);
+            return $this->updateStatus($request, $booking->id);
+        } 
+        // Jika sudah dibayar, ubah ke status pengajuan refund (stok belum dikembalikan sampai disetujui admin)
+        elseif (in_array($booking->status, ['paid', 'confirmed'])) {
+            $booking->update(['status' => 'refund_pending']);
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
+                'data'    => $booking
+            ]);
         }
 
-        $request->merge(['status' => 'cancelled']);
-        return $this->updateStatus($request, $booking->id);
+        return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan atau sedang dalam proses refund'], 400);
+    }
+
+    // Persetujuan atau Penolakan Refund oleh Admin
+    public function handleRefundApproval(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:approve,reject',
+            'reason' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = Booking::find($id);
+
+        if (!$booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        if ($booking->status !== 'refund_pending') {
+            return response()->json(['status' => 'error', 'message' => 'Pesanan ini tidak sedang dalam pengajuan refund'], 400);
+        }
+
+        if ($request->action === 'approve') {
+            // Menyetujui refund -> pemicu pengembalian stok otomatis di updateStatus
+            $request->merge(['status' => 'refunded']);
+            return $this->updateStatus($request, $booking->id);
+        } else {
+            // Menolak refund -> kembalikan status ke 'paid'
+            $booking->update(['status' => 'paid']);
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Pengajuan refund ditolak. Status pesanan kembali menjadi Paid.',
+                'data'    => $booking
+            ]);
+        }
+    }
+
+    // Download E-Tiket PDF untuk User
+    public function downloadETicket(Request $request, $id)
+    {
+        $booking = Booking::with(['hotel', 'bookingRooms.roomType', 'guests', 'user'])
+            ->where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (!$booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        $validStatuses = ['paid', 'confirmed', 'checked_in', 'checked_out'];
+        if (!in_array(strtolower($booking->status), $validStatuses)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'E-Tiket hanya tersedia untuk pemesanan yang telah lunas. Status saat ini: ' . $booking->status
+            ], 400);
+        }
+
+        $pdf = Pdf::loadView('pdf.e-ticket', compact('booking'));
+        return $pdf->download("E-Ticket-{$booking->booking_code}.pdf");
     }
 
     // Menampilkan daftar booking milik user yang sedang login
@@ -211,7 +283,7 @@ class BookingController extends Controller
         // --- LAYER 1: Pengecekan Bentrok Tanggal (Overlapping) pada Tabel Booking ---
         $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
             ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
-                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed'])
+                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
                     ->where('check_in', '<', $checkOutStr)
                     ->where('check_out', '>', $checkInStr);
             })
@@ -314,7 +386,7 @@ class BookingController extends Controller
                     RoomAvailability::create([
                         'room_type_id'    => $roomType->id,
                         'date'            => $dateStr,
-                        'available_stock' => $roomType->stock, // Sudah ter-decrement di atas
+                        'available_stock' => $roomType->stock,
                         'booked_room'     => $request->qty,
                     ]);
                 }
@@ -381,7 +453,7 @@ class BookingController extends Controller
             ->filter(function ($r) use ($checkInStr, $checkOutStr) {
                 $booked = BookingRoom::where('room_type_id', $r->id)
                     ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
-                        $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed'])
+                        $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
                           ->where('check_in', '<', $checkOutStr)
                           ->where('check_out', '>', $checkInStr);
                     })->sum('qty');
@@ -410,7 +482,7 @@ class BookingController extends Controller
             ->filter(function ($r) use ($checkInStr, $checkOutStr) {
                 $booked = BookingRoom::where('room_type_id', $r->id)
                     ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
-                        $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed'])
+                        $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
                           ->where('check_in', '<', $checkOutStr)
                           ->where('check_out', '>', $checkInStr);
                     })->sum('qty');
@@ -422,4 +494,4 @@ class BookingController extends Controller
             'rooms' => $otherHotelRooms->values()
         ];
     }
-}   
+}

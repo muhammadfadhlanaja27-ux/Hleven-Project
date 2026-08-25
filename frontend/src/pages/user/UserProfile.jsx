@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+import { QRCodeSVG } from "qrcode.react";
 import ApplicationStatus from "../../components/mitra/ApplicationStatus";
 
 const QR_CODE_PLACEHOLDER =
@@ -352,6 +353,31 @@ const UserProfile = () => {
       toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
     } finally {
       setIsSubmittingCancel(false);
+    }
+  };
+
+  // Unduh Berkas E-Tiket PDF
+  const handleDownloadPdf = async (bookingId, bookingCode) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:8000/api/v1/user/bookings/${bookingId}/e-ticket`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Gagal mengunduh tiket");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `E-Ticket-${bookingCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      toast.error("Gagal mengunduh E-Tiket PDF.");
     }
   };
 
@@ -1064,16 +1090,30 @@ const UserProfile = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col items-center justify-center border-t md:border-t-0 md:border-r border-[#DCCFC0]/60 pt-6 md:pt-0 md:pr-8 text-center">
-                  <div className="bg-[#FDF6ED] p-4 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm">
-                    <img
-                      src={QR_CODE_PLACEHOLDER}
-                      alt="QR Code Tiket"
-                      className="w-44 h-44 object-contain mix-blend-multiply"
+                  
+                  {/* GENERATED DINAMIS QR CODE */}
+                  <div className="bg-white p-3 border-2 border-[#778873] rounded-2xl mb-4 shadow-xs inline-block">
+                    <QRCodeSVG
+                      value={selectedBooking.booking_code || String(selectedBooking.id)}
+                      size={170}
+                      level="H"
+                      includeMargin={true}
                     />
                   </div>
-                  <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px]">
+
+                  <p className="font-body-md text-xs text-[#444842] mb-4 max-w-[240px]">
                     Tunjukkan QR Code ini di resepsionis saat check-in.
                   </p>
+                  
+                  {/* TOMBOL UNDUH E-TIKET PDF */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code || selectedBooking.id)}
+                    className="px-6 py-2.5 bg-[#778873] text-white font-label-md text-xs font-semibold rounded-xl hover:bg-[#50604d] transition-colors flex items-center justify-center gap-2 w-full cursor-pointer shadow-xs"
+                  >
+                    <span className="material-symbols-outlined text-base">download</span>
+                    Unduh Berkas PDF
+                  </button>
                 </div>
 
                 <div className="flex flex-col gap-6">
