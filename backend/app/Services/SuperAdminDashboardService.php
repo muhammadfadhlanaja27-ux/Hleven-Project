@@ -32,7 +32,7 @@ class SuperAdminDashboardService
                 'active_bookings' => Booking::whereIn('status', ['Pending', 'Paid', 'Checked In'])->count(),
                 'today_revenue' => (float) $todayRevenue,
                 'pending_refunds' => Refund::where('status', 'Pending')->count(),
-                'pending_partner_applications' => PartnerApplication::where('status', 'Pending')->count(),
+                'pending_partner_applications' => PartnerApplication::where('status', 'pending')->count(),
             ];
         });
     }
@@ -148,9 +148,9 @@ class SuperAdminDashboardService
     public function getPartnerStats(): array
     {
         return [
-            'pending' => PartnerApplication::where('status', 'Pending')->count(),
-            'approved' => PartnerApplication::where('status', 'Approved')->count(),
-            'rejected' => PartnerApplication::where('status', 'Rejected')->count(),
+            'pending' => PartnerApplication::where('status', 'pending')->count(),
+            'approved' => PartnerApplication::where('status', 'approved')->count(),
+            'rejected' => PartnerApplication::where('status', 'rejected')->count(),
         ];
     }
 
