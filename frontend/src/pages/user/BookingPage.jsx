@@ -57,12 +57,19 @@ const BookingPage = () => {
     return Math.max(1, Math.ceil(adults / capacity));
   }, [adults, room]);
 
+  // Stok fisik maksimum ketersediaan kamar
+  const maxAvailableStock = useMemo(() => {
+    return Math.max(1, room?.stock ?? 10);
+  }, [room]);
+
   // Sesuaikan roomQty jika jumlah tamu dewasa bertambah melebihi kapasitas saat ini
   useEffect(() => {
     if (roomQty < minRequiredRooms) {
       setRoomQty(minRequiredRooms);
+    } else if (roomQty > maxAvailableStock) {
+      setRoomQty(maxAvailableStock);
     }
-  }, [minRequiredRooms, roomQty]);
+  }, [minRequiredRooms, maxAvailableStock, roomQty]);
 
   // Autofill user info from localStorage if logged in
   useEffect(() => {
@@ -126,6 +133,7 @@ const BookingPage = () => {
               price: matchedRoomType.weekday_price,
               weekday_price: matchedRoomType.weekday_price,
               weekend_price: matchedRoomType.weekend_price,
+              stock: matchedRoomType.stock ?? 10,
               capacity: `${matchedRoomType.capacity_adult || 2} Dewasa, ${matchedRoomType.capacity_child || 0} Anak`,
               capacity_adult: matchedRoomType.capacity_adult || 2,
               capacity_child: matchedRoomType.capacity_child || 0,
@@ -409,15 +417,15 @@ const BookingPage = () => {
                       Jumlah Kamar
                     </span>
                     <span className="font-label-sm text-xs text-[#778873]">
-                      Minimal {minRequiredRooms} kamar untuk {adults} dewasa
+                      Minimal {minRequiredRooms} kamar untuk {adults} dewasa (Tersedia: {maxAvailableStock})
                     </span>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      disabled={roomQty <= minRequiredRooms}
-                      onClick={() => setRoomQty((prev) => Math.max(minRequiredRooms, prev - 1))}
+                      disabled={Number(roomQty) <= minRequiredRooms}
+                      onClick={() => setRoomQty((prev) => Math.max(minRequiredRooms, Number(prev) - 1))}
                       className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       -
@@ -427,8 +435,9 @@ const BookingPage = () => {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setRoomQty((prev) => prev + 1)}
-                      className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors cursor-pointer"
+                      disabled={Number(roomQty) >= maxAvailableStock}
+                      onClick={() => setRoomQty((prev) => Math.min(maxAvailableStock, Number(prev) + 1))}
+                      className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       +
                     </button>
