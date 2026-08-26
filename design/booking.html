@@ -1,0 +1,484 @@
+<!DOCTYPE html><html lang="id" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Pemesanan &amp; Pembayaran - H'Leven</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Material+Symbols+Outlined:wght,FILL,GRAD,opsz@100..700,0..1,-50..200,20..48&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&amp;family=Libre+Caslon+Text:wght@100..900&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Midtrans style modal transition */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms;
+        }
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 300ms, transform 300ms;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#d5e8cf",
+                        "status-success": "#4F6F52",
+                        "on-error": "#ffffff",
+                        "text-main": "#2D332C",
+                        "background": "#fff8f0",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#4c6546",
+                        "inverse-on-surface": "#f7f0e7",
+                        "tertiary-fixed-dim": "#d1c5b6",
+                        "forest-green": "#778873",
+                        "surface-container": "#f4ede4",
+                        "tertiary-container": "#7d7366",
+                        "primary-fixed-dim": "#baccb4",
+                        "surface-tint": "#52634f",
+                        "surface-container-highest": "#e8e2d9",
+                        "sage-green": "#A1BC98",
+                        "surface-bright": "#fff8f0",
+                        "on-background": "#1e1b16",
+                        "primary-container": "#687965",
+                        "on-tertiary-fixed-variant": "#4e453a",
+                        "on-primary-container": "#f7fff1",
+                        "on-primary-fixed": "#111f10",
+                        "primary": "#50604d",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-high": "#eee7de",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#baccb4",
+                        "on-primary-fixed-variant": "#3b4b39",
+                        "warm-beige": "#DCCFC0",
+                        "tertiary-fixed": "#eee0d1",
+                        "surface-dim": "#e0d9d0",
+                        "on-error-container": "#93000a",
+                        "outline": "#747871",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#526b4c",
+                        "inverse-surface": "#33302a",
+                        "surface-variant": "#e8e2d9",
+                        "surface": "#fff8f0",
+                        "secondary-container": "#ceebc4",
+                        "off-white": "#FDF6ED",
+                        "on-surface-variant": "#444842",
+                        "secondary-fixed": "#ceebc4",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#645b4f",
+                        "secondary-fixed-dim": "#b3cea9",
+                        "on-secondary-fixed-variant": "#354d30",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#211b11",
+                        "on-secondary-fixed": "#0a2008",
+                        "outline-variant": "#c4c8bf",
+                        "surface-container-low": "#faf3ea",
+                        "on-surface": "#1e1b16",
+                        "status-error": "#A0522D"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "2.5rem",
+                        "stack-md": "1rem",
+                        "section-gap": "5rem",
+                        "stack-sm": "0.5rem",
+                        "stack-lg": "2rem",
+                        "margin-mobile": "1rem",
+                        "gutter": "1.5rem",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Libre Caslon Text"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Libre Caslon Text"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Libre Caslon Text"],
+                        "headline-lg-mobile": ["Libre Caslon Text"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.2", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<!-- Note: TopNavBar is suppressed on transactional pages like checkout as per JSON logic rules, 
+         but the prompt specifically requested "TopNavBar from the component library." 
+         Including it to follow direct prompt instruction, but adjusting style to be less distractive. -->
+<header class="w-full sticky top-0 bg-off-white dark:bg-surface-dim border-b border-warm-beige/30 shadow-sm shadow-forest-green/5 z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto"><div class="flex items-center gap-gutter"><div class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim">H'Leven</div><nav class="hidden md:flex items-center space-x-6 text-on-surface-variant dark:text-surface-variant font-medium"><a href="#" class="hover:text-forest-green transition-colors">Hotels</a><a href="#" class="hover:text-forest-green transition-colors">Resorts</a><a href="#" class="hover:text-forest-green transition-colors">Our Story</a><a href="#" class="hover:text-forest-green transition-colors">Promotions</a></nav></div><div class="flex items-center space-x-6 text-on-surface-variant dark:text-surface-variant font-medium"><div class="hidden md:flex items-center gap-2 opacity-50"><span class="material-symbols-outlined text-[20px]">lock</span><span class="text-label-md">Checkout Aman</span></div><button class="flex items-center justify-center w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined">person</span></button></div></div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg md:py-section-gap">
+<div class="mb-stack-lg">
+<h1 class="font-headline-xl text-headline-lg-mobile md:text-headline-xl text-forest-green mb-stack-sm">Selesaikan Pemesanan Anda</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Lengkapi detail di bawah ini untuk mengonfirmasi reservasi Anda.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Guest Data Form -->
+<div class="lg:col-span-7 space-y-stack-lg">
+<!-- Dates Summary Section -->
+<section class="bg-surface-container-lowest rounded-xl p-stack-lg border border-warm-beige/50">
+<h2 class="font-headline-md text-headline-md text-forest-green mb-stack-md flex items-center gap-2">
+<span class="material-symbols-outlined text-sage-green" style="font-variation-settings: 'FILL' 0;">calendar_today</span>
+                        Detail Menginap
+                    </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div class="bg-surface-container-low p-stack-md rounded-lg border border-warm-beige/30">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block mb-1">Check-in</span>
+<div class="font-body-lg text-body-lg font-medium text-text-main">Jumat, 15 Nov 2024</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-1">Mulai 14:00 WITA</div>
+</div>
+<div class="bg-surface-container-low p-stack-md rounded-lg border border-warm-beige/30">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block mb-1">Check-out</span>
+<div class="font-body-lg text-body-lg font-medium text-text-main">Minggu, 17 Nov 2024</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-1">Hingga 12:00 WITA</div>
+</div>
+</div>
+</section>
+<!-- Guest Details Form -->
+<section class="bg-surface-container-lowest rounded-xl p-stack-lg border border-warm-beige/50">
+<h2 class="font-headline-md text-headline-md text-forest-green mb-stack-md flex items-center gap-2">
+<span class="material-symbols-outlined text-sage-green" style="font-variation-settings: 'FILL' 0;">person</span>
+                        Data Tamu
+                    </h2>
+<form class="space-y-stack-md">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="fullName">Nama Lengkap</label>
+<input class="w-full bg-surface-bright border border-warm-beige rounded-lg px-4 py-3 font-body-md focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="fullName" placeholder="Sesuai KTP/Paspor" type="text">
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="email">Alamat Email</label>
+<input class="w-full bg-surface-bright border border-warm-beige rounded-lg px-4 py-3 font-body-md focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="email" placeholder="Untuk konfirmasi pemesanan" type="email">
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="phone">Nomor Telepon</label>
+<input class="w-full bg-surface-bright border border-warm-beige rounded-lg px-4 py-3 font-body-md focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="phone" placeholder="+62 8xx xxxx xxxx" type="tel">
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="requests">Permintaan Khusus (Opsional)</label>
+<textarea class="w-full bg-surface-bright border border-warm-beige rounded-lg px-4 py-3 font-body-md focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors resize-none" id="requests" placeholder="Misal: Ranjang tambahan, preferensi lantai atas..." rows="3"></textarea>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-2">*Permintaan khusus bergantung pada ketersediaan saat check-in.</p>
+</div>
+</form>
+</section>
+</div>
+<!-- Right Column: Booking Summary & Payment Trigger -->
+<div class="lg:col-span-5 relative">
+<!-- Sticky wrapper for desktop -->
+<div class="sticky top-24 bg-surface-container-highest rounded-xl p-stack-lg flex flex-col gap-stack-md" style="box-shadow: 0 4px 20px rgba(119, 136, 115, 0.08);">
+<h3 class="font-headline-md text-headline-md text-forest-green">Rincian Pemesanan</h3>
+<!-- Room Info Card -->
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden flex">
+<img class="w-1/3 object-cover" data-alt="A highly detailed close-up shot of a luxurious resort suite living area. The room features a plush white sofa, warm ambient lighting, and sliding glass doors revealing a pristine private pool. The aesthetic is sophisticated, modern corporate luxury with a quiet, calm atmosphere, utilizing a palette of warm beiges, soft whites, and natural wood textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRpRMwlwG7YTRnzPtjo5Zmm8Kelqklw30w74nu0Ev-W60AZ3qP_ff46lGGZBHmDm_-B3uxVqjhUd114PVYHFUCahqB6BSxDBIQF4wSrmxd_QrHfOKBKHVbF9riVX7UpP0EXx1L4nwOSejccW86wJJssVkRkRplh8rls19vNNxOq3LPST4BSWevvvN3sKHiCWy1bWdmq71ClUjrbNpg-ZmE5G-rfhFNuZCDb5H9XDVB0AAR3LP1qEOONw">
+<div class="p-stack-sm flex flex-col justify-center w-2/3">
+<span class="font-label-sm text-label-sm text-forest-green uppercase tracking-wider mb-1">H'Leven Ubud Resort</span>
+<h4 class="font-label-md text-label-md font-bold text-text-main line-clamp-2">Executive Suite dengan Kolam Renang Pribadi</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 0;">group</span>
+                                2 Dewasa
+                            </span>
+</div>
+</div>
+<hr class="border-t border-warm-beige/30 my-2">
+<!-- Price Breakdown -->
+<div class="space-y-3 font-body-md text-body-md text-text-main">
+<div class="flex justify-between items-center">
+<span class="">Jumat (Rate Weekday) <span class="text-on-surface-variant text-sm block">1 malam</span></span>
+<span class="">Rp 3.500.000</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="">Sabtu (Rate Weekend) <span class="text-on-surface-variant text-sm block">1 malam</span></span>
+<span class="">Rp 4.200.000</span>
+</div>
+<div class="flex justify-between items-center text-forest-green">
+<span class="">Pajak &amp; Pelayanan (21%)</span>
+<span class="">Rp 1.617.000</span>
+</div>
+</div>
+<hr class="border-t border-warm-beige/30 my-2">
+<!-- Total -->
+<div class="flex justify-between items-end mb-stack-md">
+<span class="font-headline-md text-headline-md text-text-main">Total</span>
+<span class="font-headline-lg text-headline-lg text-forest-green font-bold">Rp 9.317.000</span>
+</div>
+<!-- Proceed Button -->
+<button class="w-full bg-forest-green text-on-primary font-label-md text-label-md py-4 rounded-lg hover:bg-surface-tint transition-colors shadow-sm shadow-forest-green/20 flex items-center justify-center gap-2" id="btnProceedPayment">
+                        Lanjut ke Pembayaran
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</button>
+<p class="font-label-sm text-label-sm text-on-surface-variant text-center mt-2 flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">shield</span>
+                        Pembayaran aman dienkripsi
+                    </p>
+</div>
+</div>
+</div>
+</main>
+<!-- Payment Modal (Midtrans Style) -->
+<div class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-on-background/40 backdrop-blur-sm" id="paymentModal">
+<div class="bg-surface-container-lowest w-full max-w-md rounded-xl shadow-2xl flex flex-col max-h-[921px] overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="paymentModalContent">
+<!-- Modal Header -->
+<div class="bg-forest-green text-on-primary p-4 flex justify-between items-center">
+<div>
+<h3 class="font-label-md text-label-md font-bold">H'Leven Hospitality</h3>
+<p class="font-label-sm text-label-sm opacity-80">Order ID: HLVN-98234-AX</p>
+</div>
+<button class="text-on-primary hover:text-warm-beige transition-colors p-1" id="closePaymentModal">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<!-- Amount Header -->
+<div class="p-4 bg-surface-container text-center border-b border-warm-beige/30">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide mb-1">Total Pembayaran</p>
+<p class="font-headline-md text-headline-md text-text-main font-bold">Rp 9.317.000</p>
+</div>
+<!-- Payment Methods Scrollable Area -->
+<div class="p-4 overflow-y-auto flex-grow space-y-4">
+<p class="font-label-md text-label-md text-text-main mb-2">Pilih Metode Pembayaran</p>
+<!-- QRIS Option -->
+<div class="border border-forest-green bg-primary-fixed-dim/10 rounded-lg p-4 cursor-pointer hover:bg-primary-fixed-dim/20 transition-colors flex items-center justify-between" onclick="showQrisContent()">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-forest-green text-3xl" style="font-variation-settings: 'FILL' 0;">qr_code_scanner</span>
+<div>
+<p class="font-label-md text-label-md text-text-main font-bold">QRIS</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Gopay, OVO, ShopeePay, dsb.</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-forest-green" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</div>
+<!-- Virtual Account Options -->
+<div class="border border-warm-beige/50 rounded-lg p-4 cursor-pointer hover:bg-surface-container-low transition-colors flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-main text-3xl" style="font-variation-settings: 'FILL' 0;">account_balance</span>
+<div>
+<p class="font-label-md text-label-md text-text-main font-bold">BCA Virtual Account</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Bayar otomatis</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</div>
+<div class="border border-warm-beige/50 rounded-lg p-4 cursor-pointer hover:bg-surface-container-low transition-colors flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-main text-3xl" style="font-variation-settings: 'FILL' 0;">account_balance</span>
+<div>
+<p class="font-label-md text-label-md text-text-main font-bold">Mandiri Virtual Account</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Bayar otomatis</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</div>
+<!-- Credit Card -->
+<div class="border border-warm-beige/50 rounded-lg p-4 cursor-pointer hover:bg-surface-container-low transition-colors flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-main text-3xl" style="font-variation-settings: 'FILL' 0;">credit_card</span>
+<div>
+<p class="font-label-md text-label-md text-text-main font-bold">Kartu Kredit / Debit</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Visa, Mastercard, JCB</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="p-4 bg-surface-container-low border-t border-warm-beige/30 text-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Secured by Midtrans</p>
+</div>
+</div>
+<!-- QRIS Detailed Content (Hidden by default, shown when QRIS is selected) -->
+<div class="bg-surface-container-lowest w-full max-w-md rounded-xl shadow-2xl flex-col max-h-[921px] overflow-hidden transform scale-95 opacity-0 transition-all duration-300 hidden" id="qrisModalContent">
+<div class="bg-forest-green text-on-primary p-4 flex justify-between items-center">
+<button class="text-on-primary hover:text-warm-beige transition-colors p-1 flex items-center" id="backToMethods">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h3 class="font-label-md text-label-md font-bold">Pembayaran QRIS</h3>
+<div class="w-6"></div> <!-- Spacer for centering -->
+</div>
+<div class="p-6 flex flex-col items-center justify-center bg-off-white">
+<p class="font-label-md text-label-md text-text-main mb-4 text-center">Buka aplikasi pembayaran (Gopay, OVO, m-BCA, dll) dan scan QR Code di bawah.</p>
+<!-- Simulated QR Code Container -->
+<div class="bg-surface-container-lowest border-2 border-forest-green p-4 rounded-xl shadow-sm mb-6 flex flex-col items-center">
+<div class="w-48 h-48 bg-white border border-warm-beige/20 p-2 mb-2">
+<!-- Placeholder for actual QR image -->
+<img class="w-full h-full object-contain mix-blend-multiply opacity-80" data-alt="A clean, crisp QR code graphic designed in black and white, centered within a subtle beige frame. The style is modern, functional, and clear, fitting a sophisticated digital payment interface. High contrast, minimalist aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCwIcAiKcY_BXj_MZ9zE25UlT2Hirf6lSmY3HXeJQ5_MMgLJtyYwj6_y5jnOdwTkOzNZtbCg5wbN0fOnBBtvT4y7jlHqWXSuTl61Xc8HUomktHuwsX0aCJyJZh6lgeT-fXnSMTRetwDa1Zoa-5RxFzZDPI6vr9gpBygfM_CJhHpBaz2bH9UHXSzwu_bTl4oZ00Qy82mcgQo9UZeSedbD8TnISBSxfCG8oIT66vy3CMRg4hymKc7cHjYA">
+</div>
+<p class="font-headline-md text-headline-md text-forest-green font-bold tracking-widest mt-2">QRIS</p>
+</div>
+<div class="w-full bg-surface-container rounded-lg p-4 flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Sisa Waktu Pembayaran</span>
+<span class="font-label-md text-label-md text-error font-bold" id="countdownTimer">14:59</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-highest dark:bg-inverse-surface border-t border-warm-beige/20 mt-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter w-full px-margin-desktop py-section-gap max-w-container-max mx-auto">
+<div class="md:col-span-1">
+<div class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim mb-4">
+                    H'Leven
+                </div>
+<p class="font-body-md text-body-md text-on-surface-variant dark:text-surface-variant mb-4">
+                    © 2024 H'Leven Hospitality Group. All rights reserved.
+                </p>
+</div>
+<div class="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-stack-lg">
+<ul class="space-y-2 font-body-md text-body-md text-on-surface-variant dark:text-surface-variant">
+<li class=""><a class="hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Privacy Policy</a></li>
+<li class=""><a class="hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Terms of Service</a></li>
+</ul>
+<ul class="space-y-2 font-body-md text-body-md text-on-surface-variant dark:text-surface-variant">
+<li class=""><a class="hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Support Center</a></li>
+<li class=""><a class="hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Careers</a></li>
+</ul>
+<ul class="space-y-2 font-body-md text-body-md text-on-surface-variant dark:text-surface-variant">
+<li class=""><a class="hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Contact Us</a></li>
+</ul>
+</div>
+</div>
+</footer>
+<script>
+        // Modal Interaction Logic
+        const btnProceed = document.getElementById('btnProceedPayment');
+        const modal = document.getElementById('paymentModal');
+        const modalContent = document.getElementById('paymentModalContent');
+        const qrisContent = document.getElementById('qrisModalContent');
+        const btnClose = document.getElementById('closePaymentModal');
+        const btnBackToMethods = document.getElementById('backToMethods');
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            // small delay to allow display:block to apply before animating opacity/transform
+            setTimeout(() => {
+                modalContent.classList.remove('opacity-0', 'scale-95');
+                modalContent.classList.add('opacity-100', 'scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            modalContent.classList.remove('opacity-100', 'scale-100');
+            modalContent.classList.add('opacity-0', 'scale-95');
+            qrisContent.classList.remove('opacity-100', 'scale-100');
+            qrisContent.classList.add('opacity-0', 'scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                // Reset to default view
+                modalContent.classList.remove('hidden');
+                qrisContent.classList.add('hidden');
+            }, 300);
+        }
+
+        function showQrisContent() {
+            modalContent.classList.remove('opacity-100', 'scale-100');
+            modalContent.classList.add('opacity-0', 'scale-95');
+            
+            setTimeout(() => {
+                modalContent.classList.add('hidden');
+                qrisContent.classList.remove('hidden');
+                // force reflow
+                void qrisContent.offsetWidth;
+                qrisContent.classList.remove('opacity-0', 'scale-95');
+                qrisContent.classList.add('opacity-100', 'scale-100');
+                qrisContent.style.display = 'flex';
+                startTimer();
+            }, 300);
+        }
+
+        function backToMethods() {
+            qrisContent.classList.remove('opacity-100', 'scale-100');
+            qrisContent.classList.add('opacity-0', 'scale-95');
+            
+            setTimeout(() => {
+                qrisContent.classList.add('hidden');
+                qrisContent.style.display = 'none';
+                modalContent.classList.remove('hidden');
+                // force reflow
+                void modalContent.offsetWidth;
+                modalContent.classList.remove('opacity-0', 'scale-95');
+                modalContent.classList.add('opacity-100', 'scale-100');
+            }, 300);
+        }
+
+        btnProceed.addEventListener('click', openModal);
+        btnClose.addEventListener('click', closeModal);
+        btnBackToMethods.addEventListener('click', backToMethods);
+        
+        // Close on outside click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Simple countdown timer for QRIS demo
+        let timerInterval;
+        function startTimer() {
+            clearInterval(timerInterval);
+            let time = 15 * 60 - 1; // 14:59
+            const timerEl = document.getElementById('countdownTimer');
+            
+            timerInterval = setInterval(() => {
+                let minutes = Math.floor(time / 60);
+                let seconds = time % 60;
+                
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                seconds = seconds < 10 ? '0' + seconds : seconds;
+                
+                timerEl.textContent = `${minutes}:${seconds}`;
+                
+                if (time <= 0) {
+                    clearInterval(timerInterval);
+                    timerEl.textContent = "Waktu Habis";
+                }
+                time--;
+            }, 1000);
+        }
+    </script>
+</body></html>

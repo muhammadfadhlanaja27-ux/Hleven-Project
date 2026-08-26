@@ -1,0 +1,288 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>H'Leven - User Profile</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration (Design System) -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#526b4c",
+                        "primary-fixed": "#d5e8cf",
+                        "on-primary-container": "#f7fff1",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#f4ede4",
+                        "surface-container-highest": "#e8e2d9",
+                        "surface-tint": "#52634f",
+                        "surface-dim": "#e0d9d0",
+                        "primary": "#50604d",
+                        "on-secondary-fixed": "#0a2008",
+                        "outline": "#747871",
+                        "on-error-container": "#93000a",
+                        "text-main": "#2D332C",
+                        "on-surface": "#1e1b16",
+                        "on-secondary-fixed-variant": "#354d30",
+                        "background": "#fff8f0",
+                        "secondary-container": "#ceebc4",
+                        "status-success": "#4F6F52",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#ceebc4",
+                        "on-primary-fixed-variant": "#3b4b39",
+                        "primary-fixed-dim": "#baccb4",
+                        "tertiary-fixed": "#eee0d1",
+                        "secondary": "#4c6546",
+                        "inverse-primary": "#baccb4",
+                        "on-background": "#1e1b16",
+                        "tertiary-fixed-dim": "#d1c5b6",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#211b11",
+                        "on-tertiary-fixed-variant": "#4e453a",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary": "#ffffff",
+                        "status-error": "#A0522D",
+                        "error": "#ba1a1a",
+                        "inverse-surface": "#33302a",
+                        "on-primary-fixed": "#111f10",
+                        "outline-variant": "#c4c8bf",
+                        "surface": "#fff8f0",
+                        "forest-green": "#778873",
+                        "warm-beige": "#DCCFC0",
+                        "sage-green": "#A1BC98",
+                        "off-white": "#FDF6ED",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f7f0e7",
+                        "tertiary": "#645b4f",
+                        "surface-bright": "#fff8f0",
+                        "tertiary-container": "#7d7366",
+                        "on-surface-variant": "#444842",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#eee7de",
+                        "surface-container-low": "#faf3ea",
+                        "surface-variant": "#e8e2d9",
+                        "secondary-fixed-dim": "#b3cea9",
+                        "primary-container": "#687965"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "margin-mobile": "1rem",
+                        "stack-md": "1rem",
+                        "section-gap": "5rem",
+                        "margin-desktop": "2.5rem",
+                        "gutter": "1.5rem",
+                        "stack-lg": "2rem",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Libre Caslon Text"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Libre Caslon Text"],
+                        "headline-xl": ["Libre Caslon Text"],
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-lg": ["Libre Caslon Text"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md antialiased min-h-screen flex flex-col">
+<!-- TopNavBar (Shared Component) -->
+<header class="w-full sticky top-0 bg-off-white dark:bg-surface-dim border-b border-warm-beige/30 shadow-sm shadow-forest-green/5 z-50">
+<div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<!-- Brand -->
+<a class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim" href="#">
+                H'Leven
+            </a>
+<!-- Navigation Links (Hidden on Mobile) -->
+<nav class="hidden md:flex items-center gap-6"><a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" href="#">Hotels</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" href="#">Resorts</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" href="#">Experiences</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" href="#">Promotions</a>
+<a class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-forest-green dark:hover:text-primary-fixed hover:bg-warm-beige/10 transition-colors px-3 py-2 rounded-md" href="#">Our Story</a></nav>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<button class="hidden md:flex bg-forest-green text-on-primary font-label-md text-label-md px-6 py-2.5 rounded-DEFAULT hover:bg-primary transition-colors">
+                    Book Now
+                </button>
+<button class="text-forest-green dark:text-primary-fixed-dim hover:bg-warm-beige/10 p-2 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined filled" data-icon="person">person</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full px-margin-mobile md:px-margin-desktop py-stack-lg max-w-container-max mx-auto">
+<!-- Page Title -->
+<div class="mb-stack-lg">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-forest-green mb-2">My Profile</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">Manage your account settings and personal information.</p>
+</div>
+<!-- Two-Column Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Sidebar (Account Summary & Nav) -->
+<aside class="lg:col-span-4 flex flex-col gap-stack-lg">
+<!-- Profile Header / Summary Card -->
+<div class="bg-warm-beige/20 border border-warm-beige/40 rounded-xl p-6 flex flex-col items-center text-center shadow-sm shadow-forest-green/5">
+<div class="w-24 h-24 rounded-full bg-forest-green/10 flex items-center justify-center text-forest-green mb-4 border-2 border-forest-green/20 relative overflow-hidden">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="A close-up, soft-focus studio portrait of a sophisticated modern professional in a minimalist setting. The lighting is bright, high-key, and neutral, conveying a sense of quiet luxury. The subject is wearing subtle, elegant clothing that blends seamlessly with a warm beige and soft sage green background. The mood is calm, trustworthy, and welcoming, fitting perfectly within a premium hospitality brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD02fFB-Bpw8AHHK1qREQXnO4ryj7pEda_Q8Wp7Qa_cEAjKwZq7mHzNfaWhM78gwNjRc13V82Z8abdh34_d1g2WlSReoGaa8gxk5z2pQzvK4FV_pP1q0v1K_iiZ1vF6S1IDJ2v7858VRxrJsw4S-40WJ7O4JPb1VV07pRASwCAkCvwB6W_YNWd8pAa3q3w71rGU5kCuDFQ6PGCrdjNCItL23BSKnzAI3smRjfhkfAGnz-8awoMtaTE3kQ">
+</div>
+<h2 class="font-headline-md text-headline-md text-text-main mb-1">Eleanor Vance</h2>
+<p class="text-forest-green font-label-md text-label-md mb-6">Member since Jan 2024</p>
+<div class="w-full bg-surface-container-highest h-px mb-6"></div>
+<div class="w-full grid grid-cols-2 gap-4">
+<div class="flex flex-col items-center p-3 bg-surface-container-lowest rounded-lg border border-warm-beige/30">
+<span class="text-forest-green font-headline-md text-headline-md mb-1">12</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">Total Stays</span>
+</div>
+<div class="flex flex-col items-center p-3 bg-surface-container-lowest rounded-lg border border-warm-beige/30">
+<span class="text-forest-green font-headline-md text-headline-md mb-1">4.5k</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">Points</span>
+</div>
+</div>
+</div>
+<!-- Vertical Navigation (Optional contextual menu) -->
+<nav class="bg-surface-container-low rounded-xl border border-warm-beige/30 overflow-hidden">
+<a class="flex items-center gap-3 px-6 py-4 bg-forest-green/10 text-forest-green font-label-md text-label-md border-l-4 border-forest-green" href="#">
+<span class="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
+                        Personal Information
+                    </a>
+<a class="flex items-center gap-3 px-6 py-4 text-on-surface-variant hover:bg-warm-beige/20 hover:text-forest-green font-label-md text-label-md transition-colors border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                        Booking History
+                    </a>
+<a class="flex items-center gap-3 px-6 py-4 text-on-surface-variant hover:bg-warm-beige/20 hover:text-forest-green font-label-md text-label-md transition-colors border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined" data-icon="payment">payment</span>
+                        Payment Methods
+                    </a>
+<a class="flex items-center gap-3 px-6 py-4 text-on-surface-variant hover:bg-warm-beige/20 hover:text-forest-green font-label-md text-label-md transition-colors border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+                        Preferences
+                    </a>
+<a class="flex items-center gap-3 px-6 py-4 text-error hover:bg-error-container/20 font-label-md text-label-md transition-colors border-l-4 border-transparent mt-2 border-t border-warm-beige/20" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                        Sign Out
+                    </a></nav>
+</aside>
+<!-- Main Form Area -->
+<div class="lg:col-span-8 flex flex-col gap-stack-lg">
+<!-- Personal Info Section -->
+<section class="bg-surface-container-lowest rounded-xl border border-warm-beige/30 p-6 md:p-8 shadow-sm shadow-forest-green/5">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-forest-green" data-icon="person_outline">person_outline</span>
+<h3 class="font-headline-md text-headline-md text-text-main">Personal Details</h3>
+</div>
+<form class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="firstName">First Name</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="firstName" type="text" value="Eleanor">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="lastName">Last Name</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="lastName" type="text" value="Vance">
+</div>
+<div class="flex flex-col gap-2 md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="email">Email Address</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="email" type="email" value="eleanor.vance@example.com">
+</div>
+<div class="flex flex-col gap-2 md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="phone">Phone Number</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors" id="phone" type="tel" value="+1 (555) 123-4567">
+</div>
+</form>
+</section>
+<!-- Security Section -->
+<section class="bg-surface-container-lowest rounded-xl border border-warm-beige/30 p-6 md:p-8 shadow-sm shadow-forest-green/5">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-forest-green" data-icon="lock_outline">lock_outline</span>
+<h3 class="font-headline-md text-headline-md text-text-main">Security</h3>
+</div>
+<form class="flex flex-col gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="currentPassword">Current Password</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors max-w-md" id="currentPassword" placeholder="••••••••" type="password">
+</div>
+<div class="w-full bg-surface-container-highest h-px max-w-md my-2"></div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="newPassword">New Password</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors max-w-md" id="newPassword" placeholder="New Password" type="password">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="confirmPassword">Confirm New Password</label>
+<input class="bg-surface-container-low border border-warm-beige rounded-DEFAULT px-4 py-3 font-body-md text-body-md text-text-main focus:outline-none focus:border-forest-green focus:ring-1 focus:ring-forest-green transition-colors max-w-md" id="confirmPassword" placeholder="Confirm Password" type="password">
+</div>
+</form>
+</section>
+<!-- Actions -->
+<div class="flex justify-end pt-4">
+<button class="bg-forest-green text-on-primary font-label-md text-label-md px-8 py-3 rounded-DEFAULT hover:bg-primary transition-colors shadow-sm shadow-forest-green/20">
+                        Save Changes
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer (Shared Component) -->
+<footer class="w-full bg-surface-container-highest dark:bg-inverse-surface border-t border-warm-beige/20 mt-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter w-full px-margin-mobile md:px-margin-desktop py-section-gap max-w-container-max mx-auto">
+<!-- Brand & Copyright -->
+<div class="flex flex-col md:col-span-1">
+<span class="text-headline-md font-headline-md font-bold text-forest-green dark:text-primary-fixed-dim mb-4">
+                    H'Leven
+                </span>
+<p class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant mt-auto">
+                    © 2024 H'Leven Hospitality Group. All rights reserved.
+                </p>
+</div>
+<!-- Links Column 1 -->
+<div class="flex flex-col gap-3">
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Terms of Service</a>
+</div>
+<!-- Links Column 2 -->
+<div class="flex flex-col gap-3">
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Support Center</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Careers</a>
+</div>
+<!-- Links Column 3 -->
+<div class="flex flex-col gap-3">
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-surface-variant hover:text-forest-green dark:hover:text-on-primary-container transition-colors" href="#">Contact Us</a>
+</div>
+</div>
+</footer>
+</body></html>
