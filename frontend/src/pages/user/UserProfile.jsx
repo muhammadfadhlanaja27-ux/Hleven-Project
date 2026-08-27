@@ -73,6 +73,8 @@ const UserProfile = () => {
   const [currentUserRole, setCurrentUserRole] = useState(initialRole);
   const [partnerApplication, setPartnerApplication] = useState(null);
   const [partnerLoading, setPartnerLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   // Personal Info Form State
   const [firstName, setFirstName] = useState("");
@@ -151,6 +153,41 @@ const UserProfile = () => {
     }
   };
 
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const res = await api.get("/notifications");
+      const data = res.data?.data || res.data || [];
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn("Gagal memuat notifikasi.", err);
+      setNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (notifId) => {
+    try {
+      await api.patch(`/notifications/${notifId}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n))
+      );
+    } catch (err) {
+      console.error("Gagal tandai dibaca:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await api.patch("/notifications/read-all");
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      toast.success("Semua notifikasi ditandai sebagai dibaca.");
+    } catch (err) {
+      toast.error("Gagal menandai semua notifikasi.");
+    }
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -202,6 +239,8 @@ const UserProfile = () => {
     } else {
       setPartnerApplication(null);
     }
+
+    fetchNotifications();
   }, [navigate, currentUserRole]);
 
   const handleFixRevision = () => {
@@ -607,6 +646,24 @@ const UserProfile = () => {
 
               <button
                 type="button"
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "notifications"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
+              >
+                <span className="material-symbols-outlined text-xl">notifications</span>
+                Notifikasi
+                {notifications.filter((n) => !n.is_read).length > 0 && (
+                  <span className="ml-auto bg-[#ba1a1a] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {notifications.filter((n) => !n.is_read).length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab("history")}
                 className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
                   activeTab === "history"
@@ -644,8 +701,107 @@ const UserProfile = () => {
                 />
               )}
             
-            {activeTab === "personal" && (
-              <>
+{activeTab === "notifications" && (
+                <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
+                  <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[#778873] text-2xl">
+                        notifications
+                      </span>
+                      <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
+                        Notifikasi
+                      </h3>
+                    </div>
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllAsRead}
+                        className="text-xs font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
+                      >
+                        Tandai semua dibaca
+                      </button>
+                    )}
+                  </div>
+
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <span className="material-symbols-outlined animate-spin text-[#778873] text-2xl">
+                        progress_activity
+                      </span>
+                      <span className="ml-3 text-sm text-[#444842]">Memuat notifikasi...</span>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <span className="material-symbols-outlined text-5xl text-[#747871] mb-3">
+                        notifications_off
+                      </span>
+                      <p className="text-[#444842] text-sm font-medium">
+                        Belum ada notifikasi.
+                      </p>
+                      <p className="text-[#747871] text-xs mt-1">
+                        Notifikasi tentang pengajuan mitra, penerimaan, dan informasi lainnya akan muncul di sini.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            notif.is_read
+                              ? "bg-[#faf3ea] border-[#DCCFC0]/40"
+                              : "bg-[#e8e2d9]/40 border-[#778873]/30"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">
+                              {notif.type === "partner_approved" ? "check_circle" : "notifications"}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-label-md text-sm font-bold text-[#2D332C]">
+                                  {notif.title}
+                                </h4>
+                                {!notif.is_read && (
+                                  <span className="w-2 h-2 rounded-full bg-[#ba1a1a] shrink-0"></span>
+                                )}
+                              </div>
+                              <p className="font-body-md text-xs text-[#444842] leading-relaxed whitespace-pre-wrap">
+                                {notif.message}
+                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-[10px] text-[#747871]">
+                                  {notif.created_at
+                                    ? new Date(notif.created_at).toLocaleString("id-ID", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "Baru saja"}
+                                </span>
+                                {!notif.is_read && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkAsRead(notif.id)}
+                                    className="text-[10px] font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
+                                  >
+                                    Tandai dibaca
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {activeTab === "personal" && (
+                <>
                 {/* Personal Information Section */}
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
                   <div className="flex items-center gap-3 mb-6 border-b border-[#DCCFC0]/30 pb-4">

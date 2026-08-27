@@ -36,6 +36,7 @@ Route::prefix('v1')->group(function () {
     // ==========================================
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/check-email', [PartnerApplicationController::class, 'checkEmail']);
     Route::get('/facilities', [FacilityController::class, 'index']);
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);

@@ -19,7 +19,7 @@ class PartnerApplicationService
         DB::transaction(function () use ($application, $admin) {
             $application->update(['status' => 'approved']);
 
-            $ownerEmail = $application->owner_email ?: $application->email;
+            $adminEmail = $application->hotel_email;
             $ownerName = $application->owner_name;
             $ownerPhone = $application->owner_phone ?: $application->phone;
 
@@ -29,14 +29,17 @@ class PartnerApplicationService
                     $hotelAdmin->update([
                         'name' => $hotelAdmin->name ?: $ownerName,
                         'phone' => $hotelAdmin->phone ?: $ownerPhone,
+                        'email' => $hotelAdmin->email ?: $adminEmail,
                         'role' => 'admin_hotel',
                         'status' => 'active',
                     ]);
                 }
             }
 
+            $generatedPassword = null;
+
             if (!isset($hotelAdmin) || !$hotelAdmin) {
-                $existingUser = User::where('email', $ownerEmail)->first();
+                $existingUser = User::where('email', $adminEmail)->first();
                 if ($existingUser) {
                     $existingUser->update([
                         'name' => $existingUser->name ?: $ownerName,
@@ -46,11 +49,11 @@ class PartnerApplicationService
                     ]);
                     $hotelAdmin = $existingUser;
                 } else {
-                    $password = Str::random(10);
+                    $generatedPassword = Str::random(10);
                     $hotelAdmin = User::create([
                         'name' => $ownerName,
-                        'email' => $ownerEmail,
-                        'password' => Hash::make($password),
+                        'email' => $adminEmail,
+                        'password' => Hash::make($generatedPassword),
                         'role' => 'admin_hotel',
                         'status' => 'active',
                         'phone' => $ownerPhone,
@@ -116,10 +119,12 @@ class PartnerApplicationService
                 'ip_address' => request()->ip()
             ]);
 
-            Notification::create([
+Notification::create([
                 'user_id' => $hotelAdmin->id,
                 'title' => 'Pengajuan Mitra Berhasil',
-                'message' => "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat.",
+                'message' => $generatedPassword
+                    ? "Pengajuan mitra hotel {$application->hotel_name}successfully disetujui. Akun admin hotel telah dibuat. Email: {$adminEmail}. Password: {$generatedPassword}. Silakan login dan segera ubah kata sandi Anda."
+                    : "Pengajuan mitra hotel {$application->hotel_name}successfully disetujui. Akun admin hotel telah dibuat.",
                 'type' => 'partner_approved',
             ]);
         });
