@@ -1,4 +1,20 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@dietrichgebert/ponytail"]
+  "plugin": ["@dietrichgebert/ponytail"],
+  "model": "ipeenk-ai/ipeenkds/deepseek-v4-flash",
+  "provider": {
+    "ipeenk-ai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "9Router Local",
+      "options": {
+        "baseURL": "http://localhost:20128/v1",
+        "apiKey": "9router"
+      },
+      "models": {
+        "ipeenkds/deepseek-v4-flash": {
+          "name": "Ipeenk DeepSeek via 9Router"
+        }
+      }
+    }
+  }
 }

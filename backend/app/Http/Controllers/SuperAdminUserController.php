@@ -122,6 +122,37 @@ class SuperAdminUserController extends Controller
         }
     }
 
+    public function updateRole(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'role' => 'required|in:admin_hotel,user'
+        ]);
+
+        try {
+            $user = User::findOrFail($id);
+
+            if ($user->id === $request->user()->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat mengubah role akun Anda sendiri.'
+                ], 400);
+            }
+
+            $this->userService->updateUserRole($user, $validated['role'], $request->user());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Role pengguna berhasil diperbarui.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui role pengguna.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function destroy(Request $request, $id): JsonResponse
     {
         try {
