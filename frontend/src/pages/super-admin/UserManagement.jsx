@@ -112,6 +112,33 @@ const UserManagement = () => {
     }
   };
 
+  // Ubah Role Pengguna
+  const handleRoleChange = async (userId, newRole, userName) => {
+    if (
+      !window.confirm(
+        `Apakah Anda yakin ingin mengubah role ${userName} menjadi ${formatRole(newRole)}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.patch(`/super-admin/users/${userId}/role`, {
+        role: newRole,
+      });
+
+      invalidateCache("/super-admin/users");
+      invalidateCache("/super-admin/dashboard");
+      toast.success("Role pengguna berhasil diperbarui!");
+      fetchUsers(true);
+    } catch (err) {
+      console.error("Gagal update role:", err);
+      toast.error(
+        err.response?.data?.message || "Gagal memperbarui role pengguna."
+      );
+    }
+  };
+
   // Create Admin Hotel
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
@@ -343,9 +370,22 @@ const UserManagement = () => {
 
                           {/* Role */}
                           <td className="px-6 py-4">
-                            <span className="font-hanken text-[13.5px] text-[#191c1b] font-medium">
-                              {formatRole(user.role)}
-                            </span>
+                            {user.role === "super_admin" ? (
+                              <span className="font-hanken text-[13.5px] text-[#191c1b] font-medium">
+                                {formatRole(user.role)}
+                              </span>
+                            ) : (
+                              <select
+                                value={user.role}
+                                onChange={(e) =>
+                                  handleRoleChange(user.id, e.target.value, user.name)
+                                }
+                                className="font-hanken text-[13.5px] text-[#191c1b] font-medium bg-transparent border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-[#768875] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all"
+                              >
+                                <option value="admin_hotel">Hotel Admin</option>
+                                <option value="user">Customer / User</option>
+                              </select>
+                            )}
                           </td>
 
                           {/* Property Association */}

@@ -96,6 +96,24 @@ class SuperAdminUserService
     }
 
     /**
+     * Mengubah role pengguna
+     */
+    public function updateUserRole(User $user, string $role, User $superAdmin): void
+    {
+        DB::transaction(function () use ($user, $role, $superAdmin) {
+            $oldRole = $user->role;
+            $user->update(['role' => $role]);
+
+            ActivityLog::create([
+                'user_id' => $superAdmin->id,
+                'activity' => 'Update User Role',
+                'description' => "Super Admin mengubah role user {$user->email} dari {$oldRole} menjadi {$role}.",
+                'ip_address' => request()->ip()
+            ]);
+        });
+    }
+
+    /**
      * Menghapus akun pengguna
      */
     public function deleteUser(User $user, User $superAdmin): void

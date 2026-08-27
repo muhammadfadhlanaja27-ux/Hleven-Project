@@ -175,6 +175,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/{id}', [SuperAdminUserController::class, 'show']);
         Route::post('/', [SuperAdminUserController::class, 'store']);
         Route::patch('/{id}/status', [SuperAdminUserController::class, 'updateStatus']);
+        Route::patch('/{id}/role', [SuperAdminUserController::class, 'updateRole']);
         Route::delete('/{id}', [SuperAdminUserController::class, 'destroy']);
     });
 
