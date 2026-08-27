@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\PartnerApplication;
 use App\Models\PartnerDocument;
+use App\Models\User;
 use App\Services\PartnerApplicationService;
 use App\Services\FileStorageService;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,26 @@ class PartnerApplicationController extends Controller
     ) {
         $this->partnerService = $partnerService;
         $this->storageService = $storageService;
+    }
+
+    public function checkEmail(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email|max:255',
+        ]);
+
+        $userId = $request->user()?->id;
+        $query = User::where('email', $request->email);
+        if ($userId) {
+            $query->where('id', '!=', $userId);
+        }
+        $exists = $query->exists();
+
+        return response()->json([
+            'success' => true,
+            'available' => !$exists,
+            'message' => $exists ? 'Email ini sudah terpakai.' : 'Email tersedia.',
+        ], 200);
     }
 
     public function index(Request $request): JsonResponse
@@ -71,7 +92,7 @@ class PartnerApplicationController extends Controller
             'hotel_type' => 'required|string|max:100',
             'hotel_description' => 'required|string',
             'hotel_phone' => 'required|string|max:30',
-            'hotel_email' => 'required|email|max:255',
+            'hotel_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->user()?->id)],
             'room_count' => 'required|integer|min:1',
 
             'address' => 'required|string',
@@ -95,6 +116,8 @@ class PartnerApplicationController extends Controller
             'doc_ktp' => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
             'doc_legal' => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
             'doc_support' => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
+        ], [
+            'hotel_email.unique' => 'Email ini sudah terpakai pada akun yang ada. Silakan gunakan email lain.',
         ]);
 
         $existing = PartnerApplication::where('user_id', $request->user()->id)

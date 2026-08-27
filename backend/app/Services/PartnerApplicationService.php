@@ -19,38 +19,37 @@ class PartnerApplicationService
         DB::transaction(function () use ($application, $admin) {
             $application->update(['status' => 'approved']);
 
-            $ownerEmail = $application->owner_email ?: $application->email;
+            $adminEmail = $application->hotel_email;
             $ownerName = $application->owner_name;
             $ownerPhone = $application->owner_phone ?: $application->phone;
 
-            if ($application->user_id) {
-                $hotelAdmin = User::find($application->user_id);
-                if ($hotelAdmin) {
-                    $hotelAdmin->update([
-                        'name' => $hotelAdmin->name ?: $ownerName,
-                        'phone' => $hotelAdmin->phone ?: $ownerPhone,
-                        'role' => 'admin_hotel',
-                        'status' => 'active',
-                    ]);
-                }
-            }
+            $generatedPassword = null;
+            $hotelAdmin = null;
 
-            if (!isset($hotelAdmin) || !$hotelAdmin) {
-                $existingUser = User::where('email', $ownerEmail)->first();
+            $applicant = $application->user_id ? User::find($application->user_id) : null;
+
+            if ($applicant && strtolower($applicant->email) === strtolower($adminEmail)) {
+                $applicant->update([
+                    'role' => 'admin_hotel',
+                    'status' => 'active',
+                    'phone' => $applicant->phone ?: $ownerPhone,
+                ]);
+                $hotelAdmin = $applicant;
+            } else {
+                $existingUser = User::where('email', $adminEmail)->first();
                 if ($existingUser) {
                     $existingUser->update([
-                        'name' => $existingUser->name ?: $ownerName,
-                        'phone' => $existingUser->phone ?: $ownerPhone,
                         'role' => 'admin_hotel',
                         'status' => 'active',
+                        'phone' => $existingUser->phone ?: $ownerPhone,
                     ]);
                     $hotelAdmin = $existingUser;
                 } else {
-                    $password = Str::random(10);
+                    $generatedPassword = Str::random(10);
                     $hotelAdmin = User::create([
                         'name' => $ownerName,
-                        'email' => $ownerEmail,
-                        'password' => Hash::make($password),
+                        'email' => $adminEmail,
+                        'password' => Hash::make($generatedPassword),
                         'role' => 'admin_hotel',
                         'status' => 'active',
                         'phone' => $ownerPhone,
@@ -116,10 +115,18 @@ class PartnerApplicationService
                 'ip_address' => request()->ip()
             ]);
 
+            if ($applicant && $hotelAdmin->id === $applicant->id) {
+                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun Anda telah diupgrade menjadi admin hotel. Silakan login dengan email Anda.";
+            } elseif ($generatedPassword) {
+                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat. Email: {$adminEmail}. Password: {$generatedPassword}. Silakan login dan segera ubah kata sandi Anda.";
+            } else {
+                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat.";
+            }
+
             Notification::create([
                 'user_id' => $hotelAdmin->id,
                 'title' => 'Pengajuan Mitra Berhasil',
-                'message' => "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat.",
+                'message' => $message,
                 'type' => 'partner_approved',
             ]);
         });
