@@ -501,97 +501,16 @@ export default function FacilityManager() {
                             <span className="material-symbols-outlined text-[20px]">
                               edit
                             </span>
-                          </div>
-                        </td>
-
-                        <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
-                          {facility.name}
-                        </td>
-
-                        <td className="p-4 text-[#6B6E6A] text-xs max-w-xs leading-relaxed">
-                          {facility.description || "—"}
-                        </td>
-
-                        <td className="p-4 whitespace-nowrap">
-                          {facility.status === "active" ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
-                              Active
+                          </button>
+                          <button
+                            onClick={() => handleOpenDeleteModal(facility)}
+                            className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors"
+                            title="Delete Facility"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">
+                              delete
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0EDE9] text-[#6B6E6A] border border-[#E5E1DA]">
-                              Inactive
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="p-4 text-xs text-[#6B6E6A] whitespace-nowrap">
-                          {formatDate(facility.updated_at)}
-                        </td>
-
-                        <td className="p-4 text-right whitespace-nowrap">
-                          <div className="flex justify-end items-center gap-2">
-                            <button
-                              onClick={() => handleOpenEditModal(facility)}
-                              className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors"
-                              title="Edit Facility"
-                            >
-                              <span className="material-symbols-outlined text-[20px]">
-                                edit
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => handleOpenDeleteModal(facility)}
-                              className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors"
-                              title="Delete Facility"
-                            >
-                              <span className="material-symbols-outlined text-[20px]">
-                                delete
-                              </span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="p-12 text-center text-[#6B6E6A]">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
-                            search_off
-                          </span>
-                          <div>
-                            <p className="font-semibold text-[#2D312C] text-base">
-                              {currentFacilities.length === 0
-                                ? activeTab === "hotel"
-                                  ? "No hotel facilities yet."
-                                  : "No room facilities yet."
-                                : "No facilities found."}
-                            </p>
-                            <p className="text-xs text-[#6B6E6A] mt-1">
-                              {currentFacilities.length === 0
-                                ? "Tambahkan fasilitas baru untuk melengkapi daftar fasilitas."
-                                : "Tidak ada fasilitas yang cocok dengan filter pencarian Anda."}
-                            </p>
-                          </div>
-
-                          {searchQuery || statusFilter !== "all" ? (
-                            <button
-                              onClick={() => {
-                                setSearchQuery("");
-                                setStatusFilter("all");
-                              }}
-                              className="mt-2 px-4 py-2 bg-[#f0ede9] text-[#2D312C] rounded-lg text-xs font-semibold hover:bg-[#e5e2de] transition-colors"
-                            >
-                              Clear Search
-                            </button>
-                          ) : (
-                            <button
-                              onClick={handleOpenAddModal}
-                              className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
-                            >
-                              + Add Facility
-                            </button>
-                          )}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -607,9 +526,9 @@ export default function FacilityManager() {
                           <p className="font-semibold text-[#2D312C] text-base">
                             {currentFacilities.length === 0
                               ? activeTab === "hotel"
-                                ? "Belum ada fasilitas hotel."
-                                : "Belum ada fasilitas kamar."
-                              : "Tidak ada fasilitas yang ditemukan."}
+                                ? "No hotel facilities yet."
+                                : "No room facilities yet."
+                              : "No facilities found."}
                           </p>
                           <p className="text-xs text-[#6B6E6A] mt-1">
                             {currentFacilities.length === 0
