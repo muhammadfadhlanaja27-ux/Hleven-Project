@@ -21,7 +21,7 @@ import RoomDetail from "./pages/user/RoomDetail";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import UserProfile from "./pages/user/UserProfile";
-import HotelDetail from "./pages/user/HotelDetail";
+import HotelDetail from "./Pages/user/HotelDetail";
 import BookingPage from "./pages/user/BookingPage";
 import BookingHistory from "./pages/user/BookingHistory";
 
