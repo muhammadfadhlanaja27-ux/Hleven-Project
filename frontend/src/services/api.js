@@ -5,6 +5,7 @@ const api = axios.create({
   headers: {
     'Accept': 'application/json',
   },
+  withCredentials: true, // Tambahkan baris ini
 });
 
 // Request Interceptor

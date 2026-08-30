@@ -1,89 +1,90 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
-// Navigation items matching Stitch Super Admin design and active routes
 const navItems = [
   { name: "Dashboard", to: "/super-admin/dashboard", icon: "dashboard" },
-  { name: "Hotel Monitoring", to: "/super-admin/hotels", icon: "domain" },
+  { name: "Hotel Monitoring", to: "/super-admin/hotels", icon: "hotel" },
   { name: "Users", to: "/super-admin/users", icon: "group" },
   { name: "Partners", to: "/super-admin/partners", icon: "handshake" },
   { name: "Warning Management", to: "/super-admin/warnings", icon: "warning" },
-  { name: "Activity", to: "/super-admin/activity-logs", icon: "history" },
-  { name: "Reports", to: "/super-admin/reports", icon: "analytics" },
-  { name: "Pengaturan", to: "/super-admin/profile", icon: "settings" },
+  { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
+  { name: "Reports", to: "/super-admin/reports", icon: "monitoring" },
 ];
 
-/**
- * SuperAdminSidebar – compact vertical navigation without scrollbar
- */
 const SuperAdminSidebar = ({ onLogout }) => {
+  const location = useLocation();
+
+  const isActive = (path) => {
+    if (path === "/super-admin/dashboard") {
+      return location.pathname === "/super-admin/dashboard";
+    }
+    return location.pathname.startsWith(path);
+  };
+
   return (
-    <nav className="flex flex-col h-full bg-[#2e3130] text-white w-[260px] select-none font-hanken overflow-hidden">
-      {/* Brand Header (Compact) */}
-      <div className="px-6 pt-5 pb-4">
-        <h1 className="font-newsreader text-[18px] font-medium leading-tight tracking-wide text-white font-['Newsreader',serif]">
-          H'Leven
+    <aside className="w-[260px] bg-[#2D312C] text-[#D1D5D1] flex flex-col z-50 shrink-0 h-full shadow-lg">
+      <div className="px-6 py-6 border-b border-white/10">
+        <h1 className="font-['Newsreader',serif] text-2xl font-semibold text-white tracking-wide">
+          H&apos;Leven Super Admin
         </h1>
-        <p className="font-hanken text-[12px] text-[#c4c8c0] mt-0.5 font-normal opacity-80 font-['Hanken_Grotesk',sans-serif]">
-          Super Admin
+        <p className="text-xs text-[#D1D5D1]/70 font-medium mt-1 uppercase tracking-wider">
+          Full Control Dashboard
         </p>
       </div>
 
-      {/* Navigation Links */}
-      <div className="flex-1 flex flex-col gap-0.5">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-6 py-2.5 font-hanken text-[13.5px] font-['Hanken_Grotesk',sans-serif] transition-all duration-150 ${
-                isActive
-                  ? "bg-[#4f604f] border-l-4 border-[#768875] text-white font-medium"
-                  : "text-[#c4c8c0] opacity-75 hover:opacity-100 hover:bg-white/5 hover:text-white"
-              }`
-            }
-          >
-            <span
-              className="material-symbols-outlined text-[19px] shrink-0"
-              aria-hidden="true"
+      <div className="flex-1 overflow-y-auto py-4">
+        <ul className="flex flex-col gap-1">
+          {navItems.map((item) => (
+            <li key={item.to}>
+              <Link
+                to={item.to}
+                className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                  isActive(item.to)
+                    ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                    : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+                }`}
+              >
+                <span className="material-symbols-outlined mr-3 text-[20px]">
+                  {item.icon}
+                </span>
+                <span>{item.name}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-auto border-t border-white/10 p-3">
+        <ul className="flex flex-col gap-1">
+          <li>
+            <Link
+              to="/super-admin/profile"
+              className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                isActive('/super-admin/profile')
+                  ? 'bg-[#506147] text-white'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white'
+              }`}
             >
-              {item.icon}
-            </span>
-            <span className="truncate">{item.name}</span>
-          </NavLink>
-        ))}
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                account_circle
+              </span>
+              <span>Profile</span>
+            </Link>
+          </li>
+          <li>
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center px-4 py-2.5 text-sm text-red-300 hover:bg-red-950/40 hover:text-red-200 rounded-lg transition-colors duration-200"
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                logout
+              </span>
+              <span>Logout</span>
+            </button>
+          </li>
+        </ul>
       </div>
-
-      {/* Bottom Actions (Support & Logout) */}
-      <div className="mt-auto pt-2.5 pb-4 border-t border-white/10 flex flex-col gap-0.5">
-        <a
-          href="#support"
-          className="flex items-center gap-3 px-6 py-2.5 font-hanken text-[13.5px] font-['Hanken_Grotesk',sans-serif] text-[#c4c8c0] opacity-75 hover:opacity-100 hover:bg-white/5 hover:text-white transition-all duration-150"
-        >
-          <span
-            className="material-symbols-outlined text-[19px] shrink-0"
-            aria-hidden="true"
-          >
-            help
-          </span>
-          <span>Support</span>
-        </a>
-
-        <button
-          type="button"
-          onClick={onLogout}
-          className="flex items-center gap-3 w-full text-left px-6 py-2.5 font-hanken text-[13.5px] font-['Hanken_Grotesk',sans-serif] text-[#c4c8c0] opacity-75 hover:opacity-100 hover:bg-white/5 hover:text-white transition-all duration-150"
-        >
-          <span
-            className="material-symbols-outlined text-[19px] shrink-0"
-            aria-hidden="true"
-          >
-            logout
-          </span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </nav>
+    </aside>
   );
 };
 

@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\ActivityLog;
-use App\Models\Hotel;
 use App\Models\City;
+use App\Models\Hotel;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -29,8 +29,8 @@ class SuperAdminUserService
 
         if (isset($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('email', 'like', '%' . $filters['search'] . '%');
+                $q->where('name', 'like', '%'.$filters['search'].'%')
+                    ->orWhere('email', 'like', '%'.$filters['search'].'%');
             });
         }
 
@@ -51,17 +51,17 @@ class SuperAdminUserService
                 'role' => $data['role'], // Biasanya 'admin_hotel'
                 'phone' => $data['phone'] ?? null,
                 // PERBAIKAN UTAMA: Menggunakan huruf kecil agar lolos constraint Supabase
-                'status' => 'active'
+                'status' => 'active',
             ]);
 
             if ($user->role === 'admin_hotel') {
-                $hotelName = !empty($data['hotel_name']) ? $data['hotel_name'] : 'Hotel ' . $user->name;
+                $hotelName = ! empty($data['hotel_name']) ? $data['hotel_name'] : 'Hotel '.$user->name;
                 Hotel::create([
                     'admin_id' => $user->id,
                     'city_id' => City::first()?->id ?? 1,
                     'name' => $hotelName,
-                    'slug' => Str::slug($hotelName) . '-' . $user->id,
-                    'description' => 'Deskripsi hotel baru untuk ' . $hotelName,
+                    'slug' => Str::slug($hotelName).'-'.$user->id,
+                    'description' => 'Deskripsi hotel baru untuk '.$hotelName,
                     'address' => 'Alamat hotel baru',
                     'status' => 'active',
                 ]);
@@ -71,7 +71,7 @@ class SuperAdminUserService
                 'user_id' => $superAdmin->id,
                 'activity' => 'Create User',
                 'description' => "Super Admin membuat akun baru dengan email {$user->email} (Role: {$user->role}).",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
 
             return $user;
@@ -90,7 +90,43 @@ class SuperAdminUserService
                 'user_id' => $superAdmin->id,
                 'activity' => 'Update User Status',
                 'description' => "Super Admin mengubah status user {$user->email} menjadi {$status}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
+            ]);
+        });
+    }
+
+    /**
+     * Mengubah role pengguna
+     */
+    public function updateUserRole(User $user, string $role, User $superAdmin): void
+    {
+        DB::transaction(function () use ($user, $role, $superAdmin) {
+            $oldRole = $user->role;
+
+            if ($oldRole === 'admin_hotel' && $role !== 'admin_hotel' && $user->hotel) {
+                $user->hotel->delete();
+            }
+
+            if ($oldRole !== 'admin_hotel' && $role === 'admin_hotel' && ! $user->hotel) {
+                $hotelName = 'Hotel '.$user->name;
+                Hotel::create([
+                    'admin_id' => $user->id,
+                    'city_id' => City::first()?->id ?? 1,
+                    'name' => $hotelName,
+                    'slug' => Str::slug($hotelName).'-'.$user->id,
+                    'description' => 'Deskripsi hotel baru untuk '.$hotelName,
+                    'address' => 'Alamat hotel baru',
+                    'status' => 'active',
+                ]);
+            }
+
+            $user->update(['role' => $role]);
+
+            ActivityLog::create([
+                'user_id' => $superAdmin->id,
+                'activity' => 'Update User Role',
+                'description' => "Super Admin mengubah role user {$user->email} dari {$oldRole} menjadi {$role}.",
+                'ip_address' => request()->ip(),
             ]);
         });
     }
@@ -102,13 +138,18 @@ class SuperAdminUserService
     {
         DB::transaction(function () use ($user, $superAdmin) {
             $email = $user->email;
+
+            if ($user->role === 'admin_hotel' && $user->hotel) {
+                $user->hotel->delete();
+            }
+
             $user->delete();
 
             ActivityLog::create([
                 'user_id' => $superAdmin->id,
                 'activity' => 'Delete User',
                 'description' => "Super Admin menghapus akun dengan email {$email}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
     }

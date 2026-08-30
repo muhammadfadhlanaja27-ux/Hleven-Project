@@ -18,7 +18,7 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'role' => ['sometimes', 'in:user,admin_hotel'], // Mencegah user mendaftar langsung sebagai super_admin
+            'role' => ['sometimes', 'in:user'],
         ];
     }
 }

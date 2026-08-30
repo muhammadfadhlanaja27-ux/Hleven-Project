@@ -2,6 +2,108 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
+
+const FACILITY_ICON_MAP = {
+  "AC": "ac_unit",
+  "Air Conditioning": "ac_unit",
+  "AC Area Umum": "ac_unit",
+  "TV": "tv",
+  "Smart TV": "tv",
+  "Television": "tv",
+  "Kamar mandi pribadi": "bathtub",
+  "Private Bathroom": "bathtub",
+  "Bathtub": "bathtub",
+  "Balkon": "balcony",
+  "Private Balcony": "balcony",
+  "Mini fridge": "kitchen",
+  "Mini Refrigerator": "kitchen",
+  "Kulkas Mini": "kitchen",
+  "Hair dryer": "lotion",
+  "Hair Dryer": "lotion",
+  "Pengering Rambut": "lotion",
+  "Meja kerja": "desk",
+  "Work Desk": "desk",
+  "Lemari": "checkroom",
+  "Wardrobe": "checkroom",
+  "Closet": "checkroom",
+  "Lemari Pakaian": "checkroom",
+  "Air mineral": "water_drop",
+  "Mineral Water": "water_drop",
+  "Air Mineral": "water_drop",
+  "Water Heater": "water_drop",
+  "Shower": "shower",
+  "Toilet": "bathtub",
+  "Washtafel": "bathtub",
+  "Wi-Fi": "wifi",
+  "Wi-Fi Gratis": "wifi",
+  "Internet": "wifi",
+  "Kolam renang": "pool",
+  "Swimming Pool": "pool",
+  "Kolam Renang": "pool",
+  "Parkir": "local_parking",
+  "Parkir Gratis": "local_parking",
+  "Parking": "local_parking",
+  "Restoran": "restaurant",
+  "Restaurant": "restaurant",
+  "Gym": "fitness_center",
+  "Fitness Center": "fitness_center",
+  "Pusat Kebugaran": "fitness_center",
+  "Spa": "hot_tub",
+  "Spa & Massage": "hot_tub",
+  "Spa & Wellness": "hot_tub",
+  "Resepsionis 24 jam": "concierge",
+  "Reception 24h": "concierge",
+  "Front Desk 24h": "concierge",
+  "Lift": "elevator",
+  "Elevator": "elevator",
+  "Laundry": "local_laundry_service",
+  "Laundry Service": "local_laundry_service",
+  "Safety Box": "lock",
+  "Brankas Kamar": "lock",
+  "In-Room Safe": "lock",
+  "Coffee Maker": "local_cafe",
+  "Pembuat Teh/Kopi": "local_cafe",
+  "Bar & Lounge": "local_bar",
+  "Room Service": "room_service",
+  "Bed / Room": "bed",
+  "Tempat Tidur": "bed",
+  "Hotel General": "hotel",
+  "Peralatan Mandi Gratis": "bathtub",
+  "Free Toiletries": "bathtub",
+};
+
+const resolveFacilityIcon = (name) => {
+  if (!name) return "bed";
+  if (FACILITY_ICON_MAP[name]) return FACILITY_ICON_MAP[name];
+  const lower = name.toLowerCase();
+  if (lower.includes("ac") || lower.includes("air condition")) return "ac_unit";
+  if (lower.includes("tv") || lower.includes("televisi") || lower.includes("television")) return "tv";
+  if (lower.includes("mandi") || lower.includes("bath") || lower.includes("toilet") || lower.includes("kloset") || lower.includes("wash") || lower.includes("washtafel") || lower.includes("wastafel")) return "bathtub";
+  if (lower.includes("bathtub") || lower.includes("bak")) return "bathtub";
+  if (lower.includes("balkon") || lower.includes("teras") || lower.includes("balcony")) return "balcony";
+  if (lower.includes("kulkas") || lower.includes("fridge") || lower.includes("minibar") || lower.includes("refrigerator")) return "kitchen";
+  if (lower.includes("hair") || lower.includes("pengering") || lower.includes("dryer")) return "lotion";
+  if (lower.includes("meja") || lower.includes("kerja") || lower.includes("desk")) return "desk";
+  if (lower.includes("lemari") || lower.includes("wardrobe") || lower.includes("closet")) return "checkroom";
+  if (lower.includes("air mineral") || lower.includes("mineral water") || lower.includes("drink") || lower.includes("botol") || lower.includes("water heater")) return "water_drop";
+  if (lower.includes("shower")) return "shower";
+  if (lower.includes("wifi") || lower.includes("internet")) return "wifi";
+  if (lower.includes("kolam") || lower.includes("pool") || lower.includes("renang")) return "pool";
+  if (lower.includes("parkir") || lower.includes("parking")) return "local_parking";
+  if (lower.includes("restoran") || lower.includes("makan") || lower.includes("restaurant")) return "restaurant";
+  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("kebugaran")) return "fitness_center";
+  if (lower.includes("spa") || lower.includes("massage") || lower.includes("wellness")) return "hot_tub";
+  if (lower.includes("resepsionis") || lower.includes("reception") || lower.includes("24") || lower.includes("front desk")) return "concierge";
+  if (lower.includes("lift") || lower.includes("elevator")) return "elevator";
+  if (lower.includes("laundry") || lower.includes("cuci")) return "local_laundry_service";
+  if (lower.includes("brankas") || lower.includes("safety box") || lower.includes("safe") || lower.includes("lock")) return "lock";
+  if (lower.includes("coffee") || lower.includes("kopi") || lower.includes("tea") || lower.includes("teh")) return "local_cafe";
+  if (lower.includes("bar") || lower.includes("lounge")) return "local_bar";
+  if (lower.includes("room service")) return "room_service";
+  if (lower.includes("bed") || lower.includes("tidur")) return "bed";
+  return "bed";
+};
 
 export default function RoomCreate() {
   const navigate = useNavigate();
@@ -20,6 +122,7 @@ export default function RoomCreate() {
     weekend_price: "",
     capacity: "",
     stock: "",
+    is_refundable: true,
     facilityIds: [],
     photos: [],
   });
@@ -28,38 +131,37 @@ export default function RoomCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchFacilities = async () => {
+    const fetchRoomFacilities = async () => {
       try {
-        const res = await api.get("/facilities");
-        const list = res.data?.data || res.data || [];
-        setRoomFacilities(Array.isArray(list) ? list : []);
+        const { data: resData } = await cachedGet("/facilities");
+        const allFacilities = resData?.success
+          ? resData.data
+          : Array.isArray(resData) ? resData : [];
+        const filtered = allFacilities.filter(
+          (f) => f.category === "Room" || f.category === "Bathroom"
+        );
+        setRoomFacilities(Array.isArray(filtered) ? filtered : []);
       } catch (err) {
-        console.error("Failed to load facilities:", err);
+        console.error("Failed to load room facilities:", err);
+        setRoomFacilities([]);
       }
     };
-    fetchFacilities();
+    fetchRoomFacilities();
   }, []);
 
-  const fetchFacilities = async () => {
-    try {
-      const { data: resData } = await cachedGet("/facilities?category=Room");
-      if (resData && resData.success) {
-        setRoomFacilities(resData.data);
-      } else {
-        setRoomFacilities(getStoredRoomFacilities());
-      }
-    } catch (err) {
-      console.error("Gagal memuat facilities dari API, fallback ke mock", err);
-      setRoomFacilities(getStoredRoomFacilities());
-    }
-  };
-
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  const handleRefundChange = (isRefundable) => {
+    setFormData((prev) => ({ ...prev, is_refundable: isRefundable }));
   };
 
   const handleFacilityToggle = (facilityId) => {
@@ -148,6 +250,7 @@ export default function RoomCreate() {
       payload.append("adult_capacity", formData.capacity);
       payload.append("child_capacity", 0);
       payload.append("stock", formData.stock);
+      payload.append("is_refundable", formData.is_refundable ? "1" : "0");
 
       (formData.facilityIds || []).forEach((fId, idx) => {
         payload.append(`facilities[${idx}]`, fId);
@@ -432,6 +535,81 @@ export default function RoomCreate() {
             </div>
           </div>
 
+          {/* Refund Policy Section */}
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <h4 className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Refund Policy
+              </h4>
+              <span className="text-[#ba1a1a] text-xs">*</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleRefundChange(true)}
+                disabled={isSubmitting}
+                className={`relative flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                  formData.is_refundable === true
+                    ? "border-[#506147] bg-[#E4EBE0] shadow-sm"
+                    : "border-[#E5E1DA] bg-white hover:border-[#c4c8be]"
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 border-2 ${
+                  formData.is_refundable === true
+                    ? "border-[#506147] bg-[#506147]"
+                    : "border-[#c4c8be] bg-white"
+                }`}>
+                  {formData.is_refundable === true && (
+                    <span className="w-2 h-2 rounded-full bg-white"></span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#4F6F52] text-[18px]">
+                      verified
+                    </span>
+                    Bisa Refund
+                  </span>
+                  <p className="text-xs text-[#6B6E6A] leading-relaxed">
+                    Tamu bisa melakukan pembatalan &amp; pengembalian dana penuh sesuai kebijakan (misal: maks. H-3 sebelum check-in).
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleRefundChange(false)}
+                disabled={isSubmitting}
+                className={`relative flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                  formData.is_refundable === false
+                    ? "border-[#ba1a1a] bg-[#ffdad6]/30 shadow-sm"
+                    : "border-[#E5E1DA] bg-white hover:border-[#c4c8be]"
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 border-2 ${
+                  formData.is_refundable === false
+                    ? "border-[#ba1a1a] bg-[#ba1a1a]"
+                    : "border-[#c4c8be] bg-white"
+                }`}>
+                  {formData.is_refundable === false && (
+                    <span className="w-2 h-2 rounded-full bg-white"></span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#ba1a1a] text-[18px]">
+                      block
+                    </span>
+                    Tidak Bisa Refund
+                  </span>
+                  <p className="text-xs text-[#6B6E6A] leading-relaxed">
+                    Pembayaran bersifat non-refundable. Tamu tidak dapat mengembalikan dana apabila membatalkan reservasi.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-[#F6F3EF] p-4 rounded-xl text-xs text-[#6B6E6A] border border-[#E5E1DA]">
             <p className="font-semibold text-[#2D312C]">Informasi Stok Tersedia (Available Stock)</p>
             <p className="mt-0.5">
@@ -452,6 +630,11 @@ export default function RoomCreate() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
+            {roomFacilities.length === 0 && (
+              <div className="col-span-full py-8 text-center text-xs text-[#6B6E6A]">
+                Memuat daftar fasilitas kamar...
+              </div>
+            )}
             {roomFacilities.map((fac) => {
               const isChecked = formData.facilityIds.includes(fac.id);
               const isInactive = fac.status === "inactive";
@@ -473,9 +656,14 @@ export default function RoomCreate() {
                     className="accent-[#506147]"
                   />
                   <span className="material-symbols-outlined text-[18px] text-[#506147]">
-                    {fac.icon || "star"}
+                    {resolveFacilityIcon(fac.name)}
                   </span>
                   <span className="truncate">{fac.name}</span>
+                  {fac.category && (
+                    <span className="text-[9px] text-[#757870] ml-auto px-1.5 py-0.5 bg-[#E5E1DA] rounded-full">
+                      {fac.category === "Room" ? "Room" : "Bath"}
+                    </span>
+                  )}
                   {isInactive && (
                     <span className="text-[9px] text-[#ba1a1a] ml-auto uppercase font-bold">
                       Inactive

@@ -1,72 +1,58 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
-const QR_CODE_IMAGE = "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80";
-
-const INITIAL_BOOKINGS = [
-  {
-    id: "HLVN-98234-AX",
-    hotel_id: 1,
-    hotel_name: "The Sanctuary at Ubud Resort",
-    room_name: "Executive Suite dengan Kolam Renang Pribadi",
-    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
-    check_in: "Jumat, 15 Nov 2024",
-    check_out: "Minggu, 17 Nov 2024",
-    guest_name: "Eleanor Vance",
-    guest_email: "eleanor.vance@example.com",
-    price_per_night: 3500000,
-    nights: 2,
-    tax_and_fees: 1470000,
-    total_price: 8470000,
-    status: "Paid", // 'Paid' | 'Checked Out' | 'Cancelled'
-    payment_method: "QRIS Instant"
-  },
-  {
-    id: "HLVN-44102-BX",
-    hotel_id: 2,
-    hotel_name: "Maison H'Leven Luxury Heritage",
-    room_name: "Classic Balcony Suite",
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-    check_in: "Rabu, 05 Agt 2024",
-    check_out: "Sabtu, 08 Agt 2024",
-    guest_name: "Eleanor Vance",
-    guest_email: "eleanor.vance@example.com",
-    price_per_night: 2800000,
-    nights: 3,
-    tax_and_fees: 1764000,
-    total_price: 10164000,
-    status: "Checked Out",
-    payment_method: "BCA Virtual Account"
-  },
-  {
-    id: "HLVN-11920-CX",
-    hotel_id: 3,
-    hotel_name: "Oasis Resort & Spa Bali",
-    room_name: "Water Villa Sunset View",
-    image: "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
-    check_in: "Senin, 20 Mei 2024",
-    check_out: "Senin, 27 Mei 2024",
-    guest_name: "Eleanor Vance",
-    guest_email: "eleanor.vance@example.com",
-    price_per_night: 4200000,
-    nights: 7,
-    tax_and_fees: 0,
-    total_price: 0,
-    status: "Cancelled",
-    payment_method: "Refunded"
-  }
-];
+const QR_CODE_PLACEHOLDER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+      <rect width='200' height='200' fill='white'/>
+      <g fill='#1e1b16'>
+        <rect x='20' y='20' width='50' height='50'/>
+        <rect x='130' y='20' width='50' height='50'/>
+        <rect x='20' y='130' width='50' height='50'/>
+        <rect x='30' y='30' width='10' height='10' fill='white'/>
+        <rect x='140' y='30' width='10' height='10' fill='white'/>
+        <rect x='30' y='140' width='10' height='10' fill='white'/>
+        <rect x='80' y='20' width='10' height='10'/>
+        <rect x='100' y='30' width='10' height='10'/>
+        <rect x='20' y='80' width='10' height='10'/>
+        <rect x='40' y='100' width='10' height='10'/>
+        <rect x='60' y='80' width='10' height='10'/>
+        <rect x='80' y='100' width='10' height='10'/>
+        <rect x='100' y='80' width='10' height='10'/>
+        <rect x='120' y='90' width='10' height='10'/>
+        <rect x='140' y='100' width='10' height='10'/>
+        <rect x='160' y='80' width='10' height='10'/>
+        <rect x='180' y='100' width='10' height='10'/>
+        <rect x='80' y='120' width='10' height='10'/>
+        <rect x='100' y='140' width='10' height='10'/>
+        <rect x='120' y='130' width='10' height='10'/>
+        <rect x='140' y='150' width='10' height='10'/>
+        <rect x='160' y='140' width='10' height='10'/>
+        <rect x='100' y='160' width='10' height='10'/>
+        <rect x='120' y='180' width='10' height='10'/>
+      </g>
+    </svg>
+  `);
 
 const BookingHistory = () => {
   const navigate = useNavigate();
 
   // Component States
-  const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("All"); // 'All' | 'Paid' | 'Checked Out' | 'Cancelled'
   const [sortBy, setSortBy] = useState("newest"); // 'newest' | 'oldest' | 'price_high'
   const [selectedBooking, setSelectedBooking] = useState(null); // For E-Ticket Modal
   const [user, setUser] = useState(null);
+
+  // Cancellation & Refund Modal States (Phase 1)
+  const [cancelModalBooking, setCancelModalBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
   // Load User & Fetch API Bookings
   useEffect(() => {
@@ -79,19 +65,51 @@ const BookingHistory = () => {
       }
     }
 
-    const fetchApiBookings = async () => {
-      try {
-        const response = await api.get("/user/bookings");
-        if (response.data && response.data.data && response.data.data.length > 0) {
-          setBookings(response.data.data);
-        }
-      } catch (err) {
-        // Fallback to INITIAL_BOOKINGS when API is unavailable
-      }
-    };
-
     fetchApiBookings();
   }, []);
+
+  const fetchApiBookings = async (forceRefresh = false) => {
+    setBookingsLoading(true);
+    try {
+      const TTL_30DETIK = 30 * 1000;
+      const { data: responseData, fromCache } = await cachedGet(
+        "/user/bookings",
+        {},
+        forceRefresh,
+        TTL_30DETIK
+      );
+      const result = responseData?.data || responseData || [];
+      setBookings(Array.isArray(result) ? result : []);
+      if (fromCache) {
+        console.debug("[Cache Hit] BookingHistory loaded from cache (30s TTL)");
+      }
+    } catch (err) {
+      console.warn("Gagal memuat riwayat pemesanan:", err);
+      setBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const handleProcessCancelOrRefund = async () => {
+    if (!cancelModalBooking) return;
+    setIsSubmittingCancel(true);
+
+    try {
+      const res = await api.post(`/user/bookings/${cancelModalBooking.id}/cancel`, {
+        reason: cancelReason,
+      });
+
+      toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
+      setCancelModalBooking(null);
+      setCancelReason("");
+      fetchApiBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
 
   // Filter & Sort Logic
   const filteredBookings = useMemo(() => {
@@ -99,11 +117,15 @@ const BookingHistory = () => {
 
     if (filterStatus !== "All") {
       if (filterStatus === "Upcoming") {
-        result = result.filter((b) => b.status === "Paid" || b.status === "Dikonfirmasi");
+        result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(b.status));
+      } else if (filterStatus === "Pending") {
+        result = result.filter((b) => b.status === "pending");
       } else if (filterStatus === "Past") {
-        result = result.filter((b) => b.status === "Checked Out" || b.status === "Selesai");
+        result = result.filter((b) => ["Checked Out", "Selesai", "completed"].includes(b.status));
       } else if (filterStatus === "Cancelled") {
-        result = result.filter((b) => b.status === "Cancelled" || b.status === "Dibatalkan");
+        result = result.filter((b) =>
+          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "refund_pending"].includes(b.status)
+        );
       }
     }
 
@@ -127,7 +149,18 @@ const BookingHistory = () => {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case "pending":
+        return (
+          <div className="bg-[#FFF0E0] backdrop-blur-sm border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
+            <span className="font-label-sm text-xs text-[#9B5235] font-bold uppercase tracking-wider">
+              Menunggu Bayar
+            </span>
+          </div>
+        );
       case "Paid":
+      case "paid":
+      case "confirmed":
       case "Dikonfirmasi":
         return (
           <div className="bg-[#4F6F52]/10 backdrop-blur-sm border border-[#4F6F52]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
@@ -137,8 +170,18 @@ const BookingHistory = () => {
             </span>
           </div>
         );
+      case "refund_pending":
+        return (
+          <div className="bg-[#E0F2FE] backdrop-blur-sm border border-[#0369A1]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#0369A1]"></span>
+            <span className="font-label-sm text-xs text-[#0369A1] font-bold uppercase tracking-wider">
+              Proses Refund
+            </span>
+          </div>
+        );
       case "Checked Out":
       case "Selesai":
+      case "completed":
         return (
           <div className="bg-[#645b4f]/10 backdrop-blur-sm border border-[#645b4f]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#645b4f]"></span>
@@ -147,8 +190,18 @@ const BookingHistory = () => {
             </span>
           </div>
         );
+      case "cancelled_by_system":
+        return (
+          <div className="bg-[#ffdad6]/80 backdrop-blur-sm border border-[#ba1a1a]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
+            <span className="font-label-sm text-xs text-[#ba1a1a] font-bold uppercase tracking-wider">
+              Kedaluwarsa (Sistem)
+            </span>
+          </div>
+        );
       case "Cancelled":
       case "Dibatalkan":
+      case "cancelled_by_user":
         return (
           <div className="bg-[#ffdad6]/80 backdrop-blur-sm border border-[#ba1a1a]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
@@ -169,72 +222,147 @@ const BookingHistory = () => {
     }
   };
 
+  const getInitialUser = () => {
+    try {
+      const saved = localStorage.getItem("user");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const initialUser = getInitialUser();
+  const initialRole = initialUser?.role || "user";
+  const isAdminOrSuperAdmin =
+    initialRole === "admin_hotel" || initialRole === "super_admin";
+
+  const getAvatarUrl = () => {
+    const a = initialUser?.avatar || initialUser?.avatar_url || initialUser?.avatarPreview;
+    if (!a) return null;
+    if (a.startsWith("http://") || a.startsWith("https://") || a.startsWith("data:") || a.startsWith("blob:")) return a;
+    return `http://localhost:8000/storage/${a.replace(/^\//, "")}`;
+  };
+
+  const fullName =
+    initialUser?.name ||
+    `${initialUser?.first_name || ""} ${initialUser?.last_name || ""}`.trim() ||
+    initialUser?.email ||
+    "User H'Leven";
+  const initialLetter = (fullName.charAt(0) || "U").toUpperCase();
+
+  const accountStatus = (() => {
+    const s = String(initialUser?.status || initialRole || "").toLowerCase();
+    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
+    if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
+    if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
+    if (["super_admin"].includes(s)) return { label: "Super Admin", color: "text-[#778873]" };
+    return { label: "Active", color: "text-[#778873]" };
+  })();
+
+  const userAvatar = getAvatarUrl();
+
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
-      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-16 flex flex-col md:flex-row gap-8 text-left">
-        
-        {/* Sidebar Navigation */}
-        <aside className="w-full md:w-64 flex-shrink-0">
-          <div className="sticky top-24">
-            <h1 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-6">
-              My Account
-            </h1>
-            <nav className="flex flex-col gap-2">
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-12 flex flex-col text-left">
+        <div className="mb-8">
+          <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
+            My Account
+          </h1>
+          <p className="font-body-md text-sm md:text-base text-[#444842]">
+            Kelola profil pribadi dan riwayat pemesanan kamar Anda.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <aside className="lg:col-span-4 flex flex-col gap-6">
+            <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden shadow-md">
+                {userAvatar ? (
+                  <img
+                    src={userAvatar}
+                    alt={fullName}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = "none"; }}
+                  />
+                ) : (
+                  <span className="font-headline-xl text-3xl font-bold">
+                    {initialLetter}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="font-headline-md text-xl font-bold text-[#2D332C] mb-1">
+                {fullName}
+              </h2>
+              <p className="text-[#778873] font-label-md text-xs font-semibold mb-5">
+                Anggota H&apos;Leven
+              </p>
+
+              <div className="w-full bg-[#DCCFC0]/40 h-px mb-5"></div>
+
+              <div className="w-full grid grid-cols-2 gap-3">
+                <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
+                  <span className="text-[#778873] font-headline-md text-xl font-bold mb-0.5">
+                    {bookings.length}
+                  </span>
+                  <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
+                    Total Pesanan
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center p-3 bg-white rounded-xl border border-[#DCCFC0]/30 shadow-xs">
+                  <span className={`font-headline-md text-xl font-bold mb-0.5 ${accountStatus.color}`}>
+                    {accountStatus.label}
+                  </span>
+                  <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
+                    Status Akun
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
+              {!isAdminOrSuperAdmin && (
+                <Link
+                  to="/profile"
+                  state={{ defaultTab: "partner" }}
+                  className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    real_estate_agent
+                  </span>
+                  Status Mitra Hotel
+                </Link>
+              )}
+
               <Link
                 to="/profile"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#444842] hover:bg-[#DCCFC0]/30 hover:text-[#778873] transition-colors group font-label-md text-sm font-semibold"
+                state={{ defaultTab: "personal" }}
+                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
               >
-                <span className="material-symbols-outlined text-[#747871] group-hover:text-[#778873] transition-colors">
-                  person_outline
-                </span>
-                Personal Information
+                <span className="material-symbols-outlined text-xl">person_outline</span>
+                Informasi Pribadi
               </Link>
 
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#DCCFC0]/40 text-[#778873] border-l-4 border-[#778873] shadow-xs font-label-md text-sm font-bold">
-                <span className="material-symbols-outlined text-[#778873]">history</span>
-                Booking History
+              <div
+                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left bg-[#778873]/10 text-[#778873] border-[#778873]"
+              >
+                <span className="material-symbols-outlined text-xl">history</span>
+                Riwayat Pemesanan
               </div>
 
-              <a
-                href="#payment"
-                onClick={(e) => { e.preventDefault(); alert("Fitur Payment Methods tersimpan."); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#444842] hover:bg-[#DCCFC0]/30 hover:text-[#778873] transition-colors group font-label-md text-sm font-semibold"
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-6 py-4 text-[#ba1a1a] hover:bg-[#ffdad6]/30 font-label-md text-sm font-semibold transition-colors border-l-4 border-l-transparent mt-2 border-t border-[#DCCFC0]/30 text-left cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[#747871] group-hover:text-[#778873] transition-colors">
-                  credit_card
-                </span>
-                Payment Methods
-              </a>
-
-              <a
-                href="#preferences"
-                onClick={(e) => { e.preventDefault(); alert("Fitur Preferences tersimpan."); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#444842] hover:bg-[#DCCFC0]/30 hover:text-[#778873] transition-colors group font-label-md text-sm font-semibold"
-              >
-                <span className="material-symbols-outlined text-[#747871] group-hover:text-[#778873] transition-colors">
-                  tune
-                </span>
-                Preferences
-              </a>
-
-              <div className="mt-4 pt-4 border-t border-[#DCCFC0]/50">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[#ba1a1a] hover:bg-[#ffdad6]/20 transition-colors group font-label-md text-sm font-semibold text-left cursor-pointer"
-                >
-                  <span className="material-symbols-outlined group-hover:text-[#ba1a1a] transition-colors">
-                    logout
-                  </span>
-                  Sign Out
-                </button>
-              </div>
+                <span className="material-symbols-outlined text-xl">logout</span>
+                Keluar (Sign Out)
+              </button>
             </nav>
-          </div>
-        </aside>
+          </aside>
 
-        {/* Main Content Area */}
-        <section className="flex-grow flex flex-col gap-6">
+          <div className="lg:col-span-8 flex flex-col gap-8">
+            <section className="flex-grow flex flex-col gap-6">
           
           {/* Filters & Sort Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
@@ -248,9 +376,10 @@ const BookingHistory = () => {
                 className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
               >
                 <option value="All">Semua Pesanan</option>
+                <option value="Pending">Menunggu Pembayaran</option>
                 <option value="Upcoming">Upcoming / Lunas</option>
                 <option value="Past">Selesai (Checked Out)</option>
-                <option value="Cancelled">Dibatalkan</option>
+                <option value="Cancelled">Dibatalkan / Refund</option>
               </select>
             </div>
 
@@ -272,7 +401,28 @@ const BookingHistory = () => {
 
           {/* Bookings List */}
           <div className="flex flex-col gap-6">
-            {filteredBookings.length === 0 ? (
+            {bookingsLoading ? (
+              <>
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-[#DCCFC0]/50 overflow-hidden shadow-xs flex flex-col sm:flex-row animate-pulse"
+                  >
+                    <div className="sm:w-1/3 h-48 sm:h-auto min-h-[180px] bg-[#e8e2d9]"></div>
+                    <div className="p-6 flex-grow flex flex-col justify-between gap-4">
+                      <div className="h-5 w-1/3 bg-[#e8e2d9] rounded mb-3"></div>
+                      <div className="h-6 w-2/3 bg-[#e8e2d9] rounded mb-2"></div>
+                      <div className="h-4 w-1/2 bg-[#e8e2d9] rounded mb-4"></div>
+                      <div className="h-16 w-full bg-[#faf3ea] rounded-xl mb-4"></div>
+                      <div className="flex justify-end gap-3">
+                        <div className="h-8 w-28 bg-[#e8e2d9] rounded-xl"></div>
+                        <div className="h-8 w-32 bg-[#e8e2d9] rounded-xl"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : filteredBookings.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-[#DCCFC0]/40">
                 <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">
                   event_busy
@@ -284,16 +434,26 @@ const BookingHistory = () => {
                 <article
                   key={item.id}
                   className={`bg-white rounded-2xl border border-[#DCCFC0]/50 overflow-hidden shadow-xs hover:shadow-md hover:shadow-[#778873]/10 transition-all duration-300 flex flex-col sm:flex-row ${
-                    item.status === "Cancelled" || item.status === "Dibatalkan" ? "opacity-75" : ""
+                    ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system"].includes(item.status) ? "opacity-75" : ""
                   }`}
                 >
                   {/* Thumbnail Image with Status Badge Overlay */}
-                  <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px]">
-                    <img
-                      src={item.image || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80"}
-                      alt={item.hotel_name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+                    {item.image || item.room?.photos?.[0]?.url ? (
+                      <img
+                        src={item.image || item.room?.photos?.[0]?.url}
+                        alt={item.hotel_name || item.room?.hotel?.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                        <span className="material-symbols-outlined text-[#778873] text-5xl mb-2 opacity-60">image_not_supported</span>
+                        <p className="font-label-md text-[11px] font-bold text-[#778873] uppercase tracking-wider">
+                          Belum Ada Foto
+                        </p>
+                      </div>
+                    )}
                     <div className="absolute top-4 left-4 z-10">
                       {getStatusBadge(item.status)}
                     </div>
@@ -304,15 +464,28 @@ const BookingHistory = () => {
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
                       <div>
                         <span className="font-label-sm text-[11px] font-bold text-[#778873] uppercase tracking-wider block mb-1">
-                          ID Order: {item.id}
+                          ID Order: {item.booking_code || item.id}
                         </span>
                         <h3 className="font-headline-md text-xl font-bold text-[#778873] mb-1">
-                          {item.hotel_name}
+                          {item.hotel_name || item.room?.hotel?.name || "H'Leven Resort"}
                         </h3>
                         <p className="font-body-md text-sm text-[#444842] flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">bed</span>
-                          {item.room_name}
+                          {item.room_name || item.room?.name}
                         </p>
+                        <div className="mt-2">
+                          {(item.is_refundable === undefined || item.is_refundable) ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
+                              <span className="material-symbols-outlined text-[12px]">verified</span>
+                              Bisa Refund
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold text-[10px] uppercase tracking-wider">
+                              <span className="material-symbols-outlined text-[12px]">block</span>
+                              Non-Refundable
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="text-left sm:text-right mt-2 sm:mt-0">
@@ -358,7 +531,7 @@ const BookingHistory = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
+                    {/* Dynamic Actions */}
                     <div className="flex flex-wrap gap-3 justify-end pt-1">
                       <button
                         type="button"
@@ -368,16 +541,38 @@ const BookingHistory = () => {
                         View Details
                       </button>
 
-                      {item.status === "Paid" || item.status === "Dikonfirmasi" ? (
+                      {item.status === "pending" && (
                         <button
                           type="button"
-                          onClick={() => setSelectedBooking(item)}
-                          className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          onClick={() => setCancelModalBooking(item)}
+                          className="px-5 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-base">download</span>
-                          Download E-Ticket
+                          Batalkan Pesanan
                         </button>
-                      ) : (
+                      )}
+
+                      {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBooking(item)}
+                            className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base">download</span>
+                            Download E-Ticket
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setCancelModalBooking(item)}
+                            className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
+                          >
+                            Ajukan Refund
+                          </button>
+                        </>
+                      )}
+
+                      {!["Paid", "paid", "confirmed", "Dikonfirmasi", "pending"].includes(item.status) && (
                         <button
                           type="button"
                           onClick={() => navigate(`/hotels/${item.hotel_id || 1}`)}
@@ -393,8 +588,56 @@ const BookingHistory = () => {
               ))
             )}
           </div>
-        </section>
+            </section>
+          </div>
+        </div>
       </main>
+
+      {/* MODAL REFUND / CANCEL (Phase 1) */}
+      {cancelModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
+            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
+              {cancelModalBooking.status === "pending" ? "Batalkan Pesanan" : "Pengajuan Refund"}
+            </h3>
+            <p className="font-body-md text-xs text-[#444842]">
+              Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
+            </p>
+
+            <div className="space-y-2">
+              <label className="block font-label-md text-xs font-semibold text-[#444842]">
+                Alasan Pembatalan / Refund *
+              </label>
+              <textarea
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Tuliskan alasan lengkap..."
+                className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalBooking(null)}
+                disabled={isSubmittingCancel}
+                className="px-4 py-2 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleProcessCancelOrRefund}
+                disabled={isSubmittingCancel || !cancelReason.trim()}
+                className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
+              >
+                {isSubmittingCancel ? "Memproses..." : "Konfirmasi Pembatalan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* E-Ticket Modal Popup (ticket.html design) */}
       {selectedBooking && (
@@ -436,7 +679,7 @@ const BookingHistory = () => {
                     Booking Reference
                   </p>
                   <p className="font-headline-md text-xl md:text-2xl font-bold text-[#778873]">
-                    {selectedBooking.id}
+                    {selectedBooking.booking_code || selectedBooking.id}
                   </p>
                 </div>
                 <div className="text-left md:text-right">
@@ -457,7 +700,7 @@ const BookingHistory = () => {
                 <div className="flex flex-col items-center justify-center order-2 md:order-1 border-t md:border-t-0 md:border-r border-[#DCCFC0]/60 pt-6 md:pt-0 md:pr-8 text-center">
                   <div className="bg-[#FDF6ED] p-4 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm">
                     <img
-                      src={QR_CODE_IMAGE}
+                      src={QR_CODE_PLACEHOLDER}
                       alt="QR Code Tiket"
                       className="w-44 h-44 object-contain mix-blend-multiply"
                     />
@@ -468,7 +711,7 @@ const BookingHistory = () => {
                   <div className="w-full flex flex-col gap-3">
                     <button
                       type="button"
-                      onClick={() => alert(`📥 Mengunduh E-Tiket PDF untuk Order ID ${selectedBooking.id}...`)}
+                      onClick={() => alert(`📥 Mengunduh E-Tiket PDF untuk Order ID ${selectedBooking.booking_code || selectedBooking.id}...`)}
                       className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-lg">download</span>
@@ -492,7 +735,7 @@ const BookingHistory = () => {
                       Destination
                     </p>
                     <h3 className="font-headline-md text-lg font-bold text-[#778873] mb-1">
-                      {selectedBooking.hotel_name || "H'Leven Resort"}
+                      {selectedBooking.hotel_name || selectedBooking.room?.hotel?.name || "H'Leven Resort"}
                     </h3>
                     <p className="font-body-md text-xs text-[#444842] flex items-start gap-1">
                       <span className="material-symbols-outlined text-sm mt-0.5">location_on</span>
@@ -506,11 +749,24 @@ const BookingHistory = () => {
                       Accommodation
                     </p>
                     <p className="font-headline-sm text-sm font-bold text-[#2D332C]">
-                      {selectedBooking.room_name || "Executive Suite dengan Kolam Renang"}
+                      {selectedBooking.room_name || selectedBooking.room?.name || "Executive Suite dengan Kolam Renang"}
                     </p>
                     <p className="font-body-md text-xs text-[#444842] mt-1">
                       1 Kamar • 2 Tamu • Termasuk Sarapan Pagi
                     </p>
+                    <div className="mt-2">
+                      {(selectedBooking.is_refundable === undefined || selectedBooking.is_refundable) ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
+                          <span className="material-symbols-outlined text-[12px]">verified</span>
+                          Booking Bisa Direfund
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold text-[10px] uppercase tracking-wider">
+                          <span className="material-symbols-outlined text-[12px]">block</span>
+                          Non-Refundable
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Dates Grid */}

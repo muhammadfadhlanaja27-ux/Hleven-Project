@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 
-// Icon selector options
 const ICON_OPTIONS = [
   { value: "wifi", label: "Wi-Fi" },
   { value: "pool", label: "Swimming Pool" },
@@ -14,19 +13,116 @@ const ICON_OPTIONS = [
   { value: "kitchen", label: "Mini Refrigerator" },
   { value: "bathtub", label: "Bathroom / Bathtub" },
   { value: "balcony", label: "Balcony" },
-  { value: "coffee_maker", label: "Coffee Maker" },
-  { value: "spa", label: "Spa & Massage" },
+  { value: "hot_tub", label: "Spa & Massage" },
+  { value: "local_laundry_service", label: "Laundry" },
+  { value: "elevator", label: "Lift / Elevator" },
+  { value: "concierge", label: "Reception 24h" },
+  { value: "hotel", label: "Hotel General" },
+  { value: "bed", label: "Bed / Room" },
+  { value: "shower", label: "Shower" },
+  { value: "water_drop", label: "Water / Mineral Water" },
+  { value: "desk", label: "Work Desk" },
+  { value: "checkroom", label: "Closet / Wardrobe" },
   { value: "local_bar", label: "Bar & Lounge" },
   { value: "room_service", label: "Room Service" },
-  { value: "hot_tub", label: "Hot Tub / Jacuzzi" },
-  { value: "security", label: "Safety Box" },
+  { value: "lock", label: "Safety Box" },
+  { value: "local_cafe", label: "Coffee Maker" },
 ];
 
-export default function FacilityManager() {
-  // Tab State: 'hotel' | 'room'
-  const [activeTab, setActiveTab] = useState("hotel");
+const FACILITY_ICON_MAP = {
+  "Wi-Fi": "wifi",
+  "Wi-Fi Gratis": "wifi",
+  "High-Speed Wi-Fi (All Areas)": "wifi",
+  "Kolam Renang": "pool",
+  "Outdoor Swimming Pool": "pool",
+  "Swimming Pool": "pool",
+  "Parkir": "local_parking",
+  "Parkir Gratis": "local_parking",
+  "Guest Parking Area": "local_parking",
+  "Restoran": "restaurant",
+  "Restaurant & Fine Dining": "restaurant",
+  "Gym": "fitness_center",
+  "Pusat Kebugaran": "fitness_center",
+  "Wellness Gym Center": "fitness_center",
+  "Fitness Center": "fitness_center",
+  "Spa": "hot_tub",
+  "Spa & Massage": "hot_tub",
+  "Spa & Wellness": "hot_tub",
+  "Resepsionis 24 Jam": "concierge",
+  "Resepsionis 24h": "concierge",
+  "Front Desk 24h": "concierge",
+  "Reception 24h": "concierge",
+  "24-Hour Front Desk": "concierge",
+  "Lift": "elevator",
+  "Elevator": "elevator",
+  "Laundry": "local_laundry_service",
+  "Laundry Service": "local_laundry_service",
+  "AC Area Umum": "ac_unit",
+  "AC Public Area": "ac_unit",
+  "AC": "ac_unit",
+  "Air Conditioning": "ac_unit",
+  "TV": "tv",
+  "Smart TV": "tv",
+  "TV LED 43 inch": "tv",
+  "Television": "tv",
+  "Kamar Mandi Pribadi": "bathtub",
+  "Private Bathroom": "bathtub",
+  "Bathtub": "bathtub",
+  "Balkon": "balcony",
+  "Private Balcony": "balcony",
+  "Mini Fridge": "kitchen",
+  "Mini Refrigerator": "kitchen",
+  "Kulkas Mini": "kitchen",
+  "Pengering Rambut": "lotion",
+  "Meja Kerja": "desk",
+  "Work Desk": "desk",
+  "Lemari": "checkroom",
+  "Wardrobe": "checkroom",
+  "Closet": "checkroom",
+  "Lemari Pakaian": "checkroom",
+  "Brankas Kamar": "lock",
+  "Safety Box": "lock",
+  "In-Room Safe": "lock",
+  "Air Mineral": "water_drop",
+  "Mineral Water": "water_drop",
+  "Pembuat Teh/Kopi": "local_cafe",
+  "Coffee Maker": "local_cafe",
+  "Coffee & Tea Maker": "local_cafe",
+  "Water Heater": "water_drop",
+  "Shower": "shower",
+  "Peralatan Mandi Gratis": "bathtub",
+  "Free Toiletries": "bathtub",
+  "Bar & Lounge": "local_bar",
+  "Room Service": "room_service",
+  "Hotel General": "hotel",
+  "Hotel Umum": "hotel",
+  "Bed / Room": "bed",
+  "Tempat Tidur": "bed",
+};
 
-  // Local Data State
+const resolveIcon = (facilityName, fallback = "hotel") => {
+  if (!facilityName) return fallback;
+  const key = Object.keys(FACILITY_ICON_MAP).find(
+    (k) => facilityName.toLowerCase() === k.toLowerCase()
+  );
+  if (key) return FACILITY_ICON_MAP[key];
+  const partial = Object.keys(FACILITY_ICON_MAP).find(
+    (k) =>
+      facilityName.toLowerCase().includes(k.toLowerCase()) ||
+      k.toLowerCase().includes(facilityName.toLowerCase())
+  );
+  return partial ? FACILITY_ICON_MAP[partial] : fallback;
+};
+
+const todayStr = () =>
+  new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+export default function FacilityManager() {
+  const [activeTab, setActiveTab] = useState("hotel");
   const [hotelFacilities, setHotelFacilities] = useState([]);
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,31 +134,40 @@ export default function FacilityManager() {
   const fetchFacilities = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/facilities");
-      const list = res.data?.data || [];
+      const { data: resData } = await cachedGet("/facilities", {}, forceRefresh);
+      if (resData && resData.data && Array.isArray(resData.data)) {
+        const mapFacility = (f, fallbackIcon) => ({
+          id: f.id,
+          name: f.name,
+          description: f.description || "",
+          status: "active",
+          icon: f.icon || resolveIcon(f.name, fallbackIcon),
+          updatedAt: todayStr(),
+          category: f.category,
+        });
 
-      if (Array.isArray(list)) {
-        const hotelList = list.filter((f) => f.category === "Hotel");
-        const roomList = list.filter(
-          (f) => f.category === "Room" || f.category === "Bathroom"
-        );
+        const hotelList = resData.data
+          .filter((f) => f.category === "Hotel")
+          .map((f) => mapFacility(f, "hotel"));
+        const roomList = resData.data
+          .filter((f) => f.category === "Room" || f.category === "Bathroom")
+          .map((f) => mapFacility(f, "bed"));
+
         setHotelFacilities(hotelList);
         setRoomFacilities(roomList);
       }
     } catch (err) {
-      console.error("Failed to load facilities:", err);
+      console.error(err);
       toast.error("Gagal memuat daftar fasilitas.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Modal State
-  const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'delete' | null
+  const [modalMode, setModalMode] = useState(null);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [formValues, setFormValues] = useState({
     name: "",
@@ -73,11 +178,9 @@ export default function FacilityManager() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Determine active dataset
   const currentFacilities =
     activeTab === "hotel" ? hotelFacilities : roomFacilities;
 
-  // Filtered dataset
   const filteredFacilities = currentFacilities.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,7 +190,6 @@ export default function FacilityManager() {
     return matchesSearch && matchesStatus;
   });
 
-  // Modal Actions
   const handleOpenAddModal = () => {
     setFormValues({
       name: "",
@@ -104,7 +206,7 @@ export default function FacilityManager() {
     setSelectedFacility(facility);
     setFormValues({
       name: facility.name,
-      icon: facility.icon || "wifi",
+      icon: facility.icon || (activeTab === "hotel" ? "wifi" : "ac_unit"),
       description: facility.description || "",
       status: facility.status || "active",
     });
@@ -124,7 +226,6 @@ export default function FacilityManager() {
     setIsSubmitting(false);
   };
 
-  // Form Input Change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormValues((prev) => ({ ...prev, [name]: value }));
@@ -133,7 +234,6 @@ export default function FacilityManager() {
     }
   };
 
-  // Form Validation
   const validateForm = () => {
     const newErrors = {};
     if (!formValues.name.trim()) {
@@ -145,10 +245,8 @@ export default function FacilityManager() {
     return newErrors;
   };
 
-  // Handle Save (Add & Edit) — calls API
   const handleSaveFacility = async (e) => {
     e.preventDefault();
-
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -158,51 +256,21 @@ export default function FacilityManager() {
     setIsSubmitting(true);
 
     try {
-      const category =
-        activeTab === "hotel" ? "Hotel" : "Room";
-
+      const category = activeTab === "hotel" ? "Hotel" : "Room";
       const payload = {
         name: formValues.name.trim(),
-        icon: formValues.icon,
-        description: formValues.description.trim(),
-        status: formValues.status,
         category,
       };
 
       if (modalMode === "add") {
-        const res = await api.post("/facilities", payload);
-        const newFacility = res.data?.data;
-
-        if (activeTab === "hotel") {
-          setHotelFacilities((prev) => [newFacility, ...prev]);
-        } else {
-          setRoomFacilities((prev) => [newFacility, ...prev]);
-        }
+        await api.post("/facilities", payload);
         toast.success(
           activeTab === "hotel"
             ? "Hotel facility created successfully."
             : "Room facility created successfully."
         );
       } else if (modalMode === "edit" && selectedFacility) {
-        const res = await api.put(
-          `/facilities/${selectedFacility.id}`,
-          payload
-        );
-        const updatedFacility = res.data?.data;
-
-        if (activeTab === "hotel") {
-          setHotelFacilities((prev) =>
-            prev.map((item) =>
-              item.id === selectedFacility.id ? updatedFacility : item
-            )
-          );
-        } else {
-          setRoomFacilities((prev) =>
-            prev.map((item) =>
-              item.id === selectedFacility.id ? updatedFacility : item
-            )
-          );
-        }
+        await api.put(`/facilities/${selectedFacility.id}`, payload);
         toast.success(
           activeTab === "hotel"
             ? "Hotel facility updated successfully."
@@ -210,65 +278,55 @@ export default function FacilityManager() {
         );
       }
 
+      invalidateCache("/facilities");
+      await fetchFacilities(true);
       handleCloseModal();
     } catch (err) {
-      console.error("Failed to save facility:", err);
+      console.error(err);
       const msg =
         err.response?.data?.message ||
-        err.response?.data?.errors?.name?.[0] ||
-        "Gagal menyimpan fasilitas.";
+        "Gagal menyimpan fasilitas. Silakan coba lagi.";
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle Delete Confirmation — calls API
   const handleDeleteFacility = async () => {
     if (!selectedFacility) return;
-
     setIsSubmitting(true);
 
     try {
       await api.delete(`/facilities/${selectedFacility.id}`);
-
-      if (activeTab === "hotel") {
-        setHotelFacilities((prev) =>
-          prev.filter((item) => item.id !== selectedFacility.id)
-        );
-        toast.success("Hotel facility deleted successfully.");
-      } else {
-        setRoomFacilities((prev) =>
-          prev.filter((item) => item.id !== selectedFacility.id)
-        );
-        toast.success("Room facility deleted successfully.");
-      }
+      toast.success(
+        activeTab === "hotel"
+          ? "Hotel facility deleted successfully."
+          : "Room facility deleted successfully."
+      );
+      invalidateCache("/facilities");
+      await fetchFacilities(true);
       handleCloseModal();
     } catch (err) {
-      console.error("Failed to delete facility:", err);
+      console.error(err);
       const msg =
-        err.response?.data?.message || "Gagal menghapus fasilitas.";
+        err.response?.data?.message ||
+        "Gagal menghapus fasilitas. Silakan coba lagi.";
       toast.error(msg);
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "—";
-    try {
-      return new Date(dateStr).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#506147]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
-      {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
@@ -279,7 +337,6 @@ export default function FacilityManager() {
           </p>
         </div>
 
-        {/* Segmented Control / Tab Buttons */}
         <div className="flex items-center bg-[#f0ede9] p-1.5 rounded-xl border border-[#E5E1DA]">
           <button
             onClick={() => {
@@ -314,7 +371,6 @@ export default function FacilityManager() {
         </div>
       </div>
 
-      {/* Tab Sub-Header & Primary Action Button */}
       <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#E5E1DA] pb-6">
           <div>
@@ -323,8 +379,8 @@ export default function FacilityManager() {
             </h3>
             <p className="text-xs text-[#6B6E6A] mt-0.5">
               {activeTab === "hotel"
-                ? "Manage facilities available throughout the hotel property."
-                : "Manage facilities available inside guest rooms."}
+                ? "Kelola fasilitas yang tersedia di seluruh area properti hotel."
+                : "Kelola fasilitas yang tersedia di dalam kamar tamu."}
             </p>
           </div>
 
@@ -337,7 +393,6 @@ export default function FacilityManager() {
           </button>
         </div>
 
-        {/* Search and Status Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="relative w-full sm:w-80">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
@@ -368,71 +423,83 @@ export default function FacilityManager() {
           </div>
         </div>
 
-        {/* Facilities Table Card */}
         <div className="border border-[#E5E1DA] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            {loading ? (
-              <div className="p-12 text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <svg
-                    className="animate-spin h-8 w-8 text-[#506147]"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <p className="text-sm text-[#6B6E6A]">Loading facilities...</p>
-                </div>
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
-                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider w-16">
-                      Icon
-                    </th>
-                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                      Facility Name
-                    </th>
-                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                      Updated At
-                    </th>
-                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
+                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider w-16">
+                    Icon
+                  </th>
+                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                    Facility Name
+                  </th>
+                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider hidden md:table-cell">
+                    Category
+                  </th>
+                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider hidden sm:table-cell">
+                    Updated At
+                  </th>
+                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">
+                    Action
+                  </th>
+                </tr>
+              </thead>
 
-                <tbody className="divide-y divide-[#E5E1DA] text-sm bg-white">
-                  {filteredFacilities.length > 0 ? (
-                    filteredFacilities.map((facility) => (
-                      <tr
-                        key={facility.id}
-                        className="hover:bg-[#A8BBA2]/10 transition-colors group"
-                      >
-                        <td className="p-4">
-                          <div className="w-10 h-10 rounded-full bg-[#f0ede9] text-[#506147] flex items-center justify-center border border-[#E5E1DA] shrink-0">
-                            <span className="material-symbols-outlined text-[22px]">
-                              {facility.icon || "star"}
+              <tbody className="divide-y divide-[#E5E1DA] text-sm bg-white">
+                {filteredFacilities.length > 0 ? (
+                  filteredFacilities.map((facility) => (
+                    <tr
+                      key={facility.id}
+                      className="hover:bg-[#A8BBA2]/10 transition-colors group"
+                    >
+                      <td className="p-4">
+                        <div className="w-10 h-10 rounded-full bg-[#f0ede9] text-[#506147] flex items-center justify-center border border-[#E5E1DA] shrink-0">
+                          <span className="material-symbols-outlined text-[22px]">
+                            {facility.icon || "pool"}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
+                        {facility.name}
+                      </td>
+
+                      <td className="p-4 hidden md:table-cell">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F2EBE1] text-[#6B6E6A] border border-[#E5E1DA]">
+                          {facility.category ||
+                            (activeTab === "hotel" ? "Hotel" : "Room")}
+                        </span>
+                      </td>
+
+                      <td className="p-4 whitespace-nowrap">
+                        {facility.status === "active" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0EDE9] text-[#6B6E6A] border border-[#E5E1DA]">
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="p-4 text-xs text-[#6B6E6A] whitespace-nowrap hidden sm:table-cell">
+                        {facility.updatedAt}
+                      </td>
+
+                      <td className="p-4 text-right whitespace-nowrap">
+                        <div className="flex justify-end items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEditModal(facility)}
+                            className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors"
+                            title="Edit Facility"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">
+                              edit
                             </span>
                           </div>
                         </td>
@@ -528,21 +595,60 @@ export default function FacilityManager() {
                         </div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="p-12 text-center text-[#6B6E6A]">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
+                          search_off
+                        </span>
+                        <div>
+                          <p className="font-semibold text-[#2D312C] text-base">
+                            {currentFacilities.length === 0
+                              ? activeTab === "hotel"
+                                ? "Belum ada fasilitas hotel."
+                                : "Belum ada fasilitas kamar."
+                              : "Tidak ada fasilitas yang ditemukan."}
+                          </p>
+                          <p className="text-xs text-[#6B6E6A] mt-1">
+                            {currentFacilities.length === 0
+                              ? "Tambahkan fasilitas baru untuk melengkapi daftar fasilitas."
+                              : "Tidak ada fasilitas yang cocok dengan filter pencarian Anda."}
+                          </p>
+                        </div>
+
+                        {searchQuery || statusFilter !== "all" ? (
+                          <button
+                            onClick={() => {
+                              setSearchQuery("");
+                              setStatusFilter("all");
+                            }}
+                            className="mt-2 px-4 py-2 bg-[#f0ede9] text-[#2D312C] rounded-lg text-xs font-semibold hover:bg-[#e5e2de] transition-colors"
+                          >
+                            Clear Search
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleOpenAddModal}
+                            className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                          >
+                            + Add Facility
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL 1: ADD & EDIT FACILITY                                              */}
-      {/* ========================================================================= */}
       {(modalMode === "add" || modalMode === "edit") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl overflow-hidden">
-            {/* Modal Header */}
             <div className="px-6 py-5 border-b border-[#E5E1DA] flex items-center justify-between bg-[#fcf9f5]">
               <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
                 {modalMode === "add"
@@ -564,9 +670,7 @@ export default function FacilityManager() {
               </button>
             </div>
 
-            {/* Modal Form */}
             <form onSubmit={handleSaveFacility} className="p-6 space-y-5">
-              {/* Field 1: Name */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
                   Facility Name *
@@ -577,7 +681,7 @@ export default function FacilityManager() {
                   value={formValues.name}
                   onChange={handleInputChange}
                   disabled={isSubmitting}
-                  placeholder="Contoh: Free Wi-Fi, Air Conditioning"
+                  placeholder="Contoh: Wi-Fi, AC, Kolam Renang"
                   className={`w-full h-11 px-4 bg-white border ${
                     errors.name ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                   } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
@@ -589,19 +693,18 @@ export default function FacilityManager() {
                 )}
               </div>
 
-              {/* Field 2: Icon Selector */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
                   Select Icon *
                 </label>
-                <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto p-3 border border-[#E5E0D8] rounded-lg bg-[#fcf9f5]">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto p-4 border border-[#E5E0D8] rounded-lg bg-[#fcf9f5]">
                   {ICON_OPTIONS.map((opt) => (
                     <label
                       key={opt.value}
-                      className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition-all ${
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all min-h-[88px] ${
                         formValues.icon === opt.value
-                          ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]"
-                          : "border-[#E5E1DA] bg-white hover:bg-[#f0ede9] text-[#2D312C]"
+                          ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43] shadow-sm ring-2 ring-[#506147]/10"
+                          : "border-[#E5E1DA] bg-white hover:bg-[#f0ede9] text-[#2D312C] hover:border-[#d4d0c6]"
                       }`}
                     >
                       <input
@@ -612,10 +715,12 @@ export default function FacilityManager() {
                         onChange={handleInputChange}
                         className="hidden"
                       />
-                      <span className="material-symbols-outlined text-[20px]">
-                        {opt.value}
-                      </span>
-                      <span className="text-xs font-medium truncate">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-[#E5E1DA] flex items-center justify-center shrink-0 shadow-sm">
+                        <span className="material-symbols-outlined text-[22px] leading-none text-[#506147]">
+                          {opt.value}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-medium text-center leading-tight break-words w-full">
                         {opt.label}
                       </span>
                     </label>
@@ -628,7 +733,6 @@ export default function FacilityManager() {
                 )}
               </div>
 
-              {/* Field 3: Description */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
                   Description
@@ -644,7 +748,16 @@ export default function FacilityManager() {
                 />
               </div>
 
-              {/* Field 4: Status */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                  Category (Auto)
+                </label>
+                <div className="px-4 py-2.5 rounded-lg bg-[#F2EBE1] border border-[#E5E1DA] text-xs font-semibold text-[#434842]">
+                  {activeTab === "hotel" ? "Hotel" : "Room"} — otomatis
+                  disesuaikan dengan tab yang aktif.
+                </div>
+              </div>
+
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
                   Status
@@ -675,7 +788,6 @@ export default function FacilityManager() {
                 </div>
               </div>
 
-              {/* Modal Actions */}
               <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
                 <button
                   type="button"
@@ -690,35 +802,11 @@ export default function FacilityManager() {
                   disabled={isSubmitting}
                   className="px-6 py-2.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-all shadow-sm flex items-center gap-2 disabled:bg-[#a2ba9c]"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <svg
-                        className="animate-spin h-3.5 w-3.5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      Saving...
-                    </>
-                  ) : modalMode === "add" ? (
-                    "Save Facility"
-                  ) : (
-                    "Save Changes"
-                  )}
+                  {isSubmitting
+                    ? "Saving..."
+                    : modalMode === "add"
+                    ? "Save Facility"
+                    : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -726,9 +814,6 @@ export default function FacilityManager() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 2: DELETE CONFIRMATION                                              */}
-      {/* ========================================================================= */}
       {modalMode === "delete" && selectedFacility && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">

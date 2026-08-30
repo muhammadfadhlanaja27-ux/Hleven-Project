@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Payment;
 use App\Services\MidtransService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
     protected MidtransService $midtransService;
+
+    public function __construct(MidtransService $midtransService)
+    {
+        $this->midtransService = $midtransService;
+    }
 
     /**
      * GET /api/v1/payments/{id}
@@ -33,11 +38,11 @@ class PaymentController extends Controller
                 'data' => [
                     'payment_method' => $payment->payment_method,
                     'payment_status' => $payment->payment_status,
-                    'gross_amount' => $payment->gross_amount,
-                    'expired_at' => $payment->expired_at,
+                    'gross_amount'   => $payment->gross_amount,
+                    'expired_at'     => $payment->expired_at,
                     'transaction_id' => $payment->transaction_id,
-                    'order_id' => $payment->order_id,
-                    'paid_at' => $payment->paid_at
+                    'order_id'       => $payment->order_id,
+                    'paid_at'         => $payment->paid_at
                 ]
             ], 200);
 
@@ -45,14 +50,9 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Data tidak ditemukan.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 404);
         }
-    }
-
-    public function __construct(MidtransService $midtransService)
-    {
-        $this->midtransService = $midtransService;
     }
 
     /**
@@ -85,7 +85,7 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan pada server.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }
@@ -107,7 +107,7 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             // Midtrans membutuhkan HTTP 200 atau 400 untuk callback
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => $e->getMessage()
             ], 400);
         }
@@ -119,28 +119,36 @@ class PaymentController extends Controller
      */
     public function status(Request $request, $id): JsonResponse
     {
-        $payment = Payment::with('booking')->findOrFail($id);
+        try {
+            $payment = Payment::with('booking')->findOrFail($id);
 
-        if ($payment->booking->user_id !== $request->user()->id) {
-            return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+            if ($payment->booking->user_id !== $request->user()->id) {
+                return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'payment_status' => $payment->payment_status,
+                    'booking_status' => $payment->booking->status
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan.',
+                'error'   => $e->getMessage()
+            ], 404);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'payment_status' => $payment->payment_status,
-                'booking_status' => $payment->booking->status
-            ]
-        ], 200);
     }
+
     /**
      * POST /api/v1/payments/{id}/sync
-     * Manual Sync oleh Super Admin[cite: 1]
+     * Manual Sync oleh Super Admin
      */
     public function sync(Request $request, $id): JsonResponse
     {
         try {
-            // Pastikan route ini dilindungi middleware role:super_admin[cite: 1]
             $payment = Payment::with('booking')->findOrFail($id);
 
             $this->midtransService->syncPaymentStatus($payment);
@@ -154,7 +162,7 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyinkronkan data dengan Midtrans.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }

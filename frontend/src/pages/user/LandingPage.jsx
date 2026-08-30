@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import HotelCard from "../../components/landing/HotelCard";
-import api from "../../services/api";
+import { cachedGet } from "../../services/apiCache";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
 
@@ -24,17 +24,20 @@ const LandingPage = () => {
   const [sortBy, setSortBy] = useState("recommendation");
   const [visibleCount, setVisibleCount] = useState(6);
 
-  // Fetch Hotels (Backend API without Mock)
+  // Fetch Hotels (Cached)
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        const response = await api.get("/hotels");
-        if (response.data && (response.data.data || Array.isArray(response.data))) {
-          const apiHotels = response.data.data || response.data;
+        const { data: responseData, fromCache } = await cachedGet("/hotels");
+        if (responseData && (responseData.data || Array.isArray(responseData))) {
+          const apiHotels = responseData.data || responseData;
           setHotels(apiHotels);
         } else {
           setHotels([]);
+        }
+        if (fromCache) {
+          console.debug("[Cache Hit] LandingPage hotels loaded from cache");
         }
       } catch (err) {
         console.error("Backend API Error:", err);

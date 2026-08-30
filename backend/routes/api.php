@@ -36,10 +36,14 @@ Route::prefix('v1')->group(function () {
     // ==========================================
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/check-email', [PartnerApplicationController::class, 'checkEmail']);
     Route::get('/facilities', [FacilityController::class, 'index']);
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show'])->whereNumber('id');
+    
+    // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
+    Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -83,6 +87,18 @@ Route::prefix('v1')->group(function () {
             Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
         });
 
+        // --- Booking & Partner Application User ---
+        Route::middleware('role:user')->group(function () {
+            Route::get('/user/bookings', [BookingController::class, 'userBookings']);
+            Route::post('/user/bookings', [BookingController::class, 'store']);
+            Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+            Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']); // Download E-Tiket PDF
+            Route::post('/bookings', [BookingController::class, 'store']);
+            
+            // Route Pengajuan Partner User (DITAMBAHKAN)
+            Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
+        });
+
         // --- Pembayaran User ---
         Route::middleware('role:user')->prefix('payments')->group(function () {
             Route::get('/{id}', [PaymentController::class, 'show']);
@@ -92,6 +108,10 @@ Route::prefix('v1')->group(function () {
 
         // --- File Storage ---
         Route::post('/users/{id}/avatar', [FileStorageController::class, 'uploadAvatar']);
+
+        // --- Partner Application (User) ---
+        Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
+        Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
     });
 });
 
@@ -137,6 +157,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::get('/bookings', [BookingController::class, 'index']); 
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
+    Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']); // Persetujuan/Penolakan Refund Admin
 });
 
 // ==========================================
@@ -159,6 +180,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/{id}', [SuperAdminUserController::class, 'show']);
         Route::post('/', [SuperAdminUserController::class, 'store']);
         Route::patch('/{id}/status', [SuperAdminUserController::class, 'updateStatus']);
+        Route::patch('/{id}/role', [SuperAdminUserController::class, 'updateRole']);
         Route::delete('/{id}', [SuperAdminUserController::class, 'destroy']);
     });
 

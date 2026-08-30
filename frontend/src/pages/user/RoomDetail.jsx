@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import api from "../../services/api";
-
-const DEFAULT_ROOM_IMAGES = [
-  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80"
-];
+import { cachedGet } from "../../services/apiCache";
 
 const RoomDetail = () => {
   const { hotelId, roomId } = useParams();
@@ -33,9 +26,9 @@ const RoomDetail = () => {
       const targetRoomId = roomId || "101";
 
       try {
-        const response = await api.get(`/hotels/${targetHotelId}`);
-        if (response.data && response.data.data) {
-          const apiHotel = response.data.data;
+        const { data: responseData, fromCache } = await cachedGet(`/hotels/${targetHotelId}`);
+        if (responseData && responseData.data) {
+          const apiHotel = responseData.data;
           const apiRooms = apiHotel.room_types || [];
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(targetRoomId)) || apiRooms[0];
 
@@ -60,6 +53,7 @@ const RoomDetail = () => {
               bed: matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed",
               breakfast: matchedRoomType.breakfast,
               smoking_area: matchedRoomType.smoking_area,
+              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
               stock: matchedRoomType.stock,
               photos: matchedRoomType.photos || []
             };
@@ -73,6 +67,9 @@ const RoomDetail = () => {
         } else {
           setHotel(null);
           setRoom(null);
+        }
+        if (fromCache) {
+          console.debug(`[Cache Hit] RoomDetail hotel=${targetHotelId} room=${targetRoomId} loaded from cache`);
         }
       } catch (err) {
         console.error("Backend API Error/Offline:", err);
@@ -101,19 +98,24 @@ const RoomDetail = () => {
   const taxAndFees = Math.round(subtotalPrice * 0.21);
   const totalPrice = subtotalPrice + taxAndFees;
 
-  const getImageUrl = (photoItem, fallbackIdx = 0) => {
-    if (!photoItem) return DEFAULT_ROOM_IMAGES[fallbackIdx % DEFAULT_ROOM_IMAGES.length];
+  const [imgErrors, setImgErrors] = useState({});
+
+  const getImageUrl = (photoItem) => {
+    if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
-    if (!path) return DEFAULT_ROOM_IMAGES[fallbackIdx % DEFAULT_ROOM_IMAGES.length];
+    if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
     return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
   };
 
-  const photosList = room?.photos && room.photos.length > 0
-    ? room.photos.map((p, i) => getImageUrl(p, i))
-    : (hotel?.photos && hotel.photos.length > 0
-        ? hotel.photos.map((p, i) => getImageUrl(p, i))
-        : DEFAULT_ROOM_IMAGES);
+  const roomPhotoUrls = (room?.photos || []).map(getImageUrl).filter(Boolean);
+  const hotelPhotoUrls = (hotel?.photos || []).map(getImageUrl).filter(Boolean);
+  const rawPhotosList = roomPhotoUrls.length > 0 ? roomPhotoUrls : hotelPhotoUrls;
+  const thumbFallback = room?.thumbnail;
+  let photosList = rawPhotosList;
+  if (photosList.length === 0 && thumbFallback) {
+    photosList = [thumbFallback];
+  }
 
   const handleReserve = (e) => {
     e.preventDefault();
@@ -171,6 +173,22 @@ const RoomDetail = () => {
                   <span className="material-symbols-outlined text-lg text-[#778873]">aspect_ratio</span>
                   {room?.sqm || "80 sqm"}
                 </div>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#DCCFC0]"></div>
+                {room?.is_refundable ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20">
+                    <span className="material-symbols-outlined text-[#4F6F52] text-[16px]">verified</span>
+                    <span className="text-[#4F6F52] font-bold text-xs uppercase tracking-wider">
+                      Bisa Refund
+                    </span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20">
+                    <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">block</span>
+                    <span className="text-[#ba1a1a] font-bold text-xs uppercase tracking-wider">
+                      Tidak Bisa Refund
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -185,62 +203,96 @@ const RoomDetail = () => {
         </section>
 
         {/* Hero Photo Mosaic Gallery */}
-        <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
-          {/* Main Hero Photo (Left 2 cols x 2 rows) */}
-          <div className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-[#e8e2d9]">
-            <img
-              src={photosList[0]}
-              alt="Main Bedroom View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-              onClick={() => setShowPhotoModal(true)}
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[0]; }}
-            />
-          </div>
-
-          {/* Sub Photo 1: Bathroom */}
-          <div className="hidden md:block relative group overflow-hidden bg-[#e8e2d9]">
-            <img
-              src={photosList[1] || photosList[0]}
-              alt="Bathroom View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-              onClick={() => setShowPhotoModal(true)}
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[1]; }}
-            />
-          </div>
-
-          {/* Sub Photo 2: Private Pool */}
-          <div className="hidden md:block relative group overflow-hidden bg-[#e8e2d9]">
-            <img
-              src={photosList[2] || photosList[0]}
-              alt="Private Pool View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-              onClick={() => setShowPhotoModal(true)}
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[2]; }}
-            />
-          </div>
-
-          {/* Sub Photo 3: Living Area with View All Photos Overlay */}
-          <div className="hidden md:block md:col-span-2 relative group overflow-hidden bg-[#e8e2d9] cursor-pointer">
-            <img
-              src={photosList[3] || photosList[0]}
-              alt="Living Area View"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
-              onError={(e) => { e.target.src = DEFAULT_ROOM_IMAGES[3]; }}
-            />
-            <div
-              onClick={() => setShowPhotoModal(true)}
-              className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors group-hover:bg-black/40"
-            >
-              <button
-                type="button"
-                className="bg-[#FDF6ED] text-[#778873] px-6 py-3 rounded-full font-label-md text-sm font-semibold flex items-center gap-2 shadow-md hover:bg-white transition-all transform hover:-translate-y-0.5"
-              >
-                <span className="material-symbols-outlined text-lg">grid_view</span>
-                View All {photosList.length} Photos
-              </button>
+        {photosList.length > 0 ? (
+          <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
+            {/* Main Hero Photo (Left 2 cols x 2 rows) */}
+            <div className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+              {!imgErrors[0] ? (
+                <img
+                  src={photosList[0]}
+                  alt="Main Bedroom View"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                  onError={() => setImgErrors((p) => ({ ...p, 0: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-7xl opacity-50">no_photography</span>
+                </div>
+              )}
             </div>
-          </div>
-        </section>
+
+            {/* Sub Photo 1 */}
+            <div className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+              {(photosList[1] || photosList[0]) && !imgErrors[1] ? (
+                <img
+                  src={photosList[1] || photosList[0]}
+                  alt="Room Detail 1"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                  onError={() => setImgErrors((p) => ({ ...p, 1: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
+                </div>
+              )}
+            </div>
+
+            {/* Sub Photo 2 */}
+            <div className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+              {(photosList[2] || photosList[0]) && !imgErrors[2] ? (
+                <img
+                  src={photosList[2] || photosList[0]}
+                  alt="Room Detail 2"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                  onError={() => setImgErrors((p) => ({ ...p, 2: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
+                </div>
+              )}
+            </div>
+
+            {/* Sub Photo 3 with Gallery Overlay */}
+            <div className="hidden md:block md:col-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer">
+              {(photosList[3] || photosList[0]) && !imgErrors[3] ? (
+                <img
+                  src={photosList[3] || photosList[0]}
+                  alt="Room Detail 3"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
+                  onError={() => setImgErrors((p) => ({ ...p, 3: true }))}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
+                </div>
+              )}
+              <div
+                onClick={() => setShowPhotoModal(true)}
+                className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors group-hover:bg-black/40"
+              >
+                <button
+                  type="button"
+                  className="bg-[#FDF6ED] text-[#778873] px-6 py-3 rounded-full font-label-md text-sm font-semibold flex items-center gap-2 shadow-md hover:bg-white transition-all transform hover:-translate-y-0.5"
+                >
+                  <span className="material-symbols-outlined text-lg">grid_view</span>
+                  View All {photosList.length} Photos
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
+            <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">image_not_supported</span>
+            <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">Belum Ada Foto Kamar</h3>
+            <p className="font-body-md text-sm text-[#444842] max-w-md">
+              Admin hotel belum mengunggah foto untuk tipe kamar ini.
+            </p>
+          </section>
+        )}
 
         {/* Main Content Layout: Details vs Sticky Booking Card */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
@@ -325,7 +377,7 @@ const RoomDetail = () => {
                 Kebijakan Kamar
               </h2>
               <ul className="space-y-5">
-                <li class="flex items-start gap-4">
+                <li className="flex items-start gap-4">
                   <span className="material-symbols-outlined text-[#747871] mt-0.5">schedule</span>
                   <div>
                     <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Waktu Check-in &amp; Check-out</h4>
@@ -353,7 +405,15 @@ const RoomDetail = () => {
                   <span className="material-symbols-outlined text-[#747871] mt-0.5">event_busy</span>
                   <div>
                     <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Pembatalan</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Pembatalan gratis hingga 3 hari sebelum jadwal kedatangan.</p>
+                    {room?.is_refundable ? (
+                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                        <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.
+                      </p>
+                    ) : (
+                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                        <span className="font-bold text-[#ba1a1a]">Tidak dapat dibatalkan:</span> Kamar ini bersifat non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.
+                      </p>
+                    )}
                   </div>
                 </li>
               </ul>
@@ -369,6 +429,32 @@ const RoomDetail = () => {
                 </span>
                 <span className="font-body-md text-xs text-[#444842]">/ malam</span>
               </div>
+
+              {room?.is_refundable ? (
+                <div className="mb-6 p-3 rounded-xl bg-[#4F6F52]/10 border border-[#4F6F52]/20 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#4F6F52] text-[18px] mt-0.5 flex-shrink-0">verified</span>
+                  <div>
+                    <p className="font-label-md text-xs font-bold text-[#4F6F52] uppercase tracking-wider">
+                      Bisa Refund
+                    </p>
+                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                      Pengembalian dana penuh jika dibatalkan H-3 sebelum check-in.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6 p-3 rounded-xl bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#ba1a1a] text-[18px] mt-0.5 flex-shrink-0">block</span>
+                  <div>
+                    <p className="font-label-md text-xs font-bold text-[#ba1a1a] uppercase tracking-wider">
+                      Non-Refundable
+                    </p>
+                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                      Reservasi tidak dapat dikembalikan dananya jika dibatalkan.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Dates Input Controls */}
               <div className="flex flex-col gap-4 mb-6">
@@ -463,13 +549,20 @@ const RoomDetail = () => {
                 ✕
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {photosList.map((photo, i) => (
-                <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
-                  <img src={photo} alt={`Foto Kamar ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
+            {photosList.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {photosList.map((photo, i) => (
+                  <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
+                    <img src={photo} alt={`Foto Kamar ${i + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">image_not_supported</span>
+                <p className="font-label-md text-sm font-bold text-[#778873]">Belum ada foto yang diunggah.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

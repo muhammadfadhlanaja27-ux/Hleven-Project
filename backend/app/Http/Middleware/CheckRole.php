@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Middleware; // atau namespace App\Http\Middleware; sesuaikan dengan struktur Laravel Anda
-
 namespace App\Http\Middleware;
 
 use Closure;

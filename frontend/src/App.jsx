@@ -18,12 +18,17 @@ import AdminHotelLayout from "./components/admin-hotel/AdminHotelLayout";
 import LandingPage from "./pages/user/LandingPage";
 import HotelList from "./pages/user/HotelList";
 import RoomDetail from "./pages/user/RoomDetail";
-import Login from "./Pages/Auth/Login";
-import Register from "./Pages/Auth/Register";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
 import UserProfile from "./pages/user/UserProfile";
 import HotelDetail from "./pages/user/HotelDetail";
 import BookingPage from "./pages/user/BookingPage";
 import BookingHistory from "./pages/user/BookingHistory";
+
+// Mitra Hotel Pages
+import MitraLanding from "./pages/mitra/MitraLanding";
+import MitraRegistration from "./pages/mitra/MitraRegistration";
+import MitraRegistrationSuccess from "./pages/mitra/MitraRegistrationSuccess";
 
 // Admin Hotel pages
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
@@ -69,7 +74,7 @@ const AdminHotelProtectedRoute = () => {
   const userString = localStorage.getItem("user");
 
   if (!token || !userString) {
-    return <Navigate to="/super-admin/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   try {
@@ -139,7 +144,13 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/booking-history" element={<BookingHistory />} />
+
+            {/* Mitra Hotel */}
+            <Route path="/mitra" element={<MitraLanding />} />
+            <Route path="/mitra/sukses" element={<MitraRegistrationSuccess />} />
           </Route>
+          {/* Form Pendaftaran Mitra (layout terpisah: header onboarding) */}
+          <Route path="/mitra/daftar" element={<MitraRegistration />} />
 
           {/* GRUP 2: Rute Admin Hotel */}
           <Route element={<AdminHotelProtectedRoute />}>

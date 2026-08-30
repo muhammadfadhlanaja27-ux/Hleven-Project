@@ -1,14 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import api from "../../services/api";
-
-const DEFAULT_IMAGES = [
-  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80"
-];
+import { cachedGet } from "../../services/apiCache";
 
 const HotelDetail = () => {
   const { id } = useParams();
@@ -23,18 +15,18 @@ const HotelDetail = () => {
       setLoading(true);
 
       try {
-        const response = await api.get(`/hotels/${id}`);
-        if (response.data && response.data.data) {
-          const apiData = response.data.data;
+        const { data: responseData, fromCache } = await cachedGet(`/hotels/${id}`);
+        if (responseData && responseData.data) {
+          const apiData = responseData.data;
           
-          const mappedRooms = (apiData.room_types || []).map((rt, idx) => {
+          const mappedRooms = (apiData.room_types || []).map((rt) => {
             const thumbnailPhoto = rt.photos && rt.photos.length > 0 
               ? (rt.photos.find(p => p.is_thumbnail) || rt.photos[0]) 
               : null;
             const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
             const roomImage = photoPath 
               ? (photoPath.startsWith('http') ? photoPath : `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`)
-              : DEFAULT_IMAGES[idx % DEFAULT_IMAGES.length];
+              : null;
 
             return {
               id: rt.id,
@@ -43,11 +35,13 @@ const HotelDetail = () => {
               weekday_price: rt.weekday_price,
               weekend_price: rt.weekend_price,
               thumbnail: roomImage,
+              hasPhoto: !!roomImage,
               capacity: `${rt.capacity_adult} Dewasa, ${rt.capacity_child} Anak`,
               description: rt.description,
               bed: rt.description?.includes("Bed") ? rt.description : "1 King Bed",
               breakfast: rt.breakfast,
               smoking_area: rt.smoking_area,
+              is_refundable: rt.is_refundable !== undefined ? rt.is_refundable : true,
               stock: rt.stock
             };
           });
@@ -58,6 +52,9 @@ const HotelDetail = () => {
           });
         } else {
           setHotel(null);
+        }
+        if (fromCache) {
+          console.debug(`[Cache Hit] HotelDetail id=${id} loaded from cache`);
         }
       } catch (err) {
         console.error("Backend Error / Gagal memuat data hotel:", err);
@@ -71,9 +68,9 @@ const HotelDetail = () => {
   }, [id]);
 
   const getImageUrl = (photoItem) => {
-    if (!photoItem) return DEFAULT_IMAGES[0];
+    if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
-    if (!path) return DEFAULT_IMAGES[0];
+    if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
     return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
   };
@@ -103,12 +100,26 @@ const HotelDetail = () => {
     );
   }
 
-  // Raw Photos List
-  const rawPhotos = hotel.photos && hotel.photos.length > 0
-    ? hotel.photos
-    : [hotel.thumbnail || DEFAULT_IMAGES[0], ...DEFAULT_IMAGES.slice(1)];
+  // Raw Photos List — HANYA foto asli dari API, TIDAK ada default Unsplash
+  const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : [])
+    .filter(p => {
+      const pth = typeof p === "object" ? (p.photo || p.url || p.image_path) : p;
+      return !!pth;
+    });
 
-  const photosList = rawPhotos.map(getImageUrl);
+  // Aman dari thumbnail NULL / undefined
+  const thumbObj = hotel && hotel.thumbnail != null ? hotel.thumbnail : null;
+  const hotelThumb = thumbObj
+    ? (typeof thumbObj === "object"
+        ? (thumbObj.photo || thumbObj.url || thumbObj.image_path || null)
+        : thumbObj)
+    : null;
+  if (hotelThumb) rawPhotos.unshift(hotelThumb);
+
+  const photosList = rawPhotos
+    .map(getImageUrl)
+    .filter(url => !!url);
+  const hasHotelPhotos = photosList.length > 0;
 
   // Facility list mapping
   const facilitiesList = Array.isArray(hotel.facilities) ? hotel.facilities : [];
@@ -148,70 +159,81 @@ const HotelDetail = () => {
         
         {/* Photo Gallery Mosaic */}
         <section className="mb-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
-            {/* Hero Main Image (Left 2 cols x 2 rows) */}
-            <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-              <img
-                src={photosList[0]}
-                alt={hotel.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                onClick={() => setShowPhotoModal(true)}
-                onError={(e) => { e.target.src = DEFAULT_IMAGES[0]; }}
-              />
-            </div>
-
-            {/* Sub Photo 1 */}
-            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-              <img
-                src={photosList[1] || photosList[0]}
-                alt="Room detail 1"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                onClick={() => setShowPhotoModal(true)}
-                onError={(e) => { e.target.src = DEFAULT_IMAGES[1]; }}
-              />
-            </div>
-
-            {/* Sub Photo 2 */}
-            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-              <img
-                src={photosList[2] || photosList[0]}
-                alt="Room detail 2"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                onClick={() => setShowPhotoModal(true)}
-                onError={(e) => { e.target.src = DEFAULT_IMAGES[2]; }}
-              />
-            </div>
-
-            {/* Sub Photo 3 */}
-            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-              <img
-                src={photosList[3] || photosList[0]}
-                alt="Room detail 3"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                onClick={() => setShowPhotoModal(true)}
-                onError={(e) => { e.target.src = DEFAULT_IMAGES[3]; }}
-              />
-            </div>
-
-            {/* Sub Photo 4 with Overlay Trigger */}
-            <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-              <img
-                src={photosList[4] || photosList[0]}
-                alt="Room detail 4"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                onError={(e) => { e.target.src = DEFAULT_IMAGES[4]; }}
-              />
-              <div
-                onClick={() => setShowPhotoModal(true)}
-                className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
-              >
-                <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">grid_view</span>
-                  Lihat Semua Foto
-                </span>
+          {hasHotelPhotos ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
+              {/* Hero Main Image (Left 2 cols x 2 rows) */}
+              <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+                <img
+                  src={photosList[0]}
+                  alt={hotel.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  onClick={() => setShowPhotoModal(true)}
+                />
               </div>
+
+              {photosList[1] && (
+                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+                  <img
+                    src={photosList[1]}
+                    alt="Room detail 1"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                    onClick={() => setShowPhotoModal(true)}
+                  />
+                </div>
+              )}
+              {photosList[2] && (
+                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+                  <img
+                    src={photosList[2]}
+                    alt="Room detail 2"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                    onClick={() => setShowPhotoModal(true)}
+                  />
+                </div>
+              )}
+              {photosList[3] && (
+                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+                  <img
+                    src={photosList[3]}
+                    alt="Room detail 3"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                    onClick={() => setShowPhotoModal(true)}
+                  />
+                </div>
+              )}
+              {photosList[4] && (
+                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
+                  <img
+                    src={photosList[4]}
+                    alt="Room detail 4"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                  />
+                  <div
+                    onClick={() => setShowPhotoModal(true)}
+                    className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
+                  >
+                    <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg">grid_view</span>
+                      Lihat Semua Foto ({photosList.length})
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            /* Placeholder: Hotel belum upload foto */
+            <div className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
+              <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">
+                image_not_supported
+              </span>
+              <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">
+                Belum Ada Foto Hotel
+              </h3>
+              <p className="font-body-md text-sm text-[#444842] max-w-md">
+                Pihak hotel belum mengunggah foto galeri. Lihat bagian Pilihan Kamar di bawah untuk melihat foto tipe kamar.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Main 2-Column Section */}
@@ -299,17 +321,18 @@ const HotelDetail = () => {
                 Lokasi
               </h2>
               <div className="rounded-2xl overflow-hidden shadow-sm border border-[#DCCFC0]/40 bg-[#faf3ea]">
-                <div className="w-full h-56 bg-[#eee7de] relative overflow-hidden flex items-center justify-center">
-                  <img
-                    src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=80"
-                    alt="Peta Lokasi"
-                    className="w-full h-full object-cover opacity-80"
-                  />
-                  <div className="absolute inset-0 bg-[#778873]/10 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="material-symbols-outlined text-4xl text-[#778873] drop-shadow">
+                <div className="w-full h-56 bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] relative overflow-hidden flex items-center justify-center border-b border-[#DCCFC0]/40">
+                  <div className="absolute inset-0 opacity-30">
+                    <svg className="w-full h-full" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M0,50 Q50,30 100,50 T200,50 L200,100 Q150,80 100,100 T0,100 Z" fill="#778873" fillOpacity="0.2" />
+                      <path d="M0,120 Q50,100 100,120 T200,120 L200,170 Q150,150 100,170 T0,170 Z" fill="#778873" fillOpacity="0.15" />
+                    </svg>
+                  </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                    <span className="material-symbols-outlined text-5xl text-[#778873] drop-shadow-sm mb-1">
                       location_on
                     </span>
-                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] mt-1 bg-white/90 px-3 py-1 rounded-full shadow-sm">
+                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] bg-white/90 px-3 py-1 rounded-full shadow-sm">
                       {hotelCityName}
                     </span>
                   </div>
@@ -343,30 +366,42 @@ const HotelDetail = () => {
 
           {roomsList && roomsList.length > 0 ? (
             <div className="space-y-6">
-              {roomsList.map((room, idx) => {
+              {roomsList.map((room) => {
                 const roomPrice = Number(room.price || room.weekday_price || 1250000);
                 const weekendPrice = Math.round(roomPrice * 1.35);
-                const roomImage = room.thumbnail || DEFAULT_IMAGES[idx % DEFAULT_IMAGES.length];
 
                 return (
                   <div
-                    key={room.id || idx}
+                    key={room.id}
                     className="flex flex-col md:flex-row bg-[#faf3ea] rounded-2xl overflow-hidden border border-[#DCCFC0]/40 shadow-sm shadow-[#778873]/5 hover:shadow-md transition-shadow"
                   >
-                    {/* Room Thumbnail */}
-                    <div className="md:w-1/3 min-h-[220px] relative bg-[#eee7de]">
-                      <img
-                        src={roomImage}
-                        alt={room.name || "Kamar Hotel"}
-                        className="w-full h-full object-cover"
-                        onError={(e) => { e.target.src = DEFAULT_IMAGES[0]; }}
-                      />
+                    {/* Room Thumbnail — Placeholder hanya jika TIDAK ADA foto asli */}
+                    <div className="md:w-1/3 min-h-[220px] relative bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
+                      {room.thumbnail ? (
+                        <img
+                          src={room.thumbnail}
+                          alt={room.name || "Kamar Hotel"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
+                          <span className="material-symbols-outlined text-[#778873] text-5xl mb-3 opacity-60">
+                            no_photography
+                          </span>
+                          <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
+                            Belum Ada Foto Kamar
+                          </p>
+                          <p className="font-body-md text-[11px] text-[#444842] mt-1 opacity-80">
+                            Admin hotel belum mengunggah foto untuk tipe kamar ini.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Room Content */}
                     <div className="p-6 flex flex-col justify-between flex-grow text-left">
                       <div>
-                        <div className="flex justify-between items-start mb-2 gap-2">
+                        <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
                           <h3 className="font-headline-md text-xl font-bold text-[#778873]">
                             {room.name || room.type || "Deluxe Room"}
                           </h3>
@@ -378,18 +413,31 @@ const HotelDetail = () => {
 
                         <p className="font-body-md text-sm text-[#444842] mb-4">
                           {room.description ||
-                            `Kamar seluas 45 meter persegi denganRan ${room.bed || '1 King Bed'}, pemandangan memukau, dan kamar mandi marmer yang luas.`}
+                            `Kamar seluas 45 meter persegi dengan ${room.bed || '1 King Bed'}, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
-                        {/* Features Checkmarks */}
-                        <div className="flex flex-wrap gap-4 mb-4 text-xs text-[#444842]">
-                          <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[#778873] text-base">check</span>
-                            Sarapan Termasuk
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[#778873] text-base">check</span>
-                            Pembatalan Gratis
+                        {/* Features Checkmarks — DINAMIS sesuai data asli + refund */}
+                        <div className="flex flex-wrap gap-3 mb-3 text-xs">
+                          {room.breakfast && (
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#778873]/10 border border-[#778873]/20 text-[#778873] font-semibold">
+                              <span className="material-symbols-outlined text-[14px]">check</span>
+                              Sarapan Termasuk
+                            </div>
+                          )}
+                          {room.smoking_area && (
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold">
+                              <span className="material-symbols-outlined text-[14px]">smoking_rooms</span>
+                              Smoking Area
+                            </div>
+                          )}
+                          <div className={room.is_refundable
+                            ? "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-semibold"
+                            : "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold"
+                          }>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {room.is_refundable ? "verified" : "block"}
+                            </span>
+                            {room.is_refundable ? "Bisa Refund" : "Non-Refundable"}
                           </div>
                         </div>
                       </div>
@@ -404,10 +452,19 @@ const HotelDetail = () => {
                             Rp {roomPrice.toLocaleString("id-ID")}{" "}
                             <span className="text-xs font-normal text-[#444842]">/ malam (Weekday)</span>
                           </p>
-                          <p className="text-xs text-[#A0522D] font-semibold mt-1 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm">local_fire_department</span>
-                            Hanya sisa 2 kamar!
-                          </p>
+                          {(room.stock !== undefined && room.stock !== null) ? (
+                            room.stock <= 3 ? (
+                              <p className="text-xs text-[#ba1a1a] font-semibold mt-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                                Hanya sisa {room.stock} kamar!
+                              </p>
+                            ) : (
+                              <p className="text-xs text-[#4F6F52] font-semibold mt-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                                Tersedia ({room.stock} kamar)
+                              </p>
+                            )
+                          ) : null}
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -453,13 +510,24 @@ const HotelDetail = () => {
                 ✕
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {photosList.map((photo, i) => (
-                <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
-                  <img src={photo} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
+            {hasHotelPhotos ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {photosList.map((photo, i) => (
+                  <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
+                    <img src={photo} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">
+                  image_not_supported
+                </span>
+                <p className="font-label-md text-sm font-bold text-[#778873]">
+                  Belum ada foto yang diunggah hotel.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
