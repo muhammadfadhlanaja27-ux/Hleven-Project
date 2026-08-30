@@ -139,6 +139,24 @@ const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Hapus akun ${userName}? Tindakan ini permanen.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/super-admin/users/${userId}`);
+
+      invalidateCache("/super-admin/users");
+      invalidateCache("/super-admin/dashboard");
+      toast.success("Akun pengguna berhasil dihapus!");
+      fetchUsers(true);
+    } catch (err) {
+      console.error("Gagal hapus user:", err);
+      toast.error(err.response?.data?.message || "Gagal menghapus akun pengguna.");
+    }
+  };
+
   // Create Admin Hotel
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
@@ -418,22 +436,32 @@ const UserManagement = () => {
                           {/* Actions */}
                           <td className="px-6 py-4 text-right whitespace-nowrap">
                             {user.role !== "super_admin" ? (
-                              <button
-                                onClick={() =>
-                                  handleToggleStatus(user.id, user.status)
-                                }
-                                title={isActive ? "Blokir Pengguna" : "Aktifkan Pengguna"}
-                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-hanken text-[13px] font-medium transition-all active:scale-95 ${
-                                  isActive
-                                    ? "text-[#ba1a1a] hover:bg-[#ffdad6]/40 border border-[#ffdad6]"
-                                    : "text-[#768875] hover:bg-[#d1eac9]/40 border border-[#d1eac9]"
-                                }`}
-                              >
-                                <span className="material-symbols-outlined text-[17px]">
-                                  {isActive ? "block" : "lock_open"}
-                                </span>
-                                <span>{isActive ? "Block" : "Activate"}</span>
-                              </button>
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  onClick={() =>
+                                    handleToggleStatus(user.id, user.status)
+                                  }
+                                  title={isActive ? "Blokir Pengguna" : "Aktifkan Pengguna"}
+                                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-hanken text-[13px] font-medium transition-all active:scale-95 ${
+                                    isActive
+                                      ? "text-[#ba1a1a] hover:bg-[#ffdad6]/40 border border-[#ffdad6]"
+                                      : "text-[#768875] hover:bg-[#d1eac9]/40 border border-[#d1eac9]"
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">
+                                    {isActive ? "block" : "lock_open"}
+                                  </span>
+                                  <span>{isActive ? "Block" : "Activate"}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(user.id, user.name)}
+                                  title="Hapus Akun"
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffdad6]/40 font-hanken text-[13px] font-medium transition-all active:scale-95"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">delete</span>
+                                  <span>Hapus</span>
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-[12px] text-[#747872] italic px-2">
                                 System Protected
