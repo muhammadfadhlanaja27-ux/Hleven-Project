@@ -700,7 +700,7 @@ const UserProfile = () => {
                       >
                         Tandai semua dibaca
                       </button>
-Anda                    )}
+                    )}
                   </div>
 
                   {notificationsLoading ? (

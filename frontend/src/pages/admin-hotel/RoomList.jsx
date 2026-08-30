@@ -123,11 +123,13 @@ const normalizeRoom = (r) => {
   return {
     id: r.id,
     name: r.name || "",
-    type: r.name?.toLowerCase().includes("suite")
-      ? "Suite"
-      : r.name?.toLowerCase().includes("deluxe")
-      ? "Deluxe"
-      : "Standard",
+      type: r.type || (
+        r.name?.toLowerCase().includes("suite")
+          ? "Suite"
+          : r.name?.toLowerCase().includes("deluxe")
+          ? "Deluxe"
+          : "Standard"
+      ),
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
     weekend_price: Number(r.weekend_price || 0),
@@ -268,7 +270,6 @@ export default function RoomList() {
     setEditingRoom(room);
     setEditValues({
       name: room.name,
-      type: room.type,
       description: room.description || "",
       weekday_price: room.weekday_price,
       weekend_price: room.weekend_price,
@@ -361,6 +362,7 @@ export default function RoomList() {
         capacity_adult: Number(editValues.capacity_adult),
         capacity_child: Number(editValues.capacity_child || 0),
         stock: Number(editValues.stock),
+        facilities: editValues.facilityIds || [],
       });
 
       toast.success("Room updated successfully.");
