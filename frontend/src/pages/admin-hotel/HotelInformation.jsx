@@ -118,6 +118,7 @@ const parseCityName = (cityVal) => {
 
 export default function HotelInformation() {
   const [loading, setLoading] = useState(true);
+  const [hotelId, setHotelId] = useState(null);
   const [hotelData, setHotelData] = useState(initialHotelData);
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState(initialHotelData);
@@ -174,6 +175,7 @@ export default function HotelInformation() {
       if (profileRes.status === "fulfilled" && profileRes.value?.data) {
         const raw = profileRes.value.data.data || profileRes.value.data;
         if (raw) {
+          setHotelId(raw.id);
           const mappedPhotos = (raw.photos || []).map((p, idx) => {
             const imgPath = p.image_path || p.url || p.photo || "";
             const fullUrl = imgPath.startsWith("http")
@@ -298,6 +300,7 @@ export default function HotelInformation() {
         size: `${sizeInMB} MB`,
         uploadedAt: todayStr,
         isPrimary: formPhotos.length === 0 && index === 0,
+        file,
       };
     });
 
@@ -385,6 +388,17 @@ export default function HotelInformation() {
       };
 
       await api.post("/admin/hotel/profile", payload);
+
+      const newPhotos = formPhotos.filter((p) => p.file);
+      for (const photo of newPhotos) {
+        const formData = new FormData();
+        formData.append("photo", photo.file);
+        formData.append("is_thumbnail", photo.isPrimary ? "1" : "0");
+        await api.post(`/admin/hotels/${hotelId}/photos`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
       invalidateCache("/facilities?category=Hotel");
       invalidateCache("/admin/hotel/profile");
 
@@ -399,7 +413,7 @@ export default function HotelInformation() {
         facilities: updatedAssigned,
       });
       setIsEditing(false);
-      toast.success("Hotel information updated successfully.");
+      toast.success("Hotel information and photos updated successfully.");
     } catch (err) {
       console.error("Failed to update hotel profile:", err);
       const msg =

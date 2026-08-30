@@ -9,6 +9,7 @@ use App\Models\RoomType;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -23,45 +24,51 @@ class RoomController extends Controller
 
         // 1. Ambil hotel_id dari query param (user) atau dari user model (admin fallback)
         $hotelId = $request->query('hotel_id');
-        if (!$hotelId) {
+        if (! $hotelId) {
             $hotel = $user?->hotel ?? Hotel::first();
             $hotelId = $hotel?->id;
         }
 
-        if (!$hotelId) {
+        if (! $hotelId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Hotel tidak ditemukan.',
             ], 404);
         }
 
-        $checkIn  = $request->query('check_in');
+        $checkIn = $request->query('check_in');
         $checkOut = $request->query('check_out');
 
         $rooms = RoomType::where('hotel_id', $hotelId)
             ->with(['photos', 'facilities'])
-            ->get()
-            ->map(function ($room) use ($checkIn, $checkOut) {
-                // Jika user mengirimkan tanggal check_in & check_out, hitung stok aktif
-                if ($checkIn && $checkOut) {
-                    $bookedQty = BookingRoom::where('room_type_id', $room->id)
-                        ->whereHas('booking', function ($q) use ($checkIn, $checkOut) {
-                            $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed'])
-                              ->where('check_in', '<', $checkOut)
-                              ->where('check_out', '>', $checkIn);
-                        })->sum('qty');
+            ->get();
 
-                    $room->available_stock = max(0, $room->stock - $bookedQty);
-                } else {
-                    $room->available_stock = $room->stock;
-                }
-                return $room;
+        if ($checkIn && $checkOut) {
+            $roomTypeIds = $rooms->pluck('id');
+
+            $bookedQuantities = BookingRoom::whereIn('room_type_id', $roomTypeIds)
+                ->whereHas('booking', function ($q) use ($checkIn, $checkOut) {
+                    $q->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed'])
+                        ->where('check_in', '<', $checkOut)
+                        ->where('check_out', '>', $checkIn);
+                })
+                ->select('room_type_id', DB::raw('SUM(qty) as total_booked'))
+                ->groupBy('room_type_id')
+                ->pluck('total_booked', 'room_type_id');
+
+            $rooms->each(function ($room) use ($bookedQuantities) {
+                $room->available_stock = max(0, $room->stock - ($bookedQuantities[$room->id] ?? 0));
             });
+        } else {
+            $rooms->each(function ($room) {
+                $room->available_stock = $room->stock;
+            });
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Daftar kamar berhasil dimuat',
-            'data'    => $rooms,
+            'data' => $rooms,
         ], 200);
     }
 
@@ -73,7 +80,7 @@ class RoomController extends Controller
         $user = $request->user();
         $hotel = $user->hotel ?? Hotel::first();
 
-        if (!$hotel) {
+        if (! $hotel) {
             return response()->json([
                 'success' => false,
                 'message' => 'Hotel tidak ditemukan.',
@@ -81,42 +88,42 @@ class RoomController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name'           => 'required|string|max:255',
-            'description'    => 'nullable|string',
-            'weekday_price'  => 'required|numeric|min:0',
-            'weekend_price'  => 'required|numeric|min:0',
-            'stock'          => 'required|integer|min:0',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'weekday_price' => 'required|numeric|min:0',
+            'weekend_price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
             'capacity_adult' => 'required|integer|min:1',
             'capacity_child' => 'required|integer|min:0',
-            'breakfast'      => 'boolean',
-            'smoking_area'   => 'boolean',
-            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
+            'breakfast' => 'boolean',
+            'smoking_area' => 'boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors'  => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $room = RoomType::create([
-            'hotel_id'       => $hotel->id,
-            'name'           => $request->name,
-            'description'    => $request->description,
-            'weekday_price'  => $request->weekday_price,
-            'weekend_price'  => $request->weekend_price,
-            'stock'          => $request->stock,
+            'hotel_id' => $hotel->id,
+            'name' => $request->name,
+            'description' => $request->description,
+            'weekday_price' => $request->weekday_price,
+            'weekend_price' => $request->weekend_price,
+            'stock' => $request->stock,
             'capacity_adult' => $request->capacity_adult,
             'capacity_child' => $request->capacity_child,
-            'breakfast'      => $request->breakfast ?? false,
-            'smoking_area'   => $request->smoking_area ?? false,
+            'breakfast' => $request->breakfast ?? false,
+            'smoking_area' => $request->smoking_area ?? false,
         ]);
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('rooms', 'public');
             $room->photos()->create([
-                'photo'        => $path,
+                'photo' => $path,
                 'is_thumbnail' => true,
             ]);
         }
@@ -124,7 +131,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil ditambahkan',
-            'data'    => $room->load('photos'),
+            'data' => $room->load('photos'),
         ], 201);
     }
 
@@ -135,7 +142,7 @@ class RoomController extends Controller
     {
         $room = RoomType::with(['photos', 'facilities', 'hotel'])->find($id);
 
-        if (!$room) {
+        if (! $room) {
             return response()->json([
                 'success' => false,
                 'message' => 'Kamar tidak ditemukan',
@@ -145,7 +152,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Detail kamar berhasil dimuat',
-            'data'    => $room,
+            'data' => $room,
         ], 200);
     }
 
@@ -156,7 +163,7 @@ class RoomController extends Controller
     {
         $room = RoomType::find($id);
 
-        if (!$room) {
+        if (! $room) {
             return response()->json([
                 'success' => false,
                 'message' => 'Kamar tidak ditemukan',
@@ -164,21 +171,21 @@ class RoomController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name'           => 'sometimes|required|string|max:255',
-            'description'    => 'nullable|string',
-            'weekday_price'  => 'sometimes|required|numeric|min:0',
-            'weekend_price'  => 'sometimes|required|numeric|min:0',
-            'stock'          => 'sometimes|required|integer|min:0',
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'weekday_price' => 'sometimes|required|numeric|min:0',
+            'weekend_price' => 'sometimes|required|numeric|min:0',
+            'stock' => 'sometimes|required|integer|min:0',
             'capacity_adult' => 'sometimes|required|integer|min:1',
             'capacity_child' => 'sometimes|required|integer|min:0',
-            'breakfast'      => 'boolean',
-            'smoking_area'   => 'boolean',
+            'breakfast' => 'boolean',
+            'smoking_area' => 'boolean',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors'  => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -187,7 +194,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil diperbarui',
-            'data'    => $room,
+            'data' => $room->load(['photos', 'facilities']),
         ], 200);
     }
 
@@ -199,7 +206,7 @@ class RoomController extends Controller
         try {
             $room = RoomType::find($id);
 
-            if (!$room) {
+            if (! $room) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Kamar tidak ditemukan',
@@ -230,7 +237,7 @@ class RoomController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
             ], 500);
         }
     }
