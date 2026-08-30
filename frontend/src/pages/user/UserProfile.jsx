@@ -6,40 +6,6 @@ import { cachedGet } from "../../services/apiCache";
 import { QRCodeSVG } from "qrcode.react";
 import ApplicationStatus from "../../components/mitra/ApplicationStatus";
 
-const QR_CODE_PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(`
-    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
-      <rect width='200' height='200' fill='white'/>
-      <g fill='#1e1b16'>
-        <rect x='20' y='20' width='50' height='50'/>
-        <rect x='130' y='20' width='50' height='50'/>
-        <rect x='20' y='130' width='50' height='50'/>
-        <rect x='30' y='30' width='10' height='10' fill='white'/>
-        <rect x='140' y='30' width='10' height='10' fill='white'/>
-        <rect x='30' y='140' width='10' height='10' fill='white'/>
-        <rect x='80' y='20' width='10' height='10'/>
-        <rect x='100' y='30' width='10' height='10'/>
-        <rect x='20' y='80' width='10' height='10'/>
-        <rect x='40' y='100' width='10' height='10'/>
-        <rect x='60' y='80' width='10' height='10'/>
-        <rect x='80' y='100' width='10' height='10'/>
-        <rect x='100' y='80' width='10' height='10'/>
-        <rect x='120' y='90' width='10' height='10'/>
-        <rect x='140' y='100' width='10' height='10'/>
-        <rect x='160' y='80' width='10' height='10'/>
-        <rect x='180' y='100' width='10' height='10'/>
-        <rect x='80' y='120' width='10' height='10'/>
-        <rect x='100' y='140' width='10' height='10'/>
-        <rect x='120' y='130' width='10' height='10'/>
-        <rect x='140' y='150' width='10' height='10'/>
-        <rect x='160' y='140' width='10' height='10'/>
-        <rect x='100' y='160' width='10' height='10'/>
-        <rect x='120' y='180' width='10' height='10'/>
-      </g>
-    </svg>
-  `);
-
 const UserProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,6 +71,9 @@ const UserProfile = () => {
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
+  // Logout Confirmation Modal State
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load User Data, Bookings, Partner Status
   const fetchUserBookings = async () => {
@@ -245,7 +214,6 @@ const UserProfile = () => {
   }, [navigate, currentUserRole]);
 
   const handleFixRevision = () => {
-    // Preload data existing ke form pendaftaran
     navigate("/mitra/daftar", {
       state: {
         prefill: {
@@ -273,7 +241,6 @@ const UserProfile = () => {
     });
   };
 
-  // Handle Avatar Change
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -395,7 +362,6 @@ const UserProfile = () => {
     }
   };
 
-  // Unduh Berkas E-Tiket PDF
   const handleDownloadPdf = async (bookingId, bookingCode) => {
     try {
       const token = localStorage.getItem("token");
@@ -439,8 +405,6 @@ const UserProfile = () => {
 
     if (sortBy === "newest") {
       result = [...result].reverse();
-    } else if (sortBy === "oldest") {
-      // no-op, biarkan urutan asli (asumsi data dari API oldest-first)
     } else if (sortBy === "price_high") {
       result = [...result].sort((a, b) => Number(b.total_price || b.grand_total || 0) - Number(a.total_price || a.grand_total || 0));
     } else if (sortBy === "price_low") {
@@ -450,13 +414,12 @@ const UserProfile = () => {
     return result;
   }, [bookings, filterStatus, sortBy]);
 
-  const handleLogout = () => {
-    if (window.confirm("Apakah Anda yakin ingin keluar dari akun?")) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.dispatchEvent(new Event("storage"));
-      navigate("/login");
-    }
+  // Eksekusi Konfirmasi Logout
+  const handleConfirmLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event("storage"));
+    navigate("/login");
   };
 
   const getStatusBadge = (status) => {
@@ -535,7 +498,6 @@ const UserProfile = () => {
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-12 flex flex-col text-left">
         
-        {/* Page Title */}
         <div className="mb-8">
           <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
             My Account
@@ -545,7 +507,6 @@ const UserProfile = () => {
           </p>
         </div>
 
-        {/* Global Alert Notification */}
         {message.text && (
           <div
             className={`p-4 rounded-xl mb-6 text-sm font-semibold border transition-all ${
@@ -558,13 +519,8 @@ const UserProfile = () => {
           </div>
         )}
 
-        {/* Two-Column Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Sidebar Area */}
           <aside className="lg:col-span-4 flex flex-col gap-6">
-            
-            {/* Profile Header Summary Card */}
             <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
               <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden group shadow-md">
                 {avatarPreview ? (
@@ -633,7 +589,6 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Navigation Menu */}
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
               {/* Fitur "Daftar / Status Mitra Hotel" HANYA ditampilkan untuk user biasa (role user).
                   Admin Hotel (role admin_hotel) dan Super Admin (role super_admin) SUDAH menjadi
@@ -703,8 +658,8 @@ const UserProfile = () => {
 
               <button
                 type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-6 py-4 text-[#ba1a1a] hover:bg-[#ffdad6]/30 font-label-md text-sm font-semibold transition-colors border-l-4 border-l-transparent mt-2 border-t border-[#DCCFC0]/30 text-left cursor-pointer"
+                onClick={() => setShowLogoutModal(true)}
+                className="w-full flex items-center gap-3 px-6 py-4 text-[#ba1a1a] hover:bg-[#ffdad6]/30 font-label-md text-sm font-semibold transition-colors border-l-4 border-transparent mt-2 border-t border-[#DCCFC0]/30 text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-xl">logout</span>
                 Keluar (Sign Out)
@@ -712,7 +667,6 @@ const UserProfile = () => {
             </nav>
           </aside>
 
-          {/* Main Area: Dynamic Tab Content */}
           <div className="lg:col-span-8 flex flex-col gap-8">
 
             {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
@@ -746,7 +700,7 @@ const UserProfile = () => {
                       >
                         Tandai semua dibaca
                       </button>
-                    )}
+Anda                    )}
                   </div>
 
                   {notificationsLoading ? (
@@ -907,7 +861,6 @@ const UserProfile = () => {
                   </form>
                 </section>
 
-                {/* Security Password Section */}
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
                   <div className="flex items-center gap-3 mb-6 border-b border-[#DCCFC0]/30 pb-4">
                     <span className="material-symbols-outlined text-[#778873] text-2xl">
@@ -983,10 +936,7 @@ const UserProfile = () => {
             )}
 
             {activeTab === "history" && (
-              /* Booking History View */
               <div className="flex flex-col gap-6">
-                
-                {/* Filters & Sort Bar */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
                     <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
@@ -1021,7 +971,6 @@ const UserProfile = () => {
                   </div>
                 </div>
 
-                {/* Bookings List */}
                 <div className="flex flex-col gap-6">
                   {filteredBookings.length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center border border-[#DCCFC0]/40">
@@ -1038,7 +987,6 @@ const UserProfile = () => {
                           ["Cancelled", "cancelled", "Dibatalkan", "expired"].includes(item.status) ? "opacity-75" : ""
                         }`}
                       >
-                        {/* Thumbnail */}
                         <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
                           {item.booking_rooms?.[0]?.room_type?.photos?.[0]?.photo ? (
                             <img
@@ -1060,7 +1008,6 @@ const UserProfile = () => {
                           </div>
                         </div>
 
-                        {/* Card Details */}
                         <div className="p-6 flex-grow flex flex-col justify-between gap-4">
                           <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
                             <div>
@@ -1086,7 +1033,6 @@ const UserProfile = () => {
                             </div>
                           </div>
 
-                          {/* Stay Dates Box */}
                           <div className="bg-[#faf3ea] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border border-[#DCCFC0]/30">
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                               <div className="w-10 h-10 rounded-full bg-[#DCCFC0]/30 flex items-center justify-center text-[#778873] flex-shrink-0">
@@ -1119,7 +1065,6 @@ const UserProfile = () => {
                             </div>
                           </div>
 
-                          {/* Actions */}
                           <div className="flex flex-wrap gap-3 justify-end pt-1">
                             <button
                               type="button"
@@ -1160,6 +1105,37 @@ const UserProfile = () => {
           </div>
         </div>
       </main>
+
+      {/* MODAL KONFIRMASI LOGOUT KUSTOM */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-2xl">logout</span>
+            </div>
+            <div>
+              <h3 className="font-headline-md text-lg font-bold text-[#2D332C]">Konfirmasi Keluar</h3>
+              <p className="font-body-md text-xs text-[#444842] mt-1">Apakah Anda yakin ingin keluar dari akun Anda?</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-2.5 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLogout}
+                className="flex-1 py-2.5 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors shadow-xs cursor-pointer"
+              >
+                Ya, Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL REFUND / CANCEL */}
       {cancelModalBooking && (
@@ -1246,8 +1222,6 @@ const UserProfile = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col items-center justify-center border-t md:border-t-0 md:border-r border-[#DCCFC0]/60 pt-6 md:pt-0 md:pr-8 text-center">
-                  
-                  {/* GENERATED DINAMIS QR CODE */}
                   <div className="bg-white p-3 border-2 border-[#778873] rounded-2xl mb-4 shadow-xs inline-block">
                     <QRCodeSVG
                       value={selectedBooking.booking_code || String(selectedBooking.id)}
@@ -1261,7 +1235,6 @@ const UserProfile = () => {
                     Tunjukkan QR Code ini di resepsionis saat check-in.
                   </p>
                   
-                  {/* TOMBOL UNDUH E-TIKET PDF */}
                   <button
                     type="button"
                     onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code || selectedBooking.id)}
