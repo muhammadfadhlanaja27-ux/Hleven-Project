@@ -19,6 +19,8 @@ const initialHotelData = {
   yearBuilt: "2020",
   website: "www.hleven.com",
   photos: [],
+  facilities: [],
+  facilityIds: [],
 };
 
 // Helper untuk mengekstrak nama kota dari string atau objek { id, province, city }
@@ -36,6 +38,7 @@ export default function HotelInformation() {
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState(initialHotelData);
   const [formPhotos, setFormPhotos] = useState(initialPhotos);
+  const [availableFacilities, setAvailableFacilities] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
@@ -49,15 +52,28 @@ export default function HotelInformation() {
   const fetchHotelInfo = async () => {
     setLoading(true);
     try {
-      const [profileRes, reviewsRes] = await Promise.allSettled([
+      const [profileRes, reviewsRes, facilitiesRes] = await Promise.allSettled([
         api.get("/admin/hotel/profile"),
         api.get("/hotel/reviews"),
+        api.get("/facilities"),
       ]);
 
       let reviewsData = [];
       if (reviewsRes.status === "fulfilled" && reviewsRes.value?.data) {
         reviewsData =
           reviewsRes.value.data.data || reviewsRes.value.data || [];
+      }
+
+      if (facilitiesRes.status === "fulfilled" && facilitiesRes.value?.data) {
+        const facList =
+          facilitiesRes.value.data.data || facilitiesRes.value.data || [];
+        if (Array.isArray(facList)) {
+          // Filter fasilitas khusus kategori Hotel atau semua fasilitas jika kategori belum ditentukan
+          const hotelCatFacs = facList.filter(
+            (f) => f.category === "Hotel" || !f.category
+          );
+          setAvailableFacilities(hotelCatFacs.length > 0 ? hotelCatFacs : facList);
+        }
       }
 
       const totalReviewsCount = Array.isArray(reviewsData) ? reviewsData.length : 0;
@@ -101,6 +117,8 @@ export default function HotelInformation() {
 
           // Ekstraksi aman untuk string kota
           const cityName = parseCityName(raw.city);
+          const rawFacilities = Array.isArray(raw.facilities) ? raw.facilities : [];
+          const rawFacilityIds = rawFacilities.map((f) => f.id);
 
           const updatedData = {
             name: raw.name || "Grand H'Leven Hotel",
@@ -121,6 +139,8 @@ export default function HotelInformation() {
             yearBuilt: "2020",
             website: "www.hleven.com",
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
+            facilities: rawFacilities,
+            facilityIds: rawFacilityIds,
           };
 
           setHotelData(updatedData);
@@ -135,9 +155,23 @@ export default function HotelInformation() {
     }
   };
 
+  // Toggle fasilitas pada mode edit
+  const handleToggleFacility = (facId) => {
+    setFormValues((prev) => {
+      const currentIds = prev.facilityIds || [];
+      const nextIds = currentIds.includes(facId)
+        ? currentIds.filter((id) => id !== facId)
+        : [...currentIds, facId];
+      return { ...prev, facilityIds: nextIds };
+    });
+  };
+
   // Toggle ke mode edit
   const handleStartEdit = () => {
-    setFormValues(hotelData);
+    setFormValues({
+      ...hotelData,
+      facilityIds: hotelData.facilityIds || (hotelData.facilities || []).map((f) => f.id),
+    });
     setFormPhotos(hotelData.photos || initialPhotos);
     setErrors({});
     setIsEditing(true);
@@ -145,7 +179,10 @@ export default function HotelInformation() {
 
   // Batal edit
   const handleCancel = () => {
-    setFormValues(hotelData);
+    setFormValues({
+      ...hotelData,
+      facilityIds: hotelData.facilityIds || (hotelData.facilities || []).map((f) => f.id),
+    });
     setFormPhotos(hotelData.photos || initialPhotos);
     setErrors({});
     setIsEditing(false);
@@ -258,19 +295,31 @@ export default function HotelInformation() {
 
     setIsSaving(true);
     try {
-      await api.post("/admin/hotel/profile", {
+      const payload = {
         name: formValues.name.trim(),
         description: formValues.description.trim(),
         address: formValues.address.trim(),
         phone: formValues.phone.trim(),
-      });
+        facilities: formValues.facilityIds || [],
+      };
+
+      const res = await api.post("/admin/hotel/profile", payload);
+      const updatedHotel = res.data?.data;
+
+      const selectedFacObjects = availableFacilities.filter((f) =>
+        (formValues.facilityIds || []).includes(f.id)
+      );
 
       setHotelData({
         ...formValues,
+        facilities: (updatedHotel && Array.isArray(updatedHotel.facilities))
+          ? updatedHotel.facilities
+          : selectedFacObjects,
+        facilityIds: formValues.facilityIds || [],
         photos: formPhotos,
       });
       setIsEditing(false);
-      toast.success("Hotel information updated successfully.");
+      toast.success("Informasi dan fasilitas hotel berhasil diperbarui.");
     } catch (err) {
       console.error("Failed to update hotel profile:", err);
       toast.error("Gagal memperbarui profil hotel.");
@@ -533,6 +582,68 @@ export default function HotelInformation() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* VIEW MODE: HOTEL FACILITIES */}
+          <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#E5E1DA] pb-4">
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+                  Fasilitas Hotel
+                </h3>
+                <p className="text-xs text-[#6B6E6A] mt-0.5">
+                  Fasilitas properti yang aktif dan dapat dinikmati oleh seluruh tamu ({hotelData.facilities?.length || 0} fasilitas aktif).
+                </p>
+              </div>
+              <button
+                onClick={handleStartEdit}
+                className="text-xs font-semibold text-[#506147] hover:underline flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  tune
+                </span>
+                Kelola Fasilitas
+              </button>
+            </div>
+
+            {hotelData.facilities && hotelData.facilities.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {hotelData.facilities.map((fac) => (
+                  <div
+                    key={fac.id}
+                    className="flex items-center gap-3.5 p-4 rounded-xl bg-[#FAF7F2] border border-[#E5E1DA] hover:border-[#506147]/40 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-[#506147]/10 flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[#506147] text-[22px]">
+                        {fac.icon || "stars"}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-semibold text-[#2D312C] truncate">
+                        {fac.name}
+                      </h4>
+                      {fac.description && (
+                        <p className="text-xs text-[#6B6E6A] truncate">
+                          {fac.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 bg-[#FAF7F2] rounded-xl border border-dashed border-[#DCCFC0]">
+                <span className="material-symbols-outlined text-4xl text-[#757870] mb-2">
+                  room_service
+                </span>
+                <h4 className="text-sm font-semibold text-[#2D312C]">
+                  Belum Ada Fasilitas yang Dipilih
+                </h4>
+                <p className="text-xs text-[#6B6E6A] mt-1 max-w-sm mx-auto">
+                  Klik tombol &quot;Kelola Fasilitas&quot; atau &quot;Edit Hotel&quot; untuk memilih fasilitas yang disediakan oleh hotel Anda.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* VIEW MODE: PHOTO GALLERY */}
@@ -827,6 +938,79 @@ export default function HotelInformation() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* EDIT MODE: HOTEL FACILITIES SELECTION */}
+          <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#E5E1DA] pb-4">
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+                  Pilih Fasilitas Hotel
+                </h3>
+                <p className="text-xs text-[#6B6E6A] mt-0.5">
+                  Centang fasilitas properti yang tersedia di hotel Anda untuk ditampilkan kepada calon tamu.
+                </p>
+              </div>
+              <span className="text-xs font-semibold px-3 py-1.5 bg-[#506147]/10 text-[#506147] rounded-full flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">
+                  check_circle
+                </span>
+                {(formValues.facilityIds || []).length} Fasilitas Dipilih
+              </span>
+            </div>
+
+            {availableFacilities.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {availableFacilities.map((fac) => {
+                  const isChecked = (formValues.facilityIds || []).includes(fac.id);
+                  return (
+                    <div
+                      key={fac.id}
+                      onClick={() => handleToggleFacility(fac.id)}
+                      className={`cursor-pointer select-none flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 ${
+                        isChecked
+                          ? "bg-[#506147]/5 border-[#506147] shadow-sm ring-1 ring-[#506147]/20"
+                          : "bg-[#FAFAFA] border-[#E5E1DA] hover:border-[#c4c8be] hover:bg-[#FAF7F2]"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}} // dikontrol oleh container click
+                        className="mt-0.5 w-4 h-4 rounded border-[#c4c8be] text-[#506147] focus:ring-[#506147] cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`material-symbols-outlined text-[22px] shrink-0 ${
+                            isChecked ? "text-[#506147]" : "text-[#757870]"
+                          }`}
+                        >
+                          {fac.icon || "stars"}
+                        </span>
+                        <div className="min-w-0">
+                          <p
+                            className={`text-sm font-semibold truncate ${
+                              isChecked ? "text-[#506147]" : "text-[#2D312C]"
+                            }`}
+                          >
+                            {fac.name}
+                          </p>
+                          {fac.description && (
+                            <p className="text-[11px] text-[#6B6E6A] truncate">
+                              {fac.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-sm text-[#6B6E6A] bg-[#FAF7F2] rounded-xl border border-dashed border-[#DCCFC0]">
+                Belum ada fasilitas master hotel yang terdaftar di database.
+              </div>
+            )}
           </div>
 
           {/* EDIT MODE: HOTEL PHOTOS */}

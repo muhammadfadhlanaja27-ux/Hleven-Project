@@ -57,6 +57,7 @@ class RoomController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name'           => 'required|string|max:255',
+            'type'           => 'nullable|string|max:100',
             'description'    => 'nullable|string',
             'weekday_price'  => 'required|numeric|min:0',
             'weekend_price'  => 'required|numeric|min:0',
@@ -78,6 +79,7 @@ class RoomController extends Controller
         $room = RoomType::create([
             'hotel_id'       => $hotel->id,
             'name'           => $request->name,
+            'type'           => $request->type ?? 'Standard',
             'description'    => $request->description,
             'weekday_price'  => $request->weekday_price,
             'weekend_price'  => $request->weekend_price,
@@ -99,7 +101,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil ditambahkan',
-            'data'    => $room->load('photos'),
+            'data'    => $room->load(['photos', 'facilities']),
         ], 201);
     }
 
@@ -140,14 +142,19 @@ class RoomController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name'           => 'sometimes|required|string|max:255',
+            'type'           => 'nullable|string|max:100',
             'description'    => 'nullable|string',
             'weekday_price'  => 'sometimes|required|numeric|min:0',
             'weekend_price'  => 'sometimes|required|numeric|min:0',
             'stock'          => 'sometimes|required|integer|min:0',
             'capacity_adult' => 'sometimes|required|integer|min:1',
-            'capacity_child' => 'sometimes|required|integer|min:0',
+            'capacity_child' => 'sometimes|integer|min:0',
             'breakfast'      => 'boolean',
             'smoking_area'   => 'boolean',
+            'facilities'     => 'nullable|array',
+            'facilities.*'   => 'exists:facilities,id',
+            'photos'         => 'nullable|array',
+            'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -157,12 +164,42 @@ class RoomController extends Controller
             ], 422);
         }
 
-        $room->update($request->all());
+        // Update kolom utama (gunakan only agar tidak ada kolom asing)
+        $updateData = $request->only([
+            'name', 'type', 'description', 'weekday_price', 'weekend_price',
+            'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
+        ]);
+
+        $room->update($updateData);
+
+        // Sync fasilitas jika dikirimkan (termasuk array kosong = hapus semua)
+        // Catatan: FormData bisa mengirim string kosong "" untuk array kosong
+        if ($request->has('facilities')) {
+            $facilities = $request->input('facilities');
+            if ($facilities === '' || $facilities === null) {
+                $facilities = [];
+            }
+            if (is_array($facilities)) {
+                $room->facilities()->sync(array_filter($facilities, fn($v) => is_numeric($v)));
+            }
+        }
+
+        // Upload foto baru jika ada
+        if ($request->hasFile('photos')) {
+            $hasThumbnail = $room->photos()->where('is_thumbnail', true)->exists();
+            foreach ($request->file('photos') as $index => $photo) {
+                $path = $photo->store('room_types', 'public');
+                $room->photos()->create([
+                    'photo'        => $path,
+                    'is_thumbnail' => !$hasThumbnail && $index === 0,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil diperbarui',
-            'data'    => $room,
+            'data'    => $room->load(['photos', 'facilities']),
         ], 200);
     }
 

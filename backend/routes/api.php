@@ -79,6 +79,7 @@ Route::prefix('v1')->group(function () {
         // --- Fasilitas (Admin/Super Admin) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
             Route::post('/facilities', [FacilityController::class, 'store']);
+            Route::put('/facilities/{id}', [FacilityController::class, 'update']);
             Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
         });
 
@@ -122,7 +123,9 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::post('/rooms', [RoomController::class, 'store']);
     Route::get('/rooms/{id}', [RoomController::class, 'show']);
     Route::put('/rooms/{id}', [RoomController::class, 'update']);
+    Route::post('/rooms/{id}', [RoomController::class, 'update']); // method spoofing via FormData
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
+
 
     // --- Management Tipe Kamar (RoomTypeController) ---
     Route::get('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'index']);

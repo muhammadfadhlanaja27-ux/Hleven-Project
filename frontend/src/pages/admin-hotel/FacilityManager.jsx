@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 // Icon selector options
 const ICON_OPTIONS = [
@@ -23,136 +22,36 @@ const ICON_OPTIONS = [
   { value: "security", label: "Safety Box" },
 ];
 
-const initialHotelFacilities = [
-  {
-    id: "h-1",
-    name: "High-Speed Wi-Fi (All Areas)",
-    description: "High-speed internet accessible in all hotel areas.",
-    status: "active",
-    icon: "wifi",
-    updatedAt: "24 Oct 2023",
-  },
-  {
-    id: "h-2",
-    name: "Outdoor Swimming Pool",
-    description: "Outdoor swimming pool for hotel guests.",
-    status: "active",
-    icon: "pool",
-    updatedAt: "24 Oct 2023",
-  },
-  {
-    id: "h-3",
-    name: "Restaurant & Fine Dining",
-    description: "Restaurant serving breakfast, lunch, and dinner.",
-    status: "active",
-    icon: "restaurant",
-    updatedAt: "22 Oct 2023",
-  },
-  {
-    id: "h-4",
-    name: "Guest Parking Area",
-    description: "Parking area available for hotel guests.",
-    status: "active",
-    icon: "local_parking",
-    updatedAt: "20 Oct 2023",
-  },
-  {
-    id: "h-5",
-    name: "Wellness Gym Center",
-    description: "Fitness center available for hotel guests.",
-    status: "inactive",
-    icon: "fitness_center",
-    updatedAt: "15 Oct 2023",
-  },
-];
-
-const initialRoomFacilities = [
-  {
-    id: "r-1",
-    name: "Air Conditioning",
-    description: "Air conditioning available in the room.",
-    status: "active",
-    icon: "ac_unit",
-    updatedAt: "24 Oct 2023",
-  },
-  {
-    id: "r-2",
-    name: "Smart Television (65\")",
-    description: "Smart TV available in the room with streaming services.",
-    status: "active",
-    icon: "tv",
-    updatedAt: "24 Oct 2023",
-  },
-  {
-    id: "r-3",
-    name: "Mini Refrigerator",
-    description: "Mini refrigerator available in selected rooms.",
-    status: "active",
-    icon: "kitchen",
-    updatedAt: "22 Oct 2023",
-  },
-  {
-    id: "r-4",
-    name: "Private Bathroom",
-    description: "Private bathroom with luxury organic amenities.",
-    status: "active",
-    icon: "bathtub",
-    updatedAt: "20 Oct 2023",
-  },
-  {
-    id: "r-5",
-    name: "Private Balcony",
-    description: "Private balcony available in selected rooms.",
-    status: "inactive",
-    icon: "balcony",
-    updatedAt: "15 Oct 2023",
-  },
-];
-
 export default function FacilityManager() {
   // Tab State: 'hotel' | 'room'
   const [activeTab, setActiveTab] = useState("hotel");
 
   // Local Data State
-  const [hotelFacilities, setHotelFacilities] = useState(initialHotelFacilities);
-  const [roomFacilities, setRoomFacilities] = useState(initialRoomFacilities);
+  const [hotelFacilities, setHotelFacilities] = useState([]);
+  const [roomFacilities, setRoomFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchFacilities();
   }, []);
 
-  const fetchFacilities = async (forceRefresh = false) => {
+  const fetchFacilities = async () => {
     setLoading(true);
     try {
-      const { data: resData } = await cachedGet("/facilities", {}, forceRefresh);
-      if (resData && resData.data && Array.isArray(resData.data)) {
-        const hotelList = resData.data
-          .filter((f) => f.category === "Hotel")
-          .map((f) => ({
-            id: f.id,
-            name: f.name,
-            description: f.description || "",
-            status: "active",
-            icon: f.icon || "wifi",
-            updatedAt: "Today",
-          }));
-        const roomList = resData.data
-          .filter((f) => f.category === "Room" || f.category === "Bathroom")
-          .map((f) => ({
-            id: f.id,
-            name: f.name,
-            description: f.description || "",
-            status: "active",
-            icon: f.icon || "ac_unit",
-            updatedAt: "Today",
-          }));
+      const res = await api.get("/facilities");
+      const list = res.data?.data || [];
 
-        if (hotelList.length > 0) setHotelFacilities(hotelList);
-        if (roomList.length > 0) setRoomFacilities(roomList);
+      if (Array.isArray(list)) {
+        const hotelList = list.filter((f) => f.category === "Hotel");
+        const roomList = list.filter(
+          (f) => f.category === "Room" || f.category === "Bathroom"
+        );
+        setHotelFacilities(hotelList);
+        setRoomFacilities(roomList);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load facilities:", err);
+      toast.error("Gagal memuat daftar fasilitas.");
     } finally {
       setLoading(false);
     }
@@ -182,7 +81,7 @@ export default function FacilityManager() {
   const filteredFacilities = currentFacilities.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.description || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ? true : item.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -246,8 +145,8 @@ export default function FacilityManager() {
     return newErrors;
   };
 
-  // Handle Save (Add & Edit)
-  const handleSaveFacility = (e) => {
+  // Handle Save (Add & Edit) — calls API
+  const handleSaveFacility = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
@@ -258,40 +157,38 @@ export default function FacilityManager() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const todayStr = new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
+    try {
+      const category =
+        activeTab === "hotel" ? "Hotel" : "Room";
+
+      const payload = {
+        name: formValues.name.trim(),
+        icon: formValues.icon,
+        description: formValues.description.trim(),
+        status: formValues.status,
+        category,
+      };
 
       if (modalMode === "add") {
-        const newFacility = {
-          id: `${activeTab[0]}-${Date.now()}`,
-          name: formValues.name.trim(),
-          icon: formValues.icon,
-          description: formValues.description.trim(),
-          status: formValues.status,
-          updatedAt: todayStr,
-        };
+        const res = await api.post("/facilities", payload);
+        const newFacility = res.data?.data;
 
         if (activeTab === "hotel") {
           setHotelFacilities((prev) => [newFacility, ...prev]);
-          toast.success("Hotel facility created successfully.");
         } else {
           setRoomFacilities((prev) => [newFacility, ...prev]);
-          toast.success("Room facility created successfully.");
         }
-        invalidateCache("/facilities");
+        toast.success(
+          activeTab === "hotel"
+            ? "Hotel facility created successfully."
+            : "Room facility created successfully."
+        );
       } else if (modalMode === "edit" && selectedFacility) {
-        const updatedFacility = {
-          ...selectedFacility,
-          name: formValues.name.trim(),
-          icon: formValues.icon,
-          description: formValues.description.trim(),
-          status: formValues.status,
-          updatedAt: todayStr,
-        };
+        const res = await api.put(
+          `/facilities/${selectedFacility.id}`,
+          payload
+        );
+        const updatedFacility = res.data?.data;
 
         if (activeTab === "hotel") {
           setHotelFacilities((prev) =>
@@ -299,29 +196,42 @@ export default function FacilityManager() {
               item.id === selectedFacility.id ? updatedFacility : item
             )
           );
-          toast.success("Hotel facility updated successfully.");
         } else {
           setRoomFacilities((prev) =>
             prev.map((item) =>
               item.id === selectedFacility.id ? updatedFacility : item
             )
           );
-          toast.success("Room facility updated successfully.");
         }
-        invalidateCache("/facilities");
+        toast.success(
+          activeTab === "hotel"
+            ? "Hotel facility updated successfully."
+            : "Room facility updated successfully."
+        );
       }
 
       handleCloseModal();
-    }, 500);
+    } catch (err) {
+      console.error("Failed to save facility:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.name?.[0] ||
+        "Gagal menyimpan fasilitas.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Handle Delete Confirmation
-  const handleDeleteFacility = () => {
+  // Handle Delete Confirmation — calls API
+  const handleDeleteFacility = async () => {
     if (!selectedFacility) return;
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      await api.delete(`/facilities/${selectedFacility.id}`);
+
       if (activeTab === "hotel") {
         setHotelFacilities((prev) =>
           prev.filter((item) => item.id !== selectedFacility.id)
@@ -333,9 +243,27 @@ export default function FacilityManager() {
         );
         toast.success("Room facility deleted successfully.");
       }
-      invalidateCache("/facilities");
       handleCloseModal();
-    }, 400);
+    } catch (err) {
+      console.error("Failed to delete facility:", err);
+      const msg =
+        err.response?.data?.message || "Gagal menghapus fasilitas.";
+      toast.error(msg);
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   return (
@@ -443,139 +371,167 @@ export default function FacilityManager() {
         {/* Facilities Table Card */}
         <div className="border border-[#E5E1DA] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
-                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider w-16">
-                    Icon
-                  </th>
-                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    Facility Name
-                  </th>
-                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    Updated At
-                  </th>
-                  <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">
-                    Action
-                  </th>
-                </tr>
-              </thead>
+            {loading ? (
+              <div className="p-12 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <svg
+                    className="animate-spin h-8 w-8 text-[#506147]"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <p className="text-sm text-[#6B6E6A]">Loading facilities...</p>
+                </div>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
+                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider w-16">
+                      Icon
+                    </th>
+                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                      Facility Name
+                    </th>
+                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                      Updated At
+                    </th>
+                    <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody className="divide-y divide-[#E5E1DA] text-sm bg-white">
-                {filteredFacilities.length > 0 ? (
-                  filteredFacilities.map((facility) => (
-                    <tr
-                      key={facility.id}
-                      className="hover:bg-[#A8BBA2]/10 transition-colors group"
-                    >
-                      <td className="p-4">
-                        <div className="w-10 h-10 rounded-full bg-[#f0ede9] text-[#506147] flex items-center justify-center border border-[#E5E1DA] shrink-0">
-                          <span className="material-symbols-outlined text-[22px]">
-                            {facility.icon || "pool"}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
-                        {facility.name}
-                      </td>
-
-                      <td className="p-4 text-[#6B6E6A] text-xs max-w-xs leading-relaxed">
-                        {facility.description || "—"}
-                      </td>
-
-                      <td className="p-4 whitespace-nowrap">
-                        {facility.status === "active" ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0EDE9] text-[#6B6E6A] border border-[#E5E1DA]">
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="p-4 text-xs text-[#6B6E6A] whitespace-nowrap">
-                        {facility.updatedAt}
-                      </td>
-
-                      <td className="p-4 text-right whitespace-nowrap">
-                        <div className="flex justify-end items-center gap-2">
-                          <button
-                            onClick={() => handleOpenEditModal(facility)}
-                            className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors"
-                            title="Edit Facility"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">
-                              edit
+                <tbody className="divide-y divide-[#E5E1DA] text-sm bg-white">
+                  {filteredFacilities.length > 0 ? (
+                    filteredFacilities.map((facility) => (
+                      <tr
+                        key={facility.id}
+                        className="hover:bg-[#A8BBA2]/10 transition-colors group"
+                      >
+                        <td className="p-4">
+                          <div className="w-10 h-10 rounded-full bg-[#f0ede9] text-[#506147] flex items-center justify-center border border-[#E5E1DA] shrink-0">
+                            <span className="material-symbols-outlined text-[22px]">
+                              {facility.icon || "star"}
                             </span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenDeleteModal(facility)}
-                            className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors"
-                            title="Delete Facility"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">
-                              delete
+                          </div>
+                        </td>
+
+                        <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
+                          {facility.name}
+                        </td>
+
+                        <td className="p-4 text-[#6B6E6A] text-xs max-w-xs leading-relaxed">
+                          {facility.description || "—"}
+                        </td>
+
+                        <td className="p-4 whitespace-nowrap">
+                          {facility.status === "active" ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
+                              Active
                             </span>
-                          </button>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0EDE9] text-[#6B6E6A] border border-[#E5E1DA]">
+                              Inactive
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="p-4 text-xs text-[#6B6E6A] whitespace-nowrap">
+                          {formatDate(facility.updated_at)}
+                        </td>
+
+                        <td className="p-4 text-right whitespace-nowrap">
+                          <div className="flex justify-end items-center gap-2">
+                            <button
+                              onClick={() => handleOpenEditModal(facility)}
+                              className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors"
+                              title="Edit Facility"
+                            >
+                              <span className="material-symbols-outlined text-[20px]">
+                                edit
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenDeleteModal(facility)}
+                              className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors"
+                              title="Delete Facility"
+                            >
+                              <span className="material-symbols-outlined text-[20px]">
+                                delete
+                              </span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="p-12 text-center text-[#6B6E6A]">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
+                            search_off
+                          </span>
+                          <div>
+                            <p className="font-semibold text-[#2D312C] text-base">
+                              {currentFacilities.length === 0
+                                ? activeTab === "hotel"
+                                  ? "No hotel facilities yet."
+                                  : "No room facilities yet."
+                                : "No facilities found."}
+                            </p>
+                            <p className="text-xs text-[#6B6E6A] mt-1">
+                              {currentFacilities.length === 0
+                                ? "Tambahkan fasilitas baru untuk melengkapi daftar fasilitas."
+                                : "Tidak ada fasilitas yang cocok dengan filter pencarian Anda."}
+                            </p>
+                          </div>
+
+                          {searchQuery || statusFilter !== "all" ? (
+                            <button
+                              onClick={() => {
+                                setSearchQuery("");
+                                setStatusFilter("all");
+                              }}
+                              className="mt-2 px-4 py-2 bg-[#f0ede9] text-[#2D312C] rounded-lg text-xs font-semibold hover:bg-[#e5e2de] transition-colors"
+                            >
+                              Clear Search
+                            </button>
+                          ) : (
+                            <button
+                              onClick={handleOpenAddModal}
+                              className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                            >
+                              + Add Facility
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="p-12 text-center text-[#6B6E6A]">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
-                          search_off
-                        </span>
-                        <div>
-                          <p className="font-semibold text-[#2D312C] text-base">
-                            {currentFacilities.length === 0
-                              ? activeTab === "hotel"
-                                ? "No hotel facilities yet."
-                                : "No room facilities yet."
-                              : "No facilities found."}
-                          </p>
-                          <p className="text-xs text-[#6B6E6A] mt-1">
-                            {currentFacilities.length === 0
-                              ? "Tambahkan fasilitas baru untuk melengkapi daftar fasilitas."
-                              : "Tidak ada fasilitas yang cocok dengan filter pencarian Anda."}
-                          </p>
-                        </div>
-
-                        {searchQuery || statusFilter !== "all" ? (
-                          <button
-                            onClick={() => {
-                              setSearchQuery("");
-                              setStatusFilter("all");
-                            }}
-                            className="mt-2 px-4 py-2 bg-[#f0ede9] text-[#2D312C] rounded-lg text-xs font-semibold hover:bg-[#e5e2de] transition-colors"
-                          >
-                            Clear Search
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleOpenAddModal}
-                            className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
-                          >
-                            + Add Facility
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
@@ -734,7 +690,35 @@ export default function FacilityManager() {
                   disabled={isSubmitting}
                   className="px-6 py-2.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-all shadow-sm flex items-center gap-2 disabled:bg-[#a2ba9c]"
                 >
-                  {isSubmitting ? "Saving..." : modalMode === "add" ? "Save Facility" : "Save Changes"}
+                  {isSubmitting ? (
+                    <>
+                      <svg
+                        className="animate-spin h-3.5 w-3.5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Saving...
+                    </>
+                  ) : modalMode === "add" ? (
+                    "Save Facility"
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </form>
@@ -783,9 +767,35 @@ export default function FacilityManager() {
                 type="button"
                 onClick={handleDeleteFacility}
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50"
+                className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                {isSubmitting ? "Deleting..." : "Delete"}
+                {isSubmitting ? (
+                  <>
+                    <svg
+                      className="animate-spin h-3.5 w-3.5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
               </button>
             </div>
           </div>

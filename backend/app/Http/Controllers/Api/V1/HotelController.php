@@ -131,7 +131,12 @@ class HotelController extends Controller
         $hotel->update($request->only(['name', 'description', 'address', 'phone']));
 
         if ($request->has('facilities')) {
-            $hotel->facilities()->sync($request->facilities);
+            $facilities = $request->input('facilities');
+            if (is_array($facilities)) {
+                $hotel->facilities()->sync(array_filter($facilities, fn($v) => is_numeric($v)));
+            } else {
+                $hotel->facilities()->sync([]);
+            }
         }
 
         return response()->json([

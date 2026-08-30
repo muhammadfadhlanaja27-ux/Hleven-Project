@@ -29,11 +29,11 @@ const normalizeRoom = (r) => {
   return {
     id: r.id,
     name: r.name || "",
-    type: r.name?.toLowerCase().includes("suite")
+    type: r.type || (r.name?.toLowerCase().includes("suite")
       ? "Suite"
       : r.name?.toLowerCase().includes("deluxe")
       ? "Deluxe"
-      : "Standard",
+      : "Standard"),
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
     weekend_price: Number(r.weekend_price || 0),
@@ -79,6 +79,7 @@ export default function RoomList() {
   const [editValues, setEditValues] = useState({});
   const [editErrors, setEditErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [editNewPhotoFiles, setEditNewPhotoFiles] = useState([]); // raw File objects untuk upload baru
 
   useEffect(() => {
     loadData();
@@ -167,6 +168,7 @@ export default function RoomList() {
   // Edit Modal Open
   const handleOpenEdit = (room) => {
     setEditingRoom(room);
+    setEditNewPhotoFiles([]);
     setEditValues({
       name: room.name,
       type: room.type,
@@ -204,7 +206,7 @@ export default function RoomList() {
     });
   };
 
-  // Edit Photo Upload
+  // Edit Photo Upload — simpan file asli dan preview URL
   const handleEditPhotoUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -213,7 +215,11 @@ export default function RoomList() {
       id: `p-new-${Date.now()}-${idx}`,
       url: URL.createObjectURL(file),
       name: file.name,
+      isNew: true, // tandai sebagai foto baru (belum di-upload)
     }));
+
+    // Simpan file asli untuk dikirim ke backend
+    setEditNewPhotoFiles((prev) => [...prev, ...files]);
 
     setEditValues((prev) => ({
       ...prev,
@@ -224,14 +230,23 @@ export default function RoomList() {
 
   // Remove Photo from Edit Form
   const handleRemovePhoto = (photoId) => {
-    setEditValues((prev) => ({
-      ...prev,
-      photos: (prev.photos || []).filter((p) => p.id !== photoId),
-    }));
+    setEditValues((prev) => {
+      const removed = (prev.photos || []).find((p) => p.id === photoId);
+      // Jika foto baru (belum tersimpan di DB), hapus juga dari editNewPhotoFiles
+      if (removed?.isNew) {
+        setEditNewPhotoFiles((files) =>
+          files.filter((f) => f.name !== removed.name)
+        );
+      }
+      return {
+        ...prev,
+        photos: (prev.photos || []).filter((p) => p.id !== photoId),
+      };
+    });
     toast.success("Foto dihapus.");
   };
 
-  // Save Edit Submit
+  // Save Edit Submit — kirim semua perubahan ke API termasuk facilities dan foto baru
   const handleSaveEdit = async (e) => {
     e.preventDefault();
 
@@ -254,23 +269,48 @@ export default function RoomList() {
     setIsSaving(true);
 
     try {
-      await api.put(`/admin/rooms/${editingRoom.id}`, {
-        name: editValues.name.trim(),
-        description: editValues.description.trim(),
-        weekday_price: Number(editValues.weekday_price),
-        weekend_price: Number(editValues.weekend_price),
-        capacity_adult: Number(editValues.capacity_adult),
-        capacity_child: Number(editValues.capacity_child || 0),
-        stock: Number(editValues.stock),
+      // Gunakan FormData agar bisa kirim foto baru sekaligus
+      const payload = new FormData();
+      payload.append("_method", "PUT"); // Laravel method spoofing
+      payload.append("name", editValues.name.trim());
+      payload.append("type", editValues.type || "Standard");
+      payload.append("description", editValues.description?.trim() || "");
+      payload.append("weekday_price", Number(editValues.weekday_price));
+      payload.append("weekend_price", Number(editValues.weekend_price));
+      payload.append("capacity_adult", Number(editValues.capacity_adult));
+      payload.append("capacity_child", Number(editValues.capacity_child || 0));
+      payload.append("stock", Number(editValues.stock));
+
+      // Kirim facilities (array ID)
+      const facilityIds = editValues.facilityIds || [];
+      if (facilityIds.length === 0) {
+        // Kirim array kosong agar backend melakukan detach semua
+        payload.append("facilities", "");
+      } else {
+        facilityIds.forEach((fId, idx) => {
+          payload.append(`facilities[${idx}]`, fId);
+        });
+      }
+
+      // Kirim foto baru jika ada
+      editNewPhotoFiles.forEach((file) => {
+        payload.append("photos[]", file);
+      });
+
+      await api.post(`/admin/rooms/${editingRoom.id}`, payload, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       toast.success("Room updated successfully.");
       setEditingRoom(null);
+      setEditNewPhotoFiles([]);
       loadData();
     } catch (error) {
       console.error(error);
-      const msg = error.response?.data?.message || "Failed to update room.";
-      toast.error(msg);
+      const msg = error.response?.data?.message || error.response?.data?.errors
+        ? Object.values(error.response.data.errors || {}).flat().join(", ")
+        : "Failed to update room.";
+      toast.error(typeof msg === "string" ? msg : "Failed to update room.");
     } finally {
       setIsSaving(false);
     }
