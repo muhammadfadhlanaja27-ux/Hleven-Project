@@ -34,28 +34,25 @@ const HotelCard = ({ hotel }) => {
   };
 
   const renderFacilityIcon = (fac, idx) => {
-    const facName = (typeof fac === 'object' ? fac.name : String(fac)).toLowerCase();
-    let iconName = 'stars';
-    let title = facName;
+    const facObj = typeof fac === 'object' ? fac : null;
+    const facName = (facObj ? facObj.name : String(fac)).toLowerCase();
+    let iconName = facObj?.icon || 'stars';
+    let title = facObj ? facObj.name : String(fac);
 
-    if (facName.includes('wifi')) {
-      iconName = 'wifi';
-      title = 'WiFi';
-    } else if (facName.includes('kolam') || facName.includes('pool')) {
-      iconName = 'pool';
-      title = 'Pool';
-    } else if (facName.includes('spa') || facName.includes('wellness')) {
-      iconName = 'spa';
-      title = 'Spa';
-    } else if (facName.includes('restoran') || facName.includes('restaurant') || facName.includes('bar')) {
-      iconName = 'restaurant';
-      title = 'Restoran';
-    } else if (facName.includes('taman') || facName.includes('nature') || facName.includes('park')) {
-      iconName = 'park';
-      title = 'Taman';
-    } else if (facName.includes('gym') || facName.includes('fitness')) {
-      iconName = 'fitness_center';
-      title = 'Gym';
+    if (!facObj?.icon || facObj.icon === 'stars') {
+      if (facName.includes('wifi')) {
+        iconName = 'wifi';
+      } else if (facName.includes('kolam') || facName.includes('pool')) {
+        iconName = 'pool';
+      } else if (facName.includes('spa') || facName.includes('wellness')) {
+        iconName = 'spa';
+      } else if (facName.includes('restoran') || facName.includes('restaurant') || facName.includes('bar')) {
+        iconName = 'restaurant';
+      } else if (facName.includes('taman') || facName.includes('nature') || facName.includes('park')) {
+        iconName = 'park';
+      } else if (facName.includes('gym') || facName.includes('fitness')) {
+        iconName = 'fitness_center';
+      }
     }
 
     return (
@@ -65,7 +62,7 @@ const HotelCard = ({ hotel }) => {
     );
   };
 
-  const facilities = hotel.facilities || ["WiFi Gratis", "Kolam Renang"];
+  const facilities = Array.isArray(hotel.facilities) ? hotel.facilities : [];
 
   return (
     <div className="bg-[#FDF6ED] rounded-2xl overflow-hidden shadow-sm shadow-[#778873]/10 border border-[#DCCFC0]/40 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col h-full text-left">

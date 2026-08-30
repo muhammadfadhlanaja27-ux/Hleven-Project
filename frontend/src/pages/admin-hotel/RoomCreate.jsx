@@ -243,6 +243,7 @@ export default function RoomCreate() {
     try {
       const payload = new FormData();
       payload.append("name", formData.name.trim());
+      payload.append("type", formData.type || "Standard");
       payload.append("description", formData.description.trim());
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);

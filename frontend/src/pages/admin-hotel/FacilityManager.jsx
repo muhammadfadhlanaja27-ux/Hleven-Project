@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 const ICON_OPTIONS = [
   { value: "wifi", label: "Wi-Fi" },
@@ -132,7 +131,7 @@ export default function FacilityManager() {
     fetchFacilities();
   }, []);
 
-  const fetchFacilities = async (forceRefresh = false) => {
+  const fetchFacilities = async () => {
     setLoading(true);
     try {
       const { data: resData } = await cachedGet("/facilities", {}, forceRefresh);
@@ -185,7 +184,7 @@ export default function FacilityManager() {
   const filteredFacilities = currentFacilities.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.description || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ? true : item.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -527,9 +526,9 @@ export default function FacilityManager() {
                           <p className="font-semibold text-[#2D312C] text-base">
                             {currentFacilities.length === 0
                               ? activeTab === "hotel"
-                                ? "Belum ada fasilitas hotel."
-                                : "Belum ada fasilitas kamar."
-                              : "Tidak ada fasilitas yang ditemukan."}
+                                ? "No hotel facilities yet."
+                                : "No room facilities yet."
+                              : "No facilities found."}
                           </p>
                           <p className="text-xs text-[#6B6E6A] mt-1">
                             {currentFacilities.length === 0
@@ -772,9 +771,35 @@ export default function FacilityManager() {
                 type="button"
                 onClick={handleDeleteFacility}
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50"
+                className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                {isSubmitting ? "Deleting..." : "Delete"}
+                {isSubmitting ? (
+                  <>
+                    <svg
+                      className="animate-spin h-3.5 w-3.5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
               </button>
             </div>
           </div>

@@ -82,5 +82,77 @@ class FileStorageController extends Controller
         }
     }
 
-    // Catatan: Fungsi uploadRoomPhoto, deleteRoomPhoto, dan uploadAvatar menggunakan logika validasi dan try-catch yang serupa.
+    public function uploadRoomPhoto(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'is_thumbnail' => 'boolean'
+        ]);
+
+        try {
+            $room = RoomType::with('hotel')->findOrFail($id);
+
+            if ($room->hotel && $room->hotel->admin_id !== $request->user()->id) {
+                return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+            }
+
+            $isThumbnail = $request->input('is_thumbnail', false);
+            $this->storageService->storeRoomPhoto($room->id, $request->file('photo'), $isThumbnail);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto kamar berhasil diunggah.'
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengunggah foto kamar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteRoomPhoto(Request $request, $id): JsonResponse
+    {
+        try {
+            $photo = RoomPhoto::with('roomType.hotel')->findOrFail($id);
+
+            if ($photo->roomType && $photo->roomType->hotel && $photo->roomType->hotel->admin_id !== $request->user()->id) {
+                return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+            }
+
+            $this->storageService->removeRoomPhoto($photo);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto kamar berhasil dihapus.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus foto kamar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+        ]);
+
+        try {
+            $this->storageService->updateAvatar($request->user(), $request->file('avatar'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Avatar berhasil diperbarui.',
+                'data' => $request->user()->fresh()
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengunggah avatar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

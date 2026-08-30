@@ -122,23 +122,21 @@ const HotelDetail = () => {
   const hasHotelPhotos = photosList.length > 0;
 
   // Facility list mapping
-  const facilitiesList = hotel.facilities || [
-    "WiFi Gratis",
-    "Kolam Renang",
-    "Pusat Kebugaran",
-    "Restoran & Bar",
-    "Layanan Spa",
-    "Parkir Gratis"
-  ];
+  const facilitiesList = Array.isArray(hotel.facilities) ? hotel.facilities : [];
 
-  const getFacilityIcon = (facNameStr) => {
-    const name = String(facNameStr).toLowerCase();
+  const getFacilityIcon = (fac) => {
+    if (typeof fac === "object" && fac?.icon && fac.icon !== "stars") {
+      return fac.icon;
+    }
+    const name = String(typeof fac === "object" ? fac.name : fac || "").toLowerCase();
     if (name.includes("wifi")) return "wifi";
     if (name.includes("kolam") || name.includes("pool")) return "pool";
     if (name.includes("gym") || name.includes("kebugaran") || name.includes("fitness")) return "fitness_center";
     if (name.includes("restoran") || name.includes("restaurant") || name.includes("bar")) return "restaurant";
-    if (name.includes("spa") || name.includes("wellness")) return "spa";
+    if (name.includes("spa") || name.includes("wellness") || name.includes("pijat")) return "spa";
     if (name.includes("parkir") || name.includes("parking")) return "local_parking";
+    if (name.includes("ac") || name.includes("air cond")) return "ac_unit";
+    if (name.includes("tv")) return "tv";
     return "stars";
   };
 
@@ -283,30 +281,36 @@ const HotelDetail = () => {
               </div>
             </section>
 
-            {/* Fasilitas Utama Grid */}
+            {/* Fasilitas Hotel Grid */}
             <section>
               <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">
-                Fasilitas Utama
+                Fasilitas Hotel
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {facilitiesList.map((fac, idx) => {
-                  const facName = typeof fac === "object" ? fac.name : String(fac);
-                  const iconName = getFacilityIcon(facName);
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 p-4 rounded-xl bg-[#faf3ea] border border-[#DCCFC0]/30 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[#778873] text-2xl">
-                        {iconName}
-                      </span>
-                      <span className="font-label-md text-xs font-semibold text-[#1e1b16]">
-                        {facName}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              {facilitiesList.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {facilitiesList.map((fac, idx) => {
+                    const facName = typeof fac === "object" ? fac.name : String(fac);
+                    const iconName = getFacilityIcon(fac);
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-4 rounded-xl bg-[#faf3ea] border border-[#DCCFC0]/30 shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-[#778873] text-2xl">
+                          {iconName}
+                        </span>
+                        <span className="font-label-md text-xs font-semibold text-[#1e1b16]">
+                          {facName}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-[#747871] italic bg-[#faf3ea] p-4 rounded-xl border border-[#DCCFC0]/30">
+                  Belum ada fasilitas khusus yang terdaftar untuk hotel ini.
+                </p>
+              )}
             </section>
           </div>
 
