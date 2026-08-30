@@ -64,7 +64,7 @@ const MitraRegistrationSuccess = () => {
         </h1>
         <p className="font-body-md text-sm md:text-base text-[#444842] mb-6 leading-relaxed">
           Terima kasih telah mendaftarkan hotel Anda ke program kemitraan H'Leven.
-          Tim kami akan segera meninjau pengajuan Anda. Silakan pantau email dan status pengajuan secara berkala.
+          Tim kami akan segera meninjau pengajuan Anda. Setelah disetujui, akun admin hotel akan dibuat secara otomatis menggunakan email hotel yang Anda daftarkan.
         </p>
 
         <div className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/60 p-5 md:p-6 mb-6 text-left space-y-4">

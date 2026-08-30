@@ -198,6 +198,18 @@ export default function AdminHotelLayout() {
         {/* Top Header */}
         <header className="bg-[#fcf9f5] h-16 border-b border-[#E5E1DA] flex justify-between items-center px-6 sm:px-8 z-40 shrink-0">
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 mr-3 pl-2 pr-3 h-9 rounded-lg text-[#506147] hover:bg-[#E4EBE0] hover:text-[#4A5D43] transition-colors border border-transparent hover:border-[#506147]/20 focus:outline-none"
+              title="Kembali ke halaman utama"
+            >
+              <span className="material-symbols-outlined text-[20px] leading-none">
+                arrow_back
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">
+                Homepage
+              </span>
+            </button>
             <span className="text-[#6B6E6A] text-xs font-semibold uppercase tracking-wider">
               Portal Admin Hotel
             </span>

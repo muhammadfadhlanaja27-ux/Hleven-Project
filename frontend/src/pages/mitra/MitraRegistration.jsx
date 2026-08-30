@@ -71,6 +71,8 @@ const MitraRegistration = () => {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState(null); // null | true | false
+  const [emailChecking, setEmailChecking] = useState(false);
 
   // Coba prefill dari user yang login
   useEffect(() => {
@@ -97,6 +99,9 @@ const MitraRegistration = () => {
 
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "hotel_email") {
+      setEmailAvailable(null);
+    }
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -105,6 +110,32 @@ const MitraRegistration = () => {
       });
     }
   };
+
+  // Debounced email uniqueness check
+  useEffect(() => {
+    const email = form.hotel_email;
+    if (!email || !isValidEmail(email)) {
+      setEmailAvailable(null);
+      return;
+    }
+    setEmailChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get("/check-email", { params: { email } });
+        const available = res.data?.available ?? true;
+        setEmailAvailable(available);
+        if (!available) {
+          setErrors((prev) => ({ ...prev, hotel_email: "Email ini sudah terpakai. Silakan gunakan email lain." }));
+        }
+      } catch (err) {
+        // Jika gagal, biarkan tetap bisa submit (fail-open)
+        setEmailAvailable(null);
+      } finally {
+        setEmailChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [form.hotel_email]);
 
   const validateStep = (step) => {
     const e = {};
@@ -116,6 +147,7 @@ const MitraRegistration = () => {
       else if (!isValidPhone(form.hotel_phone)) e.hotel_phone = "Format nomor telepon tidak valid";
       if (!form.hotel_email.trim()) e.hotel_email = "Email hotel wajib diisi";
       else if (!isValidEmail(form.hotel_email)) e.hotel_email = "Format email tidak valid";
+      else if (emailAvailable === false) e.hotel_email = "Email ini sudah terpakai. Silakan gunakan email lain.";
       if (!form.room_count) e.room_count = "Jumlah kamar wajib diisi";
       else if (isNaN(Number(form.room_count)) || Number(form.room_count) < 1) e.room_count = "Jumlah kamar harus angka minimal 1";
     }
@@ -192,28 +224,10 @@ const MitraRegistration = () => {
         }
       });
 
-      let responseData = null;
-      let useFallback = false;
-      try {
-        // API BELUM TERSEDIA - Catatan kebutuhan backend:
-        // POST /api/v1/partner-applications
-        // Request (multipart/form-data): semua field form + dokumen (doc_ktp, doc_legal, doc_support)
-        // Response: { success, data: { id, application_number, status, created_at, hotel_name } }
-        const res = await api.post("/partner-applications", payload, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        responseData = res.data?.data || res.data;
-      } catch (err) {
-        console.warn("API /partner-applications belum tersedia, pakai simulasi sukses.", err);
-        useFallback = true;
-        responseData = {
-          id: "SIM-" + Date.now(),
-          application_number: "HLVN-MIT-" + Math.floor(100000 + Math.random() * 900000),
-          hotel_name: form.hotel_name,
-          status: "pending",
-          created_at: new Date().toISOString(),
-        };
-      }
+      const res = await api.post("/partner-applications", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const responseData = res.data?.data || res.data;
 
       const savedData = {
         ...responseData,
@@ -223,7 +237,7 @@ const MitraRegistration = () => {
         localStorage.setItem("partner_app_submission", JSON.stringify(savedData));
       } catch (e) {}
 
-      toast.success(useFallback ? "Pengajuan berhasil dikirim (simulasi)." : "Pengajuan berhasil dikirim!");
+      toast.success("Pengajuan berhasil dikirim!");
       navigate("/mitra/sukses", { state: savedData, replace: true });
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Gagal mengirim pengajuan.";
@@ -424,6 +438,14 @@ const MitraRegistration = () => {
           Data ini akan digunakan untuk proses verifikasi dan komunikasi resmi. Pastikan nama sesuai dengan identitas resmi.
         </p>
       </div>
+      {form.owner_email && form.hotel_email && form.owner_email === form.hotel_email && (
+        <div className="mb-5 p-3 rounded-xl bg-[#e8e2d9]/60 border border-[#DCCFC0] flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">key</span>
+          <p className="font-body-md text-xs text-[#444842] leading-relaxed">
+            <strong>Email ini akan dijadikan akun admin hotel</strong> untuk login. Anda dapat mengubah kata sandi setelah login melalui halaman Profile.
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="flex flex-col gap-2 md:col-span-2">
           <label className={LABEL} htmlFor="owner_name">Nama Lengkap *</label>
@@ -719,7 +741,7 @@ const MitraRegistration = () => {
             onClick={saveExit}
             className="text-[#444842] hover:text-[#50604d] transition-colors flex items-center gap-2"
           >
-            <span className="font-label-sm text-[11px] md:text-xs font-bold tracking-wider hidden sm:inline">Simpan &amp; Keluar</span>
+            <span className="font-label-sm text-[11px] md:text-xs font-bold tracking-wider hidden sm:inline">Keluar</span>
             <span className="material-symbols-outlined text-[20px]">exit_to_app</span>
           </button>
         </div>

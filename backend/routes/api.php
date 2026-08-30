@@ -36,6 +36,7 @@ Route::prefix('v1')->group(function () {
     // ==========================================
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/check-email', [PartnerApplicationController::class, 'checkEmail']);
     Route::get('/facilities', [FacilityController::class, 'index']);
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);
@@ -107,6 +108,10 @@ Route::prefix('v1')->group(function () {
 
         // --- File Storage ---
         Route::post('/users/{id}/avatar', [FileStorageController::class, 'uploadAvatar']);
+
+        // --- Partner Application (User) ---
+        Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
+        Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
     });
 });
 
@@ -173,6 +178,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/{id}', [SuperAdminUserController::class, 'show']);
         Route::post('/', [SuperAdminUserController::class, 'store']);
         Route::patch('/{id}/status', [SuperAdminUserController::class, 'updateStatus']);
+        Route::patch('/{id}/role', [SuperAdminUserController::class, 'updateRole']);
         Route::delete('/{id}', [SuperAdminUserController::class, 'destroy']);
     });
 

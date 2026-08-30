@@ -3,6 +3,32 @@ import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 
+const STORAGE_BASE = "http://localhost:8000/storage/";
+
+const getFileUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:") || path.startsWith("blob:")) {
+    return path;
+  }
+  return STORAGE_BASE + String(path).replace(/^\//, "");
+};
+
+const getDocLabel = (type) => {
+  const map = {
+    ktp: "KTP / Identitas Pemilik",
+    legalitas: "Dokumen Legalitas Hotel",
+    pendukung: "Dokumen Pendukung",
+  };
+  return map[type] || `Dokumen (${type || "Lainnya"})`;
+};
+
+const getDocIcon = (type) => {
+  const t = String(type || "").toLowerCase();
+  if (t === "ktp") return "badge";
+  if (t === "legalitas" || t === "legal") return "gavel";
+  return "description";
+};
+
 const PartnerApproval = () => {
   const initialKey = getCacheKey("/super-admin/partners");
   const cachedInitialPartners = getCachedData(initialKey)?.data || getCachedData(initialKey) || null;
@@ -551,43 +577,65 @@ const PartnerApproval = () => {
                   </h4>
 
                   <div className="flex flex-col gap-3">
-                    {selectedPartner.document_url ? (
-                      <div className="border border-[#E5E0D8] rounded-lg p-3.5 flex items-center gap-3.5 hover:border-[#768875] transition-colors bg-[#F9F6F1]/40 group">
-                        <div className="w-11 h-11 bg-[#edeeec] rounded-lg flex items-center justify-center text-[#747872] group-hover:text-[#4f604f] transition-colors shrink-0">
-                          <span className="material-symbols-outlined text-[24px]">
-                            description
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-[#191c1b] text-[13.5px] truncate">
-                            Dokumen Legalitas Mitra
-                          </p>
+                    {(() => {
+                      const docs = Array.isArray(selectedPartner.documents)
+                        ? selectedPartner.documents
+                        : [];
+                      const legacyUrl = selectedPartner.document_url || selectedPartner.document || null;
+                      const list = [];
+                      docs.forEach((d, i) => {
+                        const url = getFileUrl(d.file_path || d.filePath || d.path || d.url);
+                        if (url) list.push({ url, label: getDocLabel(d.document_type || d.type || `Dokumen ${i + 1}`), icon: getDocIcon(d.document_type || d.type) });
+                      });
+                      if (!list.length && legacyUrl) {
+                        list.push({ url: getFileUrl(legacyUrl), label: "Dokumen Legalitas Mitra", icon: "description" });
+                      }
+
+                      if (!list.length) {
+                        return (
+                          <div className="border border-dashed border-[#E5E0D8] rounded-lg p-6 text-center text-[#747872] text-[13px]">
+                            Tidak ada lampiran dokumen digital untuk pengajuan ini.
+                          </div>
+                        );
+                      }
+
+                      return list.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="border border-[#E5E0D8] rounded-lg p-3.5 flex items-center gap-3.5 hover:border-[#768875] transition-colors bg-[#F9F6F1]/40 group"
+                        >
+                          <div className="w-11 h-11 bg-[#edeeec] rounded-lg flex items-center justify-center text-[#747872] group-hover:text-[#4f604f] transition-colors shrink-0">
+                            <span className="material-symbols-outlined text-[24px]">
+                              {item.icon}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-[#191c1b] text-[13.5px] truncate">
+                              {item.label}
+                            </p>
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-[#768875] hover:underline font-medium mt-0.5 inline-block"
+                            >
+                              Buka File Dokumen &rarr;
+                            </a>
+                          </div>
                           <a
-                            href={selectedPartner.document_url}
+                            href={item.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-[#768875] hover:underline font-medium mt-0.5 inline-block"
+                            className="text-[#747872] group-hover:text-[#768875] p-1.5"
+                            title="Preview / Unduh"
                           >
-                            Buka File Dokumen &rarr;
+                            <span className="material-symbols-outlined text-[20px]">
+                              visibility
+                            </span>
                           </a>
                         </div>
-                        <a
-                          href={selectedPartner.document_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#747872] group-hover:text-[#768875] p-1.5"
-                          title="Preview"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">
-                            visibility
-                          </span>
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="border border-dashed border-[#E5E0D8] rounded-lg p-6 text-center text-[#747872] text-[13px]">
-                        Tidak ada lampiran dokumen digital untuk pengajuan ini.
-                      </div>
-                    )}
+                      ));
+                    })()}
                   </div>
                 </div>
 
