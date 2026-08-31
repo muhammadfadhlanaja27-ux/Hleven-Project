@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
 
@@ -8,7 +8,62 @@ const HotelDetail = () => {
 
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  const lightboxContainerRef = useRef(null);
+
+  // Reset scale/pan when lightbox opens
+  useEffect(() => {
+    if (lightboxOpen) {
+      setScale(1);
+      setPanX(0);
+      setPanY(0);
+    }
+  }, [lightboxOpen, lightboxIndex]);
+
+  // Close lightbox on Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+    };
+    if (lightboxOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [lightboxOpen]);
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setScale((s) => Math.min(Math.max(s + delta, 0.5), 3));
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragOffset({ x: panX, y: panY });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    setPanX(dragOffset.x + dx);
+    setPanY(dragOffset.y + dy);
+  };
+
+  const handlePointerUp = (e) => {
+    setIsDragging(false);
+  };
 
   useEffect(() => {
     const fetchHotelDetail = async () => {
@@ -157,69 +212,47 @@ const HotelDetail = () => {
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-6 pb-20 text-left">
         
-        {/* Photo Gallery Mosaic */}
+        {/* Photo Gallery */}
         <section className="mb-12">
           {hasHotelPhotos ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
-              {/* Hero Main Image (Left 2 cols x 2 rows) */}
-              <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-                <img
-                  src={photosList[0]}
-                  alt={hotel.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                  onClick={() => setShowPhotoModal(true)}
-                />
+            photosList.length === 1 ? (
+              <div className="w-full h-[350px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
+                <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover" />
               </div>
-
-              {photosList[1] && (
-                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-                  <img
-                    src={photosList[1]}
-                    alt="Room detail 1"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                    onClick={() => setShowPhotoModal(true)}
-                  />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
+                {/* Hero Main Image (Left 2 cols x 2 rows) */}
+                <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
+                  <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 </div>
-              )}
-              {photosList[2] && (
-                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-                  <img
-                    src={photosList[2]}
-                    alt="Room detail 2"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                    onClick={() => setShowPhotoModal(true)}
-                  />
-                </div>
-              )}
-              {photosList[3] && (
-                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-                  <img
-                    src={photosList[3]}
-                    alt="Room detail 3"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                    onClick={() => setShowPhotoModal(true)}
-                  />
-                </div>
-              )}
-              {photosList[4] && (
-                <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9]">
-                  <img
-                    src={photosList[4]}
-                    alt="Room detail 4"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                  />
-                  <div
-                    onClick={() => setShowPhotoModal(true)}
-                    className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
-                  >
-                    <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg">grid_view</span>
-                      Lihat Semua Foto ({photosList.length})
-                    </span>
+                {photosList[1] && (
+                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(1); setLightboxOpen(true); }}>
+                    <img src={photosList[1]} alt="Room detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+                {photosList[2] && (
+                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(2); setLightboxOpen(true); }}>
+                    <img src={photosList[2]} alt="Room detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  </div>
+                )}
+                {photosList[3] && (
+                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(3); setLightboxOpen(true); }}>
+                    <img src={photosList[3]} alt="Room detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  </div>
+                )}
+                {photosList[4] && (
+                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(4); setLightboxOpen(true); }}>
+                    <img src={photosList[4]} alt="Room detail 4" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center hover:bg-black/50 transition-colors">
+                      <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg">grid_view</span>
+                        Lihat Semua Foto ({photosList.length})
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
           ) : (
             /* Placeholder: Hotel belum upload foto */
             <div className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
@@ -497,37 +530,52 @@ const HotelDetail = () => {
         </section>
       </main>
 
-      {/* All Photos Lightbox Modal */}
-      {showPhotoModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#fff8f0] rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative text-left">
-            <div className="flex justify-between items-center mb-4 border-b border-[#DCCFC0]/40 pb-3">
-              <h3 className="font-headline-md text-xl font-bold text-[#778873]">Galeri Foto {hotel.name}</h3>
-              <button
-                onClick={() => setShowPhotoModal(false)}
-                className="text-[#1e1b16] hover:text-[#778873] p-1 rounded-full text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-            {hasHotelPhotos ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {photosList.map((photo, i) => (
-                  <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
-                    <img src={photo} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-12 text-center">
-                <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">
-                  image_not_supported
-                </span>
-                <p className="font-label-md text-sm font-bold text-[#778873]">
-                  Belum ada foto yang diunggah hotel.
-                </p>
-              </div>
+      {/* Full-screen Lightbox */}
+      {lightboxOpen && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) setLightboxOpen(false); }}>
+          <div
+            ref={lightboxContainerRef}
+            className="relative w-full h-full flex items-center justify-center touch-none select-none"
+            onWheel={handleWheel}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            <button
+              className="absolute top-4 right-4 text-white text-3xl z-10 hover:text-gray-300"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => setLightboxOpen(false)}
+            >
+              ✕
+            </button>
+            {photosList.length > 1 && (
+              <>
+                <button
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLightboxIndex((i) => (i - 1 + photosList.length) % photosList.length)}
+                >
+                  ‹
+                </button>
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLightboxIndex((i) => (i + 1) % photosList.length)}
+                >
+                  ›
+                </button>
+              </>
             )}
+            <img
+              src={photosList[lightboxIndex]}
+              alt={`Foto ${lightboxIndex + 1}`}
+              className="max-w-[90vw] max-h-[90vh] object-contain transition-transform duration-200"
+              style={{ transform: `translate(${panX}px, ${panY}px) scale(${scale})` }}
+              draggable={false}
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+              {lightboxIndex + 1} / {photosList.length}
+            </div>
           </div>
         </div>
       )}

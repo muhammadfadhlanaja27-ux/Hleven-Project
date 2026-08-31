@@ -49,16 +49,6 @@ class PartnerApplicationController extends Controller
      * GET /api/v1/user/partner-application
      * Mengambil data pengajuan milik user yang sedang login
      */
-    public function getUserApplication(Request $request): JsonResponse
-    {
-        $application = PartnerApplication::where('user_id', $request->user()->id)->first();
-
-        return response()->json([
-            'success' => true,
-            'data' => $application // Mengembalikan data atau null jika belum mendaftar (HTTP 200 OK)
-        ], 200);
-    }
-
     public function index(Request $request): JsonResponse
     {
         $query = PartnerApplication::with(['documents', 'user:id,name,email'])

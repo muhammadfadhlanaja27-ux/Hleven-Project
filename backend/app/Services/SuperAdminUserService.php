@@ -139,9 +139,18 @@ class SuperAdminUserService
         DB::transaction(function () use ($user, $superAdmin) {
             $email = $user->email;
 
-            if ($user->role === 'admin_hotel' && $user->hotel) {
-                $user->hotel->delete();
+            // 1. Jika Admin Hotel, hapus hotel dan semua datanya
+            if ($user->role === 'admin_hotel') {
+                $hotels = Hotel::where('admin_id', $user->id)->get();
+                foreach ($hotels as $hotel) {
+                    // Hapus data yang memblock (Bookings, dll)
+                    $this->cleanupHotelData($hotel);
+                    $hotel->forceDelete(); // force delete karena SoftDeletes memblock restrict
+                }
             }
+
+            // 2. Hapus data user (Bookings sebagai customer, Notifications, dll)
+            $this->cleanupUserData($user);
 
             $user->delete();
 
@@ -152,5 +161,51 @@ class SuperAdminUserService
                 'ip_address' => request()->ip(),
             ]);
         });
+    }
+
+    /**
+     * Membersihkan data hotel sebelum dihapus (untuk melewati constraint restrict)
+     */
+    private function cleanupHotelData(Hotel $hotel): void
+    {
+        // Bookings memiliki restrict, harus dihapus manual
+        $hotel->bookings()->each(function ($booking) {
+            $booking->bookingRooms()->delete();
+            $booking->guests()->delete();
+            $booking->payment()->delete();
+            $booking->eTicket()->delete();
+            $booking->review()->delete();
+            $booking->statusHistories()->delete();
+            $booking->refund()->delete();
+            $booking->delete();
+        });
+
+        // RoomTypes memiliki cascade delete di level DB, tapi amankan relasi lain
+        $hotel->roomTypes()->each(function ($type) {
+            $type->availabilities()->delete();
+            $type->priceHistories()->delete();
+            $type->photos()->delete();
+            $type->delete();
+        });
+
+        $hotel->photos()->delete();
+        $hotel->facilities()->detach();
+    }
+
+    /**
+     * Membersihkan data user sebelum dihapus
+     */
+    private function cleanupUserData(User $user): void
+    {
+        // Hapus bookings di mana user adalah customer
+        $user->bookings()->each(function ($booking) {
+            $booking->bookingRooms()->delete();
+            $booking->guests()->delete();
+            $booking->payment()->delete();
+            $booking->delete();
+        });
+
+        $user->reviews()->delete();
+        $user->notifications()->delete();
     }
 }
