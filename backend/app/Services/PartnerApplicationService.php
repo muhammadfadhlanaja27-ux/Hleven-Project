@@ -116,19 +116,30 @@ class PartnerApplicationService
             ]);
 
             if ($applicant && $hotelAdmin->id === $applicant->id) {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun Anda telah diupgrade menjadi admin hotel. Silakan login dengan email: {$adminEmail}.";
+                $message = "Selamat! Pengajuan mitra hotel \"{$application->hotel_name}\" berhasil disetujui.\n\nAkun Anda telah diupgrade menjadi Admin Hotel.\n\n📧 Email Login: {$adminEmail}\n\nSilakan login menggunakan email di atas untuk mengakses Dashboard Admin Hotel.";
             } elseif ($generatedPassword) {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat. Email: {$adminEmail}. Password: {$generatedPassword}. Silakan login dan segera ubah kata sandi Anda.";
+                $message = "Selamat! Pengajuan mitra hotel \"{$application->hotel_name}\" berhasil disetujui.\n\nAkun Admin Hotel telah dibuat untuk Anda. Berikut kredensial login:\n\n📧 Email: {$adminEmail}\n🔑 Password: {$generatedPassword}\n\n⚠️ Segera ubah kata sandi Anda setelah login pertama.";
             } else {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat dengan email: {$adminEmail}.";
+                $message = "Selamat! Pengajuan mitra hotel \"{$application->hotel_name}\" berhasil disetujui.\n\nAkun Admin Hotel telah dibuat dengan:\n\n📧 Email: {$adminEmail}\n\nSilakan login menggunakan email di atas.";
             }
 
-            Notification::create([
-                'user_id' => $hotelAdmin->id,
-                'title' => 'Pengajuan Mitra Berhasil',
-                'message' => $message,
-                'type' => 'partner_approved',
-            ]);
+            if ($applicant) {
+                Notification::create([
+                    'user_id' => $applicant->id,
+                    'title' => 'Pengajuan Mitra Disetujui',
+                    'message' => $message,
+                    'type' => 'partner_approved',
+                ]);
+            }
+
+            if ($hotelAdmin->id !== ($applicant->id ?? null)) {
+                Notification::create([
+                    'user_id' => $hotelAdmin->id,
+                    'title' => 'Pengajuan Mitra Disetujui',
+                    'message' => $message,
+                    'type' => 'partner_approved',
+                ]);
+            }
         });
     }
 

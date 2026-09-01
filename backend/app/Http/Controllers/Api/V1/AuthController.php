@@ -111,10 +111,7 @@ class AuthController extends Controller
         // Handle upload avatar jika ada
         if ($request->hasFile('avatar')) {
             if ($user->avatar) {
-                $oldPath = ltrim(parse_url($user->avatar, PHP_URL_PATH), '/');
-                if ($oldPath && Storage::disk('s3')->exists($oldPath)) {
-                    Storage::disk('s3')->delete($oldPath);
-                }
+                app(\App\Services\FileStorageService::class)->deleteFile($user->avatar);
             }
             $path = $request->file('avatar')->store('avatars', 's3');
             $data['avatar'] = Storage::disk('s3')->url($path);
