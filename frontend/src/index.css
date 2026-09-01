@@ -193,4 +193,131 @@ body {
   top: 0;
   font-size: 0.75rem;
   color: #778873;
+} /* =========================================================
+   CUSTOM STYLING REACT-DATEPICKER H'LEVEN THEME
+   ========================================================= */
+
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+/* Container Pop-up Kalender */
+.react-datepicker {
+  font-family: 'Hanken Grotesk', sans-serif !important;
+  background-color: #FDF6ED !important;
+  border: 1px solid #DCCFC0 !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 15px 35px -5px rgba(119, 136, 115, 0.25) !important;
+  overflow: hidden;
+  padding-bottom: 6px;
+}
+
+/* Menyembunyikan panah segitiga bawaan */
+.react-datepicker__triangle {
+  display: none !important;
+}
+
+/* Header Kalender (Bulan & Tahun) */
+.react-datepicker__header {
+  background-color: #778873 !important;
+  border-bottom: 1px solid #50604d !important;
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+.react-datepicker__current-month {
+  color: #ffffff !important;
+  font-family: 'Libre Caslon Text', serif !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 6px !important;
+}
+
+/* Nama Hari (Min, Sen, Sel, dll) */
+.react-datepicker__day-name {
+  color: #E8E2D9 !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  width: 2.2rem !important;
+  line-height: 2.2rem !important;
+  margin: 0.15rem !important;
+}
+
+/* Container Angka Tanggal */
+.react-datepicker__month {
+  margin: 10px 12px 4px 12px !important;
+}
+
+/* Angka Tanggal Normal */
+.react-datepicker__day {
+  color: #2D332C !important;
+  font-weight: 500 !important;
+  width: 2.2rem !important;
+  line-height: 2.2rem !important;
+  margin: 0.15rem !important;
+  border-radius: 0.65rem !important;
+  transition: all 0.2s ease;
+}
+
+/* Hover Tanggal */
+.react-datepicker__day:hover {
+  background-color: #DCCFC0 !important;
+  color: #1e1b16 !important;
+}
+
+/* Tanggal Terpilih (Selected) */
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #778873 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 10px rgba(119, 136, 115, 0.4) !important;
+}
+
+/* Tanggal Hari Ini (Today Indicator) */
+.react-datepicker__day--today {
+  font-weight: 700 !important;
+  color: #50604d !important;
+  border: 1px solid #778873 !important;
+  background-color: rgba(119, 136, 115, 0.08) !important;
+}
+
+/* Tanggal Nonaktif / Masa Lalu (Disabled) */
+.react-datepicker__day--disabled {
+  color: #c4c8bf !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+/* Tombol Navigasi Panah Kiri & Kanan */
+.react-datepicker__navigation {
+  top: 12px !important;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: #ffffff !important;
+  border-width: 2px 2px 0 0 !important;
+}
+
+.react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: #DCCFC0 !important;
+}
+
+/* Custom Tampilan Opsi Dropdown Select */
+select option {
+  background-color: #FDF6ED !important;
+  color: #1e1b16 !important;
+  font-family: 'Hanken Grotesk', sans-serif !important;
+  font-size: 13px !important;
+  padding: 10px 14px !important;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #778873 !important;
+  color: #ffffff !important;
 }

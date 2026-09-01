@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import HotelCard from "../../components/landing/HotelCard";
 import { cachedGet } from "../../services/apiCache";
 
@@ -8,10 +10,14 @@ const LandingPage = () => {
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Tanggal Default (Hari Ini & Besok) berbasis Object Date
+  const today = useMemo(() => new Date(), []);
+  const tomorrow = useMemo(() => new Date(Date.now() + 86400000), []);
+
   // Search Bar States
   const [searchTerm, setSearchTerm] = useState("");
-  const [checkInDate, setCheckInDate] = useState("");
-  const [checkOutDate, setCheckOutDate] = useState("");
+  const [checkInDate, setCheckInDate] = useState(today);
+  const [checkOutDate, setCheckOutDate] = useState(tomorrow);
   const [guestOption, setGuestOption] = useState("2 Dewasa, 1 Kamar");
 
   // Sidebar Filter States
@@ -50,6 +56,16 @@ const LandingPage = () => {
     fetchHotels();
   }, []);
 
+  // Handler Perubahan Check-in dengan Auto-adjust Check-out H+1
+  const handleCheckInChange = (date) => {
+    setCheckInDate(date);
+    if (checkOutDate && date >= checkOutDate) {
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      setCheckOutDate(nextDay);
+    }
+  };
+
   // Filter Handlers
   const handleStarToggle = (starRating) => {
     setSelectedStars((prev) =>
@@ -74,6 +90,8 @@ const LandingPage = () => {
     setSelectedStars([]);
     setSelectedFacilities([]);
     setSortBy("recommendation");
+    setCheckInDate(today);
+    setCheckOutDate(tomorrow);
   };
 
   // Filtered and Sorted Hotels Calculation
@@ -151,12 +169,12 @@ const LandingPage = () => {
           {/* Floating Search Bar */}
           <div className="w-full max-w-5xl bg-[#fff8f0] p-4 rounded-2xl shadow-xl shadow-[#778873]/10 flex flex-col lg:flex-row gap-3 items-center">
             {/* Destinasi / Hotel Input */}
-            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Destinasi / Hotel
               </label>
               <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
                   location_on
                 </span>
                 <input
@@ -170,48 +188,50 @@ const LandingPage = () => {
             </div>
 
             {/* Check-in Date */}
-            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Check-in
               </label>
               <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
                   calendar_today
                 </span>
-                <input
-                  type="date"
-                  value={checkInDate}
-                  onChange={(e) => setCheckInDate(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
+                <DatePicker
+                  selected={checkInDate}
+                  onChange={handleCheckInChange}
+                  minDate={today}
+                  dateFormat="dd / MM / yyyy"
+                  className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
                 />
               </div>
             </div>
 
             {/* Check-out Date */}
-            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Check-out
               </label>
               <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
                   calendar_month
                 </span>
-                <input
-                  type="date"
-                  value={checkOutDate}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
+                <DatePicker
+                  selected={checkOutDate}
+                  onChange={(date) => setCheckOutDate(date)}
+                  minDate={new Date(checkInDate.getTime() + 86400000)}
+                  dateFormat="dd / MM / yyyy"
+                  className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
                 />
               </div>
             </div>
 
             {/* Tamu & Kamar */}
-            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Tamu &amp; Kamar
               </label>
               <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
                   group
                 </span>
                 <select

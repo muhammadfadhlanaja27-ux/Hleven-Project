@@ -83,8 +83,8 @@ class SuperAdminDashboardService
 
         // Total Bulanan[cite: 1]
         $monthlyTotal = Payment::where('payment_status', 'Success')
-            ->whereMonth('paid_at', $targetMonth)
             ->whereYear('paid_at', $targetYear)
+            ->whereMonth('paid_at', $targetMonth)
             ->sum('gross_amount');
 
         // Total Tahunan[cite: 1]
@@ -95,8 +95,8 @@ class SuperAdminDashboardService
         // Data Harian dalam satu bulan[cite: 1]
         $daily = Payment::select(DB::raw('DATE(paid_at) as date'), DB::raw('SUM(gross_amount) as total'))
             ->where('payment_status', 'Success')
-            ->whereMonth('paid_at', $targetMonth)
             ->whereYear('paid_at', $targetYear)
+            ->whereMonth('paid_at', $targetMonth)
             ->groupBy('date')
             ->get();
 

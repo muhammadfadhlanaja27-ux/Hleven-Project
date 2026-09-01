@@ -34,8 +34,8 @@ class ReportController extends Controller
         } elseif ($period === 'weekly') {
             $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
         } elseif ($period === 'monthly') {
-            $query->whereMonth('created_at', $now->month)
-                  ->whereYear('created_at', $now->year);
+            $query->whereYear('created_at', $now->year)
+                  ->whereMonth('created_at', $now->month);
         } elseif ($period === 'yearly') {
             $query->whereYear('created_at', $now->year);
         }

@@ -10,9 +10,15 @@
     },
     "require": {
         "php": "^8.0.2",
+<<<<<<< HEAD
         "league/flysystem": "^2.0.0 || ^3.0.0",
         "league/mime-type-detection": "^1.0.0",
         "aws/aws-sdk-php": "^3.132.4"
+=======
+        "league/flysystem": "^3.10.0",
+        "league/mime-type-detection": "^1.0.0",
+        "aws/aws-sdk-php": "^3.371.5"
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
     },
     "conflict": {
         "guzzlehttp/ringphp": "<1.1.1",

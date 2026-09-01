@@ -582,6 +582,7 @@
         },
         {
             "name": "league/flysystem-aws-s3-v3",
+<<<<<<< HEAD
             "version": "3.0.0",
             "version_normalized": "3.0.0.0",
             "source": {
@@ -598,6 +599,24 @@
             "require": {
                 "aws/aws-sdk-php": "^3.132.4",
                 "league/flysystem": "^2.0.0 || ^3.0.0",
+=======
+            "version": "3.35.3",
+            "version_normalized": "3.35.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thephpleague/flysystem-aws-s3-v3.git",
+                "reference": "b03780cb97585ee7e48977f40ed599b33b751634"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thephpleague/flysystem-aws-s3-v3/zipball/b03780cb97585ee7e48977f40ed599b33b751634",
+                "reference": "b03780cb97585ee7e48977f40ed599b33b751634",
+                "shasum": ""
+            },
+            "require": {
+                "aws/aws-sdk-php": "^3.371.5",
+                "league/flysystem": "^3.10.0",
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
                 "league/mime-type-detection": "^1.0.0",
                 "php": "^8.0.2"
             },
@@ -605,7 +624,11 @@
                 "guzzlehttp/guzzle": "<7.0",
                 "guzzlehttp/ringphp": "<1.1.1"
             },
+<<<<<<< HEAD
             "time": "2022-01-13T21:11:49+00:00",
+=======
+            "time": "2026-08-08T16:19:23+00:00",
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -634,8 +657,12 @@
                 "storage"
             ],
             "support": {
+<<<<<<< HEAD
                 "issues": "https://github.com/thephpleague/flysystem-aws-s3-v3/issues",
                 "source": "https://github.com/thephpleague/flysystem-aws-s3-v3/tree/3.0.0"
+=======
+                "source": "https://github.com/thephpleague/flysystem-aws-s3-v3/tree/3.35.3"
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
             },
             "install-path": "../league/flysystem-aws-s3-v3"
         },
@@ -989,6 +1016,7 @@
             "install-path": "../psr/http-message"
         },
         {
+<<<<<<< HEAD
             "name": "symfony/deprecation-contracts",
             "version": "v3.7.1",
             "version_normalized": "3.7.1.0",
@@ -1080,13 +1108,37 @@
             "require": {
                 "php": ">=8.4.1",
                 "symfony/deprecation-contracts": "^2.5|^3",
+=======
+            "name": "symfony/filesystem",
+            "version": "v7.4.18",
+            "version_normalized": "7.4.18.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/filesystem.git",
+                "reference": "90d412aa5277c6819db39e7605aa46b1019e3232"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/filesystem/zipball/90d412aa5277c6819db39e7605aa46b1019e3232",
+                "reference": "90d412aa5277c6819db39e7605aa46b1019e3232",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
                 "symfony/polyfill-ctype": "~1.8",
                 "symfony/polyfill-mbstring": "~1.8"
             },
             "require-dev": {
+<<<<<<< HEAD
                 "symfony/process": "^7.4|^8.0"
             },
             "time": "2026-08-23T10:06:25+00:00",
+=======
+                "symfony/process": "^6.4|^7.0|^8.0"
+            },
+            "time": "2026-08-23T10:03:40+00:00",
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -1114,7 +1166,11 @@
             "description": "Provides basic utilities for the filesystem",
             "homepage": "https://symfony.com",
             "support": {
+<<<<<<< HEAD
                 "source": "https://github.com/symfony/filesystem/tree/v8.1.6"
+=======
+                "source": "https://github.com/symfony/filesystem/tree/v7.4.18"
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
             },
             "funding": [
                 {

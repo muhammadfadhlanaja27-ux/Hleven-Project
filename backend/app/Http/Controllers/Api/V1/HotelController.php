@@ -134,11 +134,7 @@ class HotelController extends Controller
 
         if ($request->hasFile('banner')) {
             if ($hotel->banner) {
-                $oldPath = parse_url($hotel->banner, PHP_URL_PATH);
-                $oldPath = ltrim($oldPath, '/');
-                if (Storage::disk('s3')->exists($oldPath)) {
-                    Storage::disk('s3')->delete($oldPath);
-                }
+                app(\App\Services\FileStorageService::class)->deleteFile($hotel->banner);
             }
             $path = $request->file('banner')->store('hotels/banners', 's3');
             $hotel->banner = Storage::disk('s3')->url($path);
@@ -200,30 +196,8 @@ class HotelController extends Controller
     {
         $photoId = $param2 !== null ? $param2 : $param1;
 
-        $photo = HotelPhoto::find($photoId);
-
-        if (!$photo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Foto tidak ditemukan'
-            ], 404);
-        }
-
-        // Hapus file dari S3 / Supabase Storage jika file ada
-        $filePath = $photo->photo ?? $photo->image_path ?? null;
-        if ($filePath) {
-            $parsedPath = parse_url($filePath, PHP_URL_PATH);
-            $cleanPath = ltrim($parsedPath, '/');
-
-            // Hapus prefix nama bucket jika terikut di path URL
-            $bucket = config('filesystems.disks.s3.bucket');
-            if ($bucket && str_starts_with($cleanPath, $bucket . '/')) {
-                $cleanPath = substr($cleanPath, strlen($bucket) + 1);
-            }
-
-            if (Storage::disk('s3')->exists($cleanPath)) {
-                Storage::disk('s3')->delete($cleanPath);
-            }
+        if ($photo->photo) {
+            app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
         }
 
         // Hapus data dari PostgreSQL
