@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
 
@@ -16,6 +16,18 @@ const HotelDetail = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // State untuk menangani gambar kamar yang error/broken URL
+  const [imgErrors, setImgErrors] = useState({});
+
+  // Filter States untuk Kamar
+  const [filterAdults, setFilterAdults] = useState("");
+  const [filterChildren, setFilterChildren] = useState("");
+  const [filterBedType, setFilterBedType] = useState("all");
+  const [filterRoomName, setFilterRoomName] = useState("");
+  const [filterBreakfast, setFilterBreakfast] = useState(false);
+  const [filterSmoking, setFilterSmoking] = useState(false);
+  const [filterRefundable, setFilterRefundable] = useState(false);
 
   const lightboxContainerRef = useRef(null);
 
@@ -61,7 +73,7 @@ const HotelDetail = () => {
     setPanY(dragOffset.y + dy);
   };
 
-  const handlePointerUp = (e) => {
+  const handlePointerUp = () => {
     setIsDragging(false);
   };
 
@@ -91,9 +103,11 @@ const HotelDetail = () => {
               weekend_price: rt.weekend_price,
               thumbnail: roomImage,
               hasPhoto: !!roomImage,
-              capacity: `${rt.capacity_adult} Dewasa, ${rt.capacity_child} Anak`,
+              capacity_adult: rt.capacity_adult ?? 2,
+              capacity_child: rt.capacity_child ?? 0,
+              capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
               description: rt.description,
-              bed: rt.description?.includes("Bed") ? rt.description : "1 King Bed",
+              bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
               breakfast: rt.breakfast,
               smoking_area: rt.smoking_area,
               is_refundable: rt.is_refundable !== undefined ? rt.is_refundable : true,
@@ -121,6 +135,36 @@ const HotelDetail = () => {
 
     fetchHotelDetail();
   }, [id]);
+
+  // Logika Filter Kamar
+  const filteredRooms = useMemo(() => {
+    if (!hotel || !hotel.rooms) return [];
+    
+    return hotel.rooms.filter((room) => {
+      if (filterAdults && Number(room.capacity_adult) < Number(filterAdults)) return false;
+      if (filterChildren && Number(room.capacity_child) < Number(filterChildren)) return false;
+      if (filterRoomName.trim() && !room.name.toLowerCase().includes(filterRoomName.toLowerCase())) return false;
+      if (filterBedType !== "all") {
+        const bedStr = (room.bed || "").toLowerCase();
+        if (!bedStr.includes(filterBedType.toLowerCase())) return false;
+      }
+      if (filterBreakfast && !room.breakfast) return false;
+      if (filterSmoking && !room.smoking_area) return false;
+      if (filterRefundable && !room.is_refundable) return false;
+
+      return true;
+    });
+  }, [hotel, filterAdults, filterChildren, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
+
+  const handleResetRoomFilters = () => {
+    setFilterAdults("");
+    setFilterChildren("");
+    setFilterBedType("all");
+    setFilterRoomName("");
+    setFilterBreakfast(false);
+    setFilterSmoking(false);
+    setFilterRefundable(false);
+  };
 
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
@@ -155,14 +199,12 @@ const HotelDetail = () => {
     );
   }
 
-  // Raw Photos List — HANYA foto asli dari API, TIDAK ada default Unsplash
   const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : [])
     .filter(p => {
       const pth = typeof p === "object" ? (p.photo || p.url || p.image_path) : p;
       return !!pth;
     });
 
-  // Aman dari thumbnail NULL / undefined
   const thumbObj = hotel && hotel.thumbnail != null ? hotel.thumbnail : null;
   const hotelThumb = thumbObj
     ? (typeof thumbObj === "object"
@@ -176,7 +218,6 @@ const HotelDetail = () => {
     .filter(url => !!url);
   const hasHotelPhotos = photosList.length > 0;
 
-  // Facility list mapping
   const facilitiesList = Array.isArray(hotel.facilities) ? hotel.facilities : [];
 
   const getFacilityIcon = (fac) => {
@@ -195,7 +236,6 @@ const HotelDetail = () => {
     return "stars";
   };
 
-  const roomsList = hotel.rooms || [];
   const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";
   const hotelAddress = hotel.address || `${hotelCityName}, Jawa Barat`;
   const ratingValue = hotel.rating || hotel.average_rating || 4.8;
@@ -207,6 +247,8 @@ const HotelDetail = () => {
     const targetRoomId = room?.id || 101;
     navigate(`/booking/${targetHotelId}/${targetRoomId}`);
   };
+
+  const hasActiveFilters = filterAdults || filterChildren || filterBedType !== "all" || filterRoomName || filterBreakfast || filterSmoking || filterRefundable;
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
@@ -221,7 +263,6 @@ const HotelDetail = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
-                {/* Hero Main Image (Left 2 cols x 2 rows) */}
                 <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
                   <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 </div>
@@ -254,7 +295,6 @@ const HotelDetail = () => {
               </div>
             )
           ) : (
-            /* Placeholder: Hotel belum upload foto */
             <div className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
               <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">
                 image_not_supported
@@ -275,7 +315,6 @@ const HotelDetail = () => {
           {/* Left Column: Info & Description & Amenities */}
           <div className="lg:col-span-2 space-y-12">
             
-            {/* Hotel Info Header */}
             <section>
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex text-[#A0522D]">
@@ -393,13 +432,161 @@ const HotelDetail = () => {
 
         {/* Room Types & Availability Section */}
         <section className="mt-16 pt-10 border-t border-[#DCCFC0]/40">
-          <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-8">
-            Pilihan Kamar
-          </h2>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+            <div>
+              <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-1">
+                Pilihan Kamar
+              </h2>
+              <p className="font-body-md text-xs text-[#444842]">
+                Menampilkan {filteredRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia
+              </p>
+            </div>
+            
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetRoomFilters}
+                className="text-xs text-[#778873] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">restart_alt</span>
+                Reset Filter Kamar
+              </button>
+            )}
+          </div>
 
-          {roomsList && roomsList.length > 0 ? (
+          {/* Room Filter Box */}
+          <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/60 rounded-2xl p-5 mb-8 shadow-sm">
+            <h3 className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-base">tune</span>
+              Filter Kamar Sesuai Kebutuhan
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              {/* Filter Tipe / Nama Kamar */}
+              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+                  Nama / Tipe Kamar
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                    meeting_room
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Deluxe, Suite..."
+                    value={filterRoomName}
+                    onChange={(e) => setFilterRoomName(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none placeholder-[#747871]"
+                  />
+                </div>
+              </div>
+
+              {/* Filter Kapasitas Dewasa */}
+              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+                  Min. Dewasa
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                    person
+                  </span>
+                  <select
+                    value={filterAdults}
+                    onChange={(e) => setFilterAdults(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                  >
+                    <option value="">Semua Kapasitas</option>
+                    <option value="1">Minimal 1 Dewasa</option>
+                    <option value="2">Minimal 2 Dewasa</option>
+                    <option value="3">Minimal 3 Dewasa</option>
+                    <option value="4">Minimal 4+ Dewasa</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Filter Kapasitas Anak */}
+              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+                  Min. Anak
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                    child_care
+                  </span>
+                  <select
+                    value={filterChildren}
+                    onChange={(e) => setFilterChildren(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                  >
+                    <option value="">Semua Kapasitas</option>
+                    <option value="1">Minimal 1 Anak</option>
+                    <option value="2">Minimal 2+ Anak</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Filter Tipe Kasur */}
+              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+                  Tipe Kasur
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                    bed
+                  </span>
+                  <select
+                    value={filterBedType}
+                    onChange={(e) => setFilterBedType(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                  >
+                    <option value="all">Semua Jenis Kasur</option>
+                    <option value="king">King Bed</option>
+                    <option value="queen">Queen Bed</option>
+                    <option value="twin">Twin Bed</option>
+                    <option value="single">Single Bed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Checkbox Filter Tambahan */}
+            <div className="flex flex-wrap gap-4 pt-3 border-t border-[#DCCFC0]/40">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b16] hover:text-[#778873] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={filterBreakfast}
+                  onChange={(e) => setFilterBreakfast(e.target.checked)}
+                  className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                />
+                Gratis Sarapan
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b16] hover:text-[#778873] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={filterSmoking}
+                  onChange={(e) => setFilterSmoking(e.target.checked)}
+                  className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                />
+                Area Merokok (Smoking)
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b16] hover:text-[#778873] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={filterRefundable}
+                  onChange={(e) => setFilterRefundable(e.target.checked)}
+                  className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                />
+                Bisa Refund
+              </label>
+            </div>
+          </div>
+
+          {/* Rooms List Rendering */}
+          {filteredRooms && filteredRooms.length > 0 ? (
             <div className="space-y-6">
-              {roomsList.map((room) => {
+              {filteredRooms.map((room) => {
                 const roomPrice = Number(room.price || room.weekday_price || 1250000);
                 const weekendPrice = Math.round(roomPrice * 1.35);
 
@@ -408,16 +595,17 @@ const HotelDetail = () => {
                     key={room.id}
                     className="flex flex-col md:flex-row bg-[#faf3ea] rounded-2xl overflow-hidden border border-[#DCCFC0]/40 shadow-sm shadow-[#778873]/5 hover:shadow-md transition-shadow"
                   >
-                    {/* Room Thumbnail — Placeholder hanya jika TIDAK ADA foto asli */}
-                    <div className="md:w-1/3 min-h-[220px] relative bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
-                      {room.thumbnail ? (
+                    {/* Room Thumbnail Container - Ukuran Proporsional & Tidak Mengkerut */}
+                    <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
+                      {room.thumbnail && !imgErrors[room.id] ? (
                         <img
                           src={room.thumbnail}
                           alt={room.name || "Kamar Hotel"}
-                          className="w-full h-full object-cover"
+                          onError={() => setImgErrors((prev) => ({ ...prev, [room.id]: true }))}
+                          className="w-full h-full object-cover absolute inset-0"
                         />
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
+                        <div className="w-full h-full min-h-[200px] flex flex-col items-center justify-center text-center p-6">
                           <span className="material-symbols-outlined text-[#778873] text-5xl mb-3 opacity-60">
                             no_photography
                           </span>
@@ -431,8 +619,8 @@ const HotelDetail = () => {
                       )}
                     </div>
 
-                    {/* Room Content */}
-                    <div className="p-6 flex flex-col justify-between flex-grow text-left">
+                    {/* Room Content - Dilengkapi min-w-0 & line-clamp-3 agar teks rapi */}
+                    <div className="p-6 flex flex-col justify-between flex-grow min-w-0 text-left">
                       <div>
                         <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
                           <h3 className="font-headline-md text-xl font-bold text-[#778873]">
@@ -444,13 +632,17 @@ const HotelDetail = () => {
                           </span>
                         </div>
 
-                        <p className="font-body-md text-sm text-[#444842] mb-4">
+                        <p className="font-body-md text-sm text-[#444842] mb-4 line-clamp-3 leading-relaxed">
                           {room.description ||
                             `Kamar seluas 45 meter persegi dengan ${room.bed || '1 King Bed'}, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
-                        {/* Features Checkmarks — DINAMIS sesuai data asli + refund */}
+                        {/* Features Checkmarks */}
                         <div className="flex flex-wrap gap-3 mb-3 text-xs">
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#778873]/10 border border-[#778873]/20 text-[#778873] font-semibold">
+                            <span className="material-symbols-outlined text-[14px]">bed</span>
+                            {room.bed}
+                          </div>
                           {room.breakfast && (
                             <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#778873]/10 border border-[#778873]/20 text-[#778873] font-semibold">
                               <span className="material-symbols-outlined text-[14px]">check</span>
@@ -523,8 +715,21 @@ const HotelDetail = () => {
               })}
             </div>
           ) : (
-            <div className="p-8 text-center bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40">
-              <p className="text-[#444842] text-sm">Belum ada tipe kamar yang terdaftar untuk hotel ini.</p>
+            <div className="p-12 text-center bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40">
+              <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">filter_alt_off</span>
+              <h4 className="font-headline-md text-lg font-bold text-[#778873] mb-1">
+                Kamar Tidak Ditemukan
+              </h4>
+              <p className="text-[#444842] text-sm mb-4">
+                Tidak ada tipe kamar yang cocok dengan kriteria filter yang Anda pilih.
+              </p>
+              <button
+                type="button"
+                onClick={handleResetRoomFilters}
+                className="bg-[#778873] text-white px-5 py-2.5 rounded-xl font-semibold text-xs hover:bg-[#50604d] transition-colors"
+              >
+                Reset Filter Kamar
+              </button>
             </div>
           )}
         </section>
