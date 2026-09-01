@@ -92,10 +92,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
-            Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']); // Download E-Tiket PDF
+            Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
             Route::post('/bookings', [BookingController::class, 'store']);
             
-            // Route Pengajuan Partner User (DITAMBAHKAN)
+            // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
         });
 
@@ -136,6 +136,9 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::get('/hotels', [HotelController::class, 'myHotels']);
     Route::put('/hotels/{id}', [HotelController::class, 'update']);
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
+    
+    // PERBAIKAN: Support route delete photo dengan 1 parameter (id photo) maupun 2 parameter (id hotel & photo)
+    Route::delete('/hotels/photos/{photoId}', [HotelController::class, 'deletePhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
 
     // --- Management Kamar (RoomController) ---
@@ -143,9 +146,8 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::post('/rooms', [RoomController::class, 'store']);
     Route::get('/rooms/{id}', [RoomController::class, 'show']);
     Route::put('/rooms/{id}', [RoomController::class, 'update']);
-    Route::post('/rooms/{id}', [RoomController::class, 'update']); // method spoofing via FormData
+    Route::post('/rooms/{id}', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
-
 
     // --- Management Tipe Kamar (RoomTypeController) ---
     Route::get('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'index']);
@@ -157,7 +159,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::get('/bookings', [BookingController::class, 'index']); 
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
-    Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']); // Persetujuan/Penolakan Refund Admin
+    Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
 });
 
 // ==========================================

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
+use App\Models\HotelPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -133,7 +134,8 @@ class HotelController extends Controller
 
         if ($request->hasFile('banner')) {
             if ($hotel->banner) {
-                $oldPath = ltrim(strstr(parse_url($hotel->banner, PHP_URL_PATH), '/public/'), '/public/');
+                $oldPath = parse_url($hotel->banner, PHP_URL_PATH);
+                $oldPath = ltrim($oldPath, '/');
                 if (Storage::disk('s3')->exists($oldPath)) {
                     Storage::disk('s3')->delete($oldPath);
                 }
@@ -168,7 +170,7 @@ class HotelController extends Controller
         $hotel = Hotel::findOrFail($id);
 
         $request->validate([
-            'photo'        => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'photo'        => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
             'is_thumbnail' => 'boolean',
         ]);
 
@@ -192,22 +194,44 @@ class HotelController extends Controller
     }
 
     /**
-     * Hapus foto galeri hotel
+     * Hapus foto galeri hotel (Support 1 parameter photoId atau 2 parameter hotelId & photoId)
      */
-    public function deletePhoto($hotelId, $photoId): JsonResponse
+    public function deletePhoto(Request $request, $param1, $param2 = null): JsonResponse
     {
-        $hotel = Hotel::findOrFail($hotelId);
-        $photo = $hotel->photos()->findOrFail($photoId);
+        $photoId = $param2 !== null ? $param2 : $param1;
 
-        if ($photo->photo) {
-            $oldPath = ltrim(strstr(parse_url($photo->photo, PHP_URL_PATH), '/public/'), '/public/');
-            if (Storage::disk('s3')->exists($oldPath)) {
-                Storage::disk('s3')->delete($oldPath);
+        $photo = HotelPhoto::find($photoId);
+
+        if (!$photo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto tidak ditemukan'
+            ], 404);
+        }
+
+        // Hapus file dari S3 / Supabase Storage jika file ada
+        $filePath = $photo->photo ?? $photo->image_path ?? null;
+        if ($filePath) {
+            $parsedPath = parse_url($filePath, PHP_URL_PATH);
+            $cleanPath = ltrim($parsedPath, '/');
+
+            // Hapus prefix nama bucket jika terikut di path URL
+            $bucket = config('filesystems.disks.s3.bucket');
+            if ($bucket && str_starts_with($cleanPath, $bucket . '/')) {
+                $cleanPath = substr($cleanPath, strlen($bucket) + 1);
+            }
+
+            if (Storage::disk('s3')->exists($cleanPath)) {
+                Storage::disk('s3')->delete($cleanPath);
             }
         }
 
+        // Hapus data dari PostgreSQL
         $photo->delete();
 
-        return response()->json(['success' => true, 'message' => 'Foto hotel berhasil dihapus'], 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto hotel berhasil dihapus'
+        ], 200);
     }
 }

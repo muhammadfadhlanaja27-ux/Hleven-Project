@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 const ICON_OPTIONS = [
   { value: "wifi", label: "Wi-Fi" },
@@ -131,11 +132,17 @@ export default function FacilityManager() {
     fetchFacilities();
   }, []);
 
-  const fetchFacilities = async () => {
+  const fetchFacilities = async (forceRefresh = false) => {
     setLoading(true);
     try {
-      const { data: resData } = await cachedGet("/facilities", {}, forceRefresh);
-      if (resData && resData.data && Array.isArray(resData.data)) {
+      const { data: responseData } = await cachedGet("/facilities", {}, forceRefresh);
+      const dataArray = Array.isArray(responseData)
+        ? responseData
+        : Array.isArray(responseData?.data)
+          ? responseData.data
+          : [];
+
+      if (Array.isArray(dataArray)) {
         const mapFacility = (f, fallbackIcon) => ({
           id: f.id,
           name: f.name,
@@ -146,10 +153,10 @@ export default function FacilityManager() {
           category: f.category,
         });
 
-        const hotelList = resData.data
+        const hotelList = dataArray
           .filter((f) => f.category === "Hotel")
           .map((f) => mapFacility(f, "hotel"));
-        const roomList = resData.data
+        const roomList = dataArray
           .filter((f) => f.category === "Room" || f.category === "Bathroom")
           .map((f) => mapFacility(f, "bed"));
 

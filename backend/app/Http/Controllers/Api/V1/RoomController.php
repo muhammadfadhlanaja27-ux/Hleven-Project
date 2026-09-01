@@ -217,15 +217,16 @@ class RoomController extends Controller
             }
         }
 
-        // Upload foto baru jika ada
+        // Upload foto baru jika ada; pastikan foto baru mengganti thumbnail utama
         if ($request->hasFile('photos')) {
-            $hasThumbnail = $room->photos()->where('is_thumbnail', true)->exists();
+            $room->photos()->update(['is_thumbnail' => false]);
+
             foreach ($request->file('photos') as $index => $photo) {
                 $path = $photo->store('room_types', 's3');
                 $url = Storage::disk('s3')->url($path);
                 $room->photos()->create([
                     'photo'        => $url,
-                    'is_thumbnail' => !$hasThumbnail && $index === 0,
+                    'is_thumbnail' => $index === 0,
                 ]);
             }
         }

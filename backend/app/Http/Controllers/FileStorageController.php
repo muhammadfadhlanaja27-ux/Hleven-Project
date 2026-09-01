@@ -114,7 +114,14 @@ class FileStorageController extends Controller
     public function deleteRoomPhoto(Request $request, $id): JsonResponse
     {
         try {
-            $photo = RoomPhoto::with('roomType.hotel')->findOrFail($id);
+            $photo = RoomPhoto::with('roomType.hotel')->find($id);
+
+            if (!$photo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Foto kamar tidak ditemukan.'
+                ], 404);
+            }
 
             if ($photo->roomType && $photo->roomType->hotel && $photo->roomType->hotel->admin_id !== $request->user()->id) {
                 return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
