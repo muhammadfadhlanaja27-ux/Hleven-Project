@@ -133,10 +133,7 @@ class HotelController extends Controller
 
         if ($request->hasFile('banner')) {
             if ($hotel->banner) {
-                $oldPath = ltrim(parse_url($hotel->banner, PHP_URL_PATH), '/');
-                if ($oldPath && Storage::disk('s3')->exists($oldPath)) {
-                    Storage::disk('s3')->delete($oldPath);
-                }
+                app(\App\Services\FileStorageService::class)->deleteFile($hotel->banner);
             }
             $path = $request->file('banner')->store('hotels/banners', 's3');
             $hotel->banner = Storage::disk('s3')->url($path);
@@ -200,10 +197,7 @@ class HotelController extends Controller
         $photo = $hotel->photos()->findOrFail($photoId);
 
         if ($photo->photo) {
-            $oldPath = ltrim(parse_url($photo->photo, PHP_URL_PATH), '/');
-            if ($oldPath && Storage::disk('s3')->exists($oldPath)) {
-                Storage::disk('s3')->delete($oldPath);
-            }
+            app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
         }
 
         $photo->delete();

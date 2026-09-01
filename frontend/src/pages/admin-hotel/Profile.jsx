@@ -130,7 +130,7 @@ export default function Profile() {
               name: u.name || prev.name,
               email: u.email || prev.email,
               phone: u.phone || prev.phone,
-              avatar: u.avatar_url || (u.avatar ? `http://localhost:8000/storage/${u.avatar}` : prev.avatar),
+              avatar: u.avatar_url || (u.avatar ? (u.avatar.startsWith("http") ? u.avatar : `http://localhost:8000/storage/${u.avatar.replace(/^\//, "")}`) : prev.avatar),
             }));
           }
         }

@@ -991,7 +991,7 @@ const UserProfile = () => {
                         <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
                           {item.booking_rooms?.[0]?.room_type?.photos?.[0]?.photo ? (
                             <img
-                              src={`http://localhost:8000/storage/${item.booking_rooms[0].room_type.photos[0].photo}`}
+                              src={item.booking_rooms[0].room_type.photos[0].photo.startsWith("http") ? item.booking_rooms[0].room_type.photos[0].photo : `http://localhost:8000/storage/${item.booking_rooms[0].room_type.photos[0].photo.replace(/^\//, "")}`}
                               alt={item.hotel?.name || "Kamar Hotel"}
                               className="w-full h-full object-cover"
                               onError={(e) => { e.target.style.display = 'none'; }}

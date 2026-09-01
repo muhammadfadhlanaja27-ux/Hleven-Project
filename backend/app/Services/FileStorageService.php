@@ -23,21 +23,34 @@ class FileStorageService
     /**
      * Menghapus file fisik dari storage[cite: 1]
      */
-    public function deleteFile(?string $url): void
+    public function resolveStoragePath(?string $url): ?string
     {
-        if (!$url) return;
-        
-        // Cek apakah URL adalah path relatif (lokal storage) atau full URL
-        if (str_starts_with($url, 'http')) {
-            $path = parse_url($url, PHP_URL_PATH);
-            // Hapus leading slash jika ada agar menjadi path relatif
-            $path = ltrim($path, '/');
-            // Jika ada prefix 'storage/', biasanya Laravel butuh path asli
-            $path = str_replace('storage/', '', $path);
-        } else {
-            $path = $url;
+        if (!$url) return null;
+        if (!str_starts_with($url, 'http')) return ltrim($url, '/');
+
+        $path = parse_url($url, PHP_URL_PATH);
+        if (!$path) return null;
+
+        $path = ltrim($path, '/');
+        $bucket = trim((string) env('AWS_BUCKET'), '/');
+        $prefixes = [
+            'storage/v1/s3/' . $bucket . '/',
+            'storage/v1/object/public/' . $bucket . '/',
+            $bucket . '/',
+        ];
+
+        foreach ($prefixes as $prefix) {
+            if ($prefix !== '' && str_starts_with($path, $prefix)) {
+                return substr($path, strlen($prefix));
+            }
         }
 
+        return $path;
+    }
+
+    public function deleteFile(?string $url): void
+    {
+        $path = $this->resolveStoragePath($url);
         if ($path && Storage::disk('s3')->exists($path)) {
             Storage::disk('s3')->delete($path);
         }
