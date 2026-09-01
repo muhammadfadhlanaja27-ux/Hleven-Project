@@ -90,8 +90,15 @@ const resolveFacilityIcon = (facilityName, fallback = "hotel") => {
 
 const normalizeImageUrl = (value) => {
   if (!value) return "";
-  const str = String(value).trim();
+  let str = String(value).trim();
   if (!str) return "";
+
+  if (str.includes("storage.supabase.co/storage/v1/s3")) {
+    str = str.replace(".storage.supabase.co/storage/v1/s3", ".supabase.co/storage/v1/object/public");
+  } else if (str.includes("/storage/v1/s3")) {
+    str = str.replace("/storage/v1/s3", "/storage/v1/object/public");
+  }
+
   if (/^https?:\/\//i.test(str) || /^data:/i.test(str)) return str;
   if (str.startsWith("/")) return `http://localhost:8000${str}`;
   if (str.startsWith("storage/")) return `http://localhost:8000/${str}`;
