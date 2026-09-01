@@ -27,13 +27,20 @@ class FileStorageService
     {
         if (!$url) return;
         
-        $path = parse_url($url, PHP_URL_PATH);
-        $path = ltrim(strstr($path, '/public/'), '/public/');
+        // Cek apakah URL adalah path relatif (lokal storage) atau full URL
+        if (str_starts_with($url, 'http')) {
+            $path = parse_url($url, PHP_URL_PATH);
+            // Hapus leading slash jika ada agar menjadi path relatif
+            $path = ltrim($path, '/');
+            // Jika ada prefix 'storage/', biasanya Laravel butuh path asli
+            $path = str_replace('storage/', '', $path);
+        } else {
+            $path = $url;
+        }
 
         if ($path && Storage::disk('s3')->exists($path)) {
             Storage::disk('s3')->delete($path);
         }
-    }
     }
 
     public function storeHotelPhoto($hotelId, UploadedFile $file, bool $isThumbnail): void

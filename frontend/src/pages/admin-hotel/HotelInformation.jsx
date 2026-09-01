@@ -129,6 +129,7 @@ export default function HotelInformation() {
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [deletedPhotoIds, setDeletedPhotoIds] = useState([]);
 
   const [allHotelFacilities, setAllHotelFacilities] = useState([]);
   const [assignedFacilityIds, setAssignedFacilityIds] = useState([]);
@@ -260,7 +261,7 @@ export default function HotelInformation() {
     }
   };
 
-  // Toggle fasilitas pada mode edit
+  // Toggle fasilitas pada mode edit              
   const handleToggleFacility = (facId) => {
     setFormValues((prev) => {
       const currentIds = prev.facilityIds || [];
@@ -279,6 +280,7 @@ export default function HotelInformation() {
     });
     setFormPhotos(hotelData.photos || initialPhotos);
     setFormFacilityIds([...assignedFacilityIds]);
+    setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(true);
   };
@@ -291,6 +293,7 @@ export default function HotelInformation() {
     });
     setFormPhotos(hotelData.photos || initialPhotos);
     setFormFacilityIds([...assignedFacilityIds]);
+    setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(false);
   };
@@ -353,6 +356,10 @@ export default function HotelInformation() {
   };
 
   const handleDeletePhoto = (photoId) => {
+    const photo = formPhotos.find((p) => p.id === photoId);
+    if (photo && !photo.file && !String(photoId).startsWith("photo-new-")) {
+      setDeletedPhotoIds((prev) => [...prev, photoId]);
+    }
     setFormPhotos((prev) => {
       const filtered = prev.filter((p) => p.id !== photoId);
       if (filtered.length > 0 && !filtered.some((p) => p.isPrimary)) {
@@ -423,33 +430,60 @@ export default function HotelInformation() {
 
       await api.post("/admin/hotel/profile", payload);
 
+      await Promise.all(
+        deletedPhotoIds.map((photoId) =>
+          api.delete(`/admin/hotels/${hotelId}/photos/${photoId}`)
+        )
+      );
+
+      const savedPhotos = [];
       const newPhotos = formPhotos.filter((p) => p.file);
       for (const photo of newPhotos) {
         const formData = new FormData();
         formData.append("photo", photo.file);
         formData.append("is_thumbnail", photo.isPrimary ? "1" : "0");
-        await api.post(`/admin/hotels/${hotelId}/photos`, formData, {
+        const res = await api.post(`/admin/hotels/${hotelId}/photos`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        if (res.data?.data) {
+          const p = res.data.data;
+          const imgPath = p.image_path || p.url || p.photo || "";
+          
+          // Pastikan URL yang disimpan ke state memiliki full URL yang valid
+          const finalUrl = imgPath.startsWith("http") 
+            ? imgPath 
+            : `http://localhost:8000/storage/${imgPath.replace(/^\//, '')}`;
+            
+          savedPhotos.push({
+            id: p.id,
+            name: imgPath.split("/").pop(),
+            url: finalUrl,
+            isPrimary: p.is_thumbnail,
+          });
+        }
       }
 
       invalidateCache("/facilities?category=Hotel");
       invalidateCache("/admin/hotel/profile");
+      invalidateCache(`/hotels/${hotelId}`);
 
       const updatedAssigned = allHotelFacilities.filter((f) =>
         formFacilityIds.includes(f.id)
       );
       setAssignedFacilityIds([...formFacilityIds]);
 
+      const finalPhotos = [
+        ...formPhotos.filter((p) => !p.file),
+        ...savedPhotos
+      ];
+
       setHotelData({
         ...formValues,
-        facilities: (updatedHotel && Array.isArray(updatedHotel.facilities))
-          ? updatedHotel.facilities
-          : selectedFacObjects,
         facilityIds: formValues.facilityIds || [],
-        photos: formPhotos,
+        photos: finalPhotos,
         facilities: updatedAssigned,
       });
+      setDeletedPhotoIds([]);
       setIsEditing(false);
       toast.success("Hotel information and photos updated successfully.");
     } catch (err) {
@@ -1132,79 +1166,6 @@ export default function HotelInformation() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* EDIT MODE: HOTEL FACILITIES SELECTION */}
-          <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#E5E1DA] pb-4">
-              <div>
-                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-                  Pilih Fasilitas Hotel
-                </h3>
-                <p className="text-xs text-[#6B6E6A] mt-0.5">
-                  Centang fasilitas properti yang tersedia di hotel Anda untuk ditampilkan kepada calon tamu.
-                </p>
-              </div>
-              <span className="text-xs font-semibold px-3 py-1.5 bg-[#506147]/10 text-[#506147] rounded-full flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">
-                  check_circle
-                </span>
-                {(formValues.facilityIds || []).length} Fasilitas Dipilih
-              </span>
-            </div>
-
-            {availableFacilities.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {availableFacilities.map((fac) => {
-                  const isChecked = (formValues.facilityIds || []).includes(fac.id);
-                  return (
-                    <div
-                      key={fac.id}
-                      onClick={() => handleToggleFacility(fac.id)}
-                      className={`cursor-pointer select-none flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 ${
-                        isChecked
-                          ? "bg-[#506147]/5 border-[#506147] shadow-sm ring-1 ring-[#506147]/20"
-                          : "bg-[#FAFAFA] border-[#E5E1DA] hover:border-[#c4c8be] hover:bg-[#FAF7F2]"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}} // dikontrol oleh container click
-                        className="mt-0.5 w-4 h-4 rounded border-[#c4c8be] text-[#506147] focus:ring-[#506147] cursor-pointer"
-                      />
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span
-                          className={`material-symbols-outlined text-[22px] shrink-0 ${
-                            isChecked ? "text-[#506147]" : "text-[#757870]"
-                          }`}
-                        >
-                          {fac.icon || "stars"}
-                        </span>
-                        <div className="min-w-0">
-                          <p
-                            className={`text-sm font-semibold truncate ${
-                              isChecked ? "text-[#506147]" : "text-[#2D312C]"
-                            }`}
-                          >
-                            {fac.name}
-                          </p>
-                          {fac.description && (
-                            <p className="text-[11px] text-[#6B6E6A] truncate">
-                              {fac.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-6 text-sm text-[#6B6E6A] bg-[#FAF7F2] rounded-xl border border-dashed border-[#DCCFC0]">
-                Belum ada fasilitas master hotel yang terdaftar di database.
-              </div>
-            )}
           </div>
 
           {/* EDIT MODE: HOTEL PHOTOS */}
