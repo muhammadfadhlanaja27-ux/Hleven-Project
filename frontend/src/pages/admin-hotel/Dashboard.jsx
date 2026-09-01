@@ -117,6 +117,20 @@ export default function Dashboard() {
   const [error, setError]         = useState(null);
   const [revPeriod, setRevPeriod] = useState('monthly');
   const [currentUser, setCurrentUser] = useState(null);
+  const [warnings, setWarnings]   = useState([]);
+
+  const fetchWarnings = useCallback(async () => {
+    try {
+      const res = await cachedGet('/notifications', {}, true);
+      const list = res.data?.data || res.data || [];
+      if (Array.isArray(list)) {
+        const warningList = list.filter(
+          (n) => n.type === 'warning' || (n.title || '').toLowerCase().includes('peringatan')
+        );
+        setWarnings(warningList);
+      }
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     try {
@@ -124,6 +138,7 @@ export default function Dashboard() {
       if (u) setCurrentUser(JSON.parse(u));
     } catch (_) {}
     fetchStats();
+    fetchWarnings();
   }, []);
 
   const fetchStats = useCallback(async (forceRefresh = false) => {
@@ -250,7 +265,10 @@ export default function Dashboard() {
               {todayFormatted}
             </button>
             <button
-              onClick={() => fetchStats(true)}
+              onClick={() => {
+                fetchStats(true);
+                fetchWarnings();
+              }}
               disabled={loading}
               className="px-4 py-2 rounded bg-[#506147] text-white text-xs font-semibold hover:bg-[#53634a] transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer disabled:bg-[#a2ba9c]"
             >
@@ -261,6 +279,34 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* ─── ACTIVE COMPLIANCE WARNING BANNER ────────────────────────────── */}
+        {warnings.some((w) => !w.is_read) && (
+          <div className="bg-[#ffdad6]/60 border border-[#ba1a1a]/30 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-start gap-3.5">
+              <span className="w-10 h-10 rounded-full bg-[#ba1a1a] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <span className="material-symbols-outlined text-[24px]">warning</span>
+              </span>
+              <div>
+                <h4 className="font-semibold text-base text-[#93000a] flex items-center gap-2">
+                  <span>Peringatan Kepatuhan Resmi dari Super Admin</span>
+                  <span className="px-2 py-0.5 rounded bg-[#ba1a1a] text-white text-[10px] uppercase font-bold tracking-wider">
+                    Perhatian
+                  </span>
+                </h4>
+                {warnings
+                  .filter((w) => !w.is_read)
+                  .slice(0, 1)
+                  .map((w) => (
+                    <div key={w.id} className="mt-1">
+                      <p className="font-semibold text-xs text-[#191c1b]">{w.title}</p>
+                      <p className="text-xs text-[#434842] mt-0.5 whitespace-pre-wrap">{w.message}</p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ─── MAIN BENTO GRID SUMMARY CARDS ─────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

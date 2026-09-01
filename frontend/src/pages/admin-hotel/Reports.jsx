@@ -460,10 +460,184 @@ export default function RevenueReport() {
     return list;
   }, [stats, roomRevenue, roomTypeRevenue, growthPct]);
 
-  // ─── Export Handler ────────────────────────────────────────────────────────
+  // ─── Export Handler (Functional PDF, Excel, CSV) ──────────────────────────
   const handleExport = (type) => {
     setExportOpen(false);
-    toast.success(`Report exported as ${type}.`);
+
+    const reportPeriodLabel = periodLabels[selectedPeriod] || selectedPeriod;
+    const fileName = `HLeven_Hotel_Revenue_Report_${selectedPeriod}_${new Date().toISOString().slice(0, 10)}`;
+
+    if (type === "Excel" || type === "CSV") {
+      let csvContent = "\uFEFF"; // UTF-8 BOM for Excel compatibility
+
+      // 1. Report Header
+      csvContent += `H'LEVEN HERITAGE HOTEL - REVENUE REPORT\n`;
+      csvContent += `Period,${reportPeriodLabel}\n`;
+      csvContent += `Generated At,${new Date().toLocaleString("id-ID")}\n\n`;
+
+      // 2. Summary KPI Metrics
+      csvContent += `SUMMARY METRICS\n`;
+      csvContent += `Metric,Value\n`;
+      csvContent += `Total Revenue,${stats.totalRevenue}\n`;
+      csvContent += `Paid Revenue,${stats.paidRevenue}\n`;
+      csvContent += `Pending Revenue,${stats.pendingRevenue}\n`;
+      csvContent += `Total Bookings,${stats.totalBookings}\n`;
+      csvContent += `Paid Bookings,${stats.paidCount}\n`;
+      csvContent += `Pending Bookings,${stats.pendingCount}\n`;
+      csvContent += `Avg Booking Value,${stats.avgBookingValue}\n`;
+      csvContent += `Gross Revenue,${stats.grossRevenue}\n`;
+      csvContent += `Total Discount,${stats.totalDiscount}\n`;
+      csvContent += `Refunded Revenue,${stats.refundedRevenue}\n`;
+      csvContent += `Net Revenue,${stats.netRevenue}\n\n`;
+
+      // 3. Revenue Details Table
+      csvContent += `REVENUE DETAILS\n`;
+      csvContent += `Date,Total Bookings,Paid Bookings,Nights,Gross Revenue,Discount,Refund,Net Revenue\n`;
+      sortedDetails.forEach((row) => {
+        csvContent += `"${row.date}",${row.total},${row.paid},${row.nights},${row.gross},${row.discount},${row.refund},${row.net}\n`;
+      });
+      csvContent += `\n`;
+
+      // 4. Revenue by Room
+      csvContent += `REVENUE BY ROOM\n`;
+      csvContent += `Room Name,Room Type,Bookings,Nights,Revenue,Percentage\n`;
+      roomRevenue.forEach((r) => {
+        csvContent += `"${r.name}","${r.type}",${r.bookings},${r.nights},${r.revenue},${r.pct}%\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${fileName}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Laporan ${type} berhasil diunduh!`);
+    } else if (type === "PDF") {
+      const printWin = window.open("", "_blank");
+      if (!printWin) {
+        toast.error("Pop-up diblokir oleh browser. Izinkan pop-up untuk mencetak PDF.");
+        return;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${fileName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 25px; color: #2D312C; background: #fff; }
+            .header { border-bottom: 2px solid #506147; padding-bottom: 15px; margin-bottom: 20px; }
+            .header h1 { margin: 0; color: #506147; font-size: 24px; }
+            .header p { margin: 5px 0 0; color: #6B6E6A; font-size: 13px; }
+            .grid { display: flex; gap: 15px; margin-bottom: 20px; }
+            .card { flex: 1; border: 1px solid #E5E1DA; padding: 12px; border-radius: 8px; background: #F9F6F1; }
+            .card-title { font-size: 10px; color: #6B6E6A; text-transform: uppercase; font-weight: bold; }
+            .card-value { font-size: 18px; color: #2D312C; font-weight: bold; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+            th { background: #506147; color: white; text-align: left; padding: 8px; }
+            td { border-bottom: 1px solid #E5E1DA; padding: 8px; }
+            tr:nth-child(even) { background: #fcf9f5; }
+            .section-title { font-size: 16px; color: #506147; font-weight: bold; margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid #E5E1DA; padding-bottom: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>H'Leven Heritage Hotel - Revenue Report</h1>
+            <p>Period: ${reportPeriodLabel} | Generated: ${new Date().toLocaleString("id-ID")}</p>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">Total Revenue</div>
+              <div class="card-value">${formatRp(stats.totalRevenue)}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Paid Revenue</div>
+              <div class="card-value">${formatRp(stats.paidRevenue)}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Total Bookings</div>
+              <div class="card-value">${stats.totalBookings} (${stats.paidCount} paid)</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Net Revenue</div>
+              <div class="card-value">${formatRp(stats.netRevenue)}</div>
+            </div>
+          </div>
+
+          <div class="section-title">Revenue Details</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Bookings</th>
+                <th>Paid</th>
+                <th>Nights</th>
+                <th>Gross Revenue</th>
+                <th>Discount</th>
+                <th>Refund</th>
+                <th>Net Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedDetails.map(r => `
+                <tr>
+                  <td>${r.date}</td>
+                  <td>${r.total}</td>
+                  <td>${r.paid}</td>
+                  <td>${r.nights}</td>
+                  <td>${formatRp(r.gross)}</td>
+                  <td>${formatRp(r.discount)}</td>
+                  <td>${formatRp(r.refund)}</td>
+                  <td><strong>${formatRp(r.net)}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="section-title">Revenue by Room</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Room Name</th>
+                <th>Type</th>
+                <th>Bookings</th>
+                <th>Nights</th>
+                <th>Revenue</th>
+                <th>Contribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${roomRevenue.map(r => `
+                <tr>
+                  <td>${r.name}</td>
+                  <td>${r.type}</td>
+                  <td>${r.bookings}</td>
+                  <td>${r.nights}</td>
+                  <td>${formatRp(r.revenue)}</td>
+                  <td>${r.pct}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      printWin.document.write(html);
+      printWin.document.close();
+      toast.success("Membuka dialog cetak PDF...");
+    }
   };
 
   // ─── Period Labels ─────────────────────────────────────────────────────────
