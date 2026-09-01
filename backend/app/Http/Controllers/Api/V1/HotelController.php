@@ -132,10 +132,14 @@ class HotelController extends Controller
         ]);
 
         if ($request->hasFile('banner')) {
-            if ($hotel->banner && Storage::disk('public')->exists($hotel->banner)) {
-                Storage::disk('public')->delete($hotel->banner);
+            if ($hotel->banner) {
+                $oldPath = ltrim(strstr(parse_url($hotel->banner, PHP_URL_PATH), '/public/'), '/public/');
+                if (Storage::disk('s3')->exists($oldPath)) {
+                    Storage::disk('s3')->delete($oldPath);
+                }
             }
-            $hotel->banner = $request->file('banner')->store('hotels/banners', 'public');
+            $path = $request->file('banner')->store('hotels/banners', 's3');
+            $hotel->banner = Storage::disk('s3')->url($path);
         }
 
         $hotel->update($request->only(['name', 'description', 'address', 'phone']));
@@ -168,14 +172,15 @@ class HotelController extends Controller
             'is_thumbnail' => 'boolean',
         ]);
 
-        $path = $request->file('photo')->store('hotels', 'public');
+        $path = $request->file('photo')->store('hotels', 's3');
+        $url = Storage::disk('s3')->url($path);
 
         if ($request->is_thumbnail) {
             $hotel->photos()->update(['is_thumbnail' => false]);
         }
 
         $hotelPhoto = $hotel->photos()->create([
-            'photo'        => $path,
+            'photo'        => $url,
             'is_thumbnail' => $request->is_thumbnail ?? false,
         ]);
 
@@ -194,8 +199,11 @@ class HotelController extends Controller
         $hotel = Hotel::findOrFail($hotelId);
         $photo = $hotel->photos()->findOrFail($photoId);
 
-        if (Storage::disk('public')->exists($photo->photo)) {
-            Storage::disk('public')->delete($photo->photo);
+        if ($photo->photo) {
+            $oldPath = ltrim(strstr(parse_url($photo->photo, PHP_URL_PATH), '/public/'), '/public/');
+            if (Storage::disk('s3')->exists($oldPath)) {
+                Storage::disk('s3')->delete($oldPath);
+            }
         }
 
         $photo->delete();
