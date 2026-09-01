@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
 
 const RoomDetail = () => {
@@ -62,13 +64,23 @@ const RoomDetail = () => {
 
   const handlePointerUp = () => setIsDragging(false);
 
-  // Reservation Form State
-  const todayStr = new Date().toISOString().split("T")[0];
-  const next4Days = new Date(Date.now() + 4 * 86400000).toISOString().split("T")[0];
+  // Reservation Form State (React DatePicker Object Dates)
+  const today = useMemo(() => new Date(), []);
+  const defaultCheckOut = useMemo(() => new Date(Date.now() + 86400000), []); // Besok
 
-  const [checkInDate, setCheckInDate] = useState(todayStr);
-  const [checkOutDate, setCheckOutDate] = useState(next4Days);
+  const [checkInDate, setCheckInDate] = useState(today);
+  const [checkOutDate, setCheckOutDate] = useState(defaultCheckOut);
   const [guestCount, setGuestCount] = useState("2 Tamu Dewasa");
+
+  // Handler Perubahan Check-in dengan Auto-adjust Check-out H+1
+  const handleCheckInChange = (date) => {
+    setCheckInDate(date);
+    if (checkOutDate && date >= checkOutDate) {
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      setCheckOutDate(nextDay);
+    }
+  };
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -137,9 +149,7 @@ const RoomDetail = () => {
   // Price & Nights Calculation
   const nightsCount = useMemo(() => {
     if (!checkInDate || !checkOutDate) return 1;
-    const start = new Date(checkInDate);
-    const end = new Date(checkOutDate);
-    const diffTime = end - start;
+    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
@@ -148,8 +158,6 @@ const RoomDetail = () => {
   const subtotalPrice = roomPrice * nightsCount;
   const taxAndFees = Math.round(subtotalPrice * 0.21);
   const totalPrice = subtotalPrice + taxAndFees;
-
-  const [imgErrors, setImgErrors] = useState({});
 
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
@@ -168,11 +176,22 @@ const RoomDetail = () => {
     photosList = [thumbFallback];
   }
 
+  // Format Date for URL navigation
+  const formatDateForUrl = (dateObj) => {
+    if (!dateObj) return "";
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleReserve = (e) => {
     e.preventDefault();
     const hId = hotel?.id || hotelId || 1;
     const rId = room?.id || roomId || 101;
-    navigate(`/booking/${hId}/${rId}?checkIn=${checkInDate}&checkOut=${checkOutDate}`);
+    const checkInStr = formatDateForUrl(checkInDate);
+    const checkOutStr = formatDateForUrl(checkOutDate);
+    navigate(`/booking/${hId}/${rId}?checkIn=${checkInStr}&checkOut=${checkOutStr}`);
   };
 
   if (loading) {
@@ -256,7 +275,6 @@ const RoomDetail = () => {
         {/* Hero Photo Mosaic Gallery */}
         {photosList.length > 0 ? (
           <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
-            {/* Main Hero Photo (Left 2 cols x 2 rows) */}
             <div
               className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
               onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
@@ -264,7 +282,6 @@ const RoomDetail = () => {
               <img src={photosList[0]} alt="Main Bedroom View" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
 
-            {/* Sub Photo 1 */}
             {photosList[1] && (
               <div
                 className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
@@ -274,7 +291,6 @@ const RoomDetail = () => {
               </div>
             )}
 
-            {/* Sub Photo 2 */}
             {photosList[2] && (
               <div
                 className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
@@ -284,7 +300,6 @@ const RoomDetail = () => {
               </div>
             )}
 
-            {/* Sub Photo 3 with Gallery Overlay */}
             {photosList[3] && (
               <div
                 className="hidden md:block md:col-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
@@ -319,7 +334,6 @@ const RoomDetail = () => {
           {/* Left Column: Description, Amenities, Policies */}
           <div className="lg:col-span-8 flex flex-col gap-10 pr-0 lg:pr-4">
             
-            {/* About This Room */}
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-4">
                 Tentang Kamar Ini
@@ -332,7 +346,6 @@ const RoomDetail = () => {
 
             <hr className="border-[#DCCFC0]/40" />
 
-            {/* Room Amenities Grid */}
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
                 Fasilitas Kamar
@@ -390,7 +403,6 @@ const RoomDetail = () => {
 
             <hr className="border-[#DCCFC0]/40" />
 
-            {/* Room Policies */}
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
                 Kebijakan Kamar
@@ -475,48 +487,67 @@ const RoomDetail = () => {
                 </div>
               )}
 
-              {/* Dates Input Controls */}
+              {/* Custom DatePicker Controls with Icons */}
               <div className="flex flex-col gap-4 mb-6">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors">
+                  {/* Check-In Input */}
+                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
                     <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
                       Check-In
                     </label>
-                    <input
-                      type="date"
-                      value={checkInDate}
-                      onChange={(e) => setCheckInDate(e.target.value)}
-                      className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                    />
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                        calendar_today
+                      </span>
+                      <DatePicker
+                        selected={checkInDate}
+                        onChange={handleCheckInChange}
+                        minDate={today}
+                        dateFormat="dd / MM / yyyy"
+                        className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                      />
+                    </div>
                   </div>
 
-                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors">
+                  {/* Check-Out Input */}
+                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
                     <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
                       Check-Out
                     </label>
-                    <input
-                      type="date"
-                      value={checkOutDate}
-                      onChange={(e) => setCheckOutDate(e.target.value)}
-                      className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                    />
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                        calendar_month
+                      </span>
+                      <DatePicker
+                        selected={checkOutDate}
+                        onChange={(date) => setCheckOutDate(date)}
+                        minDate={new Date(checkInDate.getTime() + 86400000)}
+                        dateFormat="dd / MM / yyyy"
+                        className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Guests Select */}
-                <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors">
+                <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
                   <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
                     Jumlah Tamu
                   </label>
-                  <select
-                    value={guestCount}
-                    onChange={(e) => setGuestCount(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                  >
-                    <option value="1 Tamu Dewasa">1 Tamu Dewasa</option>
-                    <option value="2 Tamu Dewasa">2 Tamu Dewasa</option>
-                    <option value="4 Tamu Dewasa">4 Tamu Dewasa</option>
-                  </select>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                      group
+                    </span>
+                    <select
+                      value={guestCount}
+                      onChange={(e) => setGuestCount(e.target.value)}
+                      className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                    >
+                      <option value="1 Tamu Dewasa">1 Tamu Dewasa</option>
+                      <option value="2 Tamu Dewasa">2 Tamu Dewasa</option>
+                      <option value="4 Tamu Dewasa">4 Tamu Dewasa</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
