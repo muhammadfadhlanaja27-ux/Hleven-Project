@@ -304,3 +304,20 @@ body {
 .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
   border-color: #DCCFC0 !important;
 }
+
+/* Custom Tampilan Opsi Dropdown Select */
+select option {
+  background-color: #FDF6ED !important;
+  color: #1e1b16 !important;
+  font-family: 'Hanken Grotesk', sans-serif !important;
+  font-size: 13px !important;
+  padding: 10px 14px !important;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #778873 !important;
+  color: #ffffff !important;
+}
