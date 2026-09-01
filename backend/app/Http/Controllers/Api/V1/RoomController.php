@@ -123,9 +123,10 @@ class RoomController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('rooms', 'public');
+            $path = $request->file('image')->store('rooms', 's3');
+            $url = Storage::disk('s3')->url($path);
             $room->photos()->create([
-                'photo' => $path,
+                'photo' => $url,
                 'is_thumbnail' => true,
             ]);
         }
@@ -220,9 +221,10 @@ class RoomController extends Controller
         if ($request->hasFile('photos')) {
             $hasThumbnail = $room->photos()->where('is_thumbnail', true)->exists();
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $photo->store('room_types', 'public');
+                $path = $photo->store('room_types', 's3');
+                $url = Storage::disk('s3')->url($path);
                 $room->photos()->create([
-                    'photo'        => $path,
+                    'photo'        => $url,
                     'is_thumbnail' => !$hasThumbnail && $index === 0,
                 ]);
             }
@@ -252,8 +254,11 @@ class RoomController extends Controller
 
             // Hapus berkas foto fisik dari storage
             foreach ($room->photos as $photo) {
-                if ($photo->photo && Storage::disk('public')->exists($photo->photo)) {
-                    Storage::disk('public')->delete($photo->photo);
+                if ($photo->photo) {
+                    $oldPath = ltrim(strstr(parse_url($photo->photo, PHP_URL_PATH), '/public/'), '/public/');
+                    if (Storage::disk('s3')->exists($oldPath)) {
+                        Storage::disk('s3')->delete($oldPath);
+                    }
                 }
                 $photo->delete();
             }

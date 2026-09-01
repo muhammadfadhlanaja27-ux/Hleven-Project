@@ -17,18 +17,23 @@ class FileStorageService
     public function uploadFile(UploadedFile $file, string $directory): string
     {
         // Menyimpan file secara otomatis menggunakan hash name bawaan Laravel
-        $path = $file->store($directory, 'public');
-        return $path;
+        return Storage::disk('s3')->url($file->store($directory, 's3'));
     }
 
     /**
      * Menghapus file fisik dari storage[cite: 1]
      */
-    public function deleteFile(string $path): void
+    public function deleteFile(?string $url): void
     {
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (!$url) return;
+        
+        $path = parse_url($url, PHP_URL_PATH);
+        $path = ltrim(strstr($path, '/public/'), '/public/');
+
+        if ($path && Storage::disk('s3')->exists($path)) {
+            Storage::disk('s3')->delete($path);
         }
+    }
     }
 
     public function storeHotelPhoto($hotelId, UploadedFile $file, bool $isThumbnail): void

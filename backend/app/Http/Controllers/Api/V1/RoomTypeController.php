@@ -88,9 +88,10 @@ class RoomTypeController extends Controller
             // 3. Simpan multiple foto jika ada
             if ($request->hasFile('photos')) {
                 foreach ($request->file('photos') as $index => $photo) {
-                    $path = $photo->store('room_types', 'public');
+                    $path = $photo->store('room_types', 's3');
+                    $url = Storage::disk('s3')->url($path);
                     $roomType->photos()->create([
-                        'photo' => $path,
+                        'photo' => $url,
                         'is_thumbnail' => $index === 0,
                     ]);
                 }
@@ -190,9 +191,10 @@ class RoomTypeController extends Controller
         if ($request->hasFile('photos')) {
             $hasThumbnail = $roomType->photos()->where('is_thumbnail', true)->exists();
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $photo->store('room_types', 'public');
+                $path = $photo->store('room_types', 's3');
+                $url = Storage::disk('s3')->url($path);
                 $roomType->photos()->create([
-                    'photo' => $path,
+                    'photo' => $url,
                     'is_thumbnail' => !$hasThumbnail && $index === 0,
                 ]);
             }
@@ -218,9 +220,12 @@ class RoomTypeController extends Controller
 
         // Hapus foto-foto terkait di storage jika ada
         foreach ($roomType->photos as $photo) {
-            $photoPath = $photo->photo ?? $photo->image_path ?? null;
-            if ($photoPath && Storage::disk('public')->exists($photoPath)) {
-                Storage::disk('public')->delete($photoPath);
+            $photoUrl = $photo->photo ?? $photo->image_path ?? null;
+            if ($photoUrl) {
+                $oldPath = ltrim(strstr(parse_url($photoUrl, PHP_URL_PATH), '/public/'), '/public/');
+                if ($oldPath && Storage::disk('s3')->exists($oldPath)) {
+                    Storage::disk('s3')->delete($oldPath);
+                }
             }
         }
         $roomType->photos()->delete();
