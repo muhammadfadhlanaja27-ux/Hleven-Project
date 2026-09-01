@@ -678,6 +678,7 @@ const UserProfile = () => {
                   application={partnerApplication}
                   loading={partnerLoading}
                   onFixRevision={handleFixRevision}
+                  approvalNotification={notifications.find(n => n.type === "partner_approved")}
                 />
               )}
             
