@@ -116,11 +116,11 @@ class PartnerApplicationService
             ]);
 
             if ($applicant && $hotelAdmin->id === $applicant->id) {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun Anda telah diupgrade menjadi admin hotel. Silakan login dengan email Anda.";
+                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun Anda telah diupgrade menjadi admin hotel. Silakan login dengan email: {$adminEmail}.";
             } elseif ($generatedPassword) {
                 $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat. Email: {$adminEmail}. Password: {$generatedPassword}. Silakan login dan segera ubah kata sandi Anda.";
             } else {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat.";
+                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat dengan email: {$adminEmail}.";
             }
 
             Notification::create([
