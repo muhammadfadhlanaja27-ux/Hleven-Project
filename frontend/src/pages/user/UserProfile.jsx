@@ -482,13 +482,25 @@ const UserProfile = () => {
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-12 flex flex-col text-left">
         
-        <div className="mb-8">
-          <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
-            My Account
-          </h1>
-          <p className="font-body-md text-sm md:text-base text-[#444842]">
-            Kelola profil pribadi dan riwayat pemesanan kamar Anda.
-          </p>
+        {/* Header dengan Tombol Silang */}
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
+              My Account
+            </h1>
+            <p className="font-body-md text-sm md:text-base text-[#444842]">
+              Kelola profil pribadi dan riwayat pemesanan kamar Anda.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="p-2.5 rounded-full bg-[#faf3ea] hover:bg-[#DCCFC0]/40 text-[#444842] hover:text-[#1e1b16] transition-colors cursor-pointer border border-[#DCCFC0]/40 shadow-xs flex items-center justify-center shrink-0"
+            title="Kembali ke Beranda"
+          >
+            <span className="material-symbols-outlined text-2xl">close</span>
+          </button>
         </div>
 
         {message.text && (

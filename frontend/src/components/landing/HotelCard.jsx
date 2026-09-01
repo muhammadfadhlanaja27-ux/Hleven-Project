@@ -33,37 +33,6 @@ const HotelCard = ({ hotel }) => {
     return hotel.rating || hotel.average_rating || "4.8";
   };
 
-  const renderFacilityIcon = (fac, idx) => {
-    const facObj = typeof fac === 'object' ? fac : null;
-    const facName = (facObj ? facObj.name : String(fac)).toLowerCase();
-    let iconName = facObj?.icon || 'stars';
-    let title = facObj ? facObj.name : String(fac);
-
-    if (!facObj?.icon || facObj.icon === 'stars') {
-      if (facName.includes('wifi')) {
-        iconName = 'wifi';
-      } else if (facName.includes('kolam') || facName.includes('pool')) {
-        iconName = 'pool';
-      } else if (facName.includes('spa') || facName.includes('wellness')) {
-        iconName = 'spa';
-      } else if (facName.includes('restoran') || facName.includes('restaurant') || facName.includes('bar')) {
-        iconName = 'restaurant';
-      } else if (facName.includes('taman') || facName.includes('nature') || facName.includes('park')) {
-        iconName = 'park';
-      } else if (facName.includes('gym') || facName.includes('fitness')) {
-        iconName = 'fitness_center';
-      }
-    }
-
-    return (
-      <span key={idx} className="material-symbols-outlined text-sm text-[#747871]" title={title}>
-        {iconName}
-      </span>
-    );
-  };
-
-  const facilities = Array.isArray(hotel.facilities) ? hotel.facilities : [];
-
   return (
     <div className="bg-[#FDF6ED] rounded-2xl overflow-hidden shadow-sm shadow-[#778873]/10 border border-[#DCCFC0]/40 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col h-full text-left">
       {/* Image Header with Rating Badge */}
@@ -106,11 +75,6 @@ const HotelCard = ({ hotel }) => {
           <span className="font-body-md text-sm truncate">
             {hotel.address || (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) || "Bandung, Jawa Barat"}
           </span>
-        </div>
-
-        {/* Facilities icons */}
-        <div className="flex gap-3 mb-5">
-          {facilities.slice(0, 4).map(renderFacilityIcon)}
         </div>
 
         {/* Bottom Price & Action */}

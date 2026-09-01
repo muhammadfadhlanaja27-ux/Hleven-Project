@@ -347,9 +347,6 @@ const HotelDetail = () => {
                   {hotel.description ||
                     `Terletak di lokasi strategis ${hotelCityName}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
                 </p>
-                <p className="text-sm md:text-base text-[#444842]">
-                  Nikmati fasilitas kelas dunia, mulai dari kamar berdesain elegan, layanan resepsionis 24 jam, kolam renang dengan pemandangan menakjubkan, hingga pilihan restoran bersantap dengan hidangan lezat. Destinasi sempurna bagi Anda yang mencari ketenangan dan pengalaman tak terlupakan.
-                </p>
               </div>
             </section>
 
