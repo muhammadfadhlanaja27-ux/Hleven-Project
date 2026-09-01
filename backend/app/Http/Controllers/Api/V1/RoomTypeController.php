@@ -187,15 +187,16 @@ class RoomTypeController extends Controller
             $roomType->facilities()->sync($request->facilities);
         }
 
-        // Simpan foto tambahan jika ada
+        // Simpan foto tambahan jika ada; pastikan foto baru menjadi thumbnail utama
         if ($request->hasFile('photos')) {
-            $hasThumbnail = $roomType->photos()->where('is_thumbnail', true)->exists();
+            $roomType->photos()->update(['is_thumbnail' => false]);
+
             foreach ($request->file('photos') as $index => $photo) {
                 $path = $photo->store('room_types', 's3');
                 $url = Storage::disk('s3')->url($path);
                 $roomType->photos()->create([
                     'photo' => $url,
-                    'is_thumbnail' => !$hasThumbnail && $index === 0,
+                    'is_thumbnail' => $index === 0,
                 ]);
             }
         }

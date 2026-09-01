@@ -16,25 +16,23 @@ class FacilityController extends Controller
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
         $query = Facility::query();
 
-        // Jika dipanggil oleh Admin Hotel yang sedang login
-        if ($user && ($user->role === 'admin_hotel' || $user->role === 'admin')) {
-            $hotel = $user->hotel ?? $user->hotels()->first();
+        // Admin hotel hanya melihat fasilitas milik hotelnya sendiri.
+        // Global facilities yang NULL hanya dipakai untuk data master umum bila memang diperlukan,
+        // tetapi untuk kasus per-hotel yang dibutuhkan saat ini kita batasi ke hotel yang login.
+        if ($user && in_array($user->role, ['admin_hotel', 'admin'])) {
+            $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
             if ($hotel) {
-                $query->where(function ($q) use ($hotel) {
-                    $q->where('hotel_id', $hotel->id)
-                      ->orWhereNull('hotel_id');
-                });
+                $query->where('hotel_id', $hotel->id);
             }
         } elseif ($request->has('hotel_id')) {
             $hotelId = $request->hotel_id;
-            $query->where(function ($q) use ($hotelId) {
-                $q->where('hotel_id', $hotelId)
-                  ->orWhereNull('hotel_id');
-            });
+            $query->where('hotel_id', $hotelId);
         }
 
-        if ($request->has('category')) {
-            $query->where('category', $request->category);
+        // PERBAIKAN: Gunakan LOWER() agar pencarian kategori 'hotel', 'Hotel', maupun 'HOTEL' tetap valid
+        if ($request->has('category') && !empty($request->category)) {
+            $cat = strtolower($request->category);
+            $query->whereRaw('LOWER(category) = ?', [$cat]);
         }
 
         $facilities = $query->latest()->get();
@@ -50,27 +48,30 @@ class FacilityController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
-        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first() ?? Hotel::first()) : null;
 
         $request->validate([
             'name'        => 'required|string|max:255',
-            'category'    => 'required|in:Hotel,Room,Bathroom',
+            'category'    => 'required|string',
             'icon'        => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
             'status'      => 'nullable|in:active,inactive',
         ]);
 
+        // Format huruf kapital di awal (contoh: 'hotel' -> 'Hotel')
+        $formattedCategory = ucfirst(strtolower($request->category));
+
         $facility = Facility::create([
             'hotel_id'    => $hotel ? $hotel->id : null,
             'name'        => $request->name,
-            'category'    => $request->category,
+            'category'    => $formattedCategory,
             'icon'        => $request->icon ?? 'star',
             'description' => $request->description,
             'status'      => $request->status ?? 'active',
         ]);
 
         // Jika kategori Hotel, otomatis hubungkan ke hotel_facilities hotel tersebut
-        if ($hotel && $request->category === 'Hotel') {
+        if ($hotel && $formattedCategory === 'Hotel') {
             $hotel->facilities()->syncWithoutDetaching([$facility->id]);
         }
 
@@ -85,7 +86,7 @@ class FacilityController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
-        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first() ?? Hotel::first()) : null;
 
         $facility = Facility::when($hotel, function ($q) use ($hotel) {
             return $q->where(function ($sub) use ($hotel) {
@@ -96,13 +97,19 @@ class FacilityController extends Controller
 
         $request->validate([
             'name'        => 'sometimes|string|max:255',
-            'category'    => 'sometimes|in:Hotel,Room,Bathroom',
+            'category'    => 'sometimes|string',
             'icon'        => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
             'status'      => 'nullable|in:active,inactive',
         ]);
 
-        $facility->update($request->only(['name', 'category', 'icon', 'description', 'status']));
+        $updateData = $request->only(['name', 'icon', 'description', 'status']);
+        
+        if ($request->has('category')) {
+            $updateData['category'] = ucfirst(strtolower($request->category));
+        }
+
+        $facility->update($updateData);
 
         return response()->json([
             'success' => true,
@@ -115,7 +122,7 @@ class FacilityController extends Controller
     public function destroy(Request $request, $id): JsonResponse
     {
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
-        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first() ?? Hotel::first()) : null;
 
         $facility = Facility::when($hotel, function ($q) use ($hotel) {
             return $q->where(function ($sub) use ($hotel) {
@@ -132,4 +139,3 @@ class FacilityController extends Controller
         ], 200);
     }
 }
-

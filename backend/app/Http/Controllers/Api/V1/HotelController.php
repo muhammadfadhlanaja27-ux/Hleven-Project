@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
+use App\Models\HotelPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -165,7 +166,7 @@ class HotelController extends Controller
         $hotel = Hotel::findOrFail($id);
 
         $request->validate([
-            'photo'        => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'photo'        => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
             'is_thumbnail' => 'boolean',
         ]);
 
@@ -189,19 +190,22 @@ class HotelController extends Controller
     }
 
     /**
-     * Hapus foto galeri hotel
+     * Hapus foto galeri hotel (Support 1 parameter photoId atau 2 parameter hotelId & photoId)
      */
-    public function deletePhoto($hotelId, $photoId): JsonResponse
+    public function deletePhoto(Request $request, $param1, $param2 = null): JsonResponse
     {
-        $hotel = Hotel::findOrFail($hotelId);
-        $photo = $hotel->photos()->findOrFail($photoId);
+        $photoId = $param2 !== null ? $param2 : $param1;
 
         if ($photo->photo) {
             app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
         }
 
+        // Hapus data dari PostgreSQL
         $photo->delete();
 
-        return response()->json(['success' => true, 'message' => 'Foto hotel berhasil dihapus'], 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto hotel berhasil dihapus'
+        ], 200);
     }
 }

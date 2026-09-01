@@ -133,14 +133,17 @@ export default function RoomCreate() {
   useEffect(() => {
     const fetchRoomFacilities = async () => {
       try {
-        const { data: resData } = await cachedGet("/facilities");
-        const allFacilities = resData?.success
-          ? resData.data
-          : Array.isArray(resData) ? resData : [];
-        const filtered = allFacilities.filter(
-          (f) => f.category === "Room" || f.category === "Bathroom"
-        );
-        setRoomFacilities(Array.isArray(filtered) ? filtered : []);
+        const { data: responseData } = await cachedGet("/facilities");
+        const payload = responseData ?? [];
+        const allFacilities = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+        const filtered = Array.isArray(allFacilities)
+          ? allFacilities.filter((f) => f.category === "Room" || f.category === "Bathroom")
+          : [];
+        setRoomFacilities(filtered);
       } catch (err) {
         console.error("Failed to load room facilities:", err);
         setRoomFacilities([]);

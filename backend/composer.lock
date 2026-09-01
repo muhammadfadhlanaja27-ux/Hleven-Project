@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "952da5a63cd3c01385f8548948a195b3",
+    "content-hash": "9cac990974ca85d03b4b0270d758696e",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -2579,21 +2579,21 @@
         },
         {
             "name": "league/flysystem-aws-s3-v3",
-            "version": "3.35.3",
+            "version": "3.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/flysystem-aws-s3-v3.git",
-                "reference": "b03780cb97585ee7e48977f40ed599b33b751634"
+                "reference": "f8ba6a92a5c1fdcbdd89dede009a1e6e1b93ba8c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/flysystem-aws-s3-v3/zipball/b03780cb97585ee7e48977f40ed599b33b751634",
-                "reference": "b03780cb97585ee7e48977f40ed599b33b751634",
+                "url": "https://api.github.com/repos/thephpleague/flysystem-aws-s3-v3/zipball/f8ba6a92a5c1fdcbdd89dede009a1e6e1b93ba8c",
+                "reference": "f8ba6a92a5c1fdcbdd89dede009a1e6e1b93ba8c",
                 "shasum": ""
             },
             "require": {
-                "aws/aws-sdk-php": "^3.371.5",
-                "league/flysystem": "^3.10.0",
+                "aws/aws-sdk-php": "^3.132.4",
+                "league/flysystem": "^2.0.0 || ^3.0.0",
                 "league/mime-type-detection": "^1.0.0",
                 "php": "^8.0.2"
             },
@@ -2628,9 +2628,10 @@
                 "storage"
             ],
             "support": {
-                "source": "https://github.com/thephpleague/flysystem-aws-s3-v3/tree/3.35.3"
+                "issues": "https://github.com/thephpleague/flysystem-aws-s3-v3/issues",
+                "source": "https://github.com/thephpleague/flysystem-aws-s3-v3/tree/3.0.0"
             },
-            "time": "2026-08-08T16:19:23+00:00"
+            "time": "2022-01-13T21:11:49+00:00"
         },
         {
             "name": "league/flysystem-local",
@@ -10562,12 +10563,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.3"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }

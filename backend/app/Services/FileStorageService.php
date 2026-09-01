@@ -14,45 +14,74 @@ class FileStorageService
     /**
      * Mengunggah file ke direktori tertentu dan mengembalikan path[cite: 1]
      */
+    protected function buildPublicUrl(string $path): string
+    {
+        $baseUrl = trim((string) config('filesystems.disks.s3.url'));
+        $path = ltrim($path, '/');
+
+        if ($baseUrl !== '') {
+            return rtrim($baseUrl, '/') . '/' . $path;
+        }
+
+        $bucket = trim((string) config('filesystems.disks.s3.bucket'));
+        $endpoint = trim((string) config('filesystems.disks.s3.endpoint'));
+
+        if ($bucket !== '' && $endpoint !== '') {
+            return rtrim($endpoint, '/') . '/' . $bucket . '/' . $path;
+        }
+
+        return url('/storage/' . $path);
+    }
+
     public function uploadFile(UploadedFile $file, string $directory): string
     {
         // Menyimpan file secara otomatis menggunakan hash name bawaan Laravel
-        return Storage::disk('s3')->url($file->store($directory, 's3'));
+        $storedPath = $file->store($directory, 's3');
+
+        return $this->buildPublicUrl($storedPath);
+    }
+
+    protected function normalizeStoragePath(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?? $url;
+        $path = ltrim($path, '/');
+
+        $bucket = trim((string) config('filesystems.disks.s3.bucket'));
+        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
+            $path = substr($path, strlen($bucket) + 1);
+        }
+
+        if (preg_match('#^(?:storage(?:/v1)?/)?(?:object/)?(?:public/)?(.+)$#i', $path, $matches)) {
+            $path = $matches[1];
+        }
+
+        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
+            $path = substr($path, strlen($bucket) + 1);
+        }
+
+        return ltrim($path, '/');
     }
 
     /**
      * Menghapus file fisik dari storage[cite: 1]
      */
-    public function resolveStoragePath(?string $url): ?string
-    {
-        if (!$url) return null;
-        if (!str_starts_with($url, 'http')) return ltrim($url, '/');
-
-        $path = parse_url($url, PHP_URL_PATH);
-        if (!$path) return null;
-
-        $path = ltrim($path, '/');
-        $bucket = trim((string) env('AWS_BUCKET'), '/');
-        $prefixes = [
-            'storage/v1/s3/' . $bucket . '/',
-            'storage/v1/object/public/' . $bucket . '/',
-            $bucket . '/',
-        ];
-
-        foreach ($prefixes as $prefix) {
-            if ($prefix !== '' && str_starts_with($path, $prefix)) {
-                return substr($path, strlen($prefix));
-            }
-        }
-
-        return $path;
-    }
-
     public function deleteFile(?string $url): void
     {
-        $path = $this->resolveStoragePath($url);
-        if ($path && Storage::disk('s3')->exists($path)) {
-            Storage::disk('s3')->delete($path);
+        if (!$url) return;
+
+        try {
+            $path = $this->normalizeStoragePath($url);
+
+            if ($path && Storage::disk('s3')->exists($path)) {
+                Storage::disk('s3')->delete($path);
+            }
+        } catch (\Throwable $e) {
+            // Jangan mematikan request ketika file lama sudah rusak atau path storage tidak valid.
+            return;
         }
     }
 

@@ -1,8 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+
+const normalizeImageUrl = (value) => {
+  if (!value) return "";
+  const str = String(value).trim();
+  if (!str) return "";
+  if (/^https?:\/\//i.test(str) || /^data:/i.test(str)) return str;
+  if (str.startsWith("/")) return `http://localhost:8000${str}`;
+  if (str.startsWith("storage/")) return `http://localhost:8000/${str}`;
+  if (str.startsWith("public/")) return `http://localhost:8000/storage/${str.replace(/^public\//, "")}`;
+  return `http://localhost:8000/storage/${str.replace(/^\/+/, "")}`;
+};
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
@@ -105,12 +116,9 @@ const normalizeRoom = (r) => {
   if (Array.isArray(r.photos)) {
     photos = r.photos.map((p) => {
       const imgPath = p.photo || p.image_path || p.url || "";
-      const fullUrl = imgPath.startsWith("http")
-        ? imgPath
-        : `http://localhost:8000/storage/${imgPath}`;
       return {
         id: p.id,
-        url: fullUrl,
+        url: normalizeImageUrl(imgPath),
         name: p.name || (imgPath ? imgPath.split("/").pop() : "room.jpg"),
       };
     });
@@ -170,12 +178,14 @@ export default function RoomList() {
   const [editingRoom, setEditingRoom] = useState(null);
   const [deletingRoom, setDeletingRoom] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const photoInputRef = useRef(null);
 
   // Edit Form Values & Errors
   const [editValues, setEditValues] = useState({});
   const [editErrors, setEditErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [editNewPhotoFiles, setEditNewPhotoFiles] = useState([]); // raw File objects untuk upload baru
+  const [deletedPhotoIds, setDeletedPhotoIds] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -194,11 +204,13 @@ export default function RoomList() {
           roomsRes.value.data.data || roomsRes.value.data || [];
         setRooms(Array.isArray(rawRooms) ? rawRooms.map(normalizeRoom) : []);
       }
-      if (facilitiesRes.status === "fulfilled" && facilitiesRes.value?.data) {
-        const cachedResult = facilitiesRes.value;
-        const rawFac = cachedResult?.success
-          ? cachedResult.data
-          : Array.isArray(cachedResult) ? cachedResult : [];
+      if (facilitiesRes.status === "fulfilled") {
+        const payload = facilitiesRes.value?.data ?? facilitiesRes.value ?? [];
+        const rawFac = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
         const filtered = Array.isArray(rawFac)
           ? rawFac.filter((f) => f.category === "Room" || f.category === "Bathroom")
           : [];
@@ -270,6 +282,7 @@ export default function RoomList() {
   const handleOpenEdit = (room) => {
     setEditingRoom(room);
     setEditNewPhotoFiles([]);
+    setDeletedPhotoIds([]);
     setEditValues({
       name: room.name,
       description: room.description || "",
@@ -284,6 +297,9 @@ export default function RoomList() {
       status: room.status || "Available",
     });
     setEditErrors({});
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
   };
 
   // Edit Input Change
@@ -315,15 +331,21 @@ export default function RoomList() {
       id: `p-new-${Date.now()}-${idx}`,
       url: URL.createObjectURL(file),
       name: file.name,
-      isNew: true, // tandai sebagai foto baru (belum di-upload)
+      file,
+      isNew: true,
+      is_thumbnail: true,
     }));
 
-    // Simpan file asli untuk dikirim ke backend
     setEditNewPhotoFiles((prev) => [...prev, ...files]);
 
     setEditValues((prev) => ({
       ...prev,
-      photos: [...(prev.photos || []), ...newPhotos],
+      photos: [...(prev.photos || []), ...newPhotos].map((photo, index, arr) => {
+        if (photo.isNew) {
+          return { ...photo, is_thumbnail: index === arr.length - 1 };
+        }
+        return { ...photo, is_thumbnail: false };
+      }),
     }));
     toast.success(`${files.length} foto berhasil ditambahkan!`);
   };
@@ -332,11 +354,15 @@ export default function RoomList() {
   const handleRemovePhoto = (photoId) => {
     setEditValues((prev) => {
       const removed = (prev.photos || []).find((p) => p.id === photoId);
-      // Jika foto baru (belum tersimpan di DB), hapus juga dari editNewPhotoFiles
       if (removed?.isNew) {
         setEditNewPhotoFiles((files) =>
           files.filter((f) => f.name !== removed.name)
         );
+      } else if (removed && removed.id && !String(removed.id).startsWith("p-new-")) {
+        setDeletedPhotoIds((prevIds) => {
+          if (prevIds.includes(removed.id)) return prevIds;
+          return [...prevIds, removed.id];
+        });
       }
       return {
         ...prev,
@@ -369,9 +395,17 @@ export default function RoomList() {
     setIsSaving(true);
 
     try {
-      // Gunakan FormData agar bisa kirim foto baru sekaligus
+      const currentExistingIds = (editingRoom.photos || []).map((p) => p.id);
+      const currentPhotoIds = (editValues.photos || [])
+        .filter((p) => !p.isNew)
+        .map((p) => p.id);
+      const photosToDelete = currentExistingIds.filter((id) => !currentPhotoIds.includes(id));
+      const photosToUpload = (editValues.photos || [])
+        .filter((p) => p.isNew && p.file)
+        .map((p) => p.file);
+
       const payload = new FormData();
-      payload.append("_method", "PUT"); // Laravel method spoofing
+      payload.append("_method", "PUT");
       payload.append("name", editValues.name.trim());
       payload.append("type", editValues.type || "Standard");
       payload.append("description", editValues.description?.trim() || "");
@@ -381,10 +415,8 @@ export default function RoomList() {
       payload.append("capacity_child", Number(editValues.capacity_child || 0));
       payload.append("stock", Number(editValues.stock));
 
-      // Kirim facilities (array ID)
       const facilityIds = editValues.facilityIds || [];
       if (facilityIds.length === 0) {
-        // Kirim array kosong agar backend melakukan detach semua
         payload.append("facilities", "");
       } else {
         facilityIds.forEach((fId, idx) => {
@@ -392,8 +424,15 @@ export default function RoomList() {
         });
       }
 
-      // Kirim foto baru jika ada
-      editNewPhotoFiles.forEach((file) => {
+      for (const photoId of photosToDelete) {
+        try {
+          await api.delete(`/room-photos/${photoId}`);
+        } catch (deleteErr) {
+          console.error("Failed to delete room photo:", deleteErr);
+        }
+      }
+
+      photosToUpload.forEach((file) => {
         payload.append("photos[]", file);
       });
 
@@ -404,6 +443,7 @@ export default function RoomList() {
       toast.success("Room updated successfully.");
       setEditingRoom(null);
       setEditNewPhotoFiles([]);
+      setDeletedPhotoIds([]);
       loadData();
     } catch (error) {
       console.error(error);
@@ -1167,6 +1207,57 @@ export default function RoomList() {
                       </label>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                    5. Room Photos
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="px-3 py-2 bg-[#506147] text-white text-[10px] font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors"
+                  >
+                    + Add Photo
+                  </button>
+                </div>
+
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleEditPhotoUpload}
+                />
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {(editValues.photos || []).map((photo) => (
+                    <div key={photo.id} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[#E5E1DA] bg-[#fcf9f5]">
+                      <img
+                        src={photo.url}
+                        alt={photo.name}
+                        className="h-full w-full object-cover"
+                        onClick={() => setPreviewPhoto(photo)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(photo.id)}
+                        className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                        title="Remove photo"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+
+                  {(editValues.photos || []).length === 0 && (
+                    <div className="col-span-full rounded-xl border border-dashed border-[#D5CFC3] bg-[#fcf9f5] p-6 text-center text-xs text-[#6B6E6A]">
+                      Belum ada foto kamar. Tambahkan foto untuk menampilkan tampilan kamar.
+                    </div>
+                  )}
                 </div>
               </div>
 
