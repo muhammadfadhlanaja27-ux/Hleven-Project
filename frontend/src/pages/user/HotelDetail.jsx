@@ -124,7 +124,7 @@ const HotelDetail = () => {
 
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
-    let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
+    let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url || photoItem.image_path : photoItem;
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
     return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
@@ -155,25 +155,31 @@ const HotelDetail = () => {
     );
   }
 
-  // Raw Photos List — HANYA foto asli dari API, TIDAK ada default Unsplash
+  // Himpun semua foto unik dari list foto API & thumbnail hotel
   const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : [])
     .filter(p => {
       const pth = typeof p === "object" ? (p.photo || p.url || p.image_path) : p;
       return !!pth;
     });
 
-  // Aman dari thumbnail NULL / undefined
+  // Aman dari thumbnail NULL / undefined, jangan sampai terduplikasi jika sudah ada di array photos
   const thumbObj = hotel && hotel.thumbnail != null ? hotel.thumbnail : null;
   const hotelThumb = thumbObj
     ? (typeof thumbObj === "object"
         ? (thumbObj.photo || thumbObj.url || thumbObj.image_path || null)
         : thumbObj)
     : null;
-  if (hotelThumb) rawPhotos.unshift(hotelThumb);
 
-  const photosList = rawPhotos
-    .map(getImageUrl)
-    .filter(url => !!url);
+  const resolvedUrls = rawPhotos.map(getImageUrl).filter(Boolean);
+  if (hotelThumb) {
+    const resolvedThumb = getImageUrl(hotelThumb);
+    if (resolvedThumb && !resolvedUrls.includes(resolvedThumb)) {
+      resolvedUrls.unshift(resolvedThumb);
+    }
+  }
+
+  // Deduplikasi foto agar tidak ada URL yang sama tampil 2 kali
+  const photosList = Array.from(new Set(resolvedUrls));
   const hasHotelPhotos = photosList.length > 0;
 
   // Facility list mapping

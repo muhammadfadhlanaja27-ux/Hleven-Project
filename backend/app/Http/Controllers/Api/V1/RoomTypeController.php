@@ -222,7 +222,7 @@ class RoomTypeController extends Controller
         foreach ($roomType->photos as $photo) {
             $photoUrl = $photo->photo ?? $photo->image_path ?? null;
             if ($photoUrl) {
-                $oldPath = ltrim(strstr(parse_url($photoUrl, PHP_URL_PATH), '/public/'), '/public/');
+                $oldPath = ltrim(parse_url($photoUrl, PHP_URL_PATH), '/');
                 if ($oldPath && Storage::disk('s3')->exists($oldPath)) {
                     Storage::disk('s3')->delete($oldPath);
                 }

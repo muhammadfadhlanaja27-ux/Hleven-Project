@@ -255,8 +255,8 @@ class RoomController extends Controller
             // Hapus berkas foto fisik dari storage
             foreach ($room->photos as $photo) {
                 if ($photo->photo) {
-                    $oldPath = ltrim(strstr(parse_url($photo->photo, PHP_URL_PATH), '/public/'), '/public/');
-                    if (Storage::disk('s3')->exists($oldPath)) {
+                    $oldPath = ltrim(parse_url($photo->photo, PHP_URL_PATH), '/');
+                    if ($oldPath && Storage::disk('s3')->exists($oldPath)) {
                         Storage::disk('s3')->delete($oldPath);
                     }
                 }
