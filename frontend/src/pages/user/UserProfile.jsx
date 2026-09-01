@@ -11,8 +11,6 @@ const UserProfile = () => {
   const location = useLocation();
   const defaultTabFromRoute = location.state?.defaultTab;
 
-  // Parse initial user role SEKALI saat mount (sebelum useState init)
-  // untuk menentukan default tab dan visibilitas fitur mitra
   const getInitialUser = () => {
     try {
       const saved = localStorage.getItem("user");
@@ -26,8 +24,6 @@ const UserProfile = () => {
   const isAdminOrSuperAdmin =
     initialRole === "admin_hotel" || initialRole === "super_admin";
 
-  // Default tab: jika admin hotel/super admin, default ke "personal"
-  // (karena admin tidak perlu daftar mitra), user biasa tetap ke "partner"
   const [activeTab, setActiveTab] = useState(() => {
     if (defaultTabFromRoute) {
       if (isAdminOrSuperAdmin && defaultTabFromRoute === "partner") return "personal";
@@ -63,7 +59,7 @@ const UserProfile = () => {
 
   // Booking History States
   const [bookings, setBookings] = useState([]);
-  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All"); // 'All' | 'Pending' | 'Paid' | 'Cancelled'
   const [sortBy, setSortBy] = useState("newest");
   const [selectedBooking, setSelectedBooking] = useState(null);
 
@@ -75,7 +71,6 @@ const UserProfile = () => {
   // Logout Confirmation Modal State
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Load User Data, Bookings, Partner Status
   const fetchUserBookings = async () => {
     try {
       const TTL_30DETIK = 30 * 1000;
@@ -172,10 +167,7 @@ const UserProfile = () => {
         setEmail(u.email || "");
         setPhone(u.phone || "");
 
-        // Jika role adalah admin_hotel/super_admin → paksa activeTab ke "personal"
-        // (fitur daftar mitra tidak tersedia untuk admin)
-        const isAdmin =
-          role === "admin_hotel" || role === "super_admin";
+        const isAdmin = role === "admin_hotel" || role === "super_admin";
         if (isAdmin) {
           setActiveTab((prev) => (prev === "partner" ? "personal" : prev));
         }
@@ -198,13 +190,7 @@ const UserProfile = () => {
 
     fetchUserBookings();
 
-    // Hanya fetch status pendaftaran mitra jika user adalah user biasa (bukan admin)
-    // Admin hotel/super admin SUDAH menjadi bagian dari operasional hotel,
-    // sehingga tidak perlu (dan tidak bisa) mendaftar sebagai mitra lagi.
-    if (
-      currentUserRole !== "admin_hotel" &&
-      currentUserRole !== "super_admin"
-    ) {
+    if (currentUserRole !== "admin_hotel" && currentUserRole !== "super_admin") {
       fetchPartnerStatus();
     } else {
       setPartnerApplication(null);
@@ -386,19 +372,18 @@ const UserProfile = () => {
     }
   };
 
+  // Filter Status Logic
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
 
     if (filterStatus !== "All") {
-      if (filterStatus === "Upcoming") {
+      if (filterStatus === "Pending") {
+        result = result.filter((b) => ["pending", "unpaid"].includes(b.status));
+      } else if (filterStatus === "Paid") {
         result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(b.status));
-      } else if (filterStatus === "Pending") {
-        result = result.filter((b) => b.status === "pending" || b.status === "unpaid");
-      } else if (filterStatus === "Past") {
-        result = result.filter((b) => ["Checked Out", "Selesai", "completed", "checked_out"].includes(b.status));
       } else if (filterStatus === "Cancelled") {
         result = result.filter((b) =>
-          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "refund_pending", "expired", "cancelled"].includes(b.status)
+          ["Cancelled", "cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "refund_pending", "expired"].includes(b.status)
         );
       }
     }
@@ -414,7 +399,6 @@ const UserProfile = () => {
     return result;
   }, [bookings, filterStatus, sortBy]);
 
-  // Eksekusi Konfirmasi Logout
   const handleConfirmLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -442,7 +426,7 @@ const UserProfile = () => {
           <div className="bg-[#4F6F52]/10 backdrop-blur-sm border border-[#4F6F52]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#4F6F52]"></span>
             <span className="font-label-sm text-xs text-[#4F6F52] font-bold uppercase tracking-wider">
-              Paid / Dikonfirmasi
+              Sudah Dibayar
             </span>
           </div>
         );
@@ -590,10 +574,6 @@ const UserProfile = () => {
             </div>
 
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
-              {/* Fitur "Daftar / Status Mitra Hotel" HANYA ditampilkan untuk user biasa (role user).
-                  Admin Hotel (role admin_hotel) dan Super Admin (role super_admin) SUDAH menjadi
-                  bagian dari operasional hotel, sehingga tidak boleh (dan tidak perlu) mendaftar
-                  sebagai mitra hotel lagi. Ketika role adalah admin, button ini di-hidden. */}
               {currentUserRole !== "admin_hotel" &&
                 currentUserRole !== "super_admin" && (
                   <button
@@ -668,9 +648,6 @@ const UserProfile = () => {
           </aside>
 
           <div className="lg:col-span-8 flex flex-col gap-8">
-
-            {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
-                Untuk admin_hotel / super_admin — fitur ini tidak tersedia. */}
             {currentUserRole !== "admin_hotel" &&
               currentUserRole !== "super_admin" &&
               activeTab === "partner" && (
@@ -681,108 +658,107 @@ const UserProfile = () => {
                 />
               )}
             
-{activeTab === "notifications" && (
-                <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
-                  <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-[#778873] text-2xl">
-                        notifications
-                      </span>
-                      <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
-                        Notifikasi
-                      </h3>
-                    </div>
-                    {notifications.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleMarkAllAsRead}
-                        className="text-xs font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
-                      >
-                        Tandai semua dibaca
-                      </button>
-                    )}
+            {activeTab === "notifications" && (
+              <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
+                <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[#778873] text-2xl">
+                      notifications
+                    </span>
+                    <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
+                      Notifikasi
+                    </h3>
                   </div>
+                  {notifications.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllAsRead}
+                      className="text-xs font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
+                    >
+                      Tandai semua dibaca
+                    </button>
+                  )}
+                </div>
 
-                  {notificationsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <span className="material-symbols-outlined animate-spin text-[#778873] text-2xl">
-                        progress_activity
-                      </span>
-                      <span className="ml-3 text-sm text-[#444842]">Memuat notifikasi...</span>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <span className="material-symbols-outlined text-5xl text-[#747871] mb-3">
-                        notifications_off
-                      </span>
-                      <p className="text-[#444842] text-sm font-medium">
-                        Belum ada notifikasi.
-                      </p>
-                      <p className="text-[#747871] text-xs mt-1">
-                        Notifikasi tentang pengajuan mitra, penerimaan, dan informasi lainnya akan muncul di sini.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {notifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          className={`p-4 rounded-xl border transition-all ${
-                            notif.is_read
-                              ? "bg-[#faf3ea] border-[#DCCFC0]/40"
-                              : "bg-[#e8e2d9]/40 border-[#778873]/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">
-                              {notif.type === "partner_approved" ? "check_circle" : "notifications"}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-label-md text-sm font-bold text-[#2D332C]">
-                                  {notif.title}
-                                </h4>
-                                {!notif.is_read && (
-                                  <span className="w-2 h-2 rounded-full bg-[#ba1a1a] shrink-0"></span>
-                                )}
-                              </div>
-                              <p className="font-body-md text-xs text-[#444842] leading-relaxed whitespace-pre-wrap">
-                                {notif.message}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-[10px] text-[#747871]">
-                                  {notif.created_at
-                                    ? new Date(notif.created_at).toLocaleString("id-ID", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })
-                                    : "Baru saja"}
-                                </span>
-                                {!notif.is_read && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkAsRead(notif.id)}
-                                    className="text-[10px] font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
-                                  >
-                                    Tandai dibaca
-                                  </button>
-                                )}
-                              </div>
+                {notificationsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <span className="material-symbols-outlined animate-spin text-[#778873] text-2xl">
+                      progress_activity
+                    </span>
+                    <span className="ml-3 text-sm text-[#444842]">Memuat notifikasi...</span>
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <span className="material-symbols-outlined text-5xl text-[#747871] mb-3">
+                      notifications_off
+                    </span>
+                    <p className="text-[#444842] text-sm font-medium">
+                      Belum ada notifikasi.
+                    </p>
+                    <p className="text-[#747871] text-xs mt-1">
+                      Notifikasi tentang pengajuan mitra, penerimaan, dan informasi lainnya akan muncul di sini.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-4 rounded-xl border transition-all ${
+                          notif.is_read
+                            ? "bg-[#faf3ea] border-[#DCCFC0]/40"
+                            : "bg-[#e8e2d9]/40 border-[#778873]/30"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">
+                            {notif.type === "partner_approved" ? "check_circle" : "notifications"}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-label-md text-sm font-bold text-[#2D332C]">
+                                {notif.title}
+                              </h4>
+                              {!notif.is_read && (
+                                <span className="w-2 h-2 rounded-full bg-[#ba1a1a] shrink-0"></span>
+                              )}
+                            </div>
+                            <p className="font-body-md text-xs text-[#444842] leading-relaxed whitespace-pre-wrap">
+                              {notif.message}
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-[10px] text-[#747871]">
+                                {notif.created_at
+                                  ? new Date(notif.created_at).toLocaleString("id-ID", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "Baru saja"}
+                              </span>
+                              {!notif.is_read && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkAsRead(notif.id)}
+                                  className="text-[10px] font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
+                                >
+                                  Tandai dibaca
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
-              {activeTab === "personal" && (
-                <>
-                {/* Personal Information Section */}
+            {activeTab === "personal" && (
+              <>
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
                   <div className="flex items-center gap-3 mb-6 border-b border-[#DCCFC0]/30 pb-4">
                     <span className="material-symbols-outlined text-[#778873] text-2xl">
@@ -937,32 +913,42 @@ const UserProfile = () => {
 
             {activeTab === "history" && (
               <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
-                      Filter:
-                    </span>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
-                    >
-                      <option value="All">Semua Pesanan</option>
-                      <option value="Pending">Menunggu Pembayaran</option>
-                      <option value="Upcoming">Upcoming / Lunas</option>
-                      <option value="Past">Selesai (Checked Out)</option>
-                      <option value="Cancelled">Dibatalkan / Expired</option>
-                    </select>
+                
+                {/* BAR FILTER DENGAN SEGMENTED CONTAINER RAPI */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FDF6ED] p-2.5 md:p-3 rounded-2xl border border-[#DCCFC0]/60 shadow-xs">
+                  
+                  {/* Filter Status: Selalu 1 Baris Horizontal dengan Smooth Scroll jika Layar Sempit */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 w-full sm:w-auto">
+                    {[
+                      { key: "All", label: "Semua" },
+                      { key: "Pending", label: "Belum Bayar" },
+                      { key: "Paid", label: "Sudah Dibayar" },
+                      { key: "Cancelled", label: "Dibatalkan / Expired" },
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setFilterStatus(tab.key)}
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                          filterStatus === tab.key
+                            ? "bg-[#778873] text-white shadow-xs font-bold"
+                            : "text-[#444842] hover:bg-[#DCCFC0]/40 hover:text-[#1e1b16]"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
 
-                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                    <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
+                  {/* Dropdown Urutan */}
+                  <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#DCCFC0]/40">
+                    <span className="font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider">
                       Urutkan:
                     </span>
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873]"
+                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-1.5 text-xs font-semibold text-[#1e1b16] focus:outline-none focus:border-[#778873] cursor-pointer"
                     >
                       <option value="newest">Tanggal (Terbaru)</option>
                       <option value="oldest">Tanggal (Terlama)</option>
@@ -1106,7 +1092,7 @@ const UserProfile = () => {
         </div>
       </main>
 
-      {/* MODAL KONFIRMASI LOGOUT KUSTOM */}
+      {/* MODAL KONFIRMASI LOGOUT */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 text-center space-y-4 animate-in zoom-in-95 duration-200">

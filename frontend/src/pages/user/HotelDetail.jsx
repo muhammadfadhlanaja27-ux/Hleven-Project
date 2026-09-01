@@ -393,28 +393,25 @@ const HotelDetail = () => {
                 Lokasi
               </h2>
               <div className="rounded-2xl overflow-hidden shadow-sm border border-[#DCCFC0]/40 bg-[#faf3ea]">
-                <div className="w-full h-56 bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] relative overflow-hidden flex items-center justify-center border-b border-[#DCCFC0]/40">
-                  <div className="absolute inset-0 opacity-30">
-                    <svg className="w-full h-full" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M0,50 Q50,30 100,50 T200,50 L200,100 Q150,80 100,100 T0,100 Z" fill="#778873" fillOpacity="0.2" />
-                      <path d="M0,120 Q50,100 100,120 T200,120 L200,170 Q150,150 100,170 T0,170 Z" fill="#778873" fillOpacity="0.15" />
-                    </svg>
-                  </div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="material-symbols-outlined text-5xl text-[#778873] drop-shadow-sm mb-1">
-                      location_on
-                    </span>
-                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] bg-white/90 px-3 py-1 rounded-full shadow-sm">
-                      {hotelCityName}
-                    </span>
-                  </div>
+                
+                {/* Google Maps Embed Iframe */}
+                <div className="w-full h-56 relative border-b border-[#DCCFC0]/40 overflow-hidden bg-[#e8e2d9]">
+                  <iframe
+                    title="Peta Lokasi Hotel"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                      `${hotel.name} ${hotelAddress}`
+                    )}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                  ></iframe>
                 </div>
+
                 <div className="p-5 bg-[#FDF6ED] text-left">
                   <p className="font-label-md text-sm font-semibold text-[#1e1b16]">
                     {hotel.name}
-                  </p>
-                  <p className="font-body-md text-xs text-[#444842] mt-1">
-                    Berjarak 8.5 km dari pusat kota.
                   </p>
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + " " + hotelAddress)}`}
@@ -595,7 +592,7 @@ const HotelDetail = () => {
                     key={room.id}
                     className="flex flex-col md:flex-row bg-[#faf3ea] rounded-2xl overflow-hidden border border-[#DCCFC0]/40 shadow-sm shadow-[#778873]/5 hover:shadow-md transition-shadow"
                   >
-                    {/* Room Thumbnail Container - Ukuran Proporsional & Tidak Mengkerut */}
+                    {/* Room Thumbnail Container */}
                     <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
                       {room.thumbnail && !imgErrors[room.id] ? (
                         <img
@@ -619,7 +616,7 @@ const HotelDetail = () => {
                       )}
                     </div>
 
-                    {/* Room Content - Dilengkapi min-w-0 & line-clamp-3 agar teks rapi */}
+                    {/* Room Content */}
                     <div className="p-6 flex flex-col justify-between flex-grow min-w-0 text-left">
                       <div>
                         <div className="flex flex-wrap justify-between items-start mb-2 gap-2">

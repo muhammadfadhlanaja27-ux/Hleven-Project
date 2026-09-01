@@ -144,9 +144,6 @@ const Navbar = () => {
             <Link to="/" className="hover:text-[#778873] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
               Beranda
             </Link>
-            <Link to="/hotels" className="hover:text-[#778873] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
-              Hotels
-            </Link>
             <Link to="/mitra" className="hover:text-[#778873] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
               Mitra Hotel
             </Link>
