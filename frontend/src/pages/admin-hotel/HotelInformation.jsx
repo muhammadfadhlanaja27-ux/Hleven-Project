@@ -138,7 +138,6 @@ export default function HotelInformation() {
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
-  const [deletedPhotoIds, setDeletedPhotoIds] = useState([]);
 
   // Fasilitas Master & Terpilih
   const [masterFacilities, setMasterFacilities] = useState([]);
@@ -266,22 +265,10 @@ export default function HotelInformation() {
     }
   };
 
-  // Toggle fasilitas pada mode edit              
-  const handleToggleFacility = (facId) => {
-    setFormValues((prev) => {
-      const currentIds = prev.facilityIds || [];
-      const nextIds = currentIds.includes(facId)
-        ? currentIds.filter((id) => id !== facId)
-        : [...currentIds, facId];
-      return { ...prev, facilityIds: nextIds };
-    });
-  };
-
-  // Toggle ke mode edit
   const handleStartEdit = () => {
     setFormValues({ ...hotelData });
     setFormPhotos(hotelData.photos || initialPhotos);
-    setFormFacilityIds([...assignedFacilityIds]);
+    setFormFacilityIds((hotelData.facilities || []).map((f) => f.id));
     setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(true);
@@ -290,7 +277,7 @@ export default function HotelInformation() {
   const handleCancel = () => {
     setFormValues({ ...hotelData });
     setFormPhotos(hotelData.photos || initialPhotos);
-    setFormFacilityIds([...assignedFacilityIds]);
+    setFormFacilityIds((hotelData.facilities || []).map((f) => f.id));
     setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(false);
@@ -362,10 +349,6 @@ export default function HotelInformation() {
   };
 
   const handleDeletePhoto = (photoId) => {
-    const photo = formPhotos.find((p) => p.id === photoId);
-    if (photo && !photo.file && !String(photoId).startsWith("photo-new-")) {
-      setDeletedPhotoIds((prev) => [...prev, photoId]);
-    }
     setFormPhotos((prev) => {
       const filtered = prev.filter((p) => p.id !== photoId);
       if (filtered.length > 0 && !filtered.some((p) => p.isPrimary)) {
@@ -436,13 +419,6 @@ export default function HotelInformation() {
       // 1. Simpan profil hotel & sync fasilitas
       await api.post("/admin/hotel/profile", payload);
 
-      await Promise.all(
-        deletedPhotoIds.map((photoId) =>
-          api.delete(`/admin/hotels/${hotelId}/photos/${photoId}`)
-        )
-      );
-
-      const savedPhotos = [];
       const newPhotos = formPhotos.filter((p) => p.file);
       const currentPrimary = hotelData.photos?.find((photo) => photo.isPrimary) || hotelData.photos?.[0];
       const shouldReplacePrimary = newPhotos.some((photo) => photo.isPrimary);
@@ -471,49 +447,16 @@ export default function HotelInformation() {
         const formData = new FormData();
         formData.append("photo", photo.file);
         formData.append("is_thumbnail", photo.isPrimary ? "1" : "0");
-        const res = await api.post(`/admin/hotels/${hotelId}/photos`, formData, {
+        await api.post(`/admin/hotels/${hotelId}/photos`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        if (res.data?.data) {
-          const p = res.data.data;
-          const imgPath = p.image_path || p.url || p.photo || "";
-          
-          // Pastikan URL yang disimpan ke state memiliki full URL yang valid
-          const finalUrl = imgPath.startsWith("http") 
-            ? imgPath 
-            : `http://localhost:8000/storage/${imgPath.replace(/^\//, '')}`;
-            
-          savedPhotos.push({
-            id: p.id,
-            name: imgPath.split("/").pop(),
-            url: finalUrl,
-            isPrimary: p.is_thumbnail,
-          });
-        }
       }
 
       // 4. Invalidate Cache & Refresh data fresh
       invalidateCache("/facilities?category=Hotel");
       invalidateCache("/admin/hotel/profile");
-      invalidateCache(`/hotels/${hotelId}`);
+      await fetchHotelInfo(true);
 
-      const updatedAssigned = allHotelFacilities.filter((f) =>
-        formFacilityIds.includes(f.id)
-      );
-      setAssignedFacilityIds([...formFacilityIds]);
-
-      const finalPhotos = [
-        ...formPhotos.filter((p) => !p.file),
-        ...savedPhotos
-      ];
-
-      setHotelData({
-        ...formValues,
-        facilityIds: formValues.facilityIds || [],
-        photos: finalPhotos,
-        facilities: updatedAssigned,
-      });
-      setDeletedPhotoIds([]);
       setIsEditing(false);
       toast.success("Hotel information updated successfully.");
     } catch (err) {

@@ -69,17 +69,20 @@ class FileStorageService
     /**
      * Menghapus file fisik dari storage[cite: 1]
      */
-    public function resolveStoragePath(?string $url): ?string
+    public function deleteFile(?string $url): void
     {
         if (!$url) return;
-        
-        $path = parse_url($url, PHP_URL_PATH);
-        $path = ltrim(strstr($path, '/public/'), '/public/');
 
-        if ($path && Storage::disk('s3')->exists($path)) {
-            Storage::disk('s3')->delete($path);
+        try {
+            $path = $this->normalizeStoragePath($url);
+
+            if ($path && Storage::disk('s3')->exists($path)) {
+                Storage::disk('s3')->delete($path);
+            }
+        } catch (\Throwable $e) {
+            // Jangan mematikan request ketika file lama sudah rusak atau path storage tidak valid.
+            return;
         }
-    }
     }
 
     public function storeHotelPhoto($hotelId, UploadedFile $file, bool $isThumbnail): void
