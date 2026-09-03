@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet } from "../../services/apiCache";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 const FACILITY_ICON_MAP = {
   "AC": "ac_unit",
@@ -117,10 +117,12 @@ export default function RoomCreate() {
   const [formData, setFormData] = useState({
     name: "",
     type: "",
+    bed: "",
     description: "",
     weekday_price: "",
     weekend_price: "",
-    capacity: "",
+    capacity_adult: "",
+    capacity_child: "",
     stock: "",
     is_refundable: true,
     facilityIds: [],
@@ -221,8 +223,12 @@ export default function RoomCreate() {
       newErrors.weekend_price = "Weekend price must be greater than 0.";
     }
 
-    if (!formData.capacity || Number(formData.capacity) < 1) {
-      newErrors.capacity = "Capacity must be at least 1 guest.";
+    if (!formData.capacity_adult || Number(formData.capacity_adult) < 1) {
+      newErrors.capacity_adult = "Adult capacity must be at least 1.";
+    }
+
+    if (formData.capacity_child && Number(formData.capacity_child) < 0) {
+      newErrors.capacity_child = "Child capacity cannot be negative.";
     }
 
     if (!formData.stock || Number(formData.stock) < 1) {
@@ -250,8 +256,9 @@ export default function RoomCreate() {
       payload.append("description", formData.description.trim());
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);
-      payload.append("adult_capacity", formData.capacity);
-      payload.append("child_capacity", 0);
+      payload.append("bed", formData.bed || "");
+      payload.append("adult_capacity", formData.capacity_adult);
+      payload.append("child_capacity", formData.capacity_child || 0);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
 
@@ -268,6 +275,7 @@ export default function RoomCreate() {
       });
 
       toast.success("Room created successfully.");
+      invalidateCache("/hotels");
       navigate("/admin/rooms");
     } catch (error) {
       console.error("Failed to create room:", error);
@@ -391,6 +399,27 @@ export default function RoomCreate() {
               className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed"
             />
           </div>
+
+          {/* Bed Type */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="bed" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Bed Type
+            </label>
+            <select
+              id="bed"
+              name="bed"
+              value={formData.bed}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              className="w-full h-11 px-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all cursor-pointer"
+            >
+              <option value="">Pilih Tipe Kasur</option>
+              <option value="1 Single Bed">Single Bed</option>
+              <option value="1 Twin Bed">Twin Bed</option>
+              <option value="1 Queen Bed">Queen Bed</option>
+              <option value="1 King Bed">King Bed</option>
+            </select>
+          </div>
         </div>
 
         {/* SECTION 2: ROOM PRICING */}
@@ -476,33 +505,63 @@ export default function RoomCreate() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Capacity */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Adult Capacity */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="capacity" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
-                Capacity (Guests) <span className="text-[#ba1a1a]">*</span>
+              <label htmlFor="capacity_adult" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Capacity (Adults) <span className="text-[#ba1a1a]">*</span>
               </label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
                   person
                 </span>
                 <input
-                  id="capacity"
+                  id="capacity_adult"
                   type="number"
-                  name="capacity"
+                  name="capacity_adult"
                   min="1"
-                  value={formData.capacity}
+                  value={formData.capacity_adult}
                   onChange={handleChange}
                   disabled={isSubmitting}
                   placeholder="2"
                   className={`w-full h-11 pl-10 pr-4 bg-white border ${
-                    errors.capacity ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                    errors.capacity_adult ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                   } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
                 />
               </div>
-              {errors.capacity && (
+              {errors.capacity_adult && (
                 <span className="text-xs text-[#ba1a1a] font-medium">
-                  {errors.capacity}
+                  {errors.capacity_adult}
+                </span>
+              )}
+            </div>
+
+            {/* Child Capacity */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="capacity_child" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Capacity (Children)
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
+                  child_care
+                </span>
+                <input
+                  id="capacity_child"
+                  type="number"
+                  name="capacity_child"
+                  min="0"
+                  value={formData.capacity_child}
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  placeholder="0"
+                  className={`w-full h-11 pl-10 pr-4 bg-white border ${
+                    errors.capacity_child ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+              </div>
+              {errors.capacity_child && (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.capacity_child}
                 </span>
               )}
             </div>

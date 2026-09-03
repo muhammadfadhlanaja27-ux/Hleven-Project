@@ -113,7 +113,7 @@ const RoomDetail = () => {
               thumbnail: roomImage,
               capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
               description: matchedRoomType.description,
-              bed: matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed",
+              bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
               breakfast: matchedRoomType.breakfast,
               smoking_area: matchedRoomType.smoking_area,
               is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
