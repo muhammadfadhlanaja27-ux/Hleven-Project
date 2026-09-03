@@ -189,6 +189,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     Route::prefix('hotels')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'hotels']);
         Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']);
+        Route::delete('/{id}', [SuperAdminDashboardController::class, 'destroyHotel']);
     });
 
     Route::prefix('partners')->group(function () {
