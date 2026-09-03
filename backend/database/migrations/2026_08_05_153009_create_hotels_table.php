@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id(); // bigint, Primary Key[cite: 1]
 
             // Foreign Keys
-            $table->foreignId('admin_id')->constrained('users')->onDelete('restrict'); // FK ke users[cite: 1]
+            $table->foreignId('admin_id')->constrained('users')->cascadeOnDelete(); // FK ke users[cite: 1]
             $table->foreignId('city_id')->constrained('cities')->onDelete('restrict'); // FK ke cities[cite: 1]
 
             // Kolom Data

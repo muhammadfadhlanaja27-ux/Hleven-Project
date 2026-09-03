@@ -4,11 +4,11 @@ import { Link, useLocation } from "react-router-dom";
 const navItems = [
   { name: "Dashboard", to: "/super-admin/dashboard", icon: "dashboard" },
   { name: "Hotel Monitoring", to: "/super-admin/hotels", icon: "hotel" },
-  { name: "Users", to: "/super-admin/users", icon: "group" },
-  { name: "Partners", to: "/super-admin/partners", icon: "handshake" },
+  { name: "Users Management", to: "/super-admin/users", icon: "group" },
+  { name: "Partner Approvals", to: "/super-admin/partners", icon: "handshake" },
   { name: "Warning Management", to: "/super-admin/warnings", icon: "warning" },
   { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
-  { name: "Reports", to: "/super-admin/reports", icon: "monitoring" },
+  { name: "Reports & Analytics", to: "/super-admin/reports", icon: "monitoring" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {
@@ -38,11 +38,10 @@ const SuperAdminSidebar = ({ onLogout }) => {
             <li key={item.to}>
               <Link
                 to={item.to}
-                className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
-                  isActive(item.to)
-                    ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
-                    : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
-                }`}
+                className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${isActive(item.to)
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+                  }`}
               >
                 <span className="material-symbols-outlined mr-3 text-[20px]">
                   {item.icon}
@@ -59,11 +58,10 @@ const SuperAdminSidebar = ({ onLogout }) => {
           <li>
             <Link
               to="/super-admin/profile"
-              className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                isActive('/super-admin/profile')
-                  ? 'bg-[#506147] text-white'
-                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white'
-              }`}
+              className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isActive('/super-admin/profile')
+                ? 'bg-[#506147] text-white'
+                : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white'
+                }`}
             >
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 account_circle

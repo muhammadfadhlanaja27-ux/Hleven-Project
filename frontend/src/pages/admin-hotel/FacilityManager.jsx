@@ -267,6 +267,9 @@ export default function FacilityManager() {
       const payload = {
         name: formValues.name.trim(),
         category,
+        icon: formValues.icon,
+        description: formValues.description.trim(),
+        status: formValues.status,
       };
 
       if (modalMode === "add") {

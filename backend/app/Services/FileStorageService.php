@@ -27,7 +27,12 @@ class FileStorageService
         $endpoint = trim((string) config('filesystems.disks.s3.endpoint'));
 
         if ($bucket !== '' && $endpoint !== '') {
-            return rtrim($endpoint, '/') . '/' . $bucket . '/' . $path;
+            $publicEndpoint = str_replace(
+                ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
+                ['.supabase.co/storage/v1/object/public', '/storage/v1/object/public'],
+                $endpoint
+            );
+            return rtrim($publicEndpoint, '/') . '/' . $bucket . '/' . $path;
         }
 
         return url('/storage/' . $path);
@@ -55,7 +60,7 @@ class FileStorageService
             $path = substr($path, strlen($bucket) + 1);
         }
 
-        if (preg_match('#^(?:storage(?:/v1)?/)?(?:object/)?(?:public/)?(.+)$#i', $path, $matches)) {
+        if (preg_match('#^(?:storage(?:/v1)?/)?(?:s3|object/public|object)?/(.+)$#i', $path, $matches)) {
             $path = $matches[1];
         }
 

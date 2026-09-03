@@ -40,7 +40,7 @@ const STATUS_MESSAGES = {
   },
 };
 
-const ApplicationStatus = ({ application, loading, onFixRevision }) => {
+const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotification }) => {
   const navigate = useNavigate();
   if (loading) {
     return (
@@ -142,6 +142,24 @@ const ApplicationStatus = ({ application, loading, onFixRevision }) => {
           </div>
         </div>
       </div>
+
+      {status === "approved" && approvalNotification?.message && (
+        <div className="rounded-2xl border border-[#778873]/30 bg-[#e8f0e4]/50 p-5 md:p-6 mb-5">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-[26px] shrink-0 mt-0.5 text-[#3b4b39]">
+              key
+            </span>
+            <div className="flex-1">
+              <h5 className="font-label-md text-sm font-bold text-[#3b4b39] uppercase tracking-wider mb-3">
+                Informasi Akses Admin Hotel
+              </h5>
+              <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">
+                {approvalNotification.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(status === "needs_revision" || status === "rejected") &&
         (application.rejection_reason || application.revision_notes || application.reason) && (

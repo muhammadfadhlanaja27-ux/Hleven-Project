@@ -98,6 +98,32 @@ const HotelMonitoring = () => {
     }
   };
 
+  const handleDeleteHotel = async (id, name) => {
+    if (
+      !window.confirm(
+        `Apakah Anda yakin ingin menghapus hotel "${name}"? Tindakan ini tidak dapat dibatalkan.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.delete(`/super-admin/hotels/${id}`);
+      invalidateCache("/super-admin/hotels");
+      invalidateCache("/super-admin/dashboard");
+      toast.success("Hotel berhasil dihapus!");
+      if (selectedHotel && selectedHotel.id === id) {
+        setModalOpen(false);
+        setSelectedHotel(null);
+      }
+      fetchHotels(true);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Gagal menghapus hotel."
+      );
+    }
+  };
+
   const handleOpenDetail = (hotel) => {
     setSelectedHotel(hotel);
     setModalOpen(true);
@@ -274,6 +300,16 @@ const HotelMonitoring = () => {
                             >
                               {isActive ? "Suspend" : "Activate"}
                             </button>
+
+                            <button
+                              onClick={() =>
+                                handleDeleteHotel(hotel.id, hotel.name)
+                              }
+                              className="font-hanken text-[13px] font-medium text-[#ba1a1a] hover:text-[#93000a] border border-[#ffdad6] hover:bg-[#ffdad6]/40 px-3 py-1.5 rounded-lg transition-colors active:scale-95"
+                              title="Hapus Hotel"
+                            >
+                              Hapus
+                            </button>
                           </td>
                         </tr>
                       );
@@ -448,6 +484,16 @@ const HotelMonitoring = () => {
                 className="px-4 py-2 border border-[#E5E0D8] rounded-lg font-hanken text-[13px] font-semibold text-[#434842] hover:bg-[#F9F6F1] transition-colors"
               >
                 Tutup
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteHotel(selectedHotel.id, selectedHotel.name);
+                }}
+                className="px-4 py-2 border border-[#ffdad6] rounded-lg font-hanken text-[13px] font-semibold text-[#ba1a1a] hover:bg-[#ffdad6]/30 transition-colors"
+              >
+                Hapus Hotel
               </button>
 
               <button

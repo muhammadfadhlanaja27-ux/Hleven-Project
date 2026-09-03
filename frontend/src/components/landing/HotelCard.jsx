@@ -12,7 +12,7 @@ const HotelCard = ({ hotel }) => {
     }
     if (hotel.photos && hotel.photos.length > 0) {
       const firstPhoto = hotel.photos[0];
-      const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url : firstPhoto;
+      const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
       if (photoPath) {
         if (photoPath.startsWith('http')) return photoPath;
         return `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`;

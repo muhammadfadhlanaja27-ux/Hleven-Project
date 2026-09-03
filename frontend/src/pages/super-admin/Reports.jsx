@@ -103,11 +103,11 @@ const Reports = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
-  // Fungsi untuk Export (Download File)
+  // Fungsi untuk Export (Download File Excel / CSV / PDF)
   const handleExport = async (format) => {
     try {
       setIsExporting(true);
-      toast.loading(`Mempersiapkan laporan ${format.toUpperCase()}...`, {
+      toast.loading(`Mempersiapkan laporan ${exportType.toUpperCase()} (${format.toUpperCase()})...`, {
         id: "export-toast",
       });
 
@@ -118,30 +118,139 @@ const Reports = () => {
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
-      const response = await api.get("/reports/export", { params });
+      // Panggil endpoint backend jika tersedia
+      try {
+        await api.get("/reports/export", { params });
+      } catch (err) {
+        console.warn("Backend export request logged:", err);
+      }
 
-      const downloadUrl = response.data?.download_url;
+      const fileName = `HLeven_SuperAdmin_Report_${exportType}_${startDate || 'awal'}_${endDate || 'akhir'}`;
 
-      if (downloadUrl) {
-        const finalUrl = downloadUrl.startsWith("http")
-          ? downloadUrl
-          : `http://localhost:8000${downloadUrl}`;
+      if (format === "excel") {
+        let csvContent = "\uFEFF"; // UTF-8 BOM agar Excel dapat membuka langsung
+        csvContent += `H'LEVEN SUPER ADMIN SYSTEM REPORT\n`;
+        csvContent += `Report Type,${exportType.toUpperCase()}\n`;
+        csvContent += `Date Range,${startDate || 'Awal'} s/d ${endDate || 'Sekarang'}\n`;
+        csvContent += `Generated At,${new Date().toLocaleString("id-ID")}\n\n`;
 
-        window.open(finalUrl, "_blank");
-        toast.success(response.data?.message || "Laporan berhasil diunduh!", {
+        csvContent += `SUMMARY METRICS\n`;
+        csvContent += `Metric,Value\n`;
+        csvContent += `Total Revenue,${data.revenue?.total_revenue || 0}\n`;
+        csvContent += `Completed Bookings,${data.bookings?.completed || 0}\n`;
+        csvContent += `Pending Bookings,${data.bookings?.pending || 0}\n`;
+        csvContent += `Cancelled Bookings,${data.bookings?.cancelled || 0}\n`;
+        csvContent += `Total Users,${data.users?.total_users || 0}\n`;
+        csvContent += `New Users This Month,${data.users?.new_users || 0}\n\n`;
+
+        if (data.revenue?.trend && data.revenue.trend.length > 0) {
+          csvContent += `DAILY REVENUE TREND\n`;
+          csvContent += `Tanggal,Pendapatan (IDR)\n`;
+          data.revenue.trend.forEach((item) => {
+            csvContent += `"${item.date}",${item.total}\n`;
+          });
+        }
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${fileName}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success(`Laporan Excel (${exportType.toUpperCase()}) berhasil diunduh!`, {
           id: "export-toast",
         });
-      } else {
-        toast.success(
-          response.data?.message || "File laporan berhasil dibuat.",
-          { id: "export-toast" }
-        );
+      } else if (format === "pdf") {
+        const printWin = window.open("", "_blank");
+        if (!printWin) {
+          toast.error("Pop-up diblokir oleh browser. Izinkan pop-up untuk mencetak PDF.", {
+            id: "export-toast",
+          });
+          return;
+        }
+
+        const html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>${fileName}</title>
+            <style>
+              body { font-family: 'Segoe UI', Roboto, sans-serif; padding: 25px; color: #191c1b; background: #fff; }
+              .header { border-bottom: 2px solid #4f604f; padding-bottom: 15px; margin-bottom: 20px; }
+              .header h1 { margin: 0; color: #4f604f; font-size: 24px; font-family: 'Newsreader', serif; }
+              .header p { margin: 5px 0 0; color: #747872; font-size: 13px; }
+              .grid { display: flex; gap: 15px; margin-bottom: 25px; }
+              .card { flex: 1; border: 1px solid #E5E0D8; padding: 15px; border-radius: 10px; background: #F9F6F1; }
+              .card-title { font-size: 11px; color: #747872; text-transform: uppercase; font-weight: 600; }
+              .card-value { font-size: 20px; color: #191c1b; font-weight: bold; margin-top: 6px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+              th { background: #4f604f; color: white; text-align: left; padding: 10px; }
+              td { border-bottom: 1px solid #E5E0D8; padding: 10px; }
+              tr:nth-child(even) { background: #F9F6F1; }
+              .section-title { font-size: 18px; color: #4f604f; font-weight: 600; margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid #E5E0D8; padding-bottom: 6px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>H'Leven System - ${exportType.toUpperCase()} REPORT</h1>
+              <p>Rentang Tanggal: ${startDate || 'Awal'} s/d ${endDate || 'Sekarang'} | Dibuat: ${new Date().toLocaleString("id-ID")}</p>
+            </div>
+
+            <div class="grid">
+              <div class="card">
+                <div class="card-title">Total Revenue</div>
+                <div class="card-value">${formatRupiah(data.revenue?.total_revenue)}</div>
+              </div>
+              <div class="card">
+                <div class="card-title">Completed Bookings</div>
+                <div class="card-value">${(data.bookings?.completed || 0).toLocaleString("id-ID")}</div>
+              </div>
+              <div class="card">
+                <div class="card-title">Registered Users</div>
+                <div class="card-value">${(data.users?.total_users || 0).toLocaleString("id-ID")}</div>
+              </div>
+            </div>
+
+            ${data.revenue?.trend && data.revenue.trend.length > 0 ? `
+              <div class="section-title">Daily Revenue Trend</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Pendapatan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.revenue.trend.map(t => `
+                    <tr>
+                      <td>${t.date}</td>
+                      <td><strong>${formatRupiah(t.total)}</strong></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            </script>
+          </body>
+          </html>
+        `;
+
+        printWin.document.write(html);
+        printWin.document.close();
+        toast.success("Membuka dialog cetak PDF...", { id: "export-toast" });
       }
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Gagal mengekspor laporan.",
-        { id: "export-toast" }
-      );
+      console.error(err);
+      toast.error("Gagal mengekspor laporan.", { id: "export-toast" });
     } finally {
       setIsExporting(false);
     }

@@ -16,13 +16,21 @@
         }
     ],
     "require": {
+<<<<<<< HEAD
         "php": ">=8.4.1",
         "symfony/deprecation-contracts": "^2.5|^3",
+=======
+        "php": ">=8.2",
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
         "symfony/polyfill-ctype": "~1.8",
         "symfony/polyfill-mbstring": "~1.8"
     },
     "require-dev": {
+<<<<<<< HEAD
         "symfony/process": "^7.4|^8.0"
+=======
+        "symfony/process": "^6.4|^7.0|^8.0"
+>>>>>>> b91c7a08855bc24a1e6e6694401977bc675aca35
     },
     "autoload": {
         "psr-4": { "Symfony\\Component\\Filesystem\\": "" },
