@@ -110,4 +110,23 @@ class SuperAdminDashboardController extends Controller
             ], 500);
         }
     }
+
+    public function destroyHotel($id): JsonResponse
+    {
+        try {
+            $hotel = Hotel::findOrFail($id);
+            $hotel->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Hotel berhasil dihapus.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus hotel.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

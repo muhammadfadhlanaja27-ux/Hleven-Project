@@ -208,8 +208,33 @@ body {
   border: 1px solid #DCCFC0 !important;
   border-radius: 1.25rem !important;
   box-shadow: 0 15px 35px -5px rgba(119, 136, 115, 0.25) !important;
-  overflow: hidden;
+  overflow: visible !important;
   padding-bottom: 6px;
+  position: absolute !important;
+  top: 100% !important;
+  left: -160px !important;
+  z-index: 50 !important;
+  margin-top: 8px !important;
+  width: auto !important;
+  min-width: 600px !important;
+}
+
+/* Tampilkan 2 bulan sejajar */
+.react-datepicker__month-container {
+  float: left !important;
+  width: 50% !important;
+  display: inline-block !important;
+  box-sizing: border-box !important;
+}
+
+/* Tambah padding antar bulan */
+.react-datepicker__month:first-child {
+  padding-right: 12px !important;
+}
+
+.react-datepicker__month {
+  margin: 0 !important;
+  padding-left: 12px !important;
 }
 
 /* Menyembunyikan panah segitiga bawaan */
@@ -219,24 +244,24 @@ body {
 
 /* Header Kalender (Bulan & Tahun) */
 .react-datepicker__header {
-  background-color: #778873 !important;
-  border-bottom: 1px solid #50604d !important;
+  background-color: #FDF6ED !important;
+  border-bottom: 1px solid #DCCFC0 !important;
   padding-top: 14px !important;
   padding-bottom: 10px !important;
 }
 
 .react-datepicker__current-month {
-  color: #ffffff !important;
+  color: #1e1b16 !important;
   font-family: 'Libre Caslon Text', serif !important;
   font-size: 1rem !important;
   font-weight: 700 !important;
   margin-bottom: 6px !important;
 }
 
-/* Nama Hari (Min, Sen, Sel, dll) */
+/* Nama Hari (Min, Sen, Sel, dll) - Kehitaman */
 .react-datepicker__day-name {
-  color: #E8E2D9 !important;
-  font-weight: 600 !important;
+  color: #2D332C !important;
+  font-weight: 700 !important;
   font-size: 0.8rem !important;
   width: 2.2rem !important;
   line-height: 2.2rem !important;
@@ -265,13 +290,20 @@ body {
   color: #1e1b16 !important;
 }
 
-/* Tanggal Terpilih (Selected) */
+/* Tanggal Terpilih (Selected) & Range */
 .react-datepicker__day--selected,
+.react-datepicker__day--in-range,
+.react-datepicker__day--range-start,
+.react-datepicker__day--range-end,
 .react-datepicker__day--keyboard-selected {
   background-color: #778873 !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  box-shadow: 0 4px 10px rgba(119, 136, 115, 0.4) !important;
+}
+
+.react-datepicker__day--in-selecting-range {
+  background-color: rgba(119, 136, 115, 0.3) !important;
+  color: #1e1b16 !important;
 }
 
 /* Tanggal Hari Ini (Today Indicator) */
@@ -297,12 +329,12 @@ body {
 }
 
 .react-datepicker__navigation-icon::before {
-  border-color: #ffffff !important;
+  border-color: #1e1b16 !important;
   border-width: 2px 2px 0 0 !important;
 }
 
 .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
-  border-color: #DCCFC0 !important;
+  border-color: #778873 !important;
 }
 
 /* Custom Tampilan Opsi Dropdown Select */
