@@ -355,12 +355,9 @@ const HotelDetail = () => {
               </div>
 
               <div className="prose max-w-none text-[#444842] font-body-md text-base leading-relaxed space-y-4">
-                <p className="font-headline-md text-lg text-[#645b4f] leading-relaxed">
+                <p className="font-body-md text-sm md:text-base leading-relaxed">
                   {hotel.description ||
                     `Terletak di lokasi strategis ${hotelCityName}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
-                </p>
-                <p className="text-sm md:text-base text-[#444842]">
-                  Nikmati fasilitas kelas dunia, mulai dari kamar berdesain elegan, layanan resepsionis 24 jam, kolam renang dengan pemandangan menakjubkan, hingga pilihan restoran bersantap dengan hidangan lezat. Destinasi sempurna bagi Anda yang mencari ketenangan dan pengalaman tak terlupakan.
                 </p>
               </div>
             </section>

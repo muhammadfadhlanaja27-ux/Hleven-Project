@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const HotelCard = ({ hotel }) => {
   const [imgError, setImgError] = useState(false);
+
+  // Reset error state ketika data hotel/foto berubah agar foto baru dicoba lagi
+  useEffect(() => {
+    setImgError(false);
+  }, [hotel.thumbnail, hotel.photos]);
 
   const getImageUrl = () => {
     if (!hotel) return null;
