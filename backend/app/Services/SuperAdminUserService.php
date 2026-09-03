@@ -139,17 +139,14 @@ class SuperAdminUserService
         DB::transaction(function () use ($user, $superAdmin) {
             $email = $user->email;
 
-            // 1. Jika Admin Hotel, hapus hotel dan semua datanya
             if ($user->role === 'admin_hotel') {
-                $hotels = Hotel::where('admin_id', $user->id)->get();
+                $hotels = Hotel::withTrashed()->where('admin_id', $user->id)->get();
                 foreach ($hotels as $hotel) {
-                    // Hapus data yang memblock (Bookings, dll)
                     $this->cleanupHotelData($hotel);
-                    $hotel->forceDelete(); // force delete karena SoftDeletes memblock restrict
+                    $hotel->forceDelete();
                 }
             }
 
-            // 2. Hapus data user (Bookings sebagai customer, Notifications, dll)
             $this->cleanupUserData($user);
 
             $user->delete();

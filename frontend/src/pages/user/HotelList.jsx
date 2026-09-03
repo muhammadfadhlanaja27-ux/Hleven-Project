@@ -1,25 +1,58 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import HotelCard from "../../components/landing/HotelCard";
+import Pagination from "../../components/common/Pagination";
+import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
 
+const ITEMS_PER_PAGE = 10;
+
 const HotelList = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search & Filter States
-  const [searchTerm, setSearchTerm] = useState("");
+  const today = useMemo(() => new Date(), []);
+
+  // Search & Filter States — diinisialisasi dari URL (sumber kebenaran)
+  const parseDateParam = (key) => {
+    const raw = searchParams.get(key);
+    const parsed = raw ? new Date(`${raw}T00:00:00`) : null;
+    return parsed && !isNaN(parsed.getTime()) ? parsed : null;
+  };
+
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [adults, setAdults] = useState(Number(searchParams.get("adults")) || 2);
+  const [children, setChildren] = useState(Number(searchParams.get("children")) || 0);
+  const [checkInDate, setCheckInDate] = useState(parseDateParam("check_in_date"));
+  const [checkOutDate, setCheckOutDate] = useState(parseDateParam("check_out_date"));
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [sortBy, setSortBy] = useState("recommendation");
-  const [visibleCount, setVisibleCount] = useState(9);
+  const [currentPage, setCurrentPage] = useState(1);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+
+  // ponytail: backend /hotels hanya filter `search`; adults/children/date diteruskan untuk konsistensi UI
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        const { data: responseData, fromCache } = await cachedGet("/hotels");
+        const params = new URLSearchParams();
+        if (searchTerm.trim()) params.append("search", searchTerm.trim());
+        if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
+        if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
+        if (adults) params.append("adults", adults);
+        if (children) params.append("children", children);
+
+        const { data: responseData, fromCache } = await cachedGet(`/hotels${params.toString() ? `?${params.toString()}` : ""}`);
         if (responseData && (responseData.data || Array.isArray(responseData))) {
           const apiHotels = responseData.data || responseData;
           setHotels(apiHotels);
@@ -52,6 +85,43 @@ const HotelList = () => {
     );
   };
 
+  // Sinkronkan guest/date/search ke URL agar bisa di-refresh & dibagikan
+  const syncUrlParams = (overrides = {}) => {
+    const next = {
+      search: searchTerm,
+      adults,
+      children,
+      checkInDate,
+      checkOutDate,
+      ...overrides,
+    };
+    const params = new URLSearchParams();
+    if (next.search.trim()) params.append("search", next.search.trim());
+    if (next.checkInDate) params.append("check_in_date", next.checkInDate.toISOString().split("T")[0]);
+    if (next.checkOutDate) params.append("check_out_date", next.checkOutDate.toISOString().split("T")[0]);
+    if (next.adults) params.append("adults", next.adults);
+    if (next.children) params.append("children", next.children);
+    setSearchParams(params, { replace: true });
+  };
+
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setCheckInDate(start);
+    setCheckOutDate(end);
+    syncUrlParams({ checkInDate: start, checkOutDate: end });
+  };
+
+  const handleGuestChange = ({ adults: newAdults, children: newChildren }) => {
+    setAdults(newAdults);
+    setChildren(newChildren);
+    syncUrlParams({ adults: newAdults, children: newChildren });
+  };
+
+  const handleSearchSubmit = () => {
+    syncUrlParams();
+    setCurrentPage(1);
+  };
+
   const handleResetFilters = () => {
     setSearchTerm("");
     setMinPrice("");
@@ -59,6 +129,7 @@ const HotelList = () => {
     setSelectedStars([]);
     setSelectedFacilities([]);
     setSortBy("recommendation");
+    setCurrentPage(1);
   };
 
   const filteredHotels = useMemo(() => {
@@ -107,7 +178,14 @@ const HotelList = () => {
       });
   }, [hotels, searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
-  const displayedHotels = filteredHotels.slice(0, visibleCount);
+  const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayedHotels = filteredHotels.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 200, behavior: "smooth" });
+  };
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
@@ -122,25 +200,62 @@ const HotelList = () => {
           </p>
 
           {/* Inline Search Bar */}
-          <div className="mt-8 max-w-2xl bg-[#fff8f0] p-3 rounded-2xl border border-[#DCCFC0] shadow-sm flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#778873] text-xl ml-2">
-              search
-            </span>
-            <input
-              type="text"
-              placeholder="Cari hotel berdasarkan nama, kota, atau area..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-transparent border-none focus:ring-0 text-sm font-body-md text-[#1e1b16] outline-none"
+          <div className="mt-8 bg-[#fff8f0] p-4 rounded-2xl border border-[#DCCFC0] shadow-sm flex flex-col lg:flex-row gap-3 items-center">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
+              <label className="font-label-sm text-xs font-semibold text-[#444842]">
+                Destinasi / Hotel
+              </label>
+              <div className="flex items-center w-full mt-1">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
+                  search
+                </span>
+                <input
+                  type="text"
+                  placeholder="Cari hotel berdasarkan nama, kota, atau area..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-transparent border-none focus:ring-0 text-sm font-body-md text-[#1e1b16] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
+              <label className="font-label-sm text-xs font-semibold text-[#444842]">
+                Tanggal Check-in &amp; Check-out
+              </label>
+              <div className="flex items-center w-full mt-1">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
+                  date_range
+                </span>
+                <DatePicker
+                  selectsRange={true}
+                  startDate={checkInDate}
+                  endDate={checkOutDate}
+                  onChange={handleDateRangeChange}
+                  minDate={today}
+                  monthsShown={2}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Pilih Check-in - Check-out"
+                  className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
+                />
+              </div>
+            </div>
+
+            <GuestSelector
+              adults={adults}
+              children={children}
+              rooms={1}
+              onGuestChange={handleGuestChange}
             />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="text-xs text-[#747871] hover:text-[#1e1b16] px-2"
-              >
-                Clear
-              </button>
-            )}
+
+            <button
+              type="button"
+              onClick={handleSearchSubmit}
+              className="w-full lg:w-auto h-full bg-[#778873] text-white px-8 py-4 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+            >
+              <span className="material-symbols-outlined text-xl">search</span>
+              Cari
+            </button>
           </div>
         </div>
       </section>
@@ -301,15 +416,14 @@ const HotelList = () => {
             </div>
           )}
 
-          {!loading && filteredHotels.length > visibleCount && (
-            <div className="mt-12 flex justify-center">
-              <button
-                onClick={() => setVisibleCount((prev) => prev + 6)}
-                className="bg-[#FDF6ED] border border-[#778873] text-[#778873] px-8 py-3 rounded-full font-label-md text-sm font-semibold hover:bg-[#778873] hover:text-white transition-all shadow-sm active:scale-95"
-              >
-                Muat Lebih Banyak Hotel
-              </button>
-            </div>
+          {!loading && filteredHotels.length > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={filteredHotels.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
           )}
         </div>
       </main>

@@ -23,6 +23,7 @@ const HotelDetail = () => {
   // Filter States untuk Kamar
   const [filterAdults, setFilterAdults] = useState("");
   const [filterChildren, setFilterChildren] = useState("");
+  const [filterRoomType, setFilterRoomType] = useState("all");
   const [filterBedType, setFilterBedType] = useState("all");
   const [filterRoomName, setFilterRoomName] = useState("");
   const [filterBreakfast, setFilterBreakfast] = useState(false);
@@ -98,6 +99,7 @@ const HotelDetail = () => {
             return {
               id: rt.id,
               name: rt.name,
+              type: rt.type || "Standard",
               price: rt.weekday_price,
               weekday_price: rt.weekday_price,
               weekend_price: rt.weekend_price,
@@ -143,6 +145,7 @@ const HotelDetail = () => {
     return hotel.rooms.filter((room) => {
       if (filterAdults && Number(room.capacity_adult) < Number(filterAdults)) return false;
       if (filterChildren && Number(room.capacity_child) < Number(filterChildren)) return false;
+      if (filterRoomType !== "all" && room.type?.toLowerCase() !== filterRoomType.toLowerCase()) return false;
       if (filterRoomName.trim() && !room.name.toLowerCase().includes(filterRoomName.toLowerCase())) return false;
       if (filterBedType !== "all") {
         const bedStr = (room.bed || "").toLowerCase();
@@ -154,11 +157,12 @@ const HotelDetail = () => {
 
       return true;
     });
-  }, [hotel, filterAdults, filterChildren, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
+  }, [hotel, filterAdults, filterChildren, filterRoomType, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
 
   const handleResetRoomFilters = () => {
     setFilterAdults("");
     setFilterChildren("");
+    setFilterRoomType("all");
     setFilterBedType("all");
     setFilterRoomName("");
     setFilterBreakfast(false);
@@ -256,7 +260,7 @@ const HotelDetail = () => {
     navigate(`/booking/${targetHotelId}/${targetRoomId}`);
   };
 
-  const hasActiveFilters = filterAdults || filterChildren || filterBedType !== "all" || filterRoomName || filterBreakfast || filterSmoking || filterRefundable;
+  const hasActiveFilters = filterAdults || filterChildren || filterRoomType !== "all" || filterBedType !== "all" || filterRoomName || filterBreakfast || filterSmoking || filterRefundable;
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
@@ -470,66 +474,75 @@ const HotelDetail = () => {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              {/* Filter Tipe / Nama Kamar */}
+              {/* Filter Tipe Kamar - Dropdown */}
               <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                  Nama / Tipe Kamar
+                  Tipe Kamar
                 </label>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="material-symbols-outlined text-[#778873] text-base select-none">
                     meeting_room
                   </span>
-                  <input
-                    type="text"
-                    placeholder="Deluxe, Suite..."
-                    value={filterRoomName}
-                    onChange={(e) => setFilterRoomName(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none placeholder-[#747871]"
-                  />
+                  <select
+                    value={filterRoomType}
+                    onChange={(e) => setFilterRoomType(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                  >
+                    <option value="all">Semua Tipe</option>
+                    <option value="standard">Standar</option>
+                    <option value="deluxe">Deluxe</option>
+                    <option value="suite">Suite</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Filter Kapasitas Dewasa */}
-              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
+              {/* Filter Kapasitas Dewasa - Incrementer */}
+              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
                   Min. Dewasa
                 </label>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
-                    person
-                  </span>
-                  <select
-                    value={filterAdults}
-                    onChange={(e) => setFilterAdults(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <button
+                    onClick={() => setFilterAdults((prev) => Math.max(0, (Number(prev) || 0) - 1) || "")}
+                    disabled={!filterAdults || Number(filterAdults) <= 0}
+                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shrink-0"
                   >
-                    <option value="">Semua Kapasitas</option>
-                    <option value="1">Minimal 1 Dewasa</option>
-                    <option value="2">Minimal 2 Dewasa</option>
-                    <option value="3">Minimal 3 Dewasa</option>
-                    <option value="4">Minimal 4+ Dewasa</option>
-                  </select>
+                    −
+                  </button>
+                  <span className="font-body-md font-semibold text-[#1e1b16] text-sm min-w-8 text-center">
+                    {filterAdults || 0}
+                  </span>
+                  <button
+                    onClick={() => setFilterAdults(String((Number(filterAdults) || 0) + 1))}
+                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] transition-colors text-sm font-semibold shrink-0"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
-              {/* Filter Kapasitas Anak */}
-              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
+              {/* Filter Kapasitas Anak - Incrementer */}
+              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
                   Min. Anak
                 </label>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
-                    child_care
-                  </span>
-                  <select
-                    value={filterChildren}
-                    onChange={(e) => setFilterChildren(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <button
+                    onClick={() => setFilterChildren((prev) => Math.max(0, (Number(prev) || 0) - 1) || "")}
+                    disabled={!filterChildren || Number(filterChildren) <= 0}
+                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shrink-0"
                   >
-                    <option value="">Semua Kapasitas</option>
-                    <option value="1">Minimal 1 Anak</option>
-                    <option value="2">Minimal 2+ Anak</option>
-                  </select>
+                    −
+                  </button>
+                  <span className="font-body-md font-semibold text-[#1e1b16] text-sm min-w-8 text-center">
+                    {filterChildren || 0}
+                  </span>
+                  <button
+                    onClick={() => setFilterChildren(String((Number(filterChildren) || 0) + 1))}
+                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] transition-colors text-sm font-semibold shrink-0"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -661,6 +674,12 @@ const HotelDetail = () => {
                             <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold">
                               <span className="material-symbols-outlined text-[14px]">smoking_rooms</span>
                               Smoking Area
+                            </div>
+                          )}
+                          {room.type && (
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#A0522D]/10 border border-[#A0522D]/20 text-[#A0522D] font-semibold uppercase tracking-wide">
+                              <span className="material-symbols-outlined text-[14px]">apartment</span>
+                              {room.type}
                             </div>
                           )}
                           <div className={room.is_refundable
