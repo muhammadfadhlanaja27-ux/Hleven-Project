@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
 
 const HotelDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,15 +21,21 @@ const HotelDetail = () => {
   // State untuk menangani gambar kamar yang error/broken URL
   const [imgErrors, setImgErrors] = useState({});
 
-  // Filter States untuk Kamar
-  const [filterAdults, setFilterAdults] = useState("");
-  const [filterChildren, setFilterChildren] = useState("");
+  // Filter States untuk Kamar — inisialisasi dari URL query params (persistence)
+  const initialAdults = searchParams.get("adults") || "";
+  const initialChildren = searchParams.get("children") || "";
+  const [filterAdults, setFilterAdults] = useState(initialAdults);
+  const [filterChildren, setFilterChildren] = useState(initialChildren);
   const [filterRoomType, setFilterRoomType] = useState("all");
   const [filterBedType, setFilterBedType] = useState("all");
   const [filterRoomName, setFilterRoomName] = useState("");
   const [filterBreakfast, setFilterBreakfast] = useState(false);
   const [filterSmoking, setFilterSmoking] = useState(false);
   const [filterRefundable, setFilterRefundable] = useState(false);
+
+  // Pagination Kamar
+  const ROOMS_PER_PAGE = 5;
+  const [roomPage, setRoomPage] = useState(1);
 
   const lightboxContainerRef = useRef(null);
 
@@ -158,6 +165,17 @@ const HotelDetail = () => {
       return true;
     });
   }, [hotel, filterAdults, filterChildren, filterRoomType, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
+
+  // Reset ke halaman 1 saat filter berubah
+  useEffect(() => {
+    setRoomPage(1);
+  }, [filterAdults, filterChildren, filterRoomType, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
+
+  const totalRoomPages = Math.ceil(filteredRooms.length / ROOMS_PER_PAGE) || 1;
+  const paginatedRooms = useMemo(
+    () => filteredRooms.slice((roomPage - 1) * ROOMS_PER_PAGE, roomPage * ROOMS_PER_PAGE),
+    [filteredRooms, roomPage]
+  );
 
   const handleResetRoomFilters = () => {
     setFilterAdults("");
@@ -447,7 +465,8 @@ const HotelDetail = () => {
                 Pilihan Kamar
               </h2>
               <p className="font-body-md text-xs text-[#444842]">
-                Menampilkan {filteredRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia
+                Menampilkan {paginatedRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia
+                (hal. {roomPage}/{totalRoomPages})
               </p>
             </div>
             
@@ -604,7 +623,7 @@ const HotelDetail = () => {
           {/* Rooms List Rendering */}
           {filteredRooms && filteredRooms.length > 0 ? (
             <div className="space-y-6">
-              {filteredRooms.map((room) => {
+              {paginatedRooms.map((room) => {
                 const roomPrice = Number(room.price || room.weekday_price || 1250000);
                 const weekendPrice = Math.round(roomPrice * 1.35);
 
@@ -737,6 +756,47 @@ const HotelDetail = () => {
                   </div>
                 );
               })}
+
+              {/* Pagination Controls */}
+              {totalRoomPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+                  <p className="text-xs text-[#444842]">
+                    Halaman <span className="font-bold text-[#778873]">{roomPage}</span> dari {totalRoomPages} — menampilkan {(roomPage - 1) * ROOMS_PER_PAGE + 1}–{Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} dari {filteredRooms.length} kamar
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRoomPage((p) => Math.max(1, p - 1))}
+                      disabled={roomPage === 1}
+                      className="px-4 py-2 border border-[#778873] text-[#778873] rounded-xl text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      ‹ Sebelumnya
+                    </button>
+                    {Array.from({ length: totalRoomPages }).map((_, idx) => (
+                      <button
+                        key={idx + 1}
+                        type="button"
+                        onClick={() => setRoomPage(idx + 1)}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                          roomPage === idx + 1
+                            ? "bg-[#778873] text-white shadow-sm"
+                            : "border border-[#DCCFC0] text-[#778873] hover:bg-[#DCCFC0]/30"
+                        }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}
+                      disabled={roomPage === totalRoomPages}
+                      className="px-4 py-2 border border-[#778873] text-[#778873] rounded-xl text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Berikutnya ›
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-12 text-center bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40">

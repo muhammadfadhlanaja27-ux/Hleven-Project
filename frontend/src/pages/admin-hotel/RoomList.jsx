@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet } from "../../services/apiCache";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 const normalizeImageUrl = (value) => {
   if (!value) return "";
@@ -138,13 +138,14 @@ const normalizeRoom = (r) => {
   return {
     id: r.id,
     name: r.name || "",
-      type: r.type || (
-        r.name?.toLowerCase().includes("suite")
-          ? "Suite"
-          : r.name?.toLowerCase().includes("deluxe")
-          ? "Deluxe"
-          : "Standard"
-      ),
+    type: r.type || (
+      r.name?.toLowerCase().includes("suite")
+        ? "Suite"
+        : r.name?.toLowerCase().includes("deluxe")
+        ? "Deluxe"
+        : "Standard"
+    ),
+    bed: r.bed || "",
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
     weekend_price: Number(r.weekend_price || 0),
@@ -292,6 +293,8 @@ export default function RoomList() {
     setDeletedPhotoIds([]);
     setEditValues({
       name: room.name,
+      type: room.type || "Standard",
+      bed: room.bed || "",
       description: room.description || "",
       weekday_price: room.weekday_price,
       weekend_price: room.weekend_price,
@@ -415,6 +418,7 @@ export default function RoomList() {
       payload.append("_method", "PUT");
       payload.append("name", editValues.name.trim());
       payload.append("type", editValues.type || "Standard");
+      payload.append("bed", editValues.bed || "");
       payload.append("description", editValues.description?.trim() || "");
       payload.append("weekday_price", Number(editValues.weekday_price));
       payload.append("weekend_price", Number(editValues.weekend_price));
@@ -448,6 +452,8 @@ export default function RoomList() {
       });
 
       toast.success("Room updated successfully.");
+      // Hapus cache hotel agar halaman user (HotelDetail/RoomDetail) menampilkan data terbaru
+      invalidateCache("/hotels");
       setEditingRoom(null);
       setEditNewPhotoFiles([]);
       setDeletedPhotoIds([]);
@@ -471,6 +477,7 @@ export default function RoomList() {
     try {
       await api.delete(`/admin/rooms/${deletingRoom.id}`);
       toast.success("Room deleted successfully.");
+      invalidateCache("/hotels");
       setDeletingRoom(null);
       if (viewingRoom && viewingRoom.id === deletingRoom.id) {
         setViewingRoom(null);
@@ -622,6 +629,9 @@ export default function RoomList() {
                   Room Type
                 </th>
                 <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
+                  Bed Type
+                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
                   Weekday Price
                 </th>
                 <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
@@ -695,6 +705,18 @@ export default function RoomList() {
                       {/* Room Type */}
                       <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">
                         {room.type}
+                      </td>
+
+                      {/* Bed Type */}
+                      <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">
+                        {room.bed ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[16px] text-[#506147]">bed</span>
+                            {room.bed}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#6B6E6A]">—</span>
+                        )}
                       </td>
 
                       {/* Weekday Price */}
@@ -797,7 +819,7 @@ export default function RoomList() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="10" className="p-12 text-center text-[#6B6E6A]">
+                  <td colSpan="11" className="p-12 text-center text-[#6B6E6A]">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
                         bed
@@ -936,6 +958,10 @@ export default function RoomList() {
                   <div>
                     <span className="text-[#6B6E6A]">Type:</span>
                     <p className="font-semibold text-[#2D312C] mt-0.5">{viewingRoom.type}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#6B6E6A]">Bed:</span>
+                    <p className="font-semibold text-[#2D312C] mt-0.5">{viewingRoom.bed || "—"}</p>
                   </div>
                   <div>
                     <span className="text-[#6B6E6A]">Capacity:</span>
@@ -1083,6 +1109,24 @@ export default function RoomList() {
                       <option value="Standard">Standard</option>
                       <option value="Deluxe">Deluxe</option>
                       <option value="Suite">Suite</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Bed Type</label>
+                    <select
+                      name="bed"
+                      value={editValues.bed}
+                      onChange={handleEditChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Pilih Tipe Kasur</option>
+                      <option value="1 Single Bed">Single Bed</option>
+                      <option value="1 Twin Bed">Twin Bed</option>
+                      <option value="1 Queen Bed">Queen Bed</option>
+                      <option value="1 King Bed">King Bed</option>
                     </select>
                   </div>
                 </div>

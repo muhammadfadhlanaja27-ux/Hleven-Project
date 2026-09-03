@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
-const HotelCard = ({ hotel }) => {
+const HotelCard = ({ hotel, adults, children }) => {
+  const [urlSearchParams] = useSearchParams();
   const [imgError, setImgError] = useState(false);
+
+  // Baca dari prop (dari LandingPage/HotelList) atau fallback ke URL saat ini
+  const effectiveAdults = (adults ?? Number(urlSearchParams.get('adults'))) || 0;
+  const effectiveChildren = (children ?? Number(urlSearchParams.get('children'))) || 0;
+
+  const buildDetailUrl = () => {
+    const params = new URLSearchParams();
+    if (effectiveAdults > 0) params.set('adults', effectiveAdults);
+    if (effectiveChildren > 0) params.set('children', effectiveChildren);
+    const qs = params.toString();
+    return `/hotels/${hotel.id}${qs ? `?${qs}` : ''}`;
+  };
 
   // Reset error state ketika data hotel/foto berubah agar foto baru dicoba lagi
   useEffect(() => {
@@ -129,7 +142,7 @@ const HotelCard = ({ hotel }) => {
           </div>
 
           <Link
-            to={`/hotels/${hotel.id}`}
+            to={buildDetailUrl()}
             className="bg-[#fff8f0] border border-[#778873] text-[#778873] px-4 py-2 rounded-lg font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors inline-block text-center"
           >
             View Details

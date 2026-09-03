@@ -90,6 +90,7 @@ class RoomController extends Controller
         $validator = Validator::make($request->all(), [
             'name'           => 'required|string|max:255',
             'type'           => 'nullable|string|max:100',
+            'bed'            => 'nullable|string|max:100',
             'description'    => 'nullable|string',
             'weekday_price'  => 'required|numeric|min:0',
             'weekend_price'  => 'required|numeric|min:0',
@@ -112,6 +113,7 @@ class RoomController extends Controller
             'hotel_id'       => $hotel->id,
             'name'           => $request->name,
             'type'           => $request->type ?? 'Standard',
+            'bed'            => $request->bed,
             'description'    => $request->description,
             'weekday_price'  => $request->weekday_price,
             'weekend_price'  => $request->weekend_price,
@@ -176,6 +178,7 @@ class RoomController extends Controller
         $validator = Validator::make($request->all(), [
             'name'           => 'sometimes|required|string|max:255',
             'type'           => 'nullable|string|max:100',
+            'bed'            => 'nullable|string|max:100',
             'description'    => 'nullable|string',
             'weekday_price'  => 'sometimes|required|numeric|min:0',
             'weekend_price'  => 'sometimes|required|numeric|min:0',
@@ -199,7 +202,7 @@ class RoomController extends Controller
 
         // Update kolom utama (gunakan only agar tidak ada kolom asing)
         $updateData = $request->only([
-            'name', 'type', 'description', 'weekday_price', 'weekend_price',
+            'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
             'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
         ]);
 
