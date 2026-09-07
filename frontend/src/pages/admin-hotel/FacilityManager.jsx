@@ -267,6 +267,9 @@ export default function FacilityManager() {
       const payload = {
         name: formValues.name.trim(),
         category,
+        icon: formValues.icon,
+        description: formValues.description.trim(),
+        status: formValues.status,
       };
 
       if (modalMode === "add") {
@@ -574,8 +577,8 @@ export default function FacilityManager() {
 
       {(modalMode === "add" || modalMode === "edit") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-[#E5E1DA] flex items-center justify-between bg-[#fcf9f5]">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="px-6 py-5 border-b border-[#E5E1DA] flex items-center justify-between bg-[#fcf9f5] shrink-0">
               <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
                 {modalMode === "add"
                   ? activeTab === "hotel"
@@ -596,7 +599,7 @@ export default function FacilityManager() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveFacility} className="p-6 space-y-5">
+            <form onSubmit={handleSaveFacility} className="p-6 space-y-5 overflow-y-auto max-h-[calc(85vh-110px)]">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
                   Facility Name *

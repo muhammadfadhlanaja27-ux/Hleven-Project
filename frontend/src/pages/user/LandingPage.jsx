@@ -439,7 +439,7 @@ const LandingPage = () => {
             /* Hotel Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {displayedHotels.map((hotel) => (
-                <HotelCard key={hotel.id} hotel={hotel} />
+                <HotelCard key={hotel.id} hotel={hotel} adults={adults} children={children} />
               ))}
             </div>
           )}

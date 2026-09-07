@@ -462,6 +462,7 @@ export default function HotelInformation() {
       // 4. Invalidate Cache & Refresh data fresh
       invalidateCache("/facilities?category=Hotel");
       invalidateCache("/admin/hotel/profile");
+      invalidateCache("/hotels");
       await fetchHotelInfo(true);
 
       setIsEditing(false);

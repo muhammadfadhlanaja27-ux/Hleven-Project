@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer,
@@ -11,7 +11,7 @@ import {
   Area,
   CartesianGrid,
 } from 'recharts';
-import { cachedGet } from '../../services/apiCache';
+import { cachedGet, invalidateCache } from '../../services/apiCache';
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
 const renderText = (val, fallback = '—') => {
@@ -116,6 +116,7 @@ export default function Dashboard() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [revPeriod, setRevPeriod] = useState('monthly');
+  const [trendPeriod, setTrendPeriod] = useState('monthly');
   const [currentUser, setCurrentUser] = useState(null);
   const [warnings, setWarnings]   = useState([]);
 
@@ -137,6 +138,9 @@ export default function Dashboard() {
       const u = localStorage.getItem('user');
       if (u) setCurrentUser(JSON.parse(u));
     } catch (_) {}
+    // Invalidate cache on mount to ensure fresh data from DB
+    invalidateCache('/admin/hotel/dashboard');
+    invalidateCache('/hotels');
     fetchStats();
     fetchWarnings();
   }, []);
@@ -198,17 +202,27 @@ export default function Dashboard() {
     return chartRaw.map((d) => ({ name: d.month, amount: Number(d.amount || 0) }));
   };
 
-  // Trend data for AreaChart
-  const trendChartData = chartRaw.map((item) => {
-    const amount = Number(item.amount || 0);
-    const completedVal = amount > 0 ? Math.max(1, Math.round(amount / 3000000)) : Math.floor(Math.random() * 6 + 2);
-    const pendingVal = Math.max(0, Math.floor(completedVal * 0.25));
-    return {
-      name: item.month,
-      Completed: completedVal,
-      Pending: pendingVal,
-    };
-  });
+  // Trend data for AreaChart — real booking counts from API, per periode
+
+  const displayTrendData = useMemo(() => {
+    const mapToChart = (list, labelKey = 'label') =>
+      (Array.isArray(list) ? list : []).map((item) => ({
+        name: item[labelKey] ?? item.month,
+        Completed: Number(item.completed || 0),
+        Pending: Number(item.pending || 0),
+      }));
+
+    if (trendPeriod === 'daily') {
+      return mapToChart(stats?.daily_booking_chart);
+    }
+    if (trendPeriod === 'weekly') {
+      return mapToChart(stats?.weekly_booking_chart);
+    }
+    if (trendPeriod === 'yearly') {
+      return mapToChart(stats?.yearly_booking_chart);
+    }
+    return mapToChart(stats?.monthly_booking_chart, 'month');
+  }, [stats, trendPeriod]);
 
   const todayFormatted = new Date().toLocaleDateString('id-ID', {
     weekday: 'short',
@@ -579,6 +593,26 @@ export default function Dashboard() {
                 <span className="text-[#6B6E6A]">Pending</span>
               </div>
             </div>
+            <div className="flex gap-1.5 p-1 bg-[#f0ede9] rounded-full self-start">
+              {[
+                { id: 'daily', label: 'Harian' },
+                { id: 'weekly', label: 'Mingguan' },
+                { id: 'monthly', label: 'Bulanan' },
+                { id: 'yearly', label: 'Tahunan' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setTrendPeriod(item.id)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+                    trendPeriod === item.id
+                      ? 'bg-[#506147] text-white shadow-xs'
+                      : 'text-[#6B6E6A] hover:text-[#2D312C]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="w-full h-[260px] pt-2">
@@ -586,7 +620,7 @@ export default function Dashboard() {
               <Skeleton className="w-full h-full" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={displayTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#506147" stopOpacity={0.4} />

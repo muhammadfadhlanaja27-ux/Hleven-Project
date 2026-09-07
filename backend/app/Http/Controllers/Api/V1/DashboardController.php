@@ -96,6 +96,100 @@ class DashboardController extends Controller
             ];
         }
 
+        // Booking trend per bulan (Completed = paid/checked_in/checked_out, Pending = pending/unpaid)
+        $bookingTrend = Booking::where('hotel_id', $hotelId)
+            ->whereYear('created_at', $currentYear)
+            ->selectRaw('
+                EXTRACT(MONTH FROM created_at) as month,
+                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
+            ')
+            ->groupBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $monthlyBookingChart = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $trend = $bookingTrend->get($m);
+            $monthlyBookingChart[] = [
+                'month' => $months[$m - 1],
+                'completed' => (int) ($trend->completed ?? 0),
+                'pending' => (int) ($trend->pending ?? 0),
+            ];
+        }
+
+        // Booking trend harian — 7 hari terakhir
+        $dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+        $dailyTrend = Booking::where('hotel_id', $hotelId)
+            ->whereBetween('created_at', [now()->subDays(6)->startOfDay(), now()->endOfDay()])
+            ->selectRaw('
+                DATE(created_at) as day,
+                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
+            ')
+            ->groupBy('day')
+            ->get()
+            ->keyBy(fn ($r) => substr($r->day, 5));
+
+        $dailyBookingChart = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $key = $date->format('Y-m-d');
+            $trend = $dailyTrend->get($key);
+            $dailyBookingChart[] = [
+                'label' => $dayNames[$date->dayOfWeek] . ' ' . $date->day,
+                'completed' => (int) ($trend->completed ?? 0),
+                'pending' => (int) ($trend->pending ?? 0),
+            ];
+        }
+
+        // Booking trend mingguan — 8 minggu terakhir
+        $weeklyTrend = Booking::where('hotel_id', $hotelId)
+            ->whereBetween('created_at', [now()->subWeeks(7)->startOfWeek(), now()->endOfWeek()])
+            ->selectRaw('
+                EXTRACT(WEEK FROM created_at) as week,
+                EXTRACT(YEAR FROM created_at) as year,
+                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
+            ')
+            ->groupBy('year', 'week')
+            ->get();
+
+        $weeklyBookingChart = [];
+        for ($i = 7; $i >= 0; $i--) {
+            $weekStart = now()->subWeeks($i)->startOfWeek();
+            $weekYear = $weekStart->year;
+            $weekNum = $weekStart->weekOfYear;
+            $trend = $weeklyTrend->first(fn ($r) => (int) $r->year === $weekYear && (int) $r->week === $weekNum);
+            $weeklyBookingChart[] = [
+                'label' => 'M' . $weekNum,
+                'completed' => (int) ($trend->completed ?? 0),
+                'pending' => (int) ($trend->pending ?? 0),
+            ];
+        }
+
+        // Booking trend tahunan — 5 tahun terakhir
+        $yearlyTrend = Booking::where('hotel_id', $hotelId)
+            ->selectRaw('
+                EXTRACT(YEAR FROM created_at) as year,
+                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
+            ')
+            ->groupBy('year')
+            ->get()
+            ->keyBy('year');
+
+        $yearlyBookingChart = [];
+        for ($i = 4; $i >= 0; $i--) {
+            $year = now()->year - $i;
+            $trend = $yearlyTrend->get($year);
+            $yearlyBookingChart[] = [
+                'label' => (string) $year,
+                'completed' => (int) ($trend->completed ?? 0),
+                'pending' => (int) ($trend->pending ?? 0),
+            ];
+        }
+
         $recentBookings = Booking::with(['user', 'bookingRooms.roomType', 'payment'])
             ->where('hotel_id', $hotelId)
             ->orderBy('created_at', 'desc')
@@ -119,6 +213,10 @@ class DashboardController extends Controller
                 'booking_breakdown' => $bookingBreakdown,
                 'revenue_details' => $revenueDetails,
                 'monthly_chart' => $monthlyChart,
+                'monthly_booking_chart' => $monthlyBookingChart,
+                'daily_booking_chart' => $dailyBookingChart,
+                'weekly_booking_chart' => $weeklyBookingChart,
+                'yearly_booking_chart' => $yearlyBookingChart,
                 'recent_bookings' => $recentBookings,
             ],
         ], 200);

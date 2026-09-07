@@ -46,6 +46,7 @@ class RoomTypeController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'type' => 'nullable|string|max:100',
+            'bed' => 'nullable|string|max:100',
             'description' => 'nullable|string',
             'weekday_price' => 'required|numeric|min:0',
             'weekend_price' => 'required|numeric|min:0',
@@ -70,6 +71,7 @@ class RoomTypeController extends Controller
                 'hotel_id' => $hotel->id,
                 'name' => $request->name,
                 'type' => $request->type ?? 'Standard',
+                'bed' => $request->bed,
                 'description' => $request->description,
                 'weekday_price' => $request->weekday_price,
                 'weekend_price' => $request->weekend_price,
@@ -78,6 +80,7 @@ class RoomTypeController extends Controller
                 'capacity_child' => $request->child_capacity ?? 0,
                 'breakfast' => $request->boolean('breakfast'),
                 'smoking_area' => $request->boolean('smoking_area'),
+                'is_refundable' => $request->boolean('is_refundable', true),
             ]);
 
             // 2. Simpan relasi fasilitas ke tabel pivot `room_facilities`
@@ -144,6 +147,7 @@ class RoomTypeController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:255',
             'type' => 'nullable|string|max:100',
+            'bed' => 'nullable|string|max:100',
             'description' => 'nullable|string',
             'weekday_price' => 'sometimes|numeric|min:0',
             'weekend_price' => 'sometimes|numeric|min:0',
@@ -167,6 +171,9 @@ class RoomTypeController extends Controller
             'stock'
         ]);
 
+        if ($request->has('bed')) {
+            $updateData['bed'] = $request->bed;
+        }
         if ($request->has('adult_capacity')) {
             $updateData['capacity_adult'] = $request->adult_capacity;
         }
