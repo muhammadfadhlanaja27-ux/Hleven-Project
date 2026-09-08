@@ -7,21 +7,37 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
-    {
+public function up(): void
+{
+    // 1. Hapus FK lama jika ada
+    try {
         Schema::table('hotels', function (Blueprint $table) {
             $table->dropForeign(['admin_id']);
         });
-
-        DB::statement('ALTER TABLE hotels ADD CONSTRAINT hotels_admin_id_foreign FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE');
+    } catch (\Throwable $e) {
+        // Abaikan jika FK tidak ditemukan
     }
+
+    // 2. Samakan tipe admin_id dengan users.id (BIGINT UNSIGNED)
+    DB::statement("ALTER TABLE `hotels` MODIFY `admin_id` BIGINT UNSIGNED NULL;");
+
+    // 3. Buat ulang FK constraint ON DELETE CASCADE
+    Schema::table('hotels', function (Blueprint $table) {
+        $table->foreign('admin_id')
+              ->references('id')
+              ->on('users')
+              ->onDelete('cascade');
+    });
+}
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE hotels DROP CONSTRAINT hotels_admin_id_foreign');
-
-        Schema::table('hotels', function (Blueprint $table) {
-            $table->foreign('admin_id')->references('id')->on('users')->restrictOnDelete();
-        });
+        try {
+            Schema::table('hotels', function (Blueprint $table) {
+                $table->dropForeign(['admin_id']);
+            });
+        } catch (\Throwable $e) {
+            // Abaikan
+        }
     }
 };
