@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
+use App\Models\City;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class HotelController extends Controller
 {
@@ -70,7 +72,7 @@ class HotelController extends Controller
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
-        $hotel->load(['city', 'facilities', 'photos']);
+        $hotel->load(['city', 'facilities', 'photos', 'admin']);
 
         return response()->json([
             'success' => true,
@@ -96,7 +98,7 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Data hotel berhasil diambil',
-            'data'    => [$hotel->load(['city', 'facilities', 'photos'])]
+            'data'    => [$hotel->load(['city', 'facilities', 'photos', 'admin'])]
         ], 200);
     }
 
@@ -122,11 +124,16 @@ class HotelController extends Controller
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
+        $admin = $hotel->admin ?? $user;
+
         $request->validate([
             'name'         => 'sometimes|string|max:255',
             'description'  => 'nullable|string',
             'address'      => 'sometimes|string',
-            'phone'        => 'sometimes|string',
+            'phone'        => 'nullable|string|max:30',
+            'email'        => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
+            'city'         => 'nullable|string|max:255',
+            'city_id'      => 'nullable|exists:cities,id',
             'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'facilities'   => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
@@ -140,7 +147,45 @@ class HotelController extends Controller
             $hotel->banner = Storage::disk('s3')->url($path);
         }
 
-        $hotel->update($request->only(['name', 'description', 'address', 'phone']));
+        $hotel->update($request->only(['name', 'description', 'address']));
+
+        // Update city
+        if ($request->filled('city_id')) {
+            $hotel->city_id = $request->city_id;
+            $hotel->save();
+        } elseif ($request->filled('city')) {
+            $cityName = trim($request->city);
+            $cleanName = trim(preg_replace('/^(kota|kabupaten)\s+/i', '', $cityName));
+            
+            $city = City::whereRaw('LOWER(city) = ?', [strtolower($cityName)])
+                ->orWhereRaw('LOWER(city) = ?', [strtolower($cleanName)])
+                ->orWhere('city', 'like', "%{$cleanName}%")
+                ->first();
+
+            if (!$city) {
+                $city = City::create([
+                    'province' => 'Jawa Barat',
+                    'city'     => $cityName,
+                ]);
+            }
+
+            $hotel->city_id = $city->id;
+            $hotel->save();
+        }
+
+        // Update nomor telepon dan email kontak pada user admin terkait
+        if ($admin) {
+            $adminData = [];
+            if ($request->has('phone')) {
+                $adminData['phone'] = $request->phone;
+            }
+            if ($request->has('email') && !empty($request->email)) {
+                $adminData['email'] = $request->email;
+            }
+            if (!empty($adminData)) {
+                $admin->update($adminData);
+            }
+        }
 
         if ($request->has('facilities')) {
             $facilities = $request->input('facilities');
@@ -154,7 +199,7 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil hotel berhasil diperbarui',
-            'data'    => $hotel->load(['city', 'facilities', 'photos']),
+            'data'    => $hotel->fresh(['city', 'facilities', 'photos', 'admin']),
         ], 200);
     }
 
@@ -195,13 +240,14 @@ class HotelController extends Controller
     public function deletePhoto(Request $request, $param1, $param2 = null): JsonResponse
     {
         $photoId = $param2 !== null ? $param2 : $param1;
+        $photo = HotelPhoto::find($photoId);
 
-        if ($photo->photo) {
-            app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
+        if ($photo) {
+            if ($photo->photo) {
+                app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
+            }
+            $photo->delete();
         }
-
-        // Hapus data dari PostgreSQL
-        $photo->delete();
 
         return response()->json([
             'success' => true,

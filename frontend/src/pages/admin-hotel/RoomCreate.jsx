@@ -250,8 +250,8 @@ export default function RoomCreate() {
       payload.append("description", formData.description.trim());
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);
-      payload.append("adult_capacity", formData.capacity);
-      payload.append("child_capacity", 0);
+      payload.append("capacity_adult", formData.capacity);
+      payload.append("capacity_child", 0);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
 
@@ -263,7 +263,7 @@ export default function RoomCreate() {
         payload.append("photos[]", file);
       });
 
-      await api.post("/hotel/room-types", payload, {
+      await api.post("/admin/rooms", payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

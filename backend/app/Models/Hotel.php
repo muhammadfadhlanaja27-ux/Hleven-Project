@@ -15,7 +15,7 @@ class Hotel extends Model
         'average_rating', 'total_review', 'latitude', 'longitude', 'status'
     ];
 
-    protected $appends = ['starting_price', 'thumbnail'];
+    protected $appends = ['starting_price', 'thumbnail', 'phone', 'email'];
 
     public function getStartingPriceAttribute()
     {
@@ -33,6 +33,22 @@ class Hotel extends Model
         }
         $thumbnailPhoto = $this->photos()->where('is_thumbnail', true)->first() ?? $this->photos()->first();
         return $thumbnailPhoto ? $thumbnailPhoto->photo : null;
+    }
+
+    public function getPhoneAttribute()
+    {
+        if ($this->relationLoaded('admin')) {
+            return $this->admin?->phone;
+        }
+        return $this->admin()->value('phone');
+    }
+
+    public function getEmailAttribute()
+    {
+        if ($this->relationLoaded('admin')) {
+            return $this->admin?->email;
+        }
+        return $this->admin()->value('email');
     }
 
     public function admin()

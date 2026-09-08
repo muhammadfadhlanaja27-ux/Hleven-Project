@@ -243,8 +243,8 @@ export default function HotelInformation() {
               "Hotel nyaman dengan fasilitas lengkap untuk kebutuhan perjalanan bisnis maupun liburan.",
             address: raw.address || "Jl. Example No. 123",
             city: cityName,
-            phone: raw.phone || "+62 812 3456 7890",
-            email: raw.email || "contact@hleven.com",
+            phone: raw.phone || raw.admin?.phone || "+62 812 3456 7890",
+            email: raw.email || raw.admin?.email || "contact@hleven.com",
             rating: currentRating,
             totalReviews: currentTotalReviews,
             location:
@@ -292,7 +292,13 @@ export default function HotelInformation() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormValues((prev) => ({ ...prev, [name]: value }));
+    setFormValues((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "city" && (!prev.location || prev.location === `${prev.city}, Indonesia`)) {
+        next.location = `${value}, Indonesia`;
+      }
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -419,12 +425,28 @@ export default function HotelInformation() {
         name: formValues.name.trim(),
         description: formValues.description.trim(),
         address: formValues.address.trim(),
+        city: formValues.city.trim(),
         phone: formValues.phone.trim(),
+        email: formValues.email.trim(),
         facilities: formFacilityIds,
       };
 
       // 1. Simpan profil hotel & sync fasilitas
       await api.post("/admin/hotel/profile", payload);
+
+      // Sinkronisasi data admin ke localStorage jika email atau phone berubah
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          parsed.email = formValues.email.trim();
+          parsed.phone = formValues.phone.trim();
+          localStorage.setItem("user", JSON.stringify(parsed));
+          window.dispatchEvent(new Event("userUpdated"));
+        }
+      } catch (e) {
+        // Abaikan jika localStorage tidak dapat diakses
+      }
 
       const newPhotos = formPhotos.filter((p) => p.file);
       const currentPrimary = hotelData.photos?.find((photo) => photo.isPrimary) || hotelData.photos?.[0];

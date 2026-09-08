@@ -382,9 +382,9 @@ export default function Dashboard() {
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
               <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Booking Hari Ini</p>
-              <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
+              <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
                 {loading ? <Skeleton className="h-7 w-10" /> : (stats?.today_bookings ?? 0)}
-              </p>
+              </div>
             </div>
             <div className="w-10 h-10 rounded-full bg-[#f0ede9] flex items-center justify-center text-[#6B6E6A]">
               <span className="material-symbols-outlined">book_online</span>
@@ -394,9 +394,9 @@ export default function Dashboard() {
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
               <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Check In Hari Ini</p>
-              <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
+              <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
                 {loading ? <Skeleton className="h-7 w-10" /> : (stats?.today_checkins ?? 0)}
-              </p>
+              </div>
             </div>
             <div className="w-10 h-10 rounded-full bg-[#d2e5cb] flex items-center justify-center text-[#566752]">
               <span className="material-symbols-outlined">login</span>
@@ -406,9 +406,9 @@ export default function Dashboard() {
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
               <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Check Out Hari Ini</p>
-              <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
+              <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
                 {loading ? <Skeleton className="h-7 w-10" /> : (stats?.today_checkouts ?? 0)}
-              </p>
+              </div>
             </div>
             <div className="w-10 h-10 rounded-full bg-[#ffdad6] flex items-center justify-center text-[#93000a]">
               <span className="material-symbols-outlined">logout</span>
@@ -419,9 +419,9 @@ export default function Dashboard() {
             <div>
               <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Rata-Rata Rating</p>
               <div className="flex items-center gap-1.5 mt-1">
-                <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
+                <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
                   {loading ? <Skeleton className="h-7 w-10" /> : (stats?.average_rating ?? 0)}
-                </p>
+                </div>
                 <span className="material-symbols-outlined text-[#D48C45] text-[20px] fill-1">star</span>
               </div>
             </div>
