@@ -59,13 +59,12 @@ class HotelController extends Controller
     }
 
     /**
-     * Menampilkan profil hotel khusus untuk Admin Hotel (Update: Fallback ke hotel pertama)
+     * Menampilkan profil hotel khusus untuk Admin Hotel
      */
     public function showProfile(Request $request): JsonResponse
     {
         $user = $request->user();
         
-        // Coba ambil melalui relasi user->hotel, jika null ambil hotel pertama di database (untuk single-hotel system)
         $hotel = $user->hotel ?? Hotel::first();
 
         if (!$hotel) {
@@ -88,7 +87,6 @@ class HotelController extends Controller
     {
         $user = $request->user();
         
-        // Coba ambil melalui relasi user->hotel, jika null ambil hotel pertama di database
         $hotel = $user->hotel ?? Hotel::first();
 
         if (!$hotel) {
@@ -134,22 +132,18 @@ class HotelController extends Controller
             'email'        => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
             'city'         => 'nullable|string|max:255',
             'city_id'      => 'nullable|exists:cities,id',
-            'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'facilities'   => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
         ]);
 
         if ($request->hasFile('banner')) {
-            if ($hotel->banner) {
-                app(\App\Services\FileStorageService::class)->deleteFile($hotel->banner);
-            }
-            $path = $request->file('banner')->store('hotels/banners', 's3');
-            $hotel->banner = Storage::disk('s3')->url($path);
+            $path = $request->file('banner')->store('hotels/banners', 'public');
+            $hotel->banner = asset('storage/' . $path);
         }
 
         $hotel->update($request->only(['name', 'description', 'address']));
 
-        // Update city
         if ($request->filled('city_id')) {
             $hotel->city_id = $request->city_id;
             $hotel->save();
@@ -173,7 +167,6 @@ class HotelController extends Controller
             $hotel->save();
         }
 
-        // Update nomor telepon dan email kontak pada user admin terkait
         if ($admin) {
             $adminData = [];
             if ($request->has('phone')) {
@@ -204,7 +197,7 @@ class HotelController extends Controller
     }
 
     /**
-     * Upload foto galeri hotel
+     * Upload foto galeri hotel (Storage Lokal)
      */
     public function uploadPhoto(Request $request, $id): JsonResponse
     {
@@ -215,8 +208,8 @@ class HotelController extends Controller
             'is_thumbnail' => 'boolean',
         ]);
 
-        $path = $request->file('photo')->store('hotels', 's3');
-        $url = Storage::disk('s3')->url($path);
+        $path = $request->file('photo')->store('hotels', 'public');
+        $url = asset('storage/' . $path);
 
         if ($request->is_thumbnail) {
             $hotel->photos()->update(['is_thumbnail' => false]);
