@@ -47,6 +47,7 @@ const BookingPage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentScreen, setPaymentScreen] = useState("methods");
   const [orderId, setOrderId] = useState("HLVN-98234-AX");
+  const [paymentId, setPaymentId] = useState(null);
   const [qrisTimer, setQrisTimer] = useState(15 * 60 - 1);
   const [successModalData, setSuccessModalData] = useState(null); // State Modal Sukses
 
@@ -234,6 +235,9 @@ const BookingPage = () => {
       if (res.data && res.data.data) {
         const createdBooking = res.data.data.booking || res.data.data;
         setOrderId(createdBooking.booking_code || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`);
+        if (createdBooking.payment?.id) {
+          setPaymentId(createdBooking.payment.id);
+        }
         setPaymentScreen("methods");
         setShowPaymentModal(true);
       }
@@ -269,11 +273,15 @@ const BookingPage = () => {
     }
   };
 
-  // Konfirmasi Pembayaran dengan Modal Kustom
-  const confirmPaymentSuccess = (methodName = "QRIS") => {
+  // Konfirmasi Pembayaran Manual ke Backend
+  const confirmPaymentSuccess = async (methodName = "QRIS") => {
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      if (paymentId) {
+        await api.post(`/payments/${paymentId}/mark-paid`, {
+          payment_method: methodName,
+        });
+      }
       setShowPaymentModal(false);
       setSuccessModalData({
         orderId,
@@ -284,7 +292,12 @@ const BookingPage = () => {
         methodName,
         totalPrice,
       });
-    }, 600);
+    } catch (err) {
+      console.error("Gagal konfirmasi pembayaran:", err);
+      toast.error(err.response?.data?.message || "Gagal mengonfirmasi pembayaran.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const formattedTimer = useMemo(() => {
@@ -612,7 +625,7 @@ const BookingPage = () => {
               </div>
 
               <div className="p-3 bg-[#faf3ea] border-t border-[#DCCFC0]/30 text-center">
-                <p className="font-label-sm text-xs text-[#444842]">Secured by Midtrans Gateway</p>
+                <p className="font-label-sm text-xs text-[#444842]">Pembayaran Aman & Terverifikasi</p>
               </div>
             </div>
           ) : (

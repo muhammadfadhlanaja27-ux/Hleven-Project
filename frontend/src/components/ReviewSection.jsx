@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { cachedGet } from "../services/apiCache";
 import api from "../services/api";
+import toast from "react-hot-toast";
 
 const ReviewSection = ({ hotelId, roomTypes = [] }) => {
   const [reviews, setReviews] = useState([]);
@@ -55,16 +56,19 @@ const ReviewSection = ({ hotelId, roomTypes = [] }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.booking_id) return alert("Pilih pesanan yang ingin di-review.");
+    if (!form.booking_id) {
+      toast.error("Pilih pesanan yang ingin di-review.");
+      return;
+    }
     setSubmitting(true);
     try {
       await api.post(`/hotels/${hotelId}/reviews`, form);
-      alert("Review berhasil dikirim!");
+      toast.success("Review berhasil dikirim!");
       setForm({ booking_id: "", rating: 5, comment: "" });
       fetchEligibleBookings();
       fetchReviews();
     } catch (err) {
-      alert(err.response?.data?.message || "Gagal mengirim review");
+      toast.error(err.response?.data?.message || "Gagal mengirim review");
     }
     setSubmitting(false);
   };

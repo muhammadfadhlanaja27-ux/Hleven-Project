@@ -2,20 +2,23 @@
 
 namespace App\Services;
 
-use App\Models\Payment;
-use App\Models\Booking;
 use App\Models\ActivityLog;
+use App\Models\Booking;
+use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
+use Midtrans\Config;
+use Midtrans\Snap;
+use Midtrans\Transaction;
 
 class MidtransService
 {
     public function __construct()
     {
         // Set konfigurasi Midtrans
-        \Midtrans\Config::$serverKey = config('midtrans.server_key');
-        \Midtrans\Config::$isProduction = config('midtrans.is_production');
-        \Midtrans\Config::$isSanitized = true;
-        \Midtrans\Config::$is3ds = true;
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production');
+        Config::$isSanitized = true;
+        Config::$is3ds = true;
     }
 
     /**
@@ -38,10 +41,10 @@ class MidtransService
             'customer_details' => [
                 'first_name' => $booking->user->name,
                 'email' => $booking->user->email,
-            ]
+            ],
         ];
 
-        $snapToken = \Midtrans\Snap::getSnapToken($params);
+        $snapToken = Snap::getSnapToken($params);
 
         // Simpan token ke database
         $payment->update(['snap_token' => $snapToken]);
@@ -60,9 +63,9 @@ class MidtransService
         $serverKey = config('midtrans.server_key');
 
         // 1. Validasi Signature Key[cite: 1]
-        $signatureKey = hash("sha512", $orderId . $statusCode . $grossAmount . $serverKey);
+        $signatureKey = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
         if ($signatureKey !== $payload['signature_key']) {
-            throw new \Exception("Invalid Signature");
+            throw new \Exception('Invalid Signature');
         }
 
         $transactionStatus = $payload['transaction_status'];
@@ -72,23 +75,24 @@ class MidtransService
             $payment = $booking->payment;
 
             // 2. Tentukan status baru
+            // CATATAN: nilai enum di DB semuanya lowercase (paid, success, expired, cancelled)
             if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
-                $payment->update(['payment_status' => 'Success', 'paid_at' => now()]);
-                $booking->update(['status' => 'Paid']); // PAYMENT-007[cite: 1]
+                $payment->update(['payment_status' => 'success', 'paid_at' => now()]);
+                $booking->update(['status' => 'paid']); // PAYMENT-007
 
                 // Panggil QRCodeService untuk membuat E-Ticket yang rapi
-                app(\App\Services\QRCodeService::class)->generateTicket($booking);
+                app(QRCodeService::class)->generateTicket($booking);
 
                 $activity = 'Payment Success';
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
-                $status = $transactionStatus === 'expire' ? 'Expired' : 'Cancelled';
+                $status = $transactionStatus === 'expire' ? 'expired' : 'cancelled';
                 $payment->update(['payment_status' => $status]);
-                $booking->update(['status' => $status]); // PAYMENT-008, PAYMENT-009[cite: 1]
+                $booking->update(['status' => $status]); // PAYMENT-008, PAYMENT-009
 
                 // Kembalikan stok kamar
-                app(\App\Services\RoomAvailabilityService::class)->restoreStock($booking);
+                app(RoomAvailabilityService::class)->restoreStock($booking);
 
-                $activity = 'Payment ' . $status;
+                $activity = 'Payment '.$status;
             }
 
             // 3. Catat Activity Log[cite: 1]
@@ -96,7 +100,7 @@ class MidtransService
                 'user_id' => $booking->user_id,
                 'activity' => $activity,
                 'description' => "Callback Midtrans status {$transactionStatus} untuk Order ID {$orderId}",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
     }
@@ -109,32 +113,32 @@ class MidtransService
         $booking = $payment->booking;
 
         // Memanggil API Midtrans untuk mendapatkan status terbaru
-        $statusResponse = \Midtrans\Transaction::status($booking->booking_code);
+        $statusResponse = Transaction::status($booking->booking_code);
 
         $transactionStatus = $statusResponse->transaction_status;
 
-        DB::transaction(function () use ($payment, $booking, $transactionStatus, $statusResponse) {
+        DB::transaction(function () use ($payment, $booking, $transactionStatus) {
             if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
-                if ($payment->payment_status !== 'Success') {
-                    $payment->update(['payment_status' => 'Success', 'paid_at' => now()]);
-                    $booking->update(['status' => 'Paid']);
+                if ($payment->payment_status !== 'success') {
+                    $payment->update(['payment_status' => 'success', 'paid_at' => now()]);
+                    $booking->update(['status' => 'paid']);
 
                     // Panggil QRCodeService untuk membuat E-Ticket yang rapi
-                    app(\App\Services\QRCodeService::class)->generateTicket($booking);
+                    app(QRCodeService::class)->generateTicket($booking);
 
                     $this->logSyncActivity($booking->user_id, 'Payment Success', $booking->booking_code);
                 }
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
-                $status = $transactionStatus === 'expire' ? 'Expired' : 'Cancelled';
+                $status = $transactionStatus === 'expire' ? 'expired' : 'cancelled';
 
                 if ($payment->payment_status !== $status) {
                     $payment->update(['payment_status' => $status]);
                     $booking->update(['status' => $status]); // Sesuai aturan PAYMENT-008 dan PAYMENT-009[cite: 1]
 
                     // Kembalikan stok kamar
-                    app(\App\Services\RoomAvailabilityService::class)->restoreStock($booking);
+                    app(RoomAvailabilityService::class)->restoreStock($booking);
 
-                    $this->logSyncActivity($booking->user_id, 'Payment ' . $status, $booking->booking_code);
+                    $this->logSyncActivity($booking->user_id, 'Payment '.$status, $booking->booking_code);
                 }
             }
         });
@@ -146,7 +150,7 @@ class MidtransService
             'user_id' => $userId,
             'activity' => $activity,
             'description' => "Manual Sync Midtrans status untuk Order ID {$orderId}", // Aturan PAYMENT-010[cite: 1]
-            'ip_address' => request()->ip()
+            'ip_address' => request()->ip(),
         ]);
     }
 }

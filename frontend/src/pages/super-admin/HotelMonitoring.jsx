@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const HotelMonitoring = () => {
   const initialKey = getCacheKey("/super-admin/hotels", { search: "", status: "" });
@@ -22,6 +23,12 @@ const HotelMonitoring = () => {
   // State untuk Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  // State untuk Dialog Konfirmasi
+  const [pendingToggle, setPendingToggle] = useState(null); // { id, newStatus }
+  const [pendingDelete, setPendingDelete] = useState(null); // { id, name }
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchHotels = async (forceRefresh = false) => {
     const key = getCacheKey("/super-admin/hotels", { search, status: statusFilter });
@@ -68,18 +75,16 @@ const HotelMonitoring = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [search, statusFilter]);
 
-  const handleToggleStatus = async (id, currentStatus) => {
+  const handleToggleStatus = (id, currentStatus) => {
     const lowerStatus = currentStatus ? currentStatus.toLowerCase() : "";
     const newStatus = lowerStatus === "active" ? "inactive" : "active";
+    setPendingToggle({ id, newStatus });
+  };
 
-    if (
-      !window.confirm(
-        `Yakin ingin mengubah status hotel ini menjadi ${newStatus.toUpperCase()}?`
-      )
-    ) {
-      return;
-    }
-
+  const performToggleStatus = async () => {
+    if (!pendingToggle) return;
+    const { id, newStatus } = pendingToggle;
+    setIsToggling(true);
     try {
       await api.patch(`/super-admin/hotels/${id}/status`, {
         status: newStatus,
@@ -90,23 +95,25 @@ const HotelMonitoring = () => {
       if (selectedHotel && selectedHotel.id === id) {
         setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
       }
+      setPendingToggle(null);
       fetchHotels(true);
     } catch (err) {
       toast.error(
         err.response?.data?.message || "Gagal memperbarui status hotel."
       );
+    } finally {
+      setIsToggling(false);
     }
   };
 
-  const handleDeleteHotel = async (id, name) => {
-    if (
-      !window.confirm(
-        `Apakah Anda yakin ingin menghapus hotel "${name}"? Tindakan ini tidak dapat dibatalkan.`
-      )
-    ) {
-      return;
-    }
+  const handleDeleteHotel = (id, name) => {
+    setPendingDelete({ id, name });
+  };
 
+  const performDeleteHotel = async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    setIsDeleting(true);
     try {
       await api.delete(`/super-admin/hotels/${id}`);
       invalidateCache("/super-admin/hotels");
@@ -116,11 +123,14 @@ const HotelMonitoring = () => {
         setModalOpen(false);
         setSelectedHotel(null);
       }
+      setPendingDelete(null);
       fetchHotels(true);
     } catch (err) {
       toast.error(
         err.response?.data?.message || "Gagal menghapus hotel."
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -515,6 +525,29 @@ const HotelMonitoring = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Toggle Status Dialog */}
+      <ConfirmDialog
+        open={!!pendingToggle}
+        title="Ubah Status Hotel"
+        message={`Yakin ingin mengubah status hotel ini menjadi ${(pendingToggle?.newStatus || "").toUpperCase()}?`}
+        confirmText="Ya, Ubah Status"
+        processing={isToggling}
+        onConfirm={performToggleStatus}
+        onCancel={() => setPendingToggle(null)}
+      />
+
+      {/* Confirm Delete Hotel Dialog */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        type="danger"
+        title="Hapus Hotel"
+        message={`Apakah Anda yakin ingin menghapus hotel "${pendingDelete?.name}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Ya, Hapus Hotel"
+        processing={isDeleting}
+        onConfirm={performDeleteHotel}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };
