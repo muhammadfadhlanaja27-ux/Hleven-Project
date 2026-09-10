@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { getPublicImageUrl } from '../../services/imageHelper';
 
 const HotelCard = ({ hotel, adults, children }) => {
   const [urlSearchParams] = useSearchParams();
@@ -25,15 +26,13 @@ const HotelCard = ({ hotel, adults, children }) => {
   const getImageUrl = () => {
     if (!hotel) return null;
     if (hotel.thumbnail) {
-      if (hotel.thumbnail.startsWith('http')) return hotel.thumbnail;
-      return `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, '')}`;
+      return getPublicImageUrl(hotel.thumbnail);
     }
     if (hotel.photos && hotel.photos.length > 0) {
       const firstPhoto = hotel.photos[0];
       const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
       if (photoPath) {
-        if (photoPath.startsWith('http')) return photoPath;
-        return `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`;
+        return getPublicImageUrl(photoPath);
       }
     }
     return null;

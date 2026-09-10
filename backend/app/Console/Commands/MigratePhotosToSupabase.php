@@ -52,8 +52,28 @@ class MigratePhotosToSupabase extends Command
                 return [null, 'empty'];
             }
 
-            // If already on Supabase URL, skip
+            $baseUrl = rtrim(config('filesystems.disks.s3.url'), '/');
+            $bucket = trim((string) config('filesystems.disks.s3.bucket'));
+
+            // Function to normalize any Supabase URL to valid public HTTP format
+            $normalizeSupabaseUrl = function ($url) use ($bucket) {
+                $publicUrl = str_replace(
+                    ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
+                    ['.supabase.co/storage/v1/object/public', '/storage/v1/object/public'],
+                    $url
+                );
+                if ($bucket !== '') {
+                    $publicUrl = str_replace('/object/public/' . $bucket . '/' . $bucket . '/', '/object/public/' . $bucket . '/', $publicUrl);
+                }
+                return $publicUrl;
+            };
+
+            // If already on Supabase URL, check if normalization is needed
             if (str_contains($currentUrl, 'supabase.co')) {
+                $normalized = $normalizeSupabaseUrl($currentUrl);
+                if ($normalized !== $currentUrl) {
+                    return [$normalized, 'normalized'];
+                }
                 return [$currentUrl, 'already_supabase'];
             }
 
@@ -64,35 +84,52 @@ class MigratePhotosToSupabase extends Command
             }
 
             // Check if file exists in local disk ('public')
-            if (!Storage::disk('public')->exists($relativePath)) {
-                return [null, 'not_found'];
+            if (Storage::disk('public')->exists($relativePath)) {
+                try {
+                    $fileContents = Storage::disk('public')->get($relativePath);
+                    $filename = basename($relativePath);
+                    $targetPath = trim($directory, '/') . '/' . uniqid() . '_' . $filename;
+
+                    // Put file to s3 disk
+                    Storage::disk('s3')->put($targetPath, $fileContents);
+
+                    // Build public Supabase URL
+                    $newUrl = $normalizeSupabaseUrl($baseUrl . '/' . ltrim($targetPath, '/'));
+
+                    return [$newUrl, 'success'];
+                } catch (\Throwable $e) {
+                    return [null, 'error: ' . $e->getMessage()];
+                }
             }
 
-            try {
-                $fileContents = Storage::disk('public')->get($relativePath);
-                $filename = basename($relativePath);
-                $targetPath = trim($directory, '/') . '/' . uniqid() . '_' . $filename;
-
-                // Put file to s3 disk
-                Storage::disk('s3')->put($targetPath, $fileContents);
-
-                // Build public Supabase URL
-                $baseUrl = rtrim(config('filesystems.disks.s3.url'), '/');
-                $newUrl = $baseUrl . '/' . ltrim($targetPath, '/');
-
-                return [$newUrl, 'success'];
-            } catch (\Throwable $e) {
-                return [null, 'error: ' . $e->getMessage()];
+            // If file is not found locally but is a relative path (e.g. room_types/foo.jpg or rooms/bar.jpg),
+            // construct the expected Supabase public URL assuming it was uploaded directly to S3
+            if (!str_starts_with($currentUrl, 'http://') && !str_starts_with($currentUrl, 'https://')) {
+                $targetPath = ltrim($currentUrl, '/');
+                if ($bucket !== '' && str_starts_with($targetPath, $bucket . '/')) {
+                    $targetPath = substr($targetPath, strlen($bucket) + 1);
+                }
+                $constructedUrl = $normalizeSupabaseUrl($baseUrl . '/' . $targetPath);
+                return [$constructedUrl, 'constructed_supabase'];
             }
+
+            // If it starts with localhost URL (e.g. http://localhost:8000/storage/rooms/foo.jpg), extract path and convert to Supabase public URL
+            if (str_contains($currentUrl, 'localhost:8000/storage/')) {
+                $path = substr($currentUrl, strpos($currentUrl, '/storage/') + 9);
+                $constructedUrl = $normalizeSupabaseUrl($baseUrl . '/' . ltrim($path, '/'));
+                return [$constructedUrl, 'converted_localhost'];
+            }
+
+            return [null, 'not_found'];
         };
 
         // 1. Hotel Photos
         $this->info('Processing Hotel Photos...');
         foreach (HotelPhoto::all() as $hp) {
             [$newUrl, $status] = $processFile($hp->photo, 'hotels');
-            if ($status === 'success') {
+            if (in_array($status, ['success', 'normalized', 'constructed_supabase', 'converted_localhost'])) {
                 $hp->update(['photo' => $newUrl]);
-                $this->line(" - HotelPhoto #{$hp->id} migrated -> {$newUrl}");
+                $this->line(" - HotelPhoto #{$hp->id} updated ({$status}) -> {$newUrl}");
                 $migratedCount++;
             } elseif ($status === 'already_supabase') {
                 $skippedCount++;
@@ -105,9 +142,9 @@ class MigratePhotosToSupabase extends Command
         $this->info('Processing Room Photos...');
         foreach (RoomPhoto::all() as $rp) {
             [$newUrl, $status] = $processFile($rp->photo, 'rooms');
-            if ($status === 'success') {
+            if (in_array($status, ['success', 'normalized', 'constructed_supabase', 'converted_localhost'])) {
                 $rp->update(['photo' => $newUrl]);
-                $this->line(" - RoomPhoto #{$rp->id} migrated -> {$newUrl}");
+                $this->line(" - RoomPhoto #{$rp->id} updated ({$status}) -> {$newUrl}");
                 $migratedCount++;
             } elseif ($status === 'already_supabase') {
                 $skippedCount++;
@@ -120,9 +157,9 @@ class MigratePhotosToSupabase extends Command
         $this->info('Processing User Avatars...');
         foreach (User::whereNotNull('avatar')->get() as $user) {
             [$newUrl, $status] = $processFile($user->avatar, "avatar/{$user->id}");
-            if ($status === 'success') {
+            if (in_array($status, ['success', 'normalized', 'constructed_supabase', 'converted_localhost'])) {
                 $user->update(['avatar' => $newUrl]);
-                $this->line(" - User #{$user->id} avatar migrated -> {$newUrl}");
+                $this->line(" - User #{$user->id} avatar updated ({$status}) -> {$newUrl}");
                 $migratedCount++;
             } elseif ($status === 'already_supabase') {
                 $skippedCount++;
@@ -135,9 +172,9 @@ class MigratePhotosToSupabase extends Command
         $this->info('Processing Partner Documents...');
         foreach (PartnerDocument::all() as $doc) {
             [$newUrl, $status] = $processFile($doc->file_path, "partners/{$doc->partner_application_id}");
-            if ($status === 'success') {
+            if (in_array($status, ['success', 'normalized', 'constructed_supabase', 'converted_localhost'])) {
                 $doc->update(['file_path' => $newUrl]);
-                $this->line(" - PartnerDocument #{$doc->id} migrated -> {$newUrl}");
+                $this->line(" - PartnerDocument #{$doc->id} updated ({$status}) -> {$newUrl}");
                 $migratedCount++;
             } elseif ($status === 'already_supabase') {
                 $skippedCount++;

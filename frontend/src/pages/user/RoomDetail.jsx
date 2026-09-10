@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
+import { getPublicImageUrl } from "../../services/imageHelper";
 
 const RoomDetail = () => {
   const { hotelId, roomId } = useParams();
@@ -100,9 +101,7 @@ const RoomDetail = () => {
               ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0]) 
               : null;
             const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
-            const roomImage = photoPath 
-              ? (photoPath.startsWith('http') ? photoPath : `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`)
-              : null;
+            const roomImage = photoPath ? getPublicImageUrl(photoPath) : null;
 
             const mappedRoom = {
               id: matchedRoomType.id,
@@ -162,9 +161,7 @@ const RoomDetail = () => {
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
-    if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
+    return getPublicImageUrl(path);
   };
 
   const roomPhotoUrls = (room?.photos || []).map(getImageUrl).filter(Boolean);
