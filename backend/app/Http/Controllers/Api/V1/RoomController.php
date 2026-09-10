@@ -22,7 +22,6 @@ class RoomController extends Controller
     {
         $user = $request->user();
 
-        // 1. Ambil hotel_id dari query param (user) atau dari user model (admin fallback)
         $hotelId = $request->query('hotel_id');
         if (! $hotelId) {
             $hotel = $user?->hotel ?? Hotel::first();
@@ -73,7 +72,7 @@ class RoomController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created resource in storage (Storage Lokal).
      */
     public function store(Request $request): JsonResponse
     {
@@ -97,15 +96,15 @@ class RoomController extends Controller
             'stock'          => 'required|integer|min:0',
             'capacity_adult' => 'required|integer|min:1',
             'capacity_child' => 'required|integer|min:0',
-            'breakfast' => 'boolean',
-            'smoking_area' => 'boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'breakfast'      => 'boolean',
+            'smoking_area'   => 'boolean',
+            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -120,15 +119,15 @@ class RoomController extends Controller
             'stock'          => $request->stock,
             'capacity_adult' => $request->capacity_adult,
             'capacity_child' => $request->capacity_child,
-            'breakfast' => $request->breakfast ?? false,
-            'smoking_area' => $request->smoking_area ?? false,
+            'breakfast'      => $request->breakfast ?? false,
+            'smoking_area'   => $request->smoking_area ?? false,
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('rooms', 's3');
-            $url = Storage::disk('s3')->url($path);
+            $path = $request->file('image')->store('rooms', 'public');
+            $url = asset('storage/' . $path);
             $room->photos()->create([
-                'photo' => $url,
+                'photo'        => $url,
                 'is_thumbnail' => true,
             ]);
         }
@@ -162,7 +161,7 @@ class RoomController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource in storage (Storage Lokal).
      */
     public function update(Request $request, $id): JsonResponse
     {
@@ -189,6 +188,7 @@ class RoomController extends Controller
             'smoking_area'   => 'boolean',
             'facilities'     => 'nullable|array',
             'facilities.*'   => 'exists:facilities,id',
+            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'photos'         => 'nullable|array',
             'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
@@ -196,11 +196,10 @@ class RoomController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        // Update kolom utama (gunakan only agar tidak ada kolom asing)
         $updateData = $request->only([
             'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
             'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
@@ -208,8 +207,6 @@ class RoomController extends Controller
 
         $room->update($updateData);
 
-        // Sync fasilitas jika dikirimkan (termasuk array kosong = hapus semua)
-        // Catatan: FormData bisa mengirim string kosong "" untuk array kosong
         if ($request->has('facilities')) {
             $facilities = $request->input('facilities');
             if ($facilities === '' || $facilities === null) {
@@ -220,17 +217,28 @@ class RoomController extends Controller
             }
         }
 
-        // Upload foto baru jika ada
-        if ($request->hasFile('photos')) {
-            $hasExistingPhotos = $room->photos()->count() > 0;
-            $storageService = app(\App\Services\FileStorageService::class);
-            foreach ($request->file('photos') as $index => $photo) {
-                $isThumbnail = ! $hasExistingPhotos && $index === 0;
-                $storageService->storeRoomPhoto($room->id, $photo, $isThumbnail);
-            }
+        // Upload single image jika dikirimkan sebagai 'image'
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('rooms', 'public');
+            $url = asset('storage/' . $path);
+            $room->photos()->create([
+                'photo'        => $url,
+                'is_thumbnail' => $room->photos()->count() === 0,
+            ]);
         }
 
-
+        // Upload multiple photos jika dikirimkan sebagai array 'photos'
+        if ($request->hasFile('photos')) {
+            $hasExistingPhotos = $room->photos()->count() > 0;
+            foreach ($request->file('photos') as $index => $photo) {
+                $path = $photo->store('rooms', 'public');
+                $url = asset('storage/' . $path);
+                $room->photos()->create([
+                    'photo'        => $url,
+                    'is_thumbnail' => ! $hasExistingPhotos && $index === 0,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -254,10 +262,10 @@ class RoomController extends Controller
                 ], 404);
             }
 
-            // Hapus berkas foto fisik dari storage
             foreach ($room->photos as $photo) {
                 if ($photo->photo) {
-                    app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
+                    $relativePath = str_replace(asset('storage/'), '', $photo->photo);
+                    Storage::disk('public')->delete(ltrim($relativePath, '/'));
                 }
                 $photo->delete();
             }
@@ -270,7 +278,6 @@ class RoomController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            // Menangkap Foreign Key Constraint Violation agar tidak crash Error 500
             return response()->json([
                 'success' => false,
                 'message' => 'Kamar tidak dapat dihapus karena masih terikat dengan data pemesanan/transaksi.',

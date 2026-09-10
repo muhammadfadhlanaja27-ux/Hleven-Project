@@ -4,6 +4,7 @@ import api from '../../services/api';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -46,7 +47,6 @@ const Login = () => {
   };
 
   return (
-    /* flex-grow agar mengisi sisa tinggi layar (MainLayout sudah punya flex-col min-h-screen) */
     <div className="flex-grow flex items-center justify-center p-[var(--spacing-margin-mobile)] md:p-[var(--spacing-margin-desktop)]">
       <main className="w-full max-w-[1000px] bg-white rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row relative z-10 border border-[#DCCFC0]/30">
 
@@ -84,7 +84,7 @@ const Login = () => {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-[1rem]">
 
-            {/* Email Input — Floating Label */}
+            {/* Email Input */}
             <div className="floating-input w-full">
               <input
                 type="email"
@@ -98,18 +98,28 @@ const Login = () => {
               <label className="font-label-md text-[14px]" htmlFor="email">Email Address</label>
             </div>
 
-            {/* Password Input — Floating Label */}
-            <div className="floating-input w-full">
+            {/* Password Input dengan Toggle Show/Hide */}
+            <div className="floating-input w-full relative flex items-center">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 id="password"
-                className="w-full rounded px-4 py-3 font-body-md text-[16px] text-[#1e1b16]"
+                className="w-full rounded px-4 py-3 pr-10 font-body-md text-[16px] text-[#1e1b16]"
                 placeholder=" "
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
                 required
               />
               <label className="font-label-md text-[14px]" htmlFor="password">Password</label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 text-[#747871] hover:text-[#1e1b16] transition-colors focus:outline-none"
+                tabIndex={-1}
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
             </div>
 
             {/* Remember Me & Forgot Password */}

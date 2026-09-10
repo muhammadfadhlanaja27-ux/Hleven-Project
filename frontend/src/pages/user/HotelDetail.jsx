@@ -51,11 +51,11 @@ const HotelDetail = () => {
   // Close lightbox on Escape
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === "Escape") setLightboxOpen(false);
     };
     if (lightboxOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [lightboxOpen]);
 
@@ -66,7 +66,7 @@ const HotelDetail = () => {
   };
 
   const handlePointerDown = (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setDragOffset({ x: panX, y: panY });
@@ -93,14 +93,17 @@ const HotelDetail = () => {
         const { data: responseData, fromCache } = await cachedGet(`/hotels/${id}`);
         if (responseData && responseData.data) {
           const apiData = responseData.data;
-          
+
           const mappedRooms = (apiData.room_types || []).map((rt) => {
-            const thumbnailPhoto = rt.photos && rt.photos.length > 0 
-              ? (rt.photos.find(p => p.is_thumbnail) || rt.photos[0]) 
-              : null;
-            const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
-            const roomImage = photoPath 
-              ? (photoPath.startsWith('http') ? photoPath : `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`)
+            const thumbnailPhoto =
+              rt.photos && rt.photos.length > 0
+                ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
+                : null;
+            const photoPath = thumbnailPhoto ? thumbnailPhoto.photo || thumbnailPhoto.url : null;
+            const roomImage = photoPath
+              ? photoPath.startsWith("http")
+                ? photoPath
+                : `http://localhost:8000/storage/${photoPath.replace(/^\//, "")}`
               : null;
 
             return {
@@ -120,13 +123,13 @@ const HotelDetail = () => {
               breakfast: rt.breakfast,
               smoking_area: rt.smoking_area,
               is_refundable: rt.is_refundable !== undefined ? rt.is_refundable : true,
-              stock: rt.stock
+              stock: rt.stock,
             };
           });
 
           setHotel({
             ...apiData,
-            rooms: mappedRooms
+            rooms: mappedRooms,
           });
         } else {
           setHotel(null);
@@ -137,9 +140,8 @@ const HotelDetail = () => {
       } catch (err) {
         console.error("Backend Error / Gagal memuat data hotel:", err);
         setHotel(null);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     fetchHotelDetail();
@@ -148,7 +150,7 @@ const HotelDetail = () => {
   // Logika Filter Kamar
   const filteredRooms = useMemo(() => {
     if (!hotel || !hotel.rooms) return [];
-    
+
     return hotel.rooms.filter((room) => {
       if (filterAdults && Number(room.capacity_adult) < Number(filterAdults)) return false;
       if (filterChildren && Number(room.capacity_child) < Number(filterChildren)) return false;
@@ -164,12 +166,31 @@ const HotelDetail = () => {
 
       return true;
     });
-  }, [hotel, filterAdults, filterChildren, filterRoomType, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
+  }, [
+    hotel,
+    filterAdults,
+    filterChildren,
+    filterRoomType,
+    filterBedType,
+    filterRoomName,
+    filterBreakfast,
+    filterSmoking,
+    filterRefundable,
+  ]);
 
   // Reset ke halaman 1 saat filter berubah
   useEffect(() => {
     setRoomPage(1);
-  }, [filterAdults, filterChildren, filterRoomType, filterBedType, filterRoomName, filterBreakfast, filterSmoking, filterRefundable]);
+  }, [
+    filterAdults,
+    filterChildren,
+    filterRoomType,
+    filterBedType,
+    filterRoomName,
+    filterBreakfast,
+    filterSmoking,
+    filterRefundable,
+  ]);
 
   const totalRoomPages = Math.ceil(filteredRooms.length / ROOMS_PER_PAGE) || 1;
   const paginatedRooms = useMemo(
@@ -193,7 +214,7 @@ const HotelDetail = () => {
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url || photoItem.image_path : photoItem;
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
+    return `http://localhost:8000/storage/${path.replace(/^\//, "")}`;
   };
 
   if (loading) {
@@ -222,18 +243,16 @@ const HotelDetail = () => {
   }
 
   // Himpun semua foto unik dari list foto API & thumbnail hotel
-  const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : [])
-    .filter(p => {
-      const pth = typeof p === "object" ? (p.photo || p.url || p.image_path) : p;
-      return !!pth;
-    });
+  const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : []).filter((p) => {
+    const pth = typeof p === "object" ? p.photo || p.url || p.image_path : p;
+    return !!pth;
+  });
 
-  // Aman dari thumbnail NULL / undefined, jangan sampai terduplikasi jika sudah ada di array photos
   const thumbObj = hotel && hotel.thumbnail != null ? hotel.thumbnail : null;
   const hotelThumb = thumbObj
-    ? (typeof thumbObj === "object"
-        ? (thumbObj.photo || thumbObj.url || thumbObj.image_path || null)
-        : thumbObj)
+    ? typeof thumbObj === "object"
+      ? thumbObj.photo || thumbObj.url || thumbObj.image_path || null
+      : thumbObj
     : null;
 
   const resolvedUrls = rawPhotos.map(getImageUrl).filter(Boolean);
@@ -244,7 +263,6 @@ const HotelDetail = () => {
     }
   }
 
-  // Deduplikasi foto agar tidak ada URL yang sama tampil 2 kali
   const photosList = Array.from(new Set(resolvedUrls));
   const hasHotelPhotos = photosList.length > 0;
 
@@ -278,42 +296,105 @@ const HotelDetail = () => {
     navigate(`/booking/${targetHotelId}/${targetRoomId}`);
   };
 
-  const hasActiveFilters = filterAdults || filterChildren || filterRoomType !== "all" || filterBedType !== "all" || filterRoomName || filterBreakfast || filterSmoking || filterRefundable;
+  const hasActiveFilters =
+    filterAdults ||
+    filterChildren ||
+    filterRoomType !== "all" ||
+    filterBedType !== "all" ||
+    filterRoomName ||
+    filterBreakfast ||
+    filterSmoking ||
+    filterRefundable;
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-6 pb-20 text-left">
-        
         {/* Photo Gallery */}
         <section className="mb-12">
           {hasHotelPhotos ? (
             photosList.length === 1 ? (
-              <div className="w-full h-[350px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
+              <div
+                className="w-full h-[350px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm bg-[#e8e2d9] cursor-pointer"
+                onClick={() => {
+                  setLightboxIndex(0);
+                  setLightboxOpen(true);
+                }}
+              >
                 <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover" />
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
-                <div className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
-                  <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div
+                  className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                  onClick={() => {
+                    setLightboxIndex(0);
+                    setLightboxOpen(true);
+                  }}
+                >
+                  <img
+                    src={photosList[0]}
+                    alt={hotel.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
                 </div>
                 {photosList[1] && (
-                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(1); setLightboxOpen(true); }}>
-                    <img src={photosList[1]} alt="Room detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(1);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[1]}
+                      alt="Room detail 1"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                   </div>
                 )}
                 {photosList[2] && (
-                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(2); setLightboxOpen(true); }}>
-                    <img src={photosList[2]} alt="Room detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(2);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[2]}
+                      alt="Room detail 2"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                   </div>
                 )}
                 {photosList[3] && (
-                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(3); setLightboxOpen(true); }}>
-                    <img src={photosList[3]} alt="Room detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(3);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[3]}
+                      alt="Room detail 3"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                   </div>
                 )}
                 {photosList[4] && (
-                  <div className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer" onClick={() => { setLightboxIndex(4); setLightboxOpen(true); }}>
-                    <img src={photosList[4]} alt="Room detail 4" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(4);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[4]}
+                      alt="Room detail 4"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center hover:bg-black/50 transition-colors">
                       <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">grid_view</span>
@@ -329,9 +410,7 @@ const HotelDetail = () => {
               <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">
                 image_not_supported
               </span>
-              <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">
-                Belum Ada Foto Hotel
-              </h3>
+              <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">Belum Ada Foto Hotel</h3>
               <p className="font-body-md text-sm text-[#444842] max-w-md">
                 Pihak hotel belum mengunggah foto galeri. Lihat bagian Pilihan Kamar di bawah untuk melihat foto tipe kamar.
               </p>
@@ -341,10 +420,8 @@ const HotelDetail = () => {
 
         {/* Main 2-Column Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Left Column: Info & Description & Amenities */}
           <div className="lg:col-span-2 space-y-12">
-            
             <section>
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex text-[#A0522D]">
@@ -382,9 +459,7 @@ const HotelDetail = () => {
 
             {/* Fasilitas Hotel Grid */}
             <section>
-              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">
-                Fasilitas Hotel
-              </h2>
+              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">Fasilitas Hotel</h2>
               {facilitiesList.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {facilitiesList.map((fac, idx) => {
@@ -395,12 +470,8 @@ const HotelDetail = () => {
                         key={idx}
                         className="flex items-center gap-3 p-4 rounded-xl bg-[#faf3ea] border border-[#DCCFC0]/30 shadow-sm"
                       >
-                        <span className="material-symbols-outlined text-[#778873] text-2xl">
-                          {iconName}
-                        </span>
-                        <span className="font-label-md text-xs font-semibold text-[#1e1b16]">
-                          {facName}
-                        </span>
+                        <span className="material-symbols-outlined text-[#778873] text-2xl">{iconName}</span>
+                        <span className="font-label-md text-xs font-semibold text-[#1e1b16]">{facName}</span>
                       </div>
                     );
                   })}
@@ -416,40 +487,33 @@ const HotelDetail = () => {
           {/* Right Column: Location Card */}
           <div className="lg:col-span-1 space-y-8">
             <section>
-              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">
-                Lokasi
-              </h2>
+              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">Lokasi</h2>
               <div className="rounded-2xl overflow-hidden shadow-sm border border-[#DCCFC0]/40 bg-[#faf3ea]">
-                <div className="w-full h-56 bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] relative overflow-hidden flex items-center justify-center border-b border-[#DCCFC0]/40">
-                  <div className="absolute inset-0 opacity-30">
-                    <svg className="w-full h-full" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M0,50 Q50,30 100,50 T200,50 L200,100 Q150,80 100,100 T0,100 Z" fill="#778873" fillOpacity="0.2" />
-                      <path d="M0,120 Q50,100 100,120 T200,120 L200,170 Q150,150 100,170 T0,170 Z" fill="#778873" fillOpacity="0.15" />
-                    </svg>
-                  </div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="material-symbols-outlined text-5xl text-[#778873] drop-shadow-sm mb-1">
-                      location_on
-                    </span>
-                    <span className="font-label-sm text-xs font-bold text-[#1e1b16] bg-white/90 px-3 py-1 rounded-full shadow-sm">
-                      {hotelCityName}
-                    </span>
-                  </div>
+                {/* Visual Google Maps Embed */}
+                <div className="w-full h-64 relative overflow-hidden border-b border-[#DCCFC0]/40 bg-[#e8e2d9]">
+                  <iframe
+                    title={`Peta Lokasi ${hotel.name}`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                      (hotel.name || "") + " " + (hotel.address || hotelCityName)
+                    )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                    className="absolute inset-0 w-full h-full border-0"
+                    loading="lazy"
+                    allowFullScreen
+                  ></iframe>
                 </div>
+
                 <div className="p-5 bg-[#FDF6ED] text-left">
-                  <p className="font-label-md text-sm font-semibold text-[#1e1b16]">
-                    {hotel.name}
-                  </p>
-                  <p className="font-body-md text-xs text-[#444842] mt-1">
-                    Berjarak 8.5 km dari pusat kota.
-                  </p>
+                  <p className="font-label-md text-sm font-semibold text-[#1e1b16]">{hotel.name}</p>
+                  <p className="font-body-md text-xs text-[#444842] mt-1">{hotelAddress}</p>
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + " " + hotelAddress)}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      hotel.name + " " + hotelAddress
+                    )}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-4 w-full py-2.5 border border-[#778873] text-[#778873] rounded-xl font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors block text-center"
                   >
-                    Lihat di Peta
+                    Buka di Google Maps
                   </a>
                 </div>
               </div>
@@ -465,11 +529,11 @@ const HotelDetail = () => {
                 Pilihan Kamar
               </h2>
               <p className="font-body-md text-xs text-[#444842]">
-                Menampilkan {paginatedRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia
-                (hal. {roomPage}/{totalRoomPages})
+                Menampilkan {paginatedRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia (hal.{" "}
+                {roomPage}/{totalRoomPages})
               </p>
             </div>
-            
+
             {hasActiveFilters && (
               <button
                 type="button"
@@ -568,9 +632,7 @@ const HotelDetail = () => {
                   Tipe Kasur
                 </label>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
-                    bed
-                  </span>
+                  <span className="material-symbols-outlined text-[#778873] text-base select-none">bed</span>
                   <select
                     value={filterBedType}
                     onChange={(e) => setFilterBedType(e.target.value)}
@@ -632,7 +694,7 @@ const HotelDetail = () => {
                     key={room.id}
                     className="flex flex-col md:flex-row bg-[#faf3ea] rounded-2xl overflow-hidden border border-[#DCCFC0]/40 shadow-sm shadow-[#778873]/5 hover:shadow-md transition-shadow"
                   >
-                    {/* Room Thumbnail Container - Ukuran Proporsional & Tidak Mengkerut */}
+                    {/* Room Thumbnail Container */}
                     <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
                       {room.thumbnail && !imgErrors[room.id] ? (
                         <img
@@ -656,7 +718,7 @@ const HotelDetail = () => {
                       )}
                     </div>
 
-                    {/* Room Content - Dilengkapi min-w-0 & line-clamp-3 agar teks rapi */}
+                    {/* Room Content */}
                     <div className="p-6 flex flex-col justify-between flex-grow min-w-0 text-left">
                       <div>
                         <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
@@ -671,7 +733,9 @@ const HotelDetail = () => {
 
                         <p className="font-body-md text-sm text-[#444842] mb-4 line-clamp-3 leading-relaxed">
                           {room.description ||
-                            `Kamar seluas 45 meter persegi dengan ${room.bed || '1 King Bed'}, pemandangan memukau, dan kamar mandi marmer yang luas.`}
+                            `Kamar seluas 45 meter persegi dengan ${
+                              room.bed || "1 King Bed"
+                            }, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
                         {/* Features Checkmarks */}
@@ -698,10 +762,13 @@ const HotelDetail = () => {
                               {room.type}
                             </div>
                           )}
-                          <div className={room.is_refundable
-                            ? "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-semibold"
-                            : "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold"
-                          }>
+                          <div
+                            className={
+                              room.is_refundable
+                                ? "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-semibold"
+                                : "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold"
+                            }
+                          >
                             <span className="material-symbols-outlined text-[14px]">
                               {room.is_refundable ? "verified" : "block"}
                             </span>
@@ -720,10 +787,12 @@ const HotelDetail = () => {
                             Rp {roomPrice.toLocaleString("id-ID")}{" "}
                             <span className="text-xs font-normal text-[#444842]">/ malam (Weekday)</span>
                           </p>
-                          {(room.stock !== undefined && room.stock !== null) ? (
+                          {room.stock !== undefined && room.stock !== null ? (
                             room.stock <= 3 ? (
                               <p className="text-xs text-[#ba1a1a] font-semibold mt-1 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                                <span className="material-symbols-outlined text-sm">
+                                  local_fire_department
+                                </span>
                                 Hanya sisa {room.stock} kamar!
                               </p>
                             ) : (
@@ -761,7 +830,10 @@ const HotelDetail = () => {
               {totalRoomPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                   <p className="text-xs text-[#444842]">
-                    Halaman <span className="font-bold text-[#778873]">{roomPage}</span> dari {totalRoomPages} — menampilkan {(roomPage - 1) * ROOMS_PER_PAGE + 1}–{Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} dari {filteredRooms.length} kamar
+                    Halaman <span className="font-bold text-[#778873]">{roomPage}</span> dari {totalRoomPages}{" "}
+                    — menampilkan {(roomPage - 1) * ROOMS_PER_PAGE + 1}–
+                    {Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} dari {filteredRooms.length}{" "}
+                    kamar
                   </p>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -821,7 +893,12 @@ const HotelDetail = () => {
 
       {/* Full-screen Lightbox */}
       {lightboxOpen && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) setLightboxOpen(false); }}>
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLightboxOpen(false);
+          }}
+        >
           <div
             ref={lightboxContainerRef}
             className="relative w-full h-full flex items-center justify-center touch-none select-none"

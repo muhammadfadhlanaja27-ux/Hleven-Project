@@ -11,6 +11,11 @@ const Register = () => {
     password: '',
     password_confirmation: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isTermsAgreed, setIsTermsAgreed] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   const [error, setError] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,6 +23,12 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError({});
+
+    if (!isTermsAgreed) {
+      setError({ general: 'Anda harus menyetujui Syarat dan Ketentuan terlebih dahulu.' });
+      return;
+    }
+
     setLoading(true);
 
     const fullName = `${formData.firstName} ${formData.lastName}`.trim();
@@ -62,6 +73,11 @@ const Register = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAgreeTermsModal = () => {
+    setIsTermsAgreed(true);
+    setShowTermsModal(false);
   };
 
   return (
@@ -163,7 +179,7 @@ const Register = () => {
                   id="phone"
                   type="tel"
                   className="w-full pl-10 pr-4 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+62 8xx xxxx xxxx"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
@@ -172,7 +188,7 @@ const Register = () => {
               {error.phone && <p className="text-red-500 text-xs mt-1">{error.phone[0]}</p>}
             </div>
 
-            {/* Password & Konfirmasi */}
+            {/* Password & Konfirmasi dengan Toggle Show/Hide */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-[1rem]">
               <div>
                 <label className="block font-label-md text-[14px] text-[#778873] mb-1" htmlFor="password">
@@ -182,13 +198,23 @@ const Register = () => {
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747871] text-[20px]">lock</span>
                   <input
                     id="password"
-                    type="password"
-                    className="w-full pl-10 pr-4 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
+                    type={showPassword ? "text" : "password"}
+                    className="w-full pl-10 pr-10 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#747871] hover:text-[#2D332C] transition-colors focus:outline-none"
+                    tabIndex={-1}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
                 </div>
                 {error.password && <p className="text-red-500 text-xs mt-1">{error.password[0]}</p>}
               </div>
@@ -201,31 +227,49 @@ const Register = () => {
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747871] text-[20px]">lock_reset</span>
                   <input
                     id="confirmPassword"
-                    type="password"
-                    className="w-full pl-10 pr-4 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
+                    type={showConfirmPassword ? "text" : "password"}
+                    className="w-full pl-10 pr-10 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
                     placeholder="••••••••"
                     value={formData.password_confirmation}
                     onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#747871] hover:text-[#2D332C] transition-colors focus:outline-none"
+                    tabIndex={-1}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Terms */}
+            {/* Terms and Conditions Checkbox + Trigger Modal */}
             <div className="flex items-start mt-[1rem]">
               <div className="flex items-center h-5">
                 <input
                   id="terms"
                   type="checkbox"
-                  className="w-4 h-4 text-[#778873] border-[#DCCFC0] rounded focus:ring-[#778873] bg-[#e8e2d9]"
+                  checked={isTermsAgreed}
+                  onChange={(e) => setIsTermsAgreed(e.target.checked)}
+                  className="w-4 h-4 text-[#778873] border-[#DCCFC0] rounded focus:ring-[#778873] bg-[#e8e2d9] cursor-pointer"
                   required
                 />
               </div>
               <div className="ml-3 text-sm">
-                <label className="font-body-md text-[16px] text-[#444842]" htmlFor="terms">
+                <label className="font-body-md text-[14px] text-[#444842]" htmlFor="terms">
                   I agree to the{' '}
-                  <a className="text-[#778873] hover:underline" href="#">Terms and Conditions</a>
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(true)}
+                    className="text-[#778873] hover:underline font-semibold cursor-pointer"
+                  >
+                    Terms and Conditions
+                  </button>
                 </label>
               </div>
             </div>
@@ -248,6 +292,94 @@ const Register = () => {
           </form>
         </div>
       </div>
+
+      {/* MODAL POPUP: TERMS AND CONDITIONS */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#FDF6ED] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0] flex flex-col max-h-[85vh] text-left">
+            
+            {/* Modal Header */}
+            <div className="p-6 border-b border-[#DCCFC0] flex items-center justify-between bg-[#faf3ea]">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#778873] text-2xl">gavel</span>
+                <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
+                  Syarat dan Ketentuan (Terms & Conditions)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="p-1 rounded-full text-[#747871] hover:bg-[#DCCFC0]/30 transition-colors"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body / Isi Dokumen Terms */}
+            <div className="p-6 md:p-8 overflow-y-auto space-y-6 text-[#444842] font-body-md text-sm leading-relaxed">
+              <section>
+                <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
+                  1. Ketentuan Akun & Keanggotaan
+                </h4>
+                <p>
+                  Dengan membuat akun di platform <strong>H'Leven</strong>, Anda menjamin bahwa informasi yang Anda berikan adalah akurat, sah, dan terkini. Anda bertanggung jawab penuh untuk menjaga kerahasiaan kata sandi dan seluruh aktivitas yang terjadi di bawah akun Anda.
+                </p>
+              </section>
+
+              <section>
+                <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
+                  2. Pemesanan & Pembayaran Kamar
+                </h4>
+                <p>
+                  Setiap reservasi kamar yang dilakukan melalui layanan kami akan dikonfirmasi setelah pembayaran terverifikasi. Harga ketersediaan kamar yang ditampilkan sudah mencakup pajak layanan kecuali dinyatakan lain.
+                </p>
+              </section>
+
+              <section>
+                <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
+                  3. Kebijakan Pembatalan & Pengembalian Dana
+                </h4>
+                <p>
+                  Pembatalan pesanan mengacu pada ketentuan masing-masing tipe kamar. Kamar dengan label <em>refundable</em> dapat diajukan pembatalan sesuai batas waktu yang ditentukan sebelum periode check-in.
+                </p>
+              </section>
+
+              <section>
+                <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
+                  4. Privasi & Perlindungan Data
+                </h4>
+                <p>
+                  Data pribadi Anda seperti nama, email, dan nomor telepon hanya digunakan untuk keperluan transaksi reservasi serta peningkatan layanan platform H'Leven. Kami tidak akan memperjualbelikan data Anda kepada pihak ketiga.
+                </p>
+              </section>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-[#DCCFC0] bg-[#faf3ea] flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-[#747871]">
+                Harap baca seluruh poin sebelum menyetujui pendaftaran.
+              </p>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(false)}
+                  className="flex-1 sm:flex-none px-5 py-2.5 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20 transition-colors"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAgreeTermsModal}
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#778873] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors shadow-xs"
+                >
+                  Saya Setuju
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </main>
   );
 };

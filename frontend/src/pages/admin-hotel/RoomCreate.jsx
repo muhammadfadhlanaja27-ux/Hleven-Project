@@ -270,7 +270,7 @@ export default function RoomCreate() {
         payload.append("photos[]", file);
       });
 
-      await api.post("/hotel/room-types", payload, {
+      await api.post("/admin/rooms", payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

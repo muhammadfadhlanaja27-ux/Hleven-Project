@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
+use App\Models\City;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class HotelController extends Controller
 {
@@ -57,20 +59,19 @@ class HotelController extends Controller
     }
 
     /**
-     * Menampilkan profil hotel khusus untuk Admin Hotel (Update: Fallback ke hotel pertama)
+     * Menampilkan profil hotel khusus untuk Admin Hotel
      */
     public function showProfile(Request $request): JsonResponse
     {
         $user = $request->user();
         
-        // Coba ambil melalui relasi user->hotel, jika null ambil hotel pertama di database (untuk single-hotel system)
         $hotel = $user->hotel ?? Hotel::first();
 
         if (!$hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
-        $hotel->load(['city', 'facilities', 'photos']);
+        $hotel->load(['city', 'facilities', 'photos', 'admin']);
 
         return response()->json([
             'success' => true,
@@ -86,7 +87,6 @@ class HotelController extends Controller
     {
         $user = $request->user();
         
-        // Coba ambil melalui relasi user->hotel, jika null ambil hotel pertama di database
         $hotel = $user->hotel ?? Hotel::first();
 
         if (!$hotel) {
@@ -96,7 +96,7 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Data hotel berhasil diambil',
-            'data'    => [$hotel->load(['city', 'facilities', 'photos'])]
+            'data'    => [$hotel->load(['city', 'facilities', 'photos', 'admin'])]
         ], 200);
     }
 
@@ -122,25 +122,63 @@ class HotelController extends Controller
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
+        $admin = $hotel->admin ?? $user;
+
         $request->validate([
             'name'         => 'sometimes|string|max:255',
             'description'  => 'nullable|string',
             'address'      => 'sometimes|string',
-            'phone'        => 'sometimes|string',
-            'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'phone'        => 'nullable|string|max:30',
+            'email'        => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
+            'city'         => 'nullable|string|max:255',
+            'city_id'      => 'nullable|exists:cities,id',
+            'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'facilities'   => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
         ]);
 
         if ($request->hasFile('banner')) {
-            if ($hotel->banner) {
-                app(\App\Services\FileStorageService::class)->deleteFile($hotel->banner);
-            }
-            $path = $request->file('banner')->store('hotels/banners', 's3');
-            $hotel->banner = Storage::disk('s3')->url($path);
+            $path = $request->file('banner')->store('hotels/banners', 'public');
+            $hotel->banner = asset('storage/' . $path);
         }
 
-        $hotel->update($request->only(['name', 'description', 'address', 'phone']));
+        $hotel->update($request->only(['name', 'description', 'address']));
+
+        if ($request->filled('city_id')) {
+            $hotel->city_id = $request->city_id;
+            $hotel->save();
+        } elseif ($request->filled('city')) {
+            $cityName = trim($request->city);
+            $cleanName = trim(preg_replace('/^(kota|kabupaten)\s+/i', '', $cityName));
+            
+            $city = City::whereRaw('LOWER(city) = ?', [strtolower($cityName)])
+                ->orWhereRaw('LOWER(city) = ?', [strtolower($cleanName)])
+                ->orWhere('city', 'like', "%{$cleanName}%")
+                ->first();
+
+            if (!$city) {
+                $city = City::create([
+                    'province' => 'Jawa Barat',
+                    'city'     => $cityName,
+                ]);
+            }
+
+            $hotel->city_id = $city->id;
+            $hotel->save();
+        }
+
+        if ($admin) {
+            $adminData = [];
+            if ($request->has('phone')) {
+                $adminData['phone'] = $request->phone;
+            }
+            if ($request->has('email') && !empty($request->email)) {
+                $adminData['email'] = $request->email;
+            }
+            if (!empty($adminData)) {
+                $admin->update($adminData);
+            }
+        }
 
         if ($request->has('facilities')) {
             $facilities = $request->input('facilities');
@@ -154,12 +192,12 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil hotel berhasil diperbarui',
-            'data'    => $hotel->load(['city', 'facilities', 'photos']),
+            'data'    => $hotel->fresh(['city', 'facilities', 'photos', 'admin']),
         ], 200);
     }
 
     /**
-     * Upload foto galeri hotel
+     * Upload foto galeri hotel (Storage Lokal)
      */
     public function uploadPhoto(Request $request, $id): JsonResponse
     {
@@ -170,8 +208,8 @@ class HotelController extends Controller
             'is_thumbnail' => 'boolean',
         ]);
 
-        $path = $request->file('photo')->store('hotels', 's3');
-        $url = Storage::disk('s3')->url($path);
+        $path = $request->file('photo')->store('hotels', 'public');
+        $url = asset('storage/' . $path);
 
         if ($request->is_thumbnail) {
             $hotel->photos()->update(['is_thumbnail' => false]);
@@ -195,13 +233,14 @@ class HotelController extends Controller
     public function deletePhoto(Request $request, $param1, $param2 = null): JsonResponse
     {
         $photoId = $param2 !== null ? $param2 : $param1;
+        $photo = HotelPhoto::find($photoId);
 
-        if ($photo->photo) {
-            app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
+        if ($photo) {
+            if ($photo->photo) {
+                app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
+            }
+            $photo->delete();
         }
-
-        // Hapus data dari PostgreSQL
-        $photo->delete();
 
         return response()->json([
             'success' => true,

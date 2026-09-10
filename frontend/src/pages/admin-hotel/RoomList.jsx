@@ -164,12 +164,10 @@ const normalizeRoom = (r) => {
 export default function RoomList() {
   const navigate = useNavigate();
 
-  // State Management
   const [rooms, setRooms] = useState([]);
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search, Filter & Sort State
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -177,22 +175,19 @@ export default function RoomList() {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Modal States
   const [viewingRoom, setViewingRoom] = useState(null);
   const [editingRoom, setEditingRoom] = useState(null);
   const [deletingRoom, setDeletingRoom] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const photoInputRef = useRef(null);
 
-  // Edit Form Values & Errors
   const [editValues, setEditValues] = useState({});
   const [editErrors, setEditErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
-  const [editNewPhotoFiles, setEditNewPhotoFiles] = useState([]); // raw File objects untuk upload baru
+  const [editNewPhotoFiles, setEditNewPhotoFiles] = useState([]);
   const [deletedPhotoIds, setDeletedPhotoIds] = useState([]);
 
   useEffect(() => {
@@ -208,8 +203,7 @@ export default function RoomList() {
       ]);
 
       if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {
-        const rawRooms =
-          roomsRes.value.data.data || roomsRes.value.data || [];
+        const rawRooms = roomsRes.value.data.data || roomsRes.value.data || [];
         setRooms(Array.isArray(rawRooms) ? rawRooms.map(normalizeRoom) : []);
       }
       if (facilitiesRes.status === "fulfilled") {
@@ -232,14 +226,12 @@ export default function RoomList() {
     }
   };
 
-  // Map Facility IDs to Objects
   const getFacilitiesForRoom = (facilityIds = []) => {
     return facilityIds
       .map((id) => roomFacilities.find((f) => f.id === id))
       .filter(Boolean);
   };
 
-  // Filtering Logic
   const filteredRooms = rooms.filter((room) => {
     const matchesSearch =
       room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -260,7 +252,6 @@ export default function RoomList() {
     return matchesSearch && matchesType && matchesStatus && matchesCapacity;
   });
 
-  // Sorting Logic
   const sortedRooms = [...filteredRooms].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
@@ -279,14 +270,12 @@ export default function RoomList() {
     return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
   });
 
-  // Pagination Logic
   const totalPages = Math.ceil(sortedRooms.length / itemsPerPage) || 1;
   const paginatedRooms = sortedRooms.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Edit Modal Open
   const handleOpenEdit = (room) => {
     setEditingRoom(room);
     setEditNewPhotoFiles([]);
@@ -312,7 +301,6 @@ export default function RoomList() {
     }
   };
 
-  // Edit Input Change
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditValues((prev) => ({ ...prev, [name]: value }));
@@ -321,7 +309,6 @@ export default function RoomList() {
     }
   };
 
-  // Edit Facility Checkbox
   const handleEditFacilityToggle = (facilityId) => {
     setEditValues((prev) => {
       const currentIds = prev.facilityIds || [];
@@ -332,7 +319,6 @@ export default function RoomList() {
     });
   };
 
-  // Edit Photo Upload — simpan file asli dan preview URL
   const handleEditPhotoUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -360,7 +346,6 @@ export default function RoomList() {
     toast.success(`${files.length} foto berhasil ditambahkan!`);
   };
 
-  // Remove Photo from Edit Form
   const handleRemovePhoto = (photoId) => {
     setEditValues((prev) => {
       const removed = (prev.photos || []).find((p) => p.id === photoId);
@@ -382,7 +367,6 @@ export default function RoomList() {
     toast.success("Foto dihapus.");
   };
 
-  // Save Edit Submit — kirim semua perubahan ke API termasuk facilities dan foto baru
   const handleSaveEdit = async (e) => {
     e.preventDefault();
 
@@ -430,8 +414,8 @@ export default function RoomList() {
       if (facilityIds.length === 0) {
         payload.append("facilities", "");
       } else {
-        facilityIds.forEach((fId, idx) => {
-          payload.append(`facilities[${idx}]`, fId);
+        facilityIds.forEach((fId) => {
+          payload.append("facilities[]", fId);
         });
       }
 
@@ -452,7 +436,6 @@ export default function RoomList() {
       });
 
       toast.success("Room updated successfully.");
-      // Hapus cache hotel agar halaman user (HotelDetail/RoomDetail) menampilkan data terbaru
       invalidateCache("/hotels");
       setEditingRoom(null);
       setEditNewPhotoFiles([]);
@@ -460,16 +443,15 @@ export default function RoomList() {
       loadData();
     } catch (error) {
       console.error(error);
-      const msg = error.response?.data?.message || error.response?.data?.errors
-        ? Object.values(error.response.data.errors || {}).flat().join(", ")
-        : "Failed to update room.";
+      const msg = error.response?.data?.message || (error.response?.data?.errors
+        ? Object.values(error.response.data.errors).flat().join(", ")
+        : "Failed to update room.");
       toast.error(typeof msg === "string" ? msg : "Failed to update room.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Delete Room Action
   const handleDeleteConfirm = async () => {
     if (!deletingRoom) return;
 
@@ -502,7 +484,6 @@ export default function RoomList() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
-      {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
@@ -522,10 +503,8 @@ export default function RoomList() {
         </Link>
       </div>
 
-      {/* Search, Filter & Sort Controls Card */}
       <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-          {/* Search Bar */}
           <div className="relative w-full lg:w-96">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
               search
@@ -542,9 +521,7 @@ export default function RoomList() {
             />
           </div>
 
-          {/* Filter Dropdowns */}
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            {/* Room Type */}
             <select
               value={typeFilter}
               onChange={(e) => {
@@ -559,7 +536,6 @@ export default function RoomList() {
               <option value="suite">Suite</option>
             </select>
 
-            {/* Status */}
             <select
               value={statusFilter}
               onChange={(e) => {
@@ -573,7 +549,6 @@ export default function RoomList() {
               <option value="occupied">Occupied</option>
             </select>
 
-            {/* Capacity */}
             <select
               value={capacityFilter}
               onChange={(e) => {
@@ -589,7 +564,6 @@ export default function RoomList() {
               <option value="4+">4+ Guests</option>
             </select>
 
-            {/* Sort Field */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -602,7 +576,6 @@ export default function RoomList() {
               <option value="available">Sort: Available Stock</option>
             </select>
 
-            {/* Sort Order Toggle */}
             <button
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
               className="p-2 border border-[#E5E0D8] bg-[#fcf9f5] rounded-lg text-[#2D312C] hover:bg-[#f0ede9] transition-colors"
@@ -616,45 +589,22 @@ export default function RoomList() {
         </div>
       </div>
 
-      {/* Room Table Card */}
       <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Room
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Room Type
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Bed Type
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Weekday Price
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Weekend Price
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Capacity
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Available
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Facilities
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">
-                  Action
-                </th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Room</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Room Type</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Bed Type</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Weekday Price</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Weekend Price</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Capacity</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Stock</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Available</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Facilities</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Status</th>
+                <th className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider text-right">Action</th>
               </tr>
             </thead>
 
@@ -666,11 +616,7 @@ export default function RoomList() {
                   const firstPhoto = room.photos?.[0]?.url || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&q=80";
 
                   return (
-                    <tr
-                      key={room.id}
-                      className="hover:bg-[#A8BBA2]/10 transition-colors"
-                    >
-                      {/* Room Thumbnail & Name */}
+                    <tr key={room.id} className="hover:bg-[#A8BBA2]/10 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -679,16 +625,10 @@ export default function RoomList() {
                             className="w-12 h-12 rounded-lg object-cover border border-[#E5E1DA] shrink-0"
                           />
                           <div>
-                            <p className="font-semibold text-[#2D312C] text-sm leading-tight">
-                              {room.name}
-                            </p>
+                            <p className="font-semibold text-[#2D312C] text-sm leading-tight">{room.name}</p>
                             <div className="flex items-center gap-1 mt-1 text-[#6B6E6A]">
                               {assignedFacilities.slice(0, 3).map((f) => (
-                                <span
-                                  key={f.id}
-                                  className="material-symbols-outlined text-[15px]"
-                                  title={f.name}
-                                >
+                                <span key={f.id} className="material-symbols-outlined text-[15px]" title={f.name}>
                                   {f.icon || "star"}
                                 </span>
                               ))}
@@ -702,12 +642,7 @@ export default function RoomList() {
                         </div>
                       </td>
 
-                      {/* Room Type */}
-                      <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">
-                        {room.type}
-                      </td>
-
-                      {/* Bed Type */}
+                      <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">{room.type}</td>
                       <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">
                         {room.bed ? (
                           <span className="inline-flex items-center gap-1">
@@ -719,40 +654,17 @@ export default function RoomList() {
                         )}
                       </td>
 
-                      {/* Weekday Price */}
-                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
-                        {fmtRupiah(room.weekday_price)}
-                      </td>
+                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">{fmtRupiah(room.weekday_price)}</td>
+                      <td className="p-4 font-semibold text-[#506147] whitespace-nowrap">{fmtRupiah(room.weekend_price)}</td>
+                      <td className="p-4 text-[#6B6E6A] whitespace-nowrap">{room.capacity} Guests</td>
+                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">{room.stock}</td>
+                      <td className="p-4 font-bold text-[#506147] whitespace-nowrap">{availableStock}</td>
 
-                      {/* Weekend Price */}
-                      <td className="p-4 font-semibold text-[#506147] whitespace-nowrap">
-                        {fmtRupiah(room.weekend_price)}
-                      </td>
-
-                      {/* Capacity */}
-                      <td className="p-4 text-[#6B6E6A] whitespace-nowrap">
-                        {room.capacity} Guests
-                      </td>
-
-                      {/* Stock */}
-                      <td className="p-4 font-semibold text-[#2D312C] whitespace-nowrap">
-                        {room.stock}
-                      </td>
-
-                      {/* Available Stock */}
-                      <td className="p-4 font-bold text-[#506147] whitespace-nowrap">
-                        {availableStock}
-                      </td>
-
-                      {/* Facilities Badges */}
                       <td className="p-4">
                         <div className="flex flex-wrap gap-1 max-w-xs">
                           {assignedFacilities.length > 0 ? (
                             assignedFacilities.slice(0, 2).map((fac) => (
-                              <span
-                                key={fac.id}
-                                className="bg-[#f0ede9] text-[#2D312C] text-[10px] font-semibold px-2 py-0.5 rounded border border-[#E5E1DA]"
-                              >
+                              <span key={fac.id} className="bg-[#f0ede9] text-[#2D312C] text-[10px] font-semibold px-2 py-0.5 rounded border border-[#E5E1DA]">
                                 {fac.name}
                               </span>
                             ))
@@ -767,7 +679,6 @@ export default function RoomList() {
                         </div>
                       </td>
 
-                      {/* Status Badge */}
                       <td className="p-4 whitespace-nowrap">
                         {room.status === "Available" ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#4A5D43]">
@@ -780,37 +691,16 @@ export default function RoomList() {
                         )}
                       </td>
 
-                      {/* Actions */}
                       <td className="p-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setViewingRoom(room)}
-                            className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors"
-                            title="View Room Detail"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              visibility
-                            </span>
+                          <button onClick={() => setViewingRoom(room)} className="p-1.5 text-[#506147] hover:bg-[#f0ede9] rounded-lg transition-colors" title="View Room Detail">
+                            <span className="material-symbols-outlined text-[18px]">visibility</span>
                           </button>
-
-                          <button
-                            onClick={() => handleOpenEdit(room)}
-                            className="p-1.5 text-[#D48C45] hover:bg-[#fff5eb] rounded-lg transition-colors"
-                            title="Edit Room"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              edit
-                            </span>
+                          <button onClick={() => handleOpenEdit(room)} className="p-1.5 text-[#D48C45] hover:bg-[#fff5eb] rounded-lg transition-colors" title="Edit Room">
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-
-                          <button
-                            onClick={() => setDeletingRoom(room)}
-                            className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors"
-                            title="Delete Room"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              delete
-                            </span>
+                          <button onClick={() => setDeletingRoom(room)} className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors" title="Delete Room">
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
                       </td>
@@ -821,24 +711,16 @@ export default function RoomList() {
                 <tr>
                   <td colSpan="11" className="p-12 text-center text-[#6B6E6A]">
                     <div className="flex flex-col items-center justify-center gap-3">
-                      <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
-                        bed
-                      </span>
+                      <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">bed</span>
                       <div>
                         <p className="font-semibold text-[#2D312C] text-base">
                           {rooms.length === 0 ? "No rooms yet." : "No rooms found."}
                         </p>
                         <p className="text-xs text-[#6B6E6A] mt-1">
-                          {rooms.length === 0
-                            ? "Mulai dengan menambahkan tipe kamar pertama Anda."
-                            : "Tidak ada kamar yang cocok dengan kriteria pencarian/filter."}
+                          {rooms.length === 0 ? "Mulai dengan menambahkan tipe kamar pertama Anda." : "Tidak ada kamar yang cocok dengan kriteria pencarian/filter."}
                         </p>
                       </div>
-
-                      {searchQuery ||
-                      typeFilter !== "all" ||
-                      statusFilter !== "all" ||
-                      capacityFilter !== "all" ? (
+                      {searchQuery || typeFilter !== "all" || statusFilter !== "all" || capacityFilter !== "all" ? (
                         <button
                           onClick={() => {
                             setSearchQuery("");
@@ -851,10 +733,7 @@ export default function RoomList() {
                           Clear Search
                         </button>
                       ) : (
-                        <Link
-                          to="/admin/rooms/create"
-                          className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
-                        >
+                        <Link to="/admin/rooms/create" className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors">
                           + Add Room
                         </Link>
                       )}
@@ -866,7 +745,6 @@ export default function RoomList() {
           </table>
         </div>
 
-        {/* Table Pagination */}
         {sortedRooms.length > 0 && (
           <div className="p-4 border-t border-[#E5E1DA] bg-[#fcf9f5] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6B6E6A]">
             <p>
@@ -910,20 +788,14 @@ export default function RoomList() {
         )}
       </div>
 
-      {/* MODAL 1: ROOM DETAIL */}
       {viewingRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div className="px-6 py-5 border-b border-[#E5E1DA] bg-[#fcf9f5] flex justify-between items-center">
               <div>
-                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  Room Detail
-                </span>
-                <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-0.5">
-                  {viewingRoom.name}
-                </h3>
+                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">Room Detail</span>
+                <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-0.5">{viewingRoom.name}</h3>
               </div>
-
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -936,11 +808,7 @@ export default function RoomList() {
                   <span className="material-symbols-outlined text-[16px]">edit</span>
                   Edit Room
                 </button>
-
-                <button
-                  onClick={() => setViewingRoom(null)}
-                  className="p-1.5 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors"
-                >
+                <button onClick={() => setViewingRoom(null)} className="p-1.5 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors">
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>
@@ -948,12 +816,8 @@ export default function RoomList() {
 
             <div className="p-6 overflow-y-auto space-y-6 text-sm">
               <div className="bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] p-5 space-y-3">
-                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                  Room Information
-                </h4>
-                <p className="text-xs text-[#444840] leading-relaxed">
-                  {viewingRoom.description || "Tidak ada deskripsi kamar."}
-                </p>
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Room Information</h4>
+                <p className="text-xs text-[#444840] leading-relaxed">{viewingRoom.description || "Tidak ada deskripsi kamar."}</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-[#E5E1DA] text-xs">
                   <div>
                     <span className="text-[#6B6E6A]">Type:</span>
@@ -976,27 +840,17 @@ export default function RoomList() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl border border-[#E5E1DA] p-4 shadow-sm">
-                  <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    Weekday Price (Senin - Kamis)
-                  </span>
-                  <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
-                    {fmtRupiah(viewingRoom.weekday_price)}
-                  </p>
+                  <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider">Weekday Price (Senin - Kamis)</span>
+                  <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">{fmtRupiah(viewingRoom.weekday_price)}</p>
                 </div>
                 <div className="bg-[#F2EBE1] rounded-xl border border-[#E5E1DA] p-4 shadow-sm">
-                  <span className="text-[11px] font-semibold text-[#506147] uppercase tracking-wider">
-                    Weekend Price (Jumat - Minggu)
-                  </span>
-                  <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#506147] mt-1">
-                    {fmtRupiah(viewingRoom.weekend_price)}
-                  </p>
+                  <span className="text-[11px] font-semibold text-[#506147] uppercase tracking-wider">Weekend Price (Jumat - Minggu)</span>
+                  <p className="font-['Newsreader',serif] text-2xl font-semibold text-[#506147] mt-1">{fmtRupiah(viewingRoom.weekend_price)}</p>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-3">
-                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                  Room Availability Breakdown
-                </h4>
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Room Availability Breakdown</h4>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="p-3 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA]">
                     <span className="text-[11px] font-semibold text-[#6B6E6A]">Total Stock</span>
@@ -1008,26 +862,17 @@ export default function RoomList() {
                   </div>
                   <div className="p-3 bg-[#E4EBE0] rounded-lg border border-[#E5E1DA]">
                     <span className="text-[11px] font-semibold text-[#4A5D43]">Available</span>
-                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#4A5D43] mt-1">
-                      {Math.max(0, viewingRoom.stock - (viewingRoom.occupied || 0))}
-                    </p>
+                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#4A5D43] mt-1">{Math.max(0, viewingRoom.stock - (viewingRoom.occupied || 0))}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl border border-[#E5E1DA] p-5 shadow-sm space-y-3">
-                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                  Room Facilities
-                </h4>
+                <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Room Facilities</h4>
                 <div className="flex flex-wrap gap-2">
                   {getFacilitiesForRoom(viewingRoom.facilityIds).map((fac) => (
-                    <span
-                      key={fac.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0ede9] rounded-lg text-xs font-semibold text-[#2D312C] border border-[#E5E1DA]"
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-[#506147]">
-                        {resolveFacilityIcon(fac.name)}
-                      </span>
+                    <span key={fac.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0ede9] rounded-lg text-xs font-semibold text-[#2D312C] border border-[#E5E1DA]">
+                      <span className="material-symbols-outlined text-[16px] text-[#506147]">{resolveFacilityIcon(fac.name)}</span>
                       {fac.name}
                     </span>
                   ))}
@@ -1039,16 +884,10 @@ export default function RoomList() {
 
               {viewingRoom.photos?.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                    Room Photos
-                  </h4>
+                  <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Room Photos</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {viewingRoom.photos.map((photo) => (
-                      <div
-                        key={photo.id}
-                        onClick={() => setPreviewPhoto(photo)}
-                        className="aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E1DA] cursor-pointer group relative"
-                      >
+                      <div key={photo.id} onClick={() => setPreviewPhoto(photo)} className="aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E1DA] cursor-pointer group relative">
                         <img src={photo.url} alt={photo.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                           <span className="material-symbols-outlined text-[20px]">visibility</span>
@@ -1063,49 +902,29 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* MODAL 2: EDIT ROOM */}
       {editingRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div className="px-6 py-5 border-b border-[#E5E1DA] bg-[#fcf9f5] flex justify-between items-center">
-              <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
-                Edit Room: {editingRoom.name}
-              </h3>
-              <button
-                onClick={() => setEditingRoom(null)}
-                disabled={isSaving}
-                className="p-1 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors"
-              >
+              <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">Edit Room: {editingRoom.name}</h3>
+              <button onClick={() => setEditingRoom(null)} disabled={isSaving} className="p-1 text-[#6B6E6A] hover:bg-[#eae8e4] rounded-full transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
             <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-6">
               <div className="space-y-4">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  1. Room Information
-                </h4>
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">1. Room Information</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Room Name *</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={editValues.name}
-                      onChange={handleEditChange}
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
-                    />
+                    <input type="text" name="name" value={editValues.name} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.name && <span className="text-xs text-[#ba1a1a]">{editErrors.name}</span>}
                   </div>
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Room Type *</label>
-                    <select
-                      name="type"
-                      value={editValues.type}
-                      onChange={handleEditChange}
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
-                    >
+                    <select name="type" value={editValues.type} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white">
                       <option value="Standard">Standard</option>
                       <option value="Deluxe">Deluxe</option>
                       <option value="Suite">Suite</option>
@@ -1116,12 +935,7 @@ export default function RoomList() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Bed Type</label>
-                    <select
-                      name="bed"
-                      value={editValues.bed}
-                      onChange={handleEditChange}
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
-                    >
+                    <select name="bed" value={editValues.bed} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white">
                       <option value="">Pilih Tipe Kasur</option>
                       <option value="1 Single Bed">Single Bed</option>
                       <option value="1 Twin Bed">Twin Bed</option>
@@ -1133,128 +947,62 @@ export default function RoomList() {
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[#2D312C]">Description</label>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    value={editValues.description}
-                    onChange={handleEditChange}
-                    className="p-3 border border-[#E5E0D8] rounded-lg text-sm leading-relaxed"
-                  />
+                  <textarea name="description" rows={3} value={editValues.description} onChange={handleEditChange} className="p-3 border border-[#E5E0D8] rounded-lg text-sm leading-relaxed" />
                 </div>
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  2. Room Pricing
-                </h4>
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">2. Room Pricing</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Weekday Price (Rp) *</label>
-                    <input
-                      type="number"
-                      name="weekday_price"
-                      value={editValues.weekday_price}
-                      onChange={handleEditChange}
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
-                    />
+                    <input type="number" name="weekday_price" value={editValues.weekday_price} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.weekday_price && <span className="text-xs text-[#ba1a1a]">{editErrors.weekday_price}</span>}
                   </div>
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Weekend Price (Rp) *</label>
-                    <input
-                      type="number"
-                      name="weekend_price"
-                      value={editValues.weekend_price}
-                      onChange={handleEditChange}
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
-                    />
+                    <input type="number" name="weekend_price" value={editValues.weekend_price} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.weekend_price && <span className="text-xs text-[#ba1a1a]">{editErrors.weekend_price}</span>}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  3. Capacity &amp; Availability
-                </h4>
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">3. Capacity &amp; Availability</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Adult Capacity *</label>
-                    <input
-                      type="number"
-                      name="capacity_adult"
-                      value={editValues.capacity_adult}
-                      onChange={handleEditChange}
-                      min="1"
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
-                    />
+                    <input type="number" name="capacity_adult" value={editValues.capacity_adult} onChange={handleEditChange} min="1" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.capacity_adult && <span className="text-xs text-[#ba1a1a]">{editErrors.capacity_adult}</span>}
                   </div>
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Child Capacity</label>
-                    <input
-                      type="number"
-                      name="capacity_child"
-                      value={editValues.capacity_child}
-                      onChange={handleEditChange}
-                      min="0"
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
-                    />
+                    <input type="number" name="capacity_child" value={editValues.capacity_child} onChange={handleEditChange} min="0" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                   </div>
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Total Units / Stock *</label>
-                    <input
-                      type="number"
-                      name="stock"
-                      value={editValues.stock}
-                      onChange={handleEditChange}
-                      min="1"
-                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm"
-                    />
+                    <input type="number" name="stock" value={editValues.stock} onChange={handleEditChange} min="1" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.stock && <span className="text-xs text-[#ba1a1a]">{editErrors.stock}</span>}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                  4. Room Facilities
-                </h4>
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">4. Room Facilities</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-[#E5E1DA] rounded-xl bg-[#fcf9f5]">
                   {roomFacilities.length === 0 && (
-                    <div className="col-span-full py-4 text-center text-xs text-[#6B6E6A]">
-                      Memuat daftar fasilitas kamar...
-                    </div>
+                    <div className="col-span-full py-4 text-center text-xs text-[#6B6E6A]">Memuat daftar fasilitas kamar...</div>
                   )}
                   {roomFacilities.map((fac) => {
                     const isChecked = (editValues.facilityIds || []).includes(fac.id);
                     return (
-                      <label
-                        key={fac.id}
-                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                          isChecked
-                            ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]"
-                            : "border-[#E5E1DA] bg-white text-[#2D312C]"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleEditFacilityToggle(fac.id)}
-                          className="accent-[#506147]"
-                        />
-                        <span className="material-symbols-outlined text-[16px] text-[#506147]">
-                          {resolveFacilityIcon(fac.name)}
-                        </span>
+                      <label key={fac.id} className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${isChecked ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]" : "border-[#E5E1DA] bg-white text-[#2D312C]"}`}>
+                        <input type="checkbox" checked={isChecked} onChange={() => handleEditFacilityToggle(fac.id)} className="accent-[#506147]" />
+                        <span className="material-symbols-outlined text-[16px] text-[#506147]">{resolveFacilityIcon(fac.name)}</span>
                         <span className="truncate">{fac.name}</span>
-                        {fac.category && (
-                          <span className="text-[8px] text-[#757870] ml-auto px-1 py-0.5 bg-[#E5E1DA] rounded-full">
-                            {fac.category === "Room" ? "R" : "B"}
-                          </span>
-                        )}
                       </label>
                     );
                   })}
@@ -1263,42 +1011,19 @@ export default function RoomList() {
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
                 <div className="flex items-center justify-between gap-3">
-                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
-                    5. Room Photos
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => photoInputRef.current?.click()}
-                    className="px-3 py-2 bg-[#506147] text-white text-[10px] font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors"
-                  >
+                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">5. Room Photos</h4>
+                  <button type="button" onClick={() => photoInputRef.current?.click()} className="px-3 py-2 bg-[#506147] text-white text-[10px] font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors">
                     + Add Photo
                   </button>
                 </div>
 
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleEditPhotoUpload}
-                />
+                <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleEditPhotoUpload} />
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {(editValues.photos || []).map((photo) => (
                     <div key={photo.id} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[#E5E1DA] bg-[#fcf9f5]">
-                      <img
-                        src={photo.url}
-                        alt={photo.name}
-                        className="h-full w-full object-cover"
-                        onClick={() => setPreviewPhoto(photo)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(photo.id)}
-                        className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                        title="Remove photo"
-                      >
+                      <img src={photo.url} alt={photo.name} className="h-full w-full object-cover" onClick={() => setPreviewPhoto(photo)} />
+                      <button type="button" onClick={() => handleRemovePhoto(photo.id)} className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80" title="Remove photo">
                         <span className="material-symbols-outlined text-[16px]">close</span>
                       </button>
                     </div>
@@ -1313,20 +1038,10 @@ export default function RoomList() {
               </div>
 
               <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingRoom(null)}
-                  disabled={isSaving}
-                  className="px-5 py-2.5 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors"
-                >
+                <button type="button" onClick={() => setEditingRoom(null)} disabled={isSaving} className="px-5 py-2.5 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors">
                   Cancel
                 </button>
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm disabled:opacity-50"
-                >
+                <button type="submit" disabled={isSaving} className="px-6 py-2.5 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm disabled:opacity-50">
                   {isSaving ? "Saving Changes..." : "Save Changes"}
                 </button>
               </div>
@@ -1335,7 +1050,6 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* MODAL 3: DELETE CONFIRMATION */}
       {deletingRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
@@ -1344,9 +1058,7 @@ export default function RoomList() {
                 <span className="material-symbols-outlined text-[22px]">warning</span>
               </div>
               <div>
-                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-                  Delete Room?
-                </h3>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Delete Room?</h3>
                 <p className="text-xs text-[#6B6E6A] mt-1 leading-relaxed">
                   Are you sure you want to delete <strong className="text-[#2D312C]">&quot;{deletingRoom.name}&quot;</strong>? Action ini tidak dapat dibatalkan.
                 </p>
@@ -1354,20 +1066,10 @@ export default function RoomList() {
             </div>
 
             <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setDeletingRoom(null)}
-                disabled={isSaving}
-                className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors"
-              >
+              <button type="button" onClick={() => setDeletingRoom(null)} disabled={isSaving} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors">
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={isSaving}
-                className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50"
-              >
+              <button type="button" onClick={handleDeleteConfirm} disabled={isSaving} className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50">
                 {isSaving ? "Deleting..." : "Delete"}
               </button>
             </div>
@@ -1375,18 +1077,12 @@ export default function RoomList() {
         </div>
       )}
 
-      {/* LIGHTBOX PREVIEW MODAL */}
       {previewPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="relative max-w-4xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-[#E5E1DA] flex items-center justify-between bg-[#fcf9f5]">
-              <span className="text-sm font-semibold text-[#2D312C] truncate">
-                {previewPhoto.name}
-              </span>
-              <button
-                onClick={() => setPreviewPhoto(null)}
-                className="p-1 rounded-full text-[#6B6E6A] hover:bg-[#eae8e4] transition-colors"
-              >
+              <span className="text-sm font-semibold text-[#2D312C] truncate">{previewPhoto.name}</span>
+              <button onClick={() => setPreviewPhoto(null)} className="p-1 rounded-full text-[#6B6E6A] hover:bg-[#eae8e4] transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
