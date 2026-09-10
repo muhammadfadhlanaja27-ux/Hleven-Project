@@ -511,7 +511,7 @@ export default function RoomList() {
           className="bg-[#506147] text-white text-xs font-semibold px-6 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#3b4b33] transition-all shadow-sm hover:shadow active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          + Add Room
+          Add Room
         </Link>
       </div>
 
@@ -833,7 +833,7 @@ export default function RoomList() {
                           to="/admin/rooms/create"
                           className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
                         >
-                          + Add Room
+                          Add Room
                         </Link>
                       )}
                     </div>
@@ -1227,7 +1227,7 @@ export default function RoomList() {
                     onClick={() => photoInputRef.current?.click()}
                     className="px-3 py-2 bg-[#506147] text-white text-[10px] font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors"
                   >
-                    + Add Photo
+                    Add Photo
                   </button>
                 </div>
 

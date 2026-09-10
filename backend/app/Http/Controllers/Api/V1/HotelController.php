@@ -131,7 +131,6 @@ class HotelController extends Controller
             'description'  => 'nullable|string',
             'address'      => 'sometimes|string',
             'phone'        => 'nullable|string|max:30',
-            'email'        => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
             'city'         => 'nullable|string|max:255',
             'city_id'      => 'nullable|exists:cities,id',
             'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -173,19 +172,9 @@ class HotelController extends Controller
             $hotel->save();
         }
 
-        // Update nomor telepon dan email kontak pada user admin terkait
-        if ($admin) {
-            $adminData = [];
-            if ($request->has('phone')) {
-                $adminData['phone'] = $request->phone;
-            }
-            if ($request->has('email') && !empty($request->email)) {
-                $adminData['email'] = $request->email;
-            }
-            if (!empty($adminData)) {
-                $admin->update($adminData);
-            }
-        }
+        // Email/phone di halaman kontak hotel tidak lagi dipetakan ke akun admin login.
+        // Data kontak hotel tetap disimpan di profil hotel bila ada field khusus di masa depan,
+        // namun saat ini update ini hanya menjaga data hotel utama dan fasilitas.
 
         if ($request->has('facilities')) {
             $facilities = $request->input('facilities');

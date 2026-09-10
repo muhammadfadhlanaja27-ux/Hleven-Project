@@ -399,7 +399,7 @@ export default function FacilityManager() {
             className="bg-[#506147] text-white text-xs font-semibold px-6 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#3b4b33] transition-all shadow-sm hover:shadow active:scale-[0.98]"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            + Add Facility
+            Add Facility
           </button>
         </div>
 
@@ -562,7 +562,7 @@ export default function FacilityManager() {
                             onClick={handleOpenAddModal}
                             className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
                           >
-                            + Add Facility
+                            Add Facility
                           </button>
                         )}
                       </div>

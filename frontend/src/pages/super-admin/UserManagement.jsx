@@ -258,7 +258,7 @@ const UserManagement = () => {
           className="px-5 py-2.5 bg-[#768875] text-white font-hanken text-[14px] font-semibold tracking-[0.01em] rounded-lg hover:bg-[#657764] shadow-sm hover:shadow transition-all duration-150 flex items-center gap-2 active:scale-95"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
-          <span>+ Tambah Admin Hotel</span>
+          <span>Tambah Admin Hotel</span>
         </button>
       </div>
 
