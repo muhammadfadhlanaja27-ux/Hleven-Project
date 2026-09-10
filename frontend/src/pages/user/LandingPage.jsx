@@ -51,7 +51,6 @@ const LandingPage = () => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        // Build query params
         const params = new URLSearchParams();
         
         if (searchTerm.trim()) params.append("search", searchTerm.trim());
@@ -91,7 +90,6 @@ const LandingPage = () => {
     setCheckOutDate(end);
   };
 
-  // ponytail: hanya param yang didukung backend (search); guest/date diteruskan untuk konsistensi
   const buildSearchUrl = () => {
     const params = new URLSearchParams();
     if (searchTerm.trim()) params.append("search", searchTerm.trim());
@@ -150,22 +148,19 @@ const LandingPage = () => {
     setShowRoomModal(false);
   };
 
-  // Filtered and Sorted Hotels Calculation (API provides pre-filtered data)
+  // Filtered and Sorted Hotels Calculation
   const filteredHotels = useMemo(() => {
     return hotels
       .filter((hotel) => {
-        // 1. Min & Max Price Filter (Frontend)
         const price = Number(hotel.starting_price || hotel.price || 0);
         if (minPrice && price < Number(minPrice)) return false;
         if (maxPrice && price > Number(maxPrice)) return false;
 
-        // 2. Star Rating Filter (Frontend)
         if (selectedStars.length > 0) {
           const hotelRatingInt = Math.floor(Number(hotel.rating || 5));
           if (!selectedStars.includes(hotelRatingInt)) return false;
         }
 
-        // 3. Facilities Filter (Frontend)
         if (selectedFacilities.length > 0) {
           const hotelFacs = (hotel.facilities || []).map((f) =>
             (typeof f === "object" ? f.name : String(f)).toLowerCase()
@@ -187,7 +182,7 @@ const LandingPage = () => {
         if (sortBy === "price_asc") return priceA - priceB;
         if (sortBy === "price_desc") return priceB - priceA;
         if (sortBy === "rating_desc") return ratingB - ratingA;
-        return 0; // Default Recommendation
+        return 0;
       });
   }, [hotels, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
@@ -201,9 +196,9 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased">
-      {/* Hero Section */}
-      <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-visible py-12 px-4">
+    <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased overflow-x-hidden">
+      {/* Hero Section - Diubah menjadi overflow-hidden agar scale-105 tidak meluber */}
+      <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-hidden py-12 px-4">
         <div
           className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
           style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
@@ -285,10 +280,10 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Main Content Area: Sidebar Filters & Hotel Cards Grid */}
-      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16 flex flex-col lg:flex-row gap-8">
+      {/* Main Content Area - Menggunakan CSS Grid untuk mencegah masalah lebar Flexbox */}
+      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16 grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Filters */}
-        <aside className="w-full lg:w-1/4 flex flex-col gap-6">
+        <aside className="lg:col-span-1 flex flex-col gap-6">
           <div className="bg-[#FDF6ED] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
             <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-3">
               <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
@@ -383,7 +378,7 @@ const LandingPage = () => {
         </aside>
 
         {/* Featured Hotels Grid */}
-        <div className="w-full lg:w-3/4">
+        <div className="lg:col-span-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4 text-left">
             <div>
               <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
@@ -460,13 +455,11 @@ const LandingPage = () => {
       {/* Room Addition Modal */}
       {showRoomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm"
             onClick={() => setShowRoomModal(false)}
           />
 
-          {/* Modal Content */}
           <div className="relative bg-white rounded-2xl shadow-lg p-8 max-w-md z-10 border border-[#DCCFC0]">
             <div className="mb-6">
               <h3 className="font-headline-md text-2xl font-semibold text-[#2D332C] mb-2">
