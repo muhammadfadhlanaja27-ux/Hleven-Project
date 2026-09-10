@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
+import ReviewSection from "../../components/ReviewSection";
 
 const HotelDetail = () => {
   const { id } = useParams();
@@ -817,6 +818,9 @@ const HotelDetail = () => {
             </div>
           )}
         </section>
+
+        {/* Section Review & Rating */}
+        <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} />
       </main>
 
       {/* Full-screen Lightbox */}
