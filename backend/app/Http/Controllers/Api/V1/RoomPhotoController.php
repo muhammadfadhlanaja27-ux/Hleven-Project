@@ -24,8 +24,7 @@ class RoomPhotoController extends Controller
         }
 
         if ($photo->photo) {
-            $relativePath = str_replace(asset('storage/'), '', $photo->photo);
-            Storage::disk('public')->delete(ltrim($relativePath, '/'));
+            app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
         }
 
         $photo->delete();
