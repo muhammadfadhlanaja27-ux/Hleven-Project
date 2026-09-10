@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function () {
     
     // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
+    Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -97,6 +98,10 @@ Route::prefix('v1')->group(function () {
             
             // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
+            
+            // Reviews
+            Route::get('/hotels/{id}/eligible-bookings', [ReviewController::class, 'eligibleBookings']);
+            Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
         });
 
         // --- Pembayaran User ---
