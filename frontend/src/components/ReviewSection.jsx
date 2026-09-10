@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { cachedGet } from "../services/apiCache";
+import { cachedGet, invalidateCache } from "../services/apiCache";
 import api from "../services/api";
 import toast from "react-hot-toast";
 
-const ReviewSection = ({ hotelId, roomTypes = [] }) => {
+const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({ average_rating: 0, total_reviews: 0 });
   const [page, setPage] = useState(1);
@@ -29,11 +29,15 @@ const ReviewSection = ({ hotelId, roomTypes = [] }) => {
       });
       setReviews(res.data.data.data || []);
       setTotalPages(res.data.data.last_page || 1);
-      setStats(res.data.stats || { average_rating: 0, total_reviews: 0 });
+      const newStats = res.data.stats || { average_rating: 0, total_reviews: 0 };
+      setStats(newStats);
+      return newStats;
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+    return null;
   };
 
   const fetchEligibleBookings = async () => {
@@ -66,7 +70,11 @@ const ReviewSection = ({ hotelId, roomTypes = [] }) => {
       toast.success("Review berhasil dikirim!");
       setForm({ booking_id: "", rating: 5, comment: "" });
       fetchEligibleBookings();
-      fetchReviews();
+      const newStats = await fetchReviews();
+      // Invalidate hotel list cache agar landing page mendapat rating terbaru
+      invalidateCache("/hotels");
+      // Notify parent (HotelDetail) agar bintang header ter-update dengan rating baru
+      if (onReviewSubmitted && newStats) onReviewSubmitted(newStats);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal mengirim review");
     }
@@ -81,7 +89,7 @@ const ReviewSection = ({ hotelId, roomTypes = [] }) => {
             Ulasan Tamu
           </h2>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#A0522D]">star</span>
+            <span className="material-symbols-outlined text-[#D48C45]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
             <span className="font-bold text-lg">{Number(stats.average_rating).toFixed(1)}</span>
             <span className="text-sm text-[#444842]">({stats.total_reviews} Ulasan)</span>
           </div>
@@ -112,7 +120,7 @@ const ReviewSection = ({ hotelId, roomTypes = [] }) => {
                 <span
                   key={star}
                   className="material-symbols-outlined cursor-pointer text-xl"
-                  style={{ color: star <= form.rating ? '#A0522D' : '#DCCFC0' }}
+                  style={{ color: star <= form.rating ? '#D48C45' : '#DCCFC0' }}
                   onClick={() => setForm({ ...form, rating: star })}
                 >
                   star
@@ -167,7 +175,7 @@ const ReviewSection = ({ hotelId, roomTypes = [] }) => {
                   <h4 className="font-bold text-[#1e1b16]">{review.user?.name || 'User'}</h4>
                   <p className="text-xs text-[#444842]">{new Date(review.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
-                <div className="flex text-[#A0522D]">
+                <div className="flex text-[#D48C45]">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span key={i} className="material-symbols-outlined text-sm" style={{ fontVariationSettings: i < review.rating ? "'FILL' 1" : "'FILL' 0" }}>star</span>
                   ))}
