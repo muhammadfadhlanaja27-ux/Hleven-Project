@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 // Helper to render star icons
 const renderStars = (rating) => {
@@ -50,6 +51,8 @@ export default function ReviewManager() {
 
   // Modal States
   const [viewingReview, setViewingReview] = useState(null);
+  const [confirmDeleteReview, setConfirmDeleteReview] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchReviews();
@@ -117,10 +120,17 @@ export default function ReviewManager() {
     }
   };
 
-  // Delete Review
-  const handleDeleteReview = async (reviewId) => {
-    if (!window.confirm("Hapus ulasan ini? Tindakan ini tidak dapat dibatalkan.")) return;
+  // Delete Review — buka dialog konfirmasi
+  const handleDeleteReview = (reviewId) => {
+    setConfirmDeleteReview(reviewId);
+  };
+
+  // Eksekusi hapus setelah konfirmasi
+  const performDeleteReview = async () => {
+    if (!confirmDeleteReview) return;
+    setIsDeleting(true);
     try {
+      const reviewId = confirmDeleteReview;
       await api.delete(`/hotel/reviews/${reviewId}`);
       toast.success("Ulasan berhasil dihapus.");
       invalidateCache("/hotel/reviews");
@@ -129,9 +139,12 @@ export default function ReviewManager() {
       if (viewingReview && viewingReview.id === reviewId) {
         setViewingReview(null);
       }
+      setConfirmDeleteReview(null);
     } catch (err) {
       console.error(err);
       toast.error("Gagal menghapus ulasan.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -639,6 +652,19 @@ export default function ReviewManager() {
       )}
 
 
+      {/* ========================================================================= */}
+      {/* CONFIRM DELETE DIALOG                                                     */}
+      {/* ========================================================================= */}
+      <ConfirmDialog
+        open={!!confirmDeleteReview}
+        type="danger"
+        title="Hapus Ulasan"
+        message="Hapus ulasan ini? Tindakan ini tidak dapat dibatalkan."
+        confirmText="Ya, Hapus"
+        processing={isDeleting}
+        onConfirm={performDeleteReview}
+        onCancel={() => setConfirmDeleteReview(null)}
+      />
     </div>
   );
 }

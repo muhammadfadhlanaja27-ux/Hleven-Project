@@ -6,13 +6,21 @@ const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
 const normalizeBooking = (b) => {
-  const rawStatus = (b.status || "pending").toLowerCase();
+  const rawStatus = (b.status || "unpaid").toLowerCase();
+  // Nilai enum bookings.status dari backend: unpaid, pending, paid, checked_in,
+  // checked_out, cancelled, expired, refunded, refund_pending
   const bookingStatusMap = {
+    unpaid: "Pending",
     pending: "Pending",
+    paid: "Confirmed",
     confirmed: "Confirmed",
     checked_in: "Checked In",
+    checked_out: "Checked Out",
     completed: "Checked Out",
     cancelled: "Cancelled",
+    expired: "Expired",
+    refund_pending: "Refund Pending",
+    refunded: "Refunded",
   };
 
   const firstRoom =
@@ -21,13 +29,14 @@ const normalizeBooking = (b) => {
     b.booking_rooms?.[0]?.roomType ||
     {};
   const payment = b.payment || {};
+  // Nilai enum payments.payment_status: pending, success, failed, expired, cancelled
   const isPaid =
-    payment.status === "success" ||
-    payment.payment_status === "paid" ||
-    b.payment_status === "paid" ||
-    rawStatus === "confirmed" ||
+    payment.payment_status === "success" ||
+    b.payment_status === "success" ||
+    rawStatus === "paid" ||
     rawStatus === "checked_in" ||
-    rawStatus === "completed";
+    rawStatus === "checked_out" ||
+    rawStatus === "refund_pending";
 
   const total = Number(
     b.total_price ||
@@ -85,18 +94,19 @@ const normalizeBooking = (b) => {
     bookingSource: "Website",
     timeline: [
       { event: "Booking Created", timestamp: b.created_at || "Recent" },
-      ...(rawStatus === "confirmed" ||
+      ...(rawStatus === "paid" ||
+      rawStatus === "confirmed" ||
       rawStatus === "checked_in" ||
-      rawStatus === "completed"
+      rawStatus === "checked_out"
         ? [{ event: "Booking Confirmed", timestamp: "Confirmed" }]
         : []),
-      ...(rawStatus === "checked_in" || rawStatus === "completed"
+      ...(rawStatus === "checked_in" || rawStatus === "checked_out"
         ? [{ event: "Checked In", timestamp: "Checked In" }]
         : []),
-      ...(rawStatus === "completed"
+      ...(rawStatus === "checked_out"
         ? [{ event: "Checked Out", timestamp: "Completed" }]
         : []),
-      ...(rawStatus === "cancelled"
+      ...(rawStatus === "cancelled" || rawStatus === "expired"
         ? [{ event: "Booking Cancelled", timestamp: "Cancelled" }]
         : []),
     ],
@@ -738,12 +748,30 @@ export default function BookingList() {
 
                       {/* Action */}
                       <td className="p-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => setViewingBooking(b)}
-                          className="px-3 py-1.5 border border-[#506147] text-[#506147] hover:bg-[#506147] hover:text-white rounded-lg text-xs font-semibold transition-colors"
-                        >
-                          View Detail
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {b.bookingStatus === "Confirmed" && (
+                            <button
+                              onClick={() => setConfirmCheckInBooking(b)}
+                              className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                            >
+                              Check In
+                            </button>
+                          )}
+                          {b.bookingStatus === "Checked In" && (
+                            <button
+                              onClick={() => setConfirmCheckOutBooking(b)}
+                              className="px-3 py-1.5 bg-[#ba1a1a] text-white rounded-lg text-xs font-semibold hover:bg-[#93000a] transition-colors"
+                            >
+                              Check Out
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setViewingBooking(b)}
+                            className="px-3 py-1.5 border border-[#506147] text-[#506147] hover:bg-[#506147] hover:text-white rounded-lg text-xs font-semibold transition-colors"
+                          >
+                            View Detail
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

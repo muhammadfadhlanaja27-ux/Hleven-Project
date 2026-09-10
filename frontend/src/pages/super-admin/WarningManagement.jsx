@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const WarningManagement = () => {
   const initialWarningKey = getCacheKey("/super-admin/warnings");
@@ -34,6 +35,10 @@ const WarningManagement = () => {
   // State Modal Detail Warning
   const [selectedWarning, setSelectedWarning] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // State Dialog Konfirmasi Resolve
+  const [pendingResolve, setPendingResolve] = useState(null);
+  const [isResolving, setIsResolving] = useState(false);
 
   const fetchWarnings = async (forceRefresh = false) => {
     const key = getCacheKey("/super-admin/warnings");
@@ -101,10 +106,14 @@ const WarningManagement = () => {
   };
 
   // Menandai Warning Selesai (Resolved)
-  const handleResolveWarning = async (id) => {
-    if (!window.confirm("Tandai peringatan kepatuhan ini sebagai Selesai (Resolved)?"))
-      return;
+  const handleResolveWarning = (id) => {
+    setPendingResolve(id);
+  };
 
+  const performResolveWarning = async () => {
+    if (!pendingResolve) return;
+    const id = pendingResolve;
+    setIsResolving(true);
     try {
       await api.patch(`/super-admin/warnings/${id}/status`, { status: "resolved" });
       invalidateCache("/super-admin/warnings");
@@ -113,9 +122,12 @@ const WarningManagement = () => {
       if (selectedWarning && selectedWarning.id === id) {
         setSelectedWarning((prev) => ({ ...prev, status: "resolved" }));
       }
+      setPendingResolve(null);
       fetchWarnings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memperbarui status.");
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -610,6 +622,18 @@ const WarningManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Resolve Warning Dialog */}
+      <ConfirmDialog
+        open={!!pendingResolve}
+        type="success"
+        title="Tandai Peringatan Selesai"
+        message="Tandai peringatan kepatuhan ini sebagai Selesai (Resolved)?"
+        confirmText="Ya, Tandai Resolved"
+        processing={isResolving}
+        onConfirm={performResolveWarning}
+        onCancel={() => setPendingResolve(null)}
+      />
     </div>
   );
 };

@@ -48,7 +48,7 @@ const HotelCard = ({ hotel, adults, children }) => {
   };
 
   const getRating = () => {
-    return hotel.rating || hotel.average_rating || "4.8";
+    return Number(hotel.rating || hotel.average_rating || 0).toFixed(1);
   };
 
   const renderFacilityIcon = (fac, idx) => {
@@ -104,7 +104,7 @@ const HotelCard = ({ hotel, adults, children }) => {
           </div>
         )}
         <div className="absolute top-4 right-4 bg-[#fff8f0]/90 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-          <span className="material-symbols-outlined text-[#A1BC98] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <span className="material-symbols-outlined text-[#D48C45] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
             star
           </span>
           <span className="font-label-sm text-xs font-semibold text-[#2D332C]">
