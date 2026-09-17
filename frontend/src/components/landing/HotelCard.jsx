@@ -6,7 +6,6 @@ const HotelCard = ({ hotel, adults, children }) => {
   const [urlSearchParams] = useSearchParams();
   const [imgError, setImgError] = useState(false);
 
-  // Baca dari prop (dari LandingPage/HotelList) atau fallback ke URL saat ini
   const effectiveAdults = (adults ?? Number(urlSearchParams.get('adults'))) || 0;
   const effectiveChildren = (children ?? Number(urlSearchParams.get('children'))) || 0;
 
@@ -18,7 +17,6 @@ const HotelCard = ({ hotel, adults, children }) => {
     return `/hotels/${hotel.id}${qs ? `?${qs}` : ''}`;
   };
 
-  // Reset error state ketika data hotel/foto berubah agar foto baru dicoba lagi
   useEffect(() => {
     setImgError(false);
   }, [hotel.thumbnail, hotel.photos]);
@@ -73,18 +71,20 @@ const HotelCard = ({ hotel, adults, children }) => {
     }
 
     return (
-      <span key={idx} className="material-symbols-outlined text-sm text-[#747871]" title={title}>
-        {iconName}
-      </span>
+      <div key={idx} className="p-1.5 rounded-lg bg-[#F4F6F4] border border-[#E2E8E2] flex items-center justify-center" title={title}>
+        <span className="material-symbols-outlined text-sm text-[#5F7161]">
+          {iconName}
+        </span>
+      </div>
     );
   };
 
   const facilities = Array.isArray(hotel.facilities) ? hotel.facilities : [];
 
   return (
-    <div className="bg-[#FDF6ED] rounded-2xl overflow-hidden shadow-sm shadow-[#778873]/10 border border-[#DCCFC0]/40 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group flex flex-col h-full text-left">
+    <div className="bg-white rounded-2xl overflow-hidden border border-[#E8E2D9] shadow-sm hover:shadow-xl hover:border-[#D0C8BC] hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full text-left">
       {/* Image Header with Rating Badge */}
-      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
+      <div className="relative h-48 overflow-hidden bg-[#F2EFE9] shrink-0">
         {hasValidImage ? (
           <img
             src={imageUrl}
@@ -94,19 +94,21 @@ const HotelCard = ({ hotel, adults, children }) => {
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-            <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">
+            <span className="material-symbols-outlined text-[#8C968D] text-5xl mb-2 opacity-60">
               image_not_supported
             </span>
-            <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
+            <p className="font-label-md text-xs font-semibold text-[#8C968D] uppercase tracking-wider">
               Belum Ada Foto
             </p>
           </div>
         )}
-        <div className="absolute top-4 right-4 bg-[#fff8f0]/90 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-          <span className="material-symbols-outlined text-[#D48C45] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+
+        {/* Rating Badge */}
+        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm border border-black/5">
+          <span className="material-symbols-outlined text-[#D97706] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
             star
           </span>
-          <span className="font-label-sm text-xs font-semibold text-[#2D332C]">
+          <span className="font-label-sm text-xs font-bold text-[#1C251D]">
             {getRating()}
           </span>
         </div>
@@ -114,37 +116,41 @@ const HotelCard = ({ hotel, adults, children }) => {
 
       {/* Content Area */}
       <div className="p-5 flex flex-col flex-grow">
-        <h3 className="font-headline-md text-xl font-semibold text-[#2D332C] leading-tight line-clamp-2 mb-2">
+        {/* Hotel Name */}
+        <h3 className="font-headline-md text-lg font-bold text-[#1C251D] leading-snug line-clamp-2 mb-2 group-hover:text-[#5F7161] transition-colors">
           {hotel.name}
         </h3>
 
-        <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
-          <span className="material-symbols-outlined text-sm">location_on</span>
-          <span className="font-body-md text-sm truncate">
+        {/* Location */}
+        <div className="flex items-center gap-1.5 text-[#59635A] mb-4 text-xs">
+          <span className="material-symbols-outlined text-base text-[#5F7161] shrink-0">location_on</span>
+          <span className="font-body-md truncate">
             {hotel.address || (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) || "Bandung, Jawa Barat"}
           </span>
         </div>
 
         {/* Facilities icons */}
-        <div className="flex gap-3 mb-5">
+        <div className="flex gap-2 mb-5">
           {facilities.slice(0, 4).map(renderFacilityIcon)}
         </div>
 
         {/* Bottom Price & Action */}
-        <div className="mt-auto flex items-end justify-between pt-4 border-t border-[#DCCFC0]/30">
+        <div className="mt-auto pt-4 border-t border-[#F0EBE1] flex flex-col gap-3">
           <div>
-            <p className="text-xs text-[#444842] mb-0.5">Mulai dari</p>
-            <p className="font-headline-md text-lg font-bold text-[#778873]">
-              Rp {getPrice()}
-            </p>
-            <p className="text-[11px] text-[#747871]">/ malam</p>
+            <p className="text-[11px] font-medium text-[#7A857B] mb-0.5">Mulai dari</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-headline-md text-xl font-extrabold text-[#2C382E]">
+                Rp {getPrice()}
+              </span>
+              <span className="text-[11px] text-[#7A857B]">/ malam</span>
+            </div>
           </div>
 
           <Link
             to={buildDetailUrl()}
-            className="bg-[#fff8f0] border border-[#778873] text-[#778873] px-4 py-2 rounded-lg font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors inline-block text-center"
+            className="w-full bg-[#5F7161] text-white py-2.5 rounded-xl font-label-md text-xs font-semibold hover:bg-[#4D5E4F] active:scale-95 transition-all shadow-sm shadow-[#5F7161]/20 text-center block"
           >
-            View Details
+            Lihat Detail
           </Link>
         </div>
       </div>
