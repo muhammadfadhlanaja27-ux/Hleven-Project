@@ -109,6 +109,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/{id}', [PaymentController::class, 'show']);
             Route::post('/{id}/snap-token', [PaymentController::class, 'generateSnapToken']);
             Route::get('/{id}/status', [PaymentController::class, 'status']);
+            Route::post('/{id}/mark-paid', [PaymentController::class, 'markPaid']);
         });
 
         // --- File Storage ---

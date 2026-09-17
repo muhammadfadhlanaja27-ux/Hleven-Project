@@ -149,8 +149,8 @@ const HotelList = () => {
         if (maxPrice && price > Number(maxPrice)) return false;
 
         if (selectedStars.length > 0) {
-          const hotelRatingInt = Math.floor(Number(hotel.rating || 5));
-          if (!selectedStars.includes(hotelRatingInt)) return false;
+          const hotelRatingInt = Math.floor(Number(hotel.rating || hotel.average_rating || 0));
+          if (hotelRatingInt > 0 && !selectedStars.includes(hotelRatingInt)) return false;
         }
 
         if (selectedFacilities.length > 0) {
@@ -317,7 +317,7 @@ const HotelList = () => {
                       onChange={() => handleStarToggle(star)}
                       className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
                     />
-                    <div className="flex text-[#A1BC98]">
+                    <div className="flex text-[#D48C45]">
                       {Array.from({ length: star }).map((_, i) => (
                         <span
                           key={i}

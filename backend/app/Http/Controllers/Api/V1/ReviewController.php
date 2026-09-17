@@ -12,6 +12,17 @@ use App\Models\Booking;
 
 class ReviewController extends Controller
 {
+    /**
+     * Resync kolom average_rating & total_review di tabel hotels
+     * agar rating yang tampil di landing page selalu ter-update.
+     */
+    private function syncHotelRatingStats(int $hotelId): void
+    {
+        Hotel::where('id', $hotelId)->update([
+            'average_rating' => round(Review::where('hotel_id', $hotelId)->avg('rating') ?? 0, 1),
+            'total_review'   => Review::where('hotel_id', $hotelId)->count(),
+        ]);
+    }
     public function publicIndex(Request $request, $hotelId)
     {
         $query = Review::with(['user', 'booking.bookingRooms.roomType', 'booking.guests'])
@@ -89,6 +100,8 @@ class ReviewController extends Controller
             'comment' => $request->comment
         ]);
 
+        $this->syncHotelRatingStats((int) $hotelId);
+
         return response()->json(['status' => 'success', 'data' => $review]);
     }
 
@@ -155,6 +168,8 @@ class ReviewController extends Controller
         }
 
         $review->delete();
+
+        $this->syncHotelRatingStats($review->hotel_id);
 
         return response()->json([
             'status' => 'success',

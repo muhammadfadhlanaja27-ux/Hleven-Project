@@ -148,6 +148,12 @@ const HotelDetail = () => {
     fetchHotelDetail();
   }, [id]);
 
+  // Live rating state — bisa ter-update saat review dikirim
+  const [liveRating, setLiveRating] = useState(0);
+  useEffect(() => {
+    setLiveRating(Number(hotel?.rating || hotel?.average_rating || 0));
+  }, [hotel]);
+
   // Logika Filter Kamar
   const filteredRooms = useMemo(() => {
     if (!hotel || !hotel.rooms) return [];
@@ -287,8 +293,14 @@ const HotelDetail = () => {
 
   const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";
   const hotelAddress = hotel.address || `${hotelCityName}, Jawa Barat`;
-  const ratingValue = hotel.rating || hotel.average_rating || 4.8;
-  const starCount = Math.floor(Number(ratingValue));
+
+  const starCount = Math.floor(liveRating);
+
+  const handleReviewSubmitted = (newStats) => {
+    if (newStats?.average_rating) {
+      setLiveRating(Number(newStats.average_rating));
+    }
+  };
 
   const handleBookRoom = (e, room) => {
     e.preventDefault();
@@ -425,7 +437,7 @@ const HotelDetail = () => {
           <div className="lg:col-span-2 space-y-12">
             <section>
               <div className="flex items-center gap-3 mb-3">
-                <div className="flex text-[#A0522D]">
+                <div className="flex text-[#D48C45]">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span
                       key={i}
@@ -892,7 +904,7 @@ const HotelDetail = () => {
         </section>
 
         {/* Section Review & Rating */}
-        <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} />
+        <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} onReviewSubmitted={handleReviewSubmitted} />
       </main>
 
       {/* Full-screen Lightbox */}

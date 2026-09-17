@@ -446,6 +446,24 @@ const UserProfile = () => {
             </span>
           </div>
         );
+      case "checked_in":
+        return (
+          <div className="bg-[#506147]/10 backdrop-blur-sm border border-[#506147]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#506147]"></span>
+            <span className="font-label-sm text-xs text-[#506147] font-bold uppercase tracking-wider">
+              Sedang Menginap
+            </span>
+          </div>
+        );
+      case "refund_pending":
+        return (
+          <div className="bg-[#E0F2FE] backdrop-blur-sm border border-[#0369A1]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#0369A1]"></span>
+            <span className="font-label-sm text-xs text-[#0369A1] font-bold uppercase tracking-wider">
+              Proses Refund
+            </span>
+          </div>
+        );
       case "Checked Out":
       case "checked_out":
       case "Selesai":
@@ -736,9 +754,18 @@ const UserProfile = () => {
                         >
                           <div className="flex items-start gap-3">
                             <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">
-                              {notif.type === "partner_approved" ? "check_circle" : "notifications"}
+                              {notif.type === "partner_approved"
+                                ? "check_circle"
+                                : notif.type === "review_request"
+                                ? "rate_review"
+                                : "notifications"}
                             </span>
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+                              if (notif.type === "review_request") {
+                                setActiveTab("history");
+                                fetchUserBookings();
+                              }
+                            }}>
                               <div className="flex items-center gap-2 mb-1">
                                 <h4 className="font-label-md text-sm font-bold text-[#2D332C]">
                                   {notif.title}
@@ -938,6 +965,49 @@ const UserProfile = () => {
 
             {activeTab === "history" && (
               <div className="flex flex-col gap-6">
+                {/* Banner: ajakan menulis ulasan untuk booking selesai yang belum diulas */}
+                {bookings.filter(
+                  (b) => b.status === "checked_out" && !b.review
+                ).length > 0 && (
+                  <div className="bg-[#A0522D]/10 border border-[#A0522D]/30 rounded-2xl p-5 shadow-xs">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="material-symbols-outlined text-[#A0522D] text-2xl">
+                        rate_review
+                      </span>
+                      <h3 className="font-headline-md text-base font-bold text-[#A0522D]">
+                        Penginapan selesai — bagikan ulasan Anda!
+                      </h3>
+                    </div>
+                    <div className="space-y-2">
+                      {bookings
+                        .filter((b) => b.status === "checked_out" && !b.review)
+                        .slice(0, 3)
+                        .map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white rounded-xl border border-[#DCCFC0]/40 px-4 py-3"
+                          >
+                            <div className="text-sm">
+                              <span className="font-semibold text-[#1e1b16]">
+                                {b.hotel?.name || "Hotel"}
+                              </span>
+                              <span className="text-[#747871] text-xs ml-2">
+                                {b.booking_code} • Check-out {b.check_out}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/hotels/${b.hotel_id}`)}
+                              className="px-4 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors cursor-pointer shrink-0"
+                            >
+                              Tulis Ulasan
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
                     <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
@@ -1085,7 +1155,7 @@ const UserProfile = () => {
                               </button>
                             )}
 
-                            {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                            {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && (
                               <button
                                 type="button"
                                 onClick={() => setSelectedBooking(item)}
@@ -1093,6 +1163,18 @@ const UserProfile = () => {
                               >
                                 <span className="material-symbols-outlined text-base">download</span>
                                 E-Tiket
+                              </button>
+                            )}
+
+                            {/* Ulasan hanya untuk booking yang sudah checked out dan belum diulas */}
+                            {item.status === "checked_out" && !item.review && (
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/hotels/${item.hotel_id}`)}
+                                className="px-5 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-base">rate_review</span>
+                                Tulis Ulasan
                               </button>
                             )}
                           </div>
