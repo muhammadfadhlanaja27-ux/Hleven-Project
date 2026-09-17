@@ -29,7 +29,7 @@ class PaymentController extends Controller
             if ($payment->booking->user_id !== $request->user()->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Forbidden.'
+                    'message' => 'Forbidden.',
                 ], 403);
             }
 
@@ -38,19 +38,19 @@ class PaymentController extends Controller
                 'data' => [
                     'payment_method' => $payment->payment_method,
                     'payment_status' => $payment->payment_status,
-                    'gross_amount'   => $payment->gross_amount,
-                    'expired_at'     => $payment->expired_at,
+                    'gross_amount' => $payment->gross_amount,
+                    'expired_at' => $payment->expired_at,
                     'transaction_id' => $payment->transaction_id,
-                    'order_id'       => $payment->order_id,
-                    'paid_at'         => $payment->paid_at
-                ]
+                    'order_id' => $payment->order_id,
+                    'paid_at' => $payment->paid_at,
+                ],
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Data tidak ditemukan.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 404);
         }
     }
@@ -68,7 +68,7 @@ class PaymentController extends Controller
             if ($payment->booking->user_id !== $request->user()->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Forbidden.'
+                    'message' => 'Forbidden.',
                 ], 403);
             }
 
@@ -77,15 +77,15 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'snap_token' => $snapToken
-                ]
+                    'snap_token' => $snapToken,
+                ],
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan pada server.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -101,14 +101,14 @@ class PaymentController extends Controller
             $this->midtransService->handleCallback($request->all());
 
             return response()->json([
-                'status' => 'success'
+                'status' => 'success',
             ], 200);
 
         } catch (\Exception $e) {
             // Midtrans membutuhkan HTTP 200 atau 400 untuk callback
             return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage()
+                'status' => 'error',
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
@@ -130,14 +130,14 @@ class PaymentController extends Controller
                 'success' => true,
                 'data' => [
                     'payment_status' => $payment->payment_status,
-                    'booking_status' => $payment->booking->status
-                ]
+                    'booking_status' => $payment->booking->status,
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Data tidak ditemukan.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 404);
         }
     }
@@ -155,14 +155,72 @@ class PaymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Payment berhasil disinkronkan.'
+                'message' => 'Payment berhasil disinkronkan.',
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyinkronkan data dengan Midtrans.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/payments/{id}/mark-paid
+     * Konfirmasi pembayaran manual (QRIS statis / transfer manual)
+     * Tanpa gateway: user klik "Saya Sudah Bayar" → backend langsung set status.
+     */
+    public function markPaid(Request $request, $id): JsonResponse
+    {
+        try {
+            $payment = Payment::with('booking')->findOrFail($id);
+
+            // Otorisasi: Pastikan user yang login adalah pemilik booking
+            if ($payment->booking->user_id !== $request->user()->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forbidden.',
+                ], 403);
+            }
+
+            // Cegah double-confirmation
+            if ($payment->payment_status === 'success') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pembayaran sudah dikonfirmasi.',
+                    'data' => [
+                        'payment_status' => $payment->payment_status,
+                        'booking_status' => $payment->booking->status,
+                    ],
+                ], 200);
+            }
+
+            // Set payment & booking ke paid
+            $payment->update([
+                'payment_status' => 'success',
+                'paid_at' => now(),
+                'payment_method' => $request->input('payment_method', $payment->payment_method),
+            ]);
+
+            $payment->booking->update(['status' => 'paid']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran berhasil dikonfirmasi.',
+                'data' => [
+                    'payment_status' => $payment->payment_status,
+                    'booking_status' => $payment->booking->status,
+                    'paid_at' => $payment->paid_at->toISOString(),
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengonfirmasi pembayaran.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

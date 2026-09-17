@@ -7,16 +7,17 @@ use App\Models\Booking;
 use App\Models\BookingRoom;
 use App\Models\Guest;
 use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\RoomAvailability;
 use App\Models\RoomType;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class BookingController extends Controller
 {
@@ -25,7 +26,7 @@ class BookingController extends Controller
         $user = $request->user();
         $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
 
-        if (!$hotel) {
+        if (! $hotel) {
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
@@ -36,7 +37,7 @@ class BookingController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => $bookings
+            'data' => $bookings,
         ]);
     }
 
@@ -44,20 +45,20 @@ class BookingController extends Controller
     {
         $booking = Booking::with(['user', 'bookingRooms.roomType', 'payment', 'guests'])->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'data'   => $booking
+            'data' => $booking,
         ]);
     }
 
     public function updateStatus(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:pending,unpaid,paid,checked_in,checked_out,cancelled,expired,refunded,refund_pending'
+            'status' => 'required|in:pending,unpaid,paid,checked_in,checked_out,cancelled,expired,refunded,refund_pending',
         ]);
 
         if ($validator->fails()) {
@@ -66,7 +67,7 @@ class BookingController extends Controller
 
         $booking = Booking::with('bookingRooms')->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
@@ -79,9 +80,9 @@ class BookingController extends Controller
             $activeStatuses = ['pending', 'unpaid', 'paid', 'confirmed', 'checked_in', 'refund_pending'];
 
             if (in_array($newStatus, $cancelStatuses) && in_array($oldStatus, $activeStatuses)) {
-                $checkIn  = Carbon::parse($booking->check_in);
+                $checkIn = Carbon::parse($booking->check_in);
                 $checkOut = Carbon::parse($booking->check_out);
-                $period   = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+                $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
                 foreach ($booking->bookingRooms as $bRoom) {
                     foreach ($period as $date) {
@@ -99,18 +100,32 @@ class BookingController extends Controller
             }
 
             $booking->update(['status' => $newStatus]);
+
+            // Saat admin menandai booking selesai (checked out), ajukan user menulis ulasan.
+            // Ulasan hanya boleh ditulis setelah checkout (lihat ReviewController::eligibleBookings).
+            if ($newStatus === 'checked_out' && $booking->user_id && ! $booking->review()->exists()) {
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'title' => 'Tulis Ulasan Anda',
+                    'message' => 'Bagaimana pengalaman menginap Anda di '.($booking->hotel->name ?? 'hotel').
+                                ' (booking '.$booking->booking_code.')? Bagikan ulasan Anda!',
+                    'type' => 'review_request',
+                ]);
+            }
+
             DB::commit();
 
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'Booking status updated successfully',
-                'data'    => $booking
+                'data' => $booking,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Gagal memperbarui status: ' . $e->getMessage()
+                'status' => 'error',
+                'message' => 'Gagal memperbarui status: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -122,19 +137,21 @@ class BookingController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
         if (in_array($booking->status, ['unpaid', 'pending'])) {
             $request->merge(['status' => 'cancelled']);
+
             return $this->updateStatus($request, $booking->id);
         } elseif (in_array($booking->status, ['paid', 'confirmed'])) {
             $booking->update(['status' => 'refund_pending']);
+
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
-                'data'    => $booking
+                'data' => $booking,
             ]);
         }
 
@@ -145,7 +162,7 @@ class BookingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'action' => 'required|in:approve,reject',
-            'reason' => 'nullable|string'
+            'reason' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -154,7 +171,7 @@ class BookingController extends Controller
 
         $booking = Booking::find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
@@ -164,13 +181,15 @@ class BookingController extends Controller
 
         if ($request->action === 'approve') {
             $request->merge(['status' => 'refunded']);
+
             return $this->updateStatus($request, $booking->id);
         } else {
             $booking->update(['status' => 'paid']);
+
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'Pengajuan refund ditolak. Status pesanan kembali menjadi Paid.',
-                'data'    => $booking
+                'data' => $booking,
             ]);
         }
     }
@@ -182,19 +201,20 @@ class BookingController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
         $validStatuses = ['paid', 'confirmed', 'checked_in', 'checked_out'];
-        if (!in_array(strtolower($booking->status), $validStatuses)) {
+        if (! in_array(strtolower($booking->status), $validStatuses)) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'E-Tiket hanya tersedia untuk pemesanan yang telah lunas. Status saat ini: ' . $booking->status
+                'status' => 'error',
+                'message' => 'E-Tiket hanya tersedia untuk pemesanan yang telah lunas. Status saat ini: '.$booking->status,
             ], 400);
         }
 
         $pdf = Pdf::loadView('pdf.e-ticket', compact('booking'));
+
         return $pdf->download("E-Ticket-{$booking->booking_code}.pdf");
     }
 
@@ -202,43 +222,43 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment'])
+        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'review'])
             ->where('user_id', $user->id)
             ->latest()
             ->get();
 
         return response()->json([
             'status' => 'success',
-            'data'   => $bookings
+            'data' => $bookings,
         ]);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'hotel_id'                 => 'required|integer',
-            'room_type_id'             => 'required|integer',
-            'check_in'                 => 'required|date',
-            'check_out'                => 'required|date|after:check_in',
-            'qty'                      => 'required|integer|min:1',
-            'adults'                   => 'nullable|integer|min:1',
-            'children'                 => 'nullable|integer|min:0',
-            'guest_name'               => 'required|string|max:255',
-            'guest_email'              => 'required|email|max:255',
-            'guest_phone'              => 'required|string|max:30',
-            'guest_identity'           => 'nullable|string|max:50',
-            'special_request'          => 'nullable|string',
-            'special_requests'         => 'nullable|string',
-            'guests'                   => 'nullable|array',
-            'guests.*.name'            => 'required_with:guests|string|max:255',
-            'guests.*.phone'           => 'nullable|string|max:30',
+            'hotel_id' => 'required|integer',
+            'room_type_id' => 'required|integer',
+            'check_in' => 'required|date',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+            'guest_name' => 'required|string|max:255',
+            'guest_email' => 'required|email|max:255',
+            'guest_phone' => 'required|string|max:30',
+            'guest_identity' => 'nullable|string|max:50',
+            'special_request' => 'nullable|string',
+            'special_requests' => 'nullable|string',
+            'guests' => 'nullable|array',
+            'guests.*.name' => 'required_with:guests|string|max:255',
+            'guests.*.phone' => 'nullable|string|max:30',
             'guests.*.identity_number' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -259,10 +279,10 @@ class BookingController extends Controller
 
         $roomType = $queryRoomType->first();
 
-        if (!$roomType) {
+        if (! $roomType) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.'
+                'status' => 'error',
+                'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.',
             ], 422);
         }
 
@@ -274,19 +294,19 @@ class BookingController extends Controller
             $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $request->check_in, $request->check_out, $adults);
 
             return response()->json([
-                'status'      => 'error',
-                'message'     => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
-                'suggestions' => $suggestions
+                'status' => 'error',
+                'message' => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
+                'suggestions' => $suggestions,
             ], 422);
         }
 
-        $checkIn     = Carbon::parse($request->check_in);
-        $checkOut    = Carbon::parse($request->check_out);
-        $checkInStr  = $checkIn->toDateString();
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $checkInStr = $checkIn->toDateString();
         $checkOutStr = $checkOut->toDateString();
 
         $totalNight = max(1, $checkIn->diffInDays($checkOut));
-        $period     = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
         $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
 
@@ -304,9 +324,9 @@ class BookingController extends Controller
             $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
 
             return response()->json([
-                'status'      => 'error',
-                'message'     => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
-                'suggestions' => $suggestions
+                'status' => 'error',
+                'message' => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                'suggestions' => $suggestions,
             ], 422);
         }
 
@@ -324,29 +344,29 @@ class BookingController extends Controller
 
         DB::beginTransaction();
         try {
-            $bookingCode = 'HLVN-' . strtoupper(substr(md5(uniqid()), 0, 5)) . '-' . Carbon::now()->format('my');
+            $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
             $userId = $request->user()?->id;
 
             $booking = Booking::create([
-                'booking_code'    => $bookingCode,
-                'user_id'         => $userId,
-                'hotel_id'        => $request->hotel_id,
-                'check_in'        => $checkInStr,
-                'check_out'       => $checkOutStr,
-                'total_night'     => $totalNight,
-                'subtotal'        => $subtotal,
-                'tax'             => $tax,
-                'grand_total'     => $grandTotal,
+                'booking_code' => $bookingCode,
+                'user_id' => $userId,
+                'hotel_id' => $request->hotel_id,
+                'check_in' => $checkInStr,
+                'check_out' => $checkOutStr,
+                'total_night' => $totalNight,
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'grand_total' => $grandTotal,
                 'special_request' => $specialNotes,
-                'status'          => 'unpaid',
+                'status' => 'unpaid',
             ]);
 
             BookingRoom::create([
-                'booking_id'      => $booking->id,
-                'room_type_id'    => $roomType->id,
-                'qty'             => $qty,
+                'booking_id' => $booking->id,
+                'room_type_id' => $roomType->id,
+                'qty' => $qty,
                 'price_per_night' => ($weekdayPrice + $weekendPrice) / 2,
-                'subtotal'        => $subtotal,
+                'subtotal' => $subtotal,
             ]);
 
             foreach ($period as $date) {
@@ -360,38 +380,38 @@ class BookingController extends Controller
                     $avail->increment('booked_room', $qty);
                 } else {
                     RoomAvailability::create([
-                        'room_type_id'    => $roomType->id,
-                        'date'            => $dateStr,
+                        'room_type_id' => $roomType->id,
+                        'date' => $dateStr,
                         'available_stock' => max(0, $totalPhysicalStock - $qty),
-                        'booked_room'     => $qty,
+                        'booked_room' => $qty,
                     ]);
                 }
             }
 
             Guest::create([
-                'booking_id'      => $booking->id,
-                'name'            => $request->guest_name,
-                'phone'           => $request->guest_phone,
+                'booking_id' => $booking->id,
+                'name' => $request->guest_name,
+                'phone' => $request->guest_phone,
                 'identity_number' => $request->guest_identity ?? '-',
             ]);
 
             if ($request->has('guests') && is_array($request->guests)) {
                 foreach ($request->guests as $g) {
                     Guest::create([
-                        'booking_id'      => $booking->id,
-                        'name'            => $g['name'],
-                        'phone'           => $g['phone'] ?? null,
+                        'booking_id' => $booking->id,
+                        'name' => $g['name'],
+                        'phone' => $g['phone'] ?? null,
                         'identity_number' => $g['identity_number'] ?? '-',
                     ]);
                 }
             }
 
             $payment = Payment::create([
-                'booking_id'     => $booking->id,
+                'booking_id' => $booking->id,
                 'payment_status' => 'pending',
-                'gross_amount'   => $grandTotal,
-                'order_id'       => $bookingCode,
-                'expired_at'     => Carbon::now()->addMinutes(15),
+                'gross_amount' => $grandTotal,
+                'order_id' => $bookingCode,
+                'expired_at' => Carbon::now()->addMinutes(15),
             ]);
 
             DB::commit();
@@ -399,18 +419,19 @@ class BookingController extends Controller
             $booking->load(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests']);
 
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'Booking berhasil dibuat. Silakan lakukan pembayaran.',
-                'data'    => [
+                'data' => [
                     'booking' => $booking,
                     'payment' => $payment,
-                ]
+                ],
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Gagal membuat booking: ' . $e->getMessage()
+                'status' => 'error',
+                'message' => 'Gagal membuat booking: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -427,24 +448,25 @@ class BookingController extends Controller
         }
 
         $sameHotelRooms = $sameHotelQuery->whereHas('hotel', function ($q) {
-                $q->where('status', 'active');
-            })
+            $q->where('status', 'active');
+        })
             ->where('capacity_adult', '>=', $adults)
             ->get()
             ->filter(function ($r) use ($checkInStr, $checkOutStr) {
                 $booked = BookingRoom::where('room_type_id', $r->id)
                     ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
                         $q->whereIn('status', ['paid', 'confirmed', 'checked_in', 'refund_pending'])
-                          ->where('check_in', '<', $checkOutStr)
-                          ->where('check_out', '>', $checkInStr);
+                            ->where('check_in', '<', $checkOutStr)
+                            ->where('check_out', '>', $checkInStr);
                     })->sum('qty');
+
                 return (($r->stock ?? 10) - $booked) > 0;
             });
 
         if ($sameHotelRooms->isNotEmpty()) {
             return [
-                'type'  => 'same_hotel',
-                'rooms' => $sameHotelRooms->values()
+                'type' => 'same_hotel',
+                'rooms' => $sameHotelRooms->values(),
             ];
         }
 
@@ -457,27 +479,28 @@ class BookingController extends Controller
         }
 
         $otherHotelRooms = $otherHotelQuery->whereHas('hotel', function ($q) use ($cityId, $hotelId) {
-                $q->where('status', 'active');
-                if ($cityId) {
-                    $q->where('city_id', $cityId);
-                }
-                $q->where('id', '!=', $hotelId);
-            })
+            $q->where('status', 'active');
+            if ($cityId) {
+                $q->where('city_id', $cityId);
+            }
+            $q->where('id', '!=', $hotelId);
+        })
             ->where('capacity_adult', '>=', $adults)
             ->get()
             ->filter(function ($r) use ($checkInStr, $checkOutStr) {
                 $booked = BookingRoom::where('room_type_id', $r->id)
                     ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
                         $q->whereIn('status', ['paid', 'confirmed', 'checked_in', 'refund_pending'])
-                          ->where('check_in', '<', $checkOutStr)
-                          ->where('check_out', '>', $checkInStr);
+                            ->where('check_in', '<', $checkOutStr)
+                            ->where('check_out', '>', $checkInStr);
                     })->sum('qty');
+
                 return (($r->stock ?? 10) - $booked) > 0;
             });
 
         return [
-            'type'  => 'other_hotels_in_city',
-            'rooms' => $otherHotelRooms->values()
+            'type' => 'other_hotels_in_city',
+            'rooms' => $otherHotelRooms->values(),
         ];
     }
 }

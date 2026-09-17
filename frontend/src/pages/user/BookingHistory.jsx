@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const QR_CODE_PLACEHOLDER =
   "data:image/svg+xml;utf8," +
@@ -53,6 +54,31 @@ const BookingHistory = () => {
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
+  const handleDownloadPdf = async (bookingId, bookingCode) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:8000/api/v1/user/bookings/${bookingId}/e-ticket`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Gagal mengunduh tiket");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `E-Ticket-${bookingCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success("E-Tiket PDF berhasil diunduh.");
+    } catch (err) {
+      toast.error("Gagal mengunduh E-Tiket PDF.");
+    }
+  };
 
   // Load User & Fetch API Bookings
   useEffect(() => {
@@ -117,14 +143,14 @@ const BookingHistory = () => {
 
     if (filterStatus !== "All") {
       if (filterStatus === "Upcoming") {
-        result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(b.status));
+        result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in"].includes(b.status));
       } else if (filterStatus === "Pending") {
-        result = result.filter((b) => b.status === "pending");
+        result = result.filter((b) => ["pending", "unpaid"].includes(b.status));
       } else if (filterStatus === "Past") {
-        result = result.filter((b) => ["Checked Out", "Selesai", "completed"].includes(b.status));
+        result = result.filter((b) => ["Checked Out", "Selesai", "completed", "checked_out"].includes(b.status));
       } else if (filterStatus === "Cancelled") {
         result = result.filter((b) =>
-          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "refund_pending"].includes(b.status)
+          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "cancelled", "expired", "refund_pending", "refunded"].includes(b.status)
         );
       }
     }
@@ -138,23 +164,35 @@ const BookingHistory = () => {
     return result;
   }, [bookings, filterStatus, sortBy]);
 
-  const handleLogout = () => {
-    if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.dispatchEvent(new Event("storage"));
-      navigate("/login");
-    }
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  const handleLogout = () => setConfirmLogout(true);
+
+  const performLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event("storage"));
+    navigate("/login");
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
       case "pending":
+      case "unpaid":
         return (
           <div className="bg-[#FFF0E0] backdrop-blur-sm border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
             <span className="font-label-sm text-xs text-[#9B5235] font-bold uppercase tracking-wider">
               Menunggu Bayar
+            </span>
+          </div>
+        );
+      case "checked_in":
+        return (
+          <div className="bg-[#506147]/10 backdrop-blur-sm border border-[#506147]/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#506147]"></span>
+            <span className="font-label-sm text-xs text-[#506147] font-bold uppercase tracking-wider">
+              Sedang Menginap
             </span>
           </div>
         );
@@ -180,6 +218,7 @@ const BookingHistory = () => {
           </div>
         );
       case "Checked Out":
+      case "checked_out":
       case "Selesai":
       case "completed":
         return (
@@ -191,6 +230,7 @@ const BookingHistory = () => {
           </div>
         );
       case "cancelled_by_system":
+      case "expired":
         return (
           <div className="bg-[#ffdad6]/80 backdrop-blur-sm border border-[#ba1a1a]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
@@ -200,6 +240,7 @@ const BookingHistory = () => {
           </div>
         );
       case "Cancelled":
+      case "cancelled":
       case "Dibatalkan":
       case "cancelled_by_user":
         return (
@@ -541,7 +582,7 @@ const BookingHistory = () => {
                         View Details
                       </button>
 
-                      {item.status === "pending" && (
+                      {["pending", "unpaid"].includes(item.status) && (
                         <button
                           type="button"
                           onClick={() => setCancelModalBooking(item)}
@@ -551,28 +592,40 @@ const BookingHistory = () => {
                         </button>
                       )}
 
-                      {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedBooking(item)}
-                            className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-base">download</span>
-                            Download E-Ticket
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setCancelModalBooking(item)}
-                            className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
-                          >
-                            Ajukan Refund
-                          </button>
-                        </>
+                      {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBooking(item)}
+                          className="px-5 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base">download</span>
+                          Download E-Ticket
+                        </button>
                       )}
 
-                      {!["Paid", "paid", "confirmed", "Dikonfirmasi", "pending"].includes(item.status) && (
+                      {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                        <button
+                          type="button"
+                          onClick={() => setCancelModalBooking(item)}
+                          className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
+                        >
+                          Ajukan Refund
+                        </button>
+                      )}
+
+                      {/* Ulasan hanya untuk booking yang sudah checked out dan belum diulas */}
+                      {item.status === "checked_out" && !item.review && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/hotels/${item.hotel_id}`)}
+                          className="px-5 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base">rate_review</span>
+                          Tulis Ulasan
+                        </button>
+                      )}
+
+                      {!["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out", "pending", "unpaid"].includes(item.status) && (
                         <button
                           type="button"
                           onClick={() => navigate(`/hotels/${item.hotel_id || 1}`)}
@@ -598,7 +651,7 @@ const BookingHistory = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
             <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
-              {cancelModalBooking.status === "pending" ? "Batalkan Pesanan" : "Pengajuan Refund"}
+              {["pending", "unpaid"].includes(cancelModalBooking.status) ? "Batalkan Pesanan" : "Pengajuan Refund"}
             </h3>
             <p className="font-body-md text-xs text-[#444842]">
               Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
@@ -711,7 +764,7 @@ const BookingHistory = () => {
                   <div className="w-full flex flex-col gap-3">
                     <button
                       type="button"
-                      onClick={() => alert(`📥 Mengunduh E-Tiket PDF untuk Order ID ${selectedBooking.booking_code || selectedBooking.id}...`)}
+                      onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code)}
                       className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-lg">download</span>
@@ -823,6 +876,16 @@ const BookingHistory = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Logout Dialog */}
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Keluar dari Akun"
+        message="Apakah Anda yakin ingin keluar?"
+        confirmText="Ya, Keluar"
+        onConfirm={performLogout}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </div>
   );
 };

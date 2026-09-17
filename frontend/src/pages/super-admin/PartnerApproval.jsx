@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const STORAGE_BASE = "http://localhost:8000/storage/";
 
@@ -55,6 +56,10 @@ const PartnerApproval = () => {
   const [rejectPartnerId, setRejectPartnerId] = useState(null);
   const [rejectLoading, setRejectLoading] = useState(false);
 
+  // Approve confirmation dialog
+  const [pendingApprove, setPendingApprove] = useState(null);
+  const [isApproving, setIsApproving] = useState(false);
+
   // Fetch partners
   const fetchPartners = async (forceRefresh = false) => {
     const key = getCacheKey("/super-admin/partners");
@@ -86,10 +91,14 @@ const PartnerApproval = () => {
     fetchPartners(false);
   }, []);
 
-  const handleApprove = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menyetujui pengajuan mitra ini?"))
-      return;
+  const handleApprove = (id) => {
+    setPendingApprove(id);
+  };
 
+  const performApprove = async () => {
+    if (!pendingApprove) return;
+    const id = pendingApprove;
+    setIsApproving(true);
     try {
       await api.patch(`/super-admin/partners/${id}/approve`);
       invalidateCache("/super-admin/partners");
@@ -98,9 +107,12 @@ const PartnerApproval = () => {
       if (selectedPartner && selectedPartner.id === id) {
         setSelectedPartner((prev) => ({ ...prev, status: "Approved" }));
       }
+      setPendingApprove(null);
       fetchPartners(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal menyetujui pengajuan.");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -729,6 +741,18 @@ const PartnerApproval = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Approve Dialog */}
+      <ConfirmDialog
+        open={!!pendingApprove}
+        type="success"
+        title="Setujui Pengajuan Mitra"
+        message="Apakah Anda yakin ingin menyetujui pengajuan mitra ini?"
+        confirmText="Ya, Setujui"
+        processing={isApproving}
+        onConfirm={performApprove}
+        onCancel={() => setPendingApprove(null)}
+      />
     </div>
   );
 };
