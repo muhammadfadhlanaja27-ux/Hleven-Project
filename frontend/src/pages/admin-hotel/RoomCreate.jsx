@@ -257,8 +257,8 @@ export default function RoomCreate() {
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);
       payload.append("bed", formData.bed || "");
-      payload.append("adult_capacity", formData.capacity_adult);
-      payload.append("child_capacity", formData.capacity_child || 0);
+      payload.append("capacity_adult", formData.capacity_adult);
+      payload.append("capacity_child", formData.capacity_child || 0);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
 
