@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
 import ReviewSection from "../../components/ReviewSection";
 
 const HotelDetail = () => {
@@ -101,11 +102,7 @@ const HotelDetail = () => {
                 ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
                 : null;
             const photoPath = thumbnailPhoto ? thumbnailPhoto.photo || thumbnailPhoto.url : null;
-            const roomImage = photoPath
-              ? photoPath.startsWith("http")
-                ? photoPath
-                : `http://localhost:8000/storage/${photoPath.replace(/^\//, "")}`
-              : null;
+            const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
             return {
               id: rt.id,
@@ -220,8 +217,7 @@ const HotelDetail = () => {
     if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url || photoItem.image_path : photoItem;
     if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://localhost:8000/storage/${path.replace(/^\//, "")}`;
+    return getStorageUrl(path);
   };
 
   if (loading) {

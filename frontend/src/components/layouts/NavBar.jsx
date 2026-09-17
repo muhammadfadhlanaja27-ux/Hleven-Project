@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
+import { getStorageUrl } from "../../services/imageUrl";
+
 const AVATAR_COLORS = [
   ["#778873", "#50604d"],
   ["#615b54", "#4b463f"],
@@ -73,15 +75,7 @@ const Navbar = () => {
     if (!user) return null;
     const avatarPath = user.avatar || user.avatar_url || user.avatarPreview;
     if (!avatarPath) return null;
-    if (
-      avatarPath.startsWith("http://") ||
-      avatarPath.startsWith("https://") ||
-      avatarPath.startsWith("data:") ||
-      avatarPath.startsWith("blob:")
-    ) {
-      return avatarPath;
-    }
-    return `http://localhost:8000/storage/${avatarPath.replace(/^\//, "")}`;
+    return getStorageUrl(avatarPath);
   };
 
   const getUserName = () => {

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const BookingPage = () => {
   const { hotelId, roomId } = useParams();
@@ -111,15 +112,13 @@ const BookingPage = () => {
               ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0])
               : null;
             const roomPhotoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
-            const roomImage = roomPhotoPath
-              ? (roomPhotoPath.startsWith('http') ? roomPhotoPath : `http://localhost:8000/storage/${roomPhotoPath.replace(/^\//, '')}`)
-              : null;
+            const roomImage = roomPhotoPath ? getStorageUrl(roomPhotoPath) : null;
 
             const hotelThumbRaw = apiHotel.thumbnail;
             const hotelImage = hotelThumbRaw
               ? (typeof hotelThumbRaw === 'object'
-                  ? (hotelThumbRaw.photo || hotelThumbRaw.url || null)
-                  : (hotelThumbRaw.startsWith('http') ? hotelThumbRaw : `http://localhost:8000/storage/${String(hotelThumbRaw).replace(/^\//, '')}`))
+                  ? (hotelThumbRaw.photo || hotelThumbRaw.url ? getStorageUrl(hotelThumbRaw.photo || hotelThumbRaw.url) : null)
+                  : getStorageUrl(hotelThumbRaw))
               : null;
 
             const mappedRoom = {

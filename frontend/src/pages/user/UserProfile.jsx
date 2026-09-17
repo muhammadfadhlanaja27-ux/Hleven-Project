@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
 import { QRCodeSVG } from "qrcode.react";
 import ApplicationStatus from "../../components/mitra/ApplicationStatus";
 
@@ -182,11 +183,7 @@ const UserProfile = () => {
 
         const avatarPath = u.avatar || u.avatarPreview || u.avatar_url;
         if (avatarPath) {
-          setAvatarPreview(
-            avatarPath.startsWith("http") || avatarPath.startsWith("data:") || avatarPath.startsWith("blob:")
-              ? avatarPath
-              : `http://localhost:8000/storage/${avatarPath.replace(/^\//, "")}`
-          );
+          setAvatarPreview(getStorageUrl(avatarPath));
         }
       } catch (e) {
         console.error("Gagal memuat data pengguna:", e);
@@ -364,23 +361,18 @@ const UserProfile = () => {
 
   const handleDownloadPdf = async (bookingId, bookingCode) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:8000/api/v1/user/bookings/${bookingId}/e-ticket`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await api.get(`/user/bookings/${bookingId}/e-ticket`, {
+        responseType: "blob",
       });
 
-      if (!response.ok) throw new Error("Gagal mengunduh tiket");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement("a");
       a.href = url;
       a.download = `E-Ticket-${bookingCode}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      toast.success("E-Tiket PDF berhasil diunduh.");
     } catch (err) {
       toast.error("Gagal mengunduh E-Tiket PDF.");
     }
@@ -1061,7 +1053,7 @@ const UserProfile = () => {
                         <div className="sm:w-1/3 relative h-48 sm:h-auto min-h-[180px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
                           {item.booking_rooms?.[0]?.room_type?.photos?.[0]?.photo ? (
                             <img
-                              src={item.booking_rooms[0].room_type.photos[0].photo.startsWith("http") ? item.booking_rooms[0].room_type.photos[0].photo : `http://localhost:8000/storage/${item.booking_rooms[0].room_type.photos[0].photo.replace(/^\//, "")}`}
+                              src={getStorageUrl(item.booking_rooms[0].room_type.photos[0].photo)}
                               alt={item.hotel?.name || "Kamar Hotel"}
                               className="w-full h-full object-cover"
                               onError={(e) => { e.target.style.display = 'none'; }}

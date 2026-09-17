@@ -11,39 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 class FileStorageService
 {
-    /**
-     * Mengunggah file ke direktori tertentu dan mengembalikan path[cite: 1]
-     */
-    protected function buildPublicUrl(string $path): string
-    {
-        $baseUrl = trim((string) config('filesystems.disks.s3.url'));
-        $path = ltrim($path, '/');
-
-        if ($baseUrl !== '') {
-            return rtrim($baseUrl, '/') . '/' . $path;
-        }
-
-        $bucket = trim((string) config('filesystems.disks.s3.bucket'));
-        $endpoint = trim((string) config('filesystems.disks.s3.endpoint'));
-
-        if ($bucket !== '' && $endpoint !== '') {
-            $publicEndpoint = str_replace(
-                ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
-                ['.supabase.co/storage/v1/object/public', '/storage/v1/object/public'],
-                $endpoint
-            );
-            return rtrim($publicEndpoint, '/') . '/' . $bucket . '/' . $path;
-        }
-
-        return url('/storage/' . $path);
-    }
-
     public function uploadFile(UploadedFile $file, string $directory): string
     {
-        // Menyimpan file secara otomatis menggunakan hash name bawaan Laravel
-        $storedPath = $file->store($directory, 's3');
+        $storedPath = $file->store($directory, 'public');
 
-        return $this->buildPublicUrl($storedPath);
+        return Storage::disk('public')->url($storedPath);
     }
 
     protected function normalizeStoragePath(?string $url): ?string
@@ -52,28 +24,19 @@ class FileStorageService
             return null;
         }
 
-        $path = parse_url($url, PHP_URL_PATH) ?? $url;
-        $path = ltrim($path, '/');
-
-        $bucket = trim((string) config('filesystems.disks.s3.bucket'));
-        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
-            $path = substr($path, strlen($bucket) + 1);
-        }
-
-        if (preg_match('#^(?:storage(?:/v1)?/)?(?:s3|object/public|object)?/(.+)$#i', $path, $matches)) {
-            $path = $matches[1];
-        }
-
-        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
-            $path = substr($path, strlen($bucket) + 1);
+        // Ambil path dari URL (misal: /storage/hotel/1/foto.jpg)
+        $path = parse_url($url, PHP_URL_PATH);
+        
+        // Hapus prefix '/storage/' atau 'storage/'
+        if (str_starts_with($path, '/storage/')) {
+            $path = substr($path, 9);
+        } elseif (str_starts_with($path, 'storage/')) {
+            $path = substr($path, 8);
         }
 
         return ltrim($path, '/');
     }
 
-    /**
-     * Menghapus file fisik dari storage[cite: 1]
-     */
     public function deleteFile(?string $url): void
     {
         if (!$url) return;
@@ -81,11 +44,10 @@ class FileStorageService
         try {
             $path = $this->normalizeStoragePath($url);
 
-            if ($path && Storage::disk('s3')->exists($path)) {
-                Storage::disk('s3')->delete($path);
+            if ($path && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
             }
         } catch (\Throwable $e) {
-            // Jangan mematikan request ketika file lama sudah rusak atau path storage tidak valid.
             return;
         }
     }
@@ -94,7 +56,6 @@ class FileStorageService
     {
         $path = $this->uploadFile($file, "hotel/{$hotelId}");
 
-        // Jika menjadi thumbnail, reset thumbnail foto lain terlebih dahulu
         if ($isThumbnail) {
             HotelPhoto::where('hotel_id', $hotelId)->update(['is_thumbnail' => false]);
         }
@@ -139,7 +100,6 @@ class FileStorageService
 
     public function updateAvatar(User $user, UploadedFile $file): void
     {
-        // Hapus avatar lama jika ada
         if ($user->avatar) {
             $this->deleteFile($user->avatar);
         }

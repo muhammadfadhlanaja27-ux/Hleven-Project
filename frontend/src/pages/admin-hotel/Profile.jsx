@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { getStorageUrl } from "../../services/imageUrl";
 
 // ─── Initial Fallback Data ───────────────────────────────────────────────────
 const INITIAL_PROFILE = {
@@ -130,7 +131,7 @@ export default function Profile() {
               name: u.name || prev.name,
               email: u.email || prev.email,
               phone: u.phone || prev.phone,
-              avatar: u.avatar_url || (u.avatar ? (u.avatar.startsWith("http") ? u.avatar : `http://localhost:8000/storage/${u.avatar.replace(/^\//, "")}`) : prev.avatar),
+              avatar: u.avatar_url || (u.avatar ? getStorageUrl(u.avatar) : prev.avatar),
             }));
           }
         }
