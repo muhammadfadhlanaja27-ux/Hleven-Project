@@ -206,6 +206,13 @@ export default function HotelInformation() {
       if (profileRes.status === "fulfilled" && profileRes.value?.data) {
         const raw = profileRes.value.data.data || profileRes.value.data;
         if (raw) {
+          let customContactEmail = "";
+          try {
+            customContactEmail = localStorage.getItem("hotel_contact_email") || "";
+          } catch (e) {
+            customContactEmail = "";
+          }
+
           setHotelId(raw.id);
           const mappedPhotos = (raw.photos || []).map((p, idx) => {
             const imgPath = p.image_path || p.url || p.photo || "";
@@ -244,7 +251,7 @@ export default function HotelInformation() {
             address: raw.address || "Jl. Example No. 123",
             city: cityName,
             phone: raw.phone || raw.admin?.phone || "+62 812 3456 7890",
-            email: raw.email || raw.admin?.email || "contact@hleven.com",
+            email: customContactEmail || raw.contact_email || raw.email || raw.admin?.email || "contact@hleven.com",
             rating: currentRating,
             totalReviews: currentTotalReviews,
             location:
@@ -427,23 +434,14 @@ export default function HotelInformation() {
         address: formValues.address.trim(),
         city: formValues.city.trim(),
         phone: formValues.phone.trim(),
-        email: formValues.email.trim(),
         facilities: formFacilityIds,
       };
 
       // 1. Simpan profil hotel & sync fasilitas
       await api.post("/admin/hotel/profile", payload);
 
-      // Sinkronisasi data admin ke localStorage jika email atau phone berubah
       try {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          parsed.email = formValues.email.trim();
-          parsed.phone = formValues.phone.trim();
-          localStorage.setItem("user", JSON.stringify(parsed));
-          window.dispatchEvent(new Event("userUpdated"));
-        }
+        localStorage.setItem("hotel_contact_email", formValues.email.trim());
       } catch (e) {
         // Abaikan jika localStorage tidak dapat diakses
       }
@@ -738,19 +736,16 @@ export default function HotelInformation() {
               </div>
 
               {/* Map Container */}
-              <div className="md:w-2/3 min-h-[220px] bg-[#dcdad6] relative flex items-center justify-center p-6 text-center select-none overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#F2EBE1]/80 via-transparent to-transparent z-10 pointer-events-none" />
-                <div className="relative z-20 flex flex-col items-center gap-2 bg-white/85 backdrop-blur-sm p-5 rounded-xl border border-[#E5E1DA] shadow-sm max-w-sm">
-                  <span className="material-symbols-outlined text-[#506147] text-[36px]">
-                    map
-                  </span>
-                  <p className="font-semibold text-[#2D312C] text-sm">
-                    {hotelData.name}
-                  </p>
-                  <p className="text-xs text-[#6B6E6A]">
-                    {hotelData.address}, {hotelData.location}
-                  </p>
-                </div>
+              <div className="md:w-2/3 min-h-[220px] relative overflow-hidden bg-[#dcdad6]">
+                <iframe
+                  title={`Peta Lokasi ${hotelData.name}`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                    `${hotelData.name} ${hotelData.address} ${hotelData.city} ${hotelData.location}`
+                  )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                  className="absolute inset-0 w-full h-full border-0"
+                  loading="lazy"
+                  allowFullScreen
+                />
               </div>
             </div>
           </div>

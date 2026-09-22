@@ -9,7 +9,6 @@ use App\Models\City;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class HotelController extends Controller
 {
@@ -129,7 +128,6 @@ class HotelController extends Controller
             'description'  => 'nullable|string',
             'address'      => 'sometimes|string',
             'phone'        => 'nullable|string|max:30',
-            'email'        => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
             'city'         => 'nullable|string|max:255',
             'city_id'      => 'nullable|exists:cities,id',
             'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
@@ -167,17 +165,8 @@ class HotelController extends Controller
             $hotel->save();
         }
 
-        if ($admin) {
-            $adminData = [];
-            if ($request->has('phone')) {
-                $adminData['phone'] = $request->phone;
-            }
-            if ($request->has('email') && !empty($request->email)) {
-                $adminData['email'] = $request->email;
-            }
-            if (!empty($adminData)) {
-                $admin->update($adminData);
-            }
+        if ($admin && $request->has('phone')) {
+            $admin->update(['phone' => $request->phone]);
         }
 
         if ($request->has('facilities')) {
