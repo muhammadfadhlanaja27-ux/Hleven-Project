@@ -23,7 +23,7 @@ const HotelDetail = () => {
   // State untuk menangani gambar kamar yang error/broken URL
   const [imgErrors, setImgErrors] = useState({});
 
-  // Filter States untuk Kamar — inisialisasi dari URL query params (persistence)
+  // Filter States untuk Kamar
   const initialAdults = searchParams.get("adults") || "";
   const initialChildren = searchParams.get("children") || "";
   const [filterAdults, setFilterAdults] = useState(initialAdults);
@@ -41,7 +41,6 @@ const HotelDetail = () => {
 
   const lightboxContainerRef = useRef(null);
 
-  // Reset scale/pan when lightbox opens
   useEffect(() => {
     if (lightboxOpen) {
       setScale(1);
@@ -50,7 +49,6 @@ const HotelDetail = () => {
     }
   }, [lightboxOpen, lightboxIndex]);
 
-  // Close lightbox on Escape
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setLightboxOpen(false);
@@ -118,9 +116,9 @@ const HotelDetail = () => {
               capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
               description: rt.description,
               bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
-              breakfast: rt.breakfast,
-              smoking_area: rt.smoking_area,
-              is_refundable: rt.is_refundable !== undefined ? rt.is_refundable : true,
+              breakfast: Boolean(rt.breakfast), // Konversi murni ke boolean
+              smoking_area: Boolean(rt.smoking_area), // Konversi murni ke boolean
+              is_refundable: rt.is_refundable !== undefined ? Boolean(rt.is_refundable) : true,
               stock: rt.stock,
             };
           });
@@ -145,13 +143,11 @@ const HotelDetail = () => {
     fetchHotelDetail();
   }, [id]);
 
-  // Live rating state — bisa ter-update saat review dikirim
   const [liveRating, setLiveRating] = useState(0);
   useEffect(() => {
     setLiveRating(Number(hotel?.rating || hotel?.average_rating || 0));
   }, [hotel]);
 
-  // Logika Filter Kamar
   const filteredRooms = useMemo(() => {
     if (!hotel || !hotel.rooms) return [];
 
@@ -182,7 +178,6 @@ const HotelDetail = () => {
     filterRefundable,
   ]);
 
-  // Reset ke halaman 1 saat filter berubah
   useEffect(() => {
     setRoomPage(1);
   }, [
@@ -223,10 +218,10 @@ const HotelDetail = () => {
   if (loading) {
     return (
       <div className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-12 animate-pulse text-left">
-        <div className="h-8 bg-[#DCCFC0]/40 rounded w-1/3 mb-4"></div>
-        <div className="h-4 bg-[#DCCFC0]/40 rounded w-1/4 mb-6"></div>
-        <div className="h-[500px] bg-[#DCCFC0]/40 rounded-2xl mb-8"></div>
-        <div className="h-32 bg-[#DCCFC0]/40 rounded-xl"></div>
+        <div className="h-8 bg-[#E8E2D9]/60 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-[#E8E2D9]/60 rounded w-1/4 mb-6"></div>
+        <div className="h-[500px] bg-[#E8E2D9]/60 rounded-3xl mb-8"></div>
+        <div className="h-32 bg-[#E8E2D9]/60 rounded-2xl"></div>
       </div>
     );
   }
@@ -234,10 +229,10 @@ const HotelDetail = () => {
   if (!hotel) {
     return (
       <div className="w-full max-w-[1280px] mx-auto py-20 text-center">
-        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1e1b16]">Hotel Tidak Ditemukan</h2>
+        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1C251D]">Hotel Tidak Ditemukan</h2>
         <button
           onClick={() => navigate("/")}
-          className="bg-[#778873] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#50604d] transition-colors"
+          className="bg-[#5F7161] text-white px-6 py-3 rounded-2xl font-bold hover:bg-[#4D5E4F] transition-colors"
         >
           Kembali ke Beranda
         </button>
@@ -245,7 +240,6 @@ const HotelDetail = () => {
     );
   }
 
-  // Himpun semua foto unik dari list foto API & thumbnail hotel
   const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : []).filter((p) => {
     const pth = typeof p === "object" ? p.photo || p.url || p.image_path : p;
     return !!pth;
@@ -316,14 +310,14 @@ const HotelDetail = () => {
     filterRefundable;
 
   return (
-    <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
-      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-6 pb-20 text-left">
+    <div className="bg-[#FAF8F5] text-[#1e1b16] font-body-md antialiased min-h-screen">
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-8 pb-20 text-left">
         {/* Photo Gallery */}
-        <section className="mb-12">
+        <section className="mb-10">
           {hasHotelPhotos ? (
             photosList.length === 1 ? (
               <div
-                className="w-full h-[350px] md:h-[500px] rounded-2xl overflow-hidden shadow-sm bg-[#e8e2d9] cursor-pointer"
+                className="w-full h-[350px] md:h-[500px] rounded-3xl overflow-hidden shadow-xs bg-[#E8E2D9] cursor-pointer border border-[#E8E2D9]"
                 onClick={() => {
                   setLightboxIndex(0);
                   setLightboxOpen(true);
@@ -332,9 +326,9 @@ const HotelDetail = () => {
                 <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[600px] rounded-2xl overflow-hidden shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[580px] rounded-3xl overflow-hidden shadow-xs border border-[#E8E2D9]">
                 <div
-                  className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                  className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
                   onClick={() => {
                     setLightboxIndex(0);
                     setLightboxOpen(true);
@@ -348,7 +342,7 @@ const HotelDetail = () => {
                 </div>
                 {photosList[1] && (
                   <div
-                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
                     onClick={() => {
                       setLightboxIndex(1);
                       setLightboxOpen(true);
@@ -363,7 +357,7 @@ const HotelDetail = () => {
                 )}
                 {photosList[2] && (
                   <div
-                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
                     onClick={() => {
                       setLightboxIndex(2);
                       setLightboxOpen(true);
@@ -378,7 +372,7 @@ const HotelDetail = () => {
                 )}
                 {photosList[3] && (
                   <div
-                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
                     onClick={() => {
                       setLightboxIndex(3);
                       setLightboxOpen(true);
@@ -393,7 +387,7 @@ const HotelDetail = () => {
                 )}
                 {photosList[4] && (
                   <div
-                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#e8e2d9] cursor-pointer"
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
                     onClick={() => {
                       setLightboxIndex(4);
                       setLightboxOpen(true);
@@ -404,8 +398,8 @@ const HotelDetail = () => {
                       alt="Room detail 4"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center hover:bg-black/50 transition-colors">
-                      <span className="text-white font-label-md text-sm font-semibold flex items-center gap-2">
+                    <div className="absolute inset-0 bg-black/45 flex items-center justify-center hover:bg-black/55 transition-colors">
+                      <span className="text-white font-label-md text-sm font-bold flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">grid_view</span>
                         Lihat Semua Foto ({photosList.length})
                       </span>
@@ -415,12 +409,12 @@ const HotelDetail = () => {
               </div>
             )
           ) : (
-            <div className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
-              <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">
+            <div className="h-[350px] md:h-[450px] rounded-3xl bg-white border border-[#E8E2D9] flex flex-col items-center justify-center text-center p-8 shadow-xs">
+              <span className="material-symbols-outlined text-[#5F7161] text-7xl mb-4 opacity-50">
                 image_not_supported
               </span>
-              <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">Belum Ada Foto Hotel</h3>
-              <p className="font-body-md text-sm text-[#444842] max-w-md">
+              <h3 className="font-headline-md text-2xl font-bold text-[#1C251D] mb-2">Belum Ada Foto Hotel</h3>
+              <p className="font-body-md text-sm text-[#5A625B] max-w-md">
                 Pihak hotel belum mengunggah foto galeri. Lihat bagian Pilihan Kamar di bawah untuk melihat foto tipe kamar.
               </p>
             </div>
@@ -428,12 +422,13 @@ const HotelDetail = () => {
         </section>
 
         {/* Main 2-Column Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Info & Description & Amenities */}
-          <div className="lg:col-span-2 space-y-12">
-            <section>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex text-[#D48C45]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Left Column: Info & Description & Amenities Cards */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Card 1: Hotel Info & Description */}
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex text-[#D97706]">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span
                       key={i}
@@ -444,100 +439,115 @@ const HotelDetail = () => {
                     </span>
                   ))}
                 </div>
-                <span className="bg-[#DCCFC0]/40 text-[#778873] px-3 py-1 rounded font-label-sm text-xs font-semibold">
+                <span className="bg-[#5F7161]/10 text-[#5F7161] border border-[#5F7161]/20 px-3 py-1 rounded-full font-label-sm text-xs font-bold uppercase tracking-wider">
                   Hotel Bintang {starCount}
                 </span>
               </div>
 
-              <h1 className="font-headline-xl text-3xl md:text-5xl font-bold text-[#778873] mb-4 leading-tight">
+              <h1 className="font-headline-xl text-3xl md:text-4xl font-extrabold text-[#1C251D] mb-4 leading-tight">
                 {hotel.name}
               </h1>
 
-              <div className="flex items-center gap-2 text-[#444842] mb-6">
-                <span className="material-symbols-outlined text-[#778873]">location_on</span>
-                <p className="font-body-md text-sm md:text-base">{hotelAddress}</p>
+              <div className="flex items-start gap-2 text-[#5A625B] mb-6">
+                <span className="material-symbols-outlined text-[#5F7161] mt-0.5 shrink-0">location_on</span>
+                <p className="font-body-md text-sm md:text-base leading-snug">{hotelAddress}</p>
               </div>
 
-              <div className="prose max-w-none text-[#444842] font-body-md text-base leading-relaxed space-y-4">
-                <p className="font-body-md text-sm md:text-base leading-relaxed">
+              <hr className="border-[#F0EBE1] my-6" />
+
+              <div>
+                <h3 className="font-headline-md text-lg font-bold text-[#1C251D] mb-3">Tentang Hotel</h3>
+                <p className="font-body-md text-sm md:text-base text-[#5A625B] leading-relaxed">
                   {hotel.description ||
                     `Terletak di lokasi strategis ${hotelCityName}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
                 </p>
               </div>
-            </section>
+            </div>
 
-            {/* Fasilitas Hotel Grid */}
-            <section>
-              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">Fasilitas Hotel</h2>
+            {/* Card 2: Fasilitas Hotel */}
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
+              <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] mb-6 flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[#5F7161] text-2xl">home_repair_service</span>
+                Fasilitas Hotel
+              </h2>
               {facilitiesList.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
                   {facilitiesList.map((fac, idx) => {
                     const facName = typeof fac === "object" ? fac.name : String(fac);
                     const iconName = getFacilityIcon(fac);
                     return (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-[#faf3ea] border border-[#DCCFC0]/30 shadow-sm"
+                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#F7F6F2] hover:bg-[#EFECE6] border border-[#E2DDD3] transition-all"
                       >
-                        <span className="material-symbols-outlined text-[#778873] text-2xl">{iconName}</span>
-                        <span className="font-label-md text-xs font-semibold text-[#1e1b16]">{facName}</span>
+                        <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-xl">{iconName}</span>
+                        </div>
+                        <span className="font-label-md text-xs font-bold text-[#1C251D] truncate">{facName}</span>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-[#747871] italic bg-[#faf3ea] p-4 rounded-xl border border-[#DCCFC0]/30">
+                <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
                   Belum ada fasilitas khusus yang terdaftar untuk hotel ini.
                 </p>
               )}
-            </section>
+            </div>
           </div>
 
           {/* Right Column: Location Card */}
-          <div className="lg:col-span-1 space-y-8">
-            <section>
-              <h2 className="font-headline-lg text-2xl font-bold text-[#778873] mb-6">Lokasi</h2>
-              <div className="rounded-2xl overflow-hidden shadow-sm border border-[#DCCFC0]/40 bg-[#faf3ea]">
-                {/* Visual Google Maps Embed */}
-                <div className="w-full h-64 relative overflow-hidden border-b border-[#DCCFC0]/40 bg-[#e8e2d9]">
-                  <iframe
-                    title={`Peta Lokasi ${hotel.name}`}
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                      (hotel.name || "") + " " + (hotel.address || hotelCityName)
-                    )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                    className="absolute inset-0 w-full h-full border-0"
-                    loading="lazy"
-                    allowFullScreen
-                  ></iframe>
+          <div className="lg:col-span-1">
+            <div className="bg-white p-6 rounded-3xl shadow-xs border border-[#E8E2D9] text-left space-y-5 sticky top-24">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-xl">map</span>
+                </div>
+                <h2 className="font-headline-lg text-xl font-bold text-[#1C251D]">Lokasi Hotel</h2>
+              </div>
+
+              <div className="rounded-2xl overflow-hidden border border-[#E2DDD3] shadow-xs relative h-60 bg-[#F7F6F2]">
+                <iframe
+                  title={`Peta Lokasi ${hotel.name}`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                    (hotel.name || "") + " " + (hotel.address || hotelCityName)
+                  )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                  className="absolute inset-0 w-full h-full border-0"
+                  loading="lazy"
+                  allowFullScreen
+                ></iframe>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <p className="font-label-md text-sm font-bold text-[#1C251D]">{hotel.name}</p>
+                  <p className="font-body-md text-xs text-[#5A625B] mt-1 leading-relaxed">{hotelAddress}</p>
                 </div>
 
-                <div className="p-5 bg-[#FDF6ED] text-left">
-                  <p className="font-label-md text-sm font-semibold text-[#1e1b16]">{hotel.name}</p>
-                  <p className="font-body-md text-xs text-[#444842] mt-1">{hotelAddress}</p>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      hotel.name + " " + hotelAddress
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 w-full py-2.5 border border-[#778873] text-[#778873] rounded-xl font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors block text-center"
-                  >
-                    Buka di Google Maps
-                  </a>
-                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    hotel.name + " " + hotelAddress
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-[#5F7161] hover:bg-[#4D5E4F] text-white rounded-2xl font-label-md text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">open_in_new</span>
+                  Buka di Google Maps
+                </a>
               </div>
-            </section>
+            </div>
           </div>
         </div>
 
         {/* Room Types & Availability Section */}
-        <section className="mt-16 pt-10 border-t border-[#DCCFC0]/40">
+        <section className="mt-16 pt-10 border-t border-[#E8E2D9]">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
             <div>
-              <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-1">
+              <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#5F7161] mb-1">
                 Pilihan Kamar
               </h2>
-              <p className="font-body-md text-xs text-[#444842]">
+              <p className="font-body-md text-xs text-[#5A625B]">
                 Menampilkan {paginatedRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia (hal.{" "}
                 {roomPage}/{totalRoomPages})
               </p>
@@ -547,7 +557,7 @@ const HotelDetail = () => {
               <button
                 type="button"
                 onClick={handleResetRoomFilters}
-                className="text-xs text-[#778873] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs text-[#5F7161] font-bold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">restart_alt</span>
                 Reset Filter Kamar
@@ -556,26 +566,25 @@ const HotelDetail = () => {
           </div>
 
           {/* Room Filter Box */}
-          <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/60 rounded-2xl p-5 mb-8 shadow-sm">
-            <h3 className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div className="bg-white border border-[#E8E2D9] rounded-3xl p-5 mb-8 shadow-xs">
+            <h3 className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-base">tune</span>
               Filter Kamar Sesuai Kebutuhan
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              {/* Filter Tipe Kamar - Dropdown */}
-              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
-                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Tipe Kamar
                 </label>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="material-symbols-outlined text-[#778873] text-base select-none">
+                  <span className="material-symbols-outlined text-[#5F7161] text-base select-none">
                     meeting_room
                   </span>
                   <select
                     value={filterRoomType}
                     onChange={(e) => setFilterRoomType(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                    className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
                   >
                     <option value="all">Semua Tipe</option>
                     <option value="standard">Standar</option>
@@ -585,67 +594,64 @@ const HotelDetail = () => {
                 </div>
               </div>
 
-              {/* Filter Kapasitas Dewasa - Incrementer */}
-              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] transition-colors text-left">
-                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Min. Dewasa
                 </label>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
                   <button
                     onClick={() => setFilterAdults((prev) => Math.max(0, (Number(prev) || 0) - 1) || "")}
                     disabled={!filterAdults || Number(filterAdults) <= 0}
-                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm font-bold shrink-0"
                   >
                     −
                   </button>
-                  <span className="font-body-md font-semibold text-[#1e1b16] text-sm min-w-8 text-center">
+                  <span className="font-body-md font-bold text-[#1C251D] text-sm min-w-8 text-center">
                     {filterAdults || 0}
                   </span>
                   <button
                     onClick={() => setFilterAdults(String((Number(filterAdults) || 0) + 1))}
-                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] transition-colors text-sm font-semibold shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] transition-colors text-sm font-bold shrink-0"
                   >
                     +
                   </button>
                 </div>
               </div>
 
-              {/* Filter Kapasitas Anak - Incrementer */}
-              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] transition-colors text-left">
-                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Min. Anak
                 </label>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
                   <button
                     onClick={() => setFilterChildren((prev) => Math.max(0, (Number(prev) || 0) - 1) || "")}
                     disabled={!filterChildren || Number(filterChildren) <= 0}
-                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm font-bold shrink-0"
                   >
                     −
                   </button>
-                  <span className="font-body-md font-semibold text-[#1e1b16] text-sm min-w-8 text-center">
+                  <span className="font-body-md font-bold text-[#1C251D] text-sm min-w-8 text-center">
                     {filterChildren || 0}
                   </span>
                   <button
                     onClick={() => setFilterChildren(String((Number(filterChildren) || 0) + 1))}
-                    className="w-7 h-7 flex items-center justify-center rounded bg-[#778873] text-white hover:bg-[#50604d] transition-colors text-sm font-semibold shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] transition-colors text-sm font-bold shrink-0"
                   >
                     +
                   </button>
                 </div>
               </div>
 
-              {/* Filter Tipe Kasur */}
-              <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
-                <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
+              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Tipe Kasur
                 </label>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="material-symbols-outlined text-[#778873] text-base select-none">bed</span>
+                  <span className="material-symbols-outlined text-[#5F7161] text-base select-none">bed</span>
                   <select
                     value={filterBedType}
                     onChange={(e) => setFilterBedType(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                    className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
                   >
                     <option value="all">Semua Jenis Kasur</option>
                     <option value="king">King Bed</option>
@@ -657,34 +663,33 @@ const HotelDetail = () => {
               </div>
             </div>
 
-            {/* Checkbox Filter Tambahan */}
-            <div className="flex flex-wrap gap-4 pt-3 border-t border-[#DCCFC0]/40">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b16] hover:text-[#778873] transition-colors">
+            <div className="flex flex-wrap gap-4 pt-3 border-t border-[#F0EBE1]">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
                 <input
                   type="checkbox"
                   checked={filterBreakfast}
                   onChange={(e) => setFilterBreakfast(e.target.checked)}
-                  className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                  className="rounded border-[#E2DDD3] text-[#5F7161] focus:ring-[#5F7161] w-4 h-4 cursor-pointer"
                 />
                 Gratis Sarapan
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b16] hover:text-[#778873] transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
                 <input
                   type="checkbox"
                   checked={filterSmoking}
                   onChange={(e) => setFilterSmoking(e.target.checked)}
-                  className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                  className="rounded border-[#E2DDD3] text-[#5F7161] focus:ring-[#5F7161] w-4 h-4 cursor-pointer"
                 />
                 Area Merokok (Smoking)
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b16] hover:text-[#778873] transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
                 <input
                   type="checkbox"
                   checked={filterRefundable}
                   onChange={(e) => setFilterRefundable(e.target.checked)}
-                  className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                  className="rounded border-[#E2DDD3] text-[#5F7161] focus:ring-[#5F7161] w-4 h-4 cursor-pointer"
                 />
                 Bisa Refund
               </label>
@@ -701,10 +706,9 @@ const HotelDetail = () => {
                 return (
                   <div
                     key={room.id}
-                    className="flex flex-col md:flex-row bg-[#faf3ea] rounded-2xl overflow-hidden border border-[#DCCFC0]/40 shadow-sm shadow-[#778873]/5 hover:shadow-md transition-shadow"
+                    className="flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md transition-shadow"
                   >
-                    {/* Room Thumbnail Container */}
-                    <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
+                    <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-[#E8E2D9] overflow-hidden">
                       {room.thumbnail && !imgErrors[room.id] ? (
                         <img
                           src={room.thumbnail}
@@ -714,68 +718,73 @@ const HotelDetail = () => {
                         />
                       ) : (
                         <div className="w-full h-full min-h-[200px] flex flex-col items-center justify-center text-center p-6">
-                          <span className="material-symbols-outlined text-[#778873] text-5xl mb-3 opacity-60">
+                          <span className="material-symbols-outlined text-[#5F7161] text-5xl mb-3 opacity-60">
                             no_photography
                           </span>
-                          <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
+                          <p className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider">
                             Belum Ada Foto Kamar
                           </p>
-                          <p className="font-body-md text-[11px] text-[#444842] mt-1 opacity-80">
+                          <p className="font-body-md text-[11px] text-[#5A625B] mt-1 opacity-80">
                             Admin hotel belum mengunggah foto untuk tipe kamar ini.
                           </p>
                         </div>
                       )}
                     </div>
 
-                    {/* Room Content */}
                     <div className="p-6 flex flex-col justify-between flex-grow min-w-0 text-left">
                       <div>
                         <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
-                          <h3 className="font-headline-md text-xl font-bold text-[#778873]">
+                          <h3 className="font-headline-md text-xl font-bold text-[#1C251D]">
                             {room.name || room.type || "Deluxe Room"}
                           </h3>
-                          <span className="bg-[#e8e2d9] text-[#778873] px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0">
+                          <span className="bg-[#5F7161]/10 text-[#5F7161] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shrink-0">
                             <span className="material-symbols-outlined text-sm">group</span>
                             {room.capacity || "2 Tamu"}
                           </span>
                         </div>
 
-                        <p className="font-body-md text-sm text-[#444842] mb-4 line-clamp-3 leading-relaxed">
+                        <p className="font-body-md text-sm text-[#5A625B] mb-4 line-clamp-3 leading-relaxed">
                           {room.description ||
                             `Kamar seluas 45 meter persegi dengan ${
                               room.bed || "1 King Bed"
                             }, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
-                        {/* Features Checkmarks */}
-                        <div className="flex flex-wrap gap-3 mb-3 text-xs">
-                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#778873]/10 border border-[#778873]/20 text-[#778873] font-semibold">
-                            <span className="material-symbols-outlined text-[14px]">bed</span>
-                            {room.bed}
-                          </div>
-                          {room.breakfast && (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#778873]/10 border border-[#778873]/20 text-[#778873] font-semibold">
+                        {/* Features Checkmarks (Sudah Aman dari Angka 0) */}
+                        <div className="flex flex-wrap gap-2.5 mb-3 text-xs">
+                          {Boolean(room.bed) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
+                              <span className="material-symbols-outlined text-[14px]">bed</span>
+                              {room.bed}
+                            </div>
+                          )}
+
+                          {Boolean(room.breakfast) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
                               <span className="material-symbols-outlined text-[14px]">check</span>
                               Sarapan Termasuk
                             </div>
                           )}
-                          {room.smoking_area && (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold">
+
+                          {Boolean(room.smoking_area) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold">
                               <span className="material-symbols-outlined text-[14px]">smoking_rooms</span>
                               Smoking Area
                             </div>
                           )}
-                          {room.type && (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#A0522D]/10 border border-[#A0522D]/20 text-[#A0522D] font-semibold uppercase tracking-wide">
+
+                          {Boolean(room.type) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#A0522D]/10 border border-[#A0522D]/20 text-[#A0522D] font-bold uppercase tracking-wide">
                               <span className="material-symbols-outlined text-[14px]">apartment</span>
                               {room.type}
                             </div>
                           )}
+
                           <div
                             className={
                               room.is_refundable
-                                ? "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-semibold"
-                                : "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-semibold"
+                                ? "inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold"
+                                : "inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold"
                             }
                           >
                             <span className="material-symbols-outlined text-[14px]">
@@ -786,26 +795,25 @@ const HotelDetail = () => {
                         </div>
                       </div>
 
-                      {/* Bottom Price & Booking Button */}
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#DCCFC0]/30 gap-4">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#F0EBE1] gap-4">
                         <div>
-                          <p className="text-xs text-[#444842] line-through">
+                          <p className="text-xs text-[#8A948C] line-through">
                             Rp {weekendPrice.toLocaleString("id-ID")} (Weekend)
                           </p>
-                          <p className="font-headline-lg text-2xl font-bold text-[#778873]">
+                          <p className="font-headline-lg text-2xl font-extrabold text-[#5F7161]">
                             Rp {roomPrice.toLocaleString("id-ID")}{" "}
-                            <span className="text-xs font-normal text-[#444842]">/ malam (Weekday)</span>
+                            <span className="text-xs font-normal text-[#5A625B]">/ malam (Weekday)</span>
                           </p>
                           {room.stock !== undefined && room.stock !== null ? (
                             room.stock <= 3 ? (
-                              <p className="text-xs text-[#ba1a1a] font-semibold mt-1 flex items-center gap-1">
+                              <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">
                                   local_fire_department
                                 </span>
                                 Hanya sisa {room.stock} kamar!
                               </p>
                             ) : (
-                              <p className="text-xs text-[#4F6F52] font-semibold mt-1 flex items-center gap-1">
+                              <p className="text-xs text-[#4F6F52] font-bold mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
                                 Tersedia ({room.stock} kamar)
                               </p>
@@ -813,18 +821,18 @@ const HotelDetail = () => {
                           ) : null}
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
                           <button
                             type="button"
                             onClick={() => navigate(`/hotels/${hotel?.id || id || 1}/rooms/${room?.id || 101}`)}
-                            className="w-full sm:w-auto border border-[#778873] text-[#778873] font-label-md text-sm font-semibold px-5 py-3 rounded-xl hover:bg-[#DCCFC0]/30 transition-colors shadow-sm active:scale-95 cursor-pointer text-center"
+                            className="w-full sm:w-auto border border-[#5F7161] text-[#5F7161] font-label-md text-xs font-bold px-5 py-3 rounded-2xl hover:bg-[#5F7161]/10 transition-colors cursor-pointer text-center"
                           >
                             Detail Kamar
                           </button>
                           <button
                             type="button"
                             onClick={(e) => handleBookRoom(e, room)}
-                            className="w-full sm:w-auto bg-[#778873] text-white font-label-md text-sm font-semibold px-6 py-3 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm active:scale-95 cursor-pointer text-center"
+                            className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
                           >
                             Pilih Kamar
                           </button>
@@ -835,11 +843,10 @@ const HotelDetail = () => {
                 );
               })}
 
-              {/* Pagination Controls */}
               {totalRoomPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
-                  <p className="text-xs text-[#444842]">
-                    Halaman <span className="font-bold text-[#778873]">{roomPage}</span> dari {totalRoomPages}{" "}
+                  <p className="text-xs text-[#5A625B]">
+                    Halaman <span className="font-bold text-[#5F7161]">{roomPage}</span> dari {totalRoomPages}{" "}
                     — menampilkan {(roomPage - 1) * ROOMS_PER_PAGE + 1}–
                     {Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} dari {filteredRooms.length}{" "}
                     kamar
@@ -849,7 +856,7 @@ const HotelDetail = () => {
                       type="button"
                       onClick={() => setRoomPage((p) => Math.max(1, p - 1))}
                       disabled={roomPage === 1}
-                      className="px-4 py-2 border border-[#778873] text-[#778873] rounded-xl text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      className="px-4 py-2 border border-[#E8E2D9] text-[#5F7161] rounded-xl text-xs font-bold hover:bg-[#F7F6F2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       ‹ Sebelumnya
                     </button>
@@ -860,8 +867,8 @@ const HotelDetail = () => {
                         onClick={() => setRoomPage(idx + 1)}
                         className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                           roomPage === idx + 1
-                            ? "bg-[#778873] text-white shadow-sm"
-                            : "border border-[#DCCFC0] text-[#778873] hover:bg-[#DCCFC0]/30"
+                            ? "bg-[#5F7161] text-white shadow-xs"
+                            : "border border-[#E8E2D9] text-[#5F7161] hover:bg-[#F7F6F2]"
                         }`}
                       >
                         {idx + 1}
@@ -871,7 +878,7 @@ const HotelDetail = () => {
                       type="button"
                       onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}
                       disabled={roomPage === totalRoomPages}
-                      className="px-4 py-2 border border-[#778873] text-[#778873] rounded-xl text-xs font-semibold hover:bg-[#DCCFC0]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      className="px-4 py-2 border border-[#E8E2D9] text-[#5F7161] rounded-xl text-xs font-bold hover:bg-[#F7F6F2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       Berikutnya ›
                     </button>
@@ -880,18 +887,18 @@ const HotelDetail = () => {
               )}
             </div>
           ) : (
-            <div className="p-12 text-center bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40">
-              <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">filter_alt_off</span>
-              <h4 className="font-headline-md text-lg font-bold text-[#778873] mb-1">
+            <div className="p-12 text-center bg-white rounded-3xl border border-[#E8E2D9] shadow-xs">
+              <span className="material-symbols-outlined text-4xl text-[#8A948C] mb-2">filter_alt_off</span>
+              <h4 className="font-headline-md text-lg font-bold text-[#1C251D] mb-1">
                 Kamar Tidak Ditemukan
               </h4>
-              <p className="text-[#444842] text-sm mb-4">
+              <p className="text-[#5A625B] text-sm mb-4">
                 Tidak ada tipe kamar yang cocok dengan kriteria filter yang Anda pilih.
               </p>
               <button
                 type="button"
                 onClick={handleResetRoomFilters}
-                className="bg-[#778873] text-white px-5 py-2.5 rounded-xl font-semibold text-xs hover:bg-[#50604d] transition-colors"
+                className="bg-[#5F7161] text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-[#4D5E4F] transition-colors"
               >
                 Reset Filter Kamar
               </button>
@@ -899,11 +906,10 @@ const HotelDetail = () => {
           )}
         </section>
 
-        {/* Section Review & Rating */}
         <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} onReviewSubmitted={handleReviewSubmitted} />
       </main>
 
-      {/* Full-screen Lightbox */}
+      {/* Lightbox */}
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
@@ -920,7 +926,7 @@ const HotelDetail = () => {
             onPointerUp={handlePointerUp}
           >
             <button
-              className="absolute top-4 right-4 text-white text-3xl z-10 hover:text-gray-300"
+              className="absolute top-4 right-4 text-white text-3xl z-10 hover:text-gray-300 cursor-pointer"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => setLightboxOpen(false)}
             >
@@ -929,14 +935,14 @@ const HotelDetail = () => {
             {photosList.length > 1 && (
               <>
                 <button
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300 cursor-pointer"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => setLightboxIndex((i) => (i - 1 + photosList.length) % photosList.length)}
                 >
                   ‹
                 </button>
                 <button
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300 cursor-pointer"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => setLightboxIndex((i) => (i + 1) % photosList.length)}
                 >

@@ -110,10 +110,6 @@ const MitraLanding = () => {
           <div className="absolute inset-0 bg-black/55" />
         </div>
         <div className="relative z-10 text-center px-5 md:px-16 max-w-4xl mx-auto py-20">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 backdrop-blur-sm border border-white/25 text-white text-[11px] font-bold uppercase tracking-widest rounded-full mb-6">
-            <span className="material-symbols-outlined text-[14px]">workspace_premium</span>
-            Program Mitra Hotel H'Leven
-          </span>
           <h1 className="font-headline-lg text-3xl md:text-5xl font-bold text-white mb-5 drop-shadow-lg leading-tight">
             Jadikan Hotel Anda Bagian dari H'Leven
           </h1>
@@ -161,10 +157,6 @@ const MitraLanding = () => {
       <section className="py-16 md:py-24 bg-[#fcf9f4] px-5 md:px-16" id="keuntungan">
         <div className="max-w-[1280px] mx-auto">
           <div className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 px-3 py-1 bg-[#d5e8cf]/50 text-[#3b4b39] text-[11px] font-bold uppercase tracking-widest rounded-full mb-4">
-              <span className="material-symbols-outlined text-[14px]">diamond</span>
-              Keuntungan
-            </span>
             <h2 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#1c1c19] mb-4">
               Mengapa Bermitra dengan H'Leven?
             </h2>
@@ -195,10 +187,6 @@ const MitraLanding = () => {
       <section className="py-16 md:py-24 bg-[#f0ede9] px-5 md:px-16" id="cara-kerja">
         <div className="max-w-[1280px] mx-auto">
           <div className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 px-3 py-1 bg-white text-[#50604d] text-[11px] font-bold uppercase tracking-widest rounded-full mb-4 border border-[#c4c8bf]/50">
-              <span className="material-symbols-outlined text-[14px]">timeline</span>
-              Alur Pendaftaran
-            </span>
             <h2 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#1c1c19] mb-4">
               Cara Kerja yang Mudah & Cepat
             </h2>

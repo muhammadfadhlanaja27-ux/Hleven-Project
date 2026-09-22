@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { getPublicImageUrl } from "../../services/imageHelper";
 
 import { getStorageUrl } from "../../services/imageUrl";
 
 const AVATAR_COLORS = [
-  ["#778873", "#50604d"],
+  ["#5F7161", "#4D5E4F"],
   ["#615b54", "#4b463f"],
   ["#7a7369", "#625b54"],
   ["#677967", "#4f604f"],
@@ -126,22 +127,22 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="w-full sticky top-0 bg-[#FDF6ED] border-b border-[#DCCFC0]/30 shadow-sm shadow-[#778873]/5 z-50">
+      <header className="w-full sticky top-0 bg-[#FDF6ED] border-b border-[#DCCFC0]/30 shadow-sm shadow-[#5F7161]/5 z-50">
         <div className="flex justify-between items-center w-full px-4 md:px-10 py-4 max-w-[1280px] mx-auto">
           {/* Brand Logo */}
-          <Link to="/" className="text-2xl font-bold font-headline-md text-[#778873] tracking-wide">
+          <Link to="/" className="text-2xl font-bold font-headline-md text-[#5F7161] tracking-wide">
             H'Leven
           </Link>
 
           {/* Nav Menu Center */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[#444842]">
-            <Link to="/" className="hover:text-[#778873] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
+            <Link to="/" className="hover:text-[#5F7161] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
               Beranda
             </Link>
-            <Link to="/hotels" className="hover:text-[#778873] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
+            <Link to="/hotels" className="hover:text-[#5F7161] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
               Hotels
             </Link>
-            <Link to="/mitra" className="hover:text-[#778873] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
+            <Link to="/mitra" className="hover:text-[#5F7161] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
               Mitra Hotel
             </Link>
           </nav>
@@ -150,11 +151,11 @@ const Navbar = () => {
           <div className="flex items-center gap-3 md:gap-4">
             {user ? (
               <div className="flex items-center gap-3">
-                {/* Tombol Khusus Admin / Super Admin */}
+                {/* Tombol Khusus Admin / Super Admin (Disamakan dengan tombol Lihat Detail) */}
                 {(user.role === "admin_hotel" || user.role === "super_admin") && (
                   <Link
                     to={user.role === "super_admin" ? "/super-admin/dashboard" : "/admin/dashboard"}
-                    className="hidden md:flex items-center gap-1.5 bg-[#778873] text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold hover:bg-[#50604d] transition-all shadow-sm active:scale-95"
+                    className="hidden md:flex items-center gap-1.5 bg-[#5F7161] text-white px-4 py-2 rounded-xl text-xs md:text-sm font-semibold hover:bg-[#4D5E4F] transition-all shadow-sm shadow-[#5F7161]/20 active:scale-95 cursor-pointer"
                     title="Buka Dashboard Admin"
                   >
                     <span className="material-symbols-outlined text-[18px]">
@@ -175,7 +176,7 @@ const Navbar = () => {
                     <img
                       src={finalAvatar}
                       alt={`Foto profil ${getFullName()}`}
-                      className="w-9 h-9 rounded-full object-cover border-2 border-[#778873]/30 shadow-sm bg-[#e5e2dd]"
+                      className="w-9 h-9 rounded-full object-cover border-2 border-[#5F7161]/30 shadow-sm bg-[#e5e2dd]"
                       loading="lazy"
                       onError={() => setAvatarErrored(true)}
                     />
@@ -184,7 +185,7 @@ const Navbar = () => {
                         {getUserName()}
                       </span>
                       {userRoleLabel && (
-                        <span className="font-label-sm text-[10px] font-bold tracking-wider uppercase text-[#778873]">
+                        <span className="font-label-sm text-[10px] font-bold tracking-wider uppercase text-[#5F7161]">
                           {userRoleLabel}
                         </span>
                       )}
@@ -204,7 +205,7 @@ const Navbar = () => {
                         <img
                           src={finalAvatar}
                           alt="avatar"
-                          className="w-12 h-12 rounded-full object-cover border-2 border-[#778873]/30 bg-[#e5e2dd]"
+                          className="w-12 h-12 rounded-full object-cover border-2 border-[#5F7161]/30 bg-[#e5e2dd]"
                           onError={() => setAvatarErrored(true)}
                         />
                         <div className="min-w-0 flex-1">
@@ -213,7 +214,7 @@ const Navbar = () => {
                           </p>
                           <p className="text-xs text-[#444842] truncate">{user.email}</p>
                           {userRoleLabel && (
-                            <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-[#d5e8cf]/50 text-[#3b4b39] border border-[#baccb4]/60">
+                            <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-[#E8EFE9] text-[#4D5E4F] border border-[#C5D7C7]">
                               {userRoleLabel}
                             </span>
                           )}
@@ -226,10 +227,10 @@ const Navbar = () => {
                           <Link
                             to={user.role === "super_admin" ? "/super-admin/dashboard" : "/admin/dashboard"}
                             onClick={() => setDropdownOpen(false)}
-                            className="flex items-center gap-2.5 px-5 py-3 text-sm font-semibold text-[#50604d] hover:bg-[#d5e8cf]/20 transition-colors border-b border-[#DCCFC0]/20"
+                            className="flex items-center gap-2.5 px-5 py-3 text-sm font-semibold text-[#4D5E4F] hover:bg-[#E8EFE9]/40 transition-colors border-b border-[#DCCFC0]/20"
                           >
-                            <span className="w-8 h-8 rounded-lg bg-[#d5e8cf]/50 flex items-center justify-center">
-                              <span className="material-symbols-outlined text-[18px] text-[#50604d]">
+                            <span className="w-8 h-8 rounded-lg bg-[#E8EFE9] flex items-center justify-center">
+                              <span className="material-symbols-outlined text-[18px] text-[#5F7161]">
                                 {user.role === "super_admin" ? "admin_panel_settings" : "dashboard"}
                               </span>
                             </span>
@@ -242,10 +243,10 @@ const Navbar = () => {
                             <Link
                               to={user.role === "super_admin" ? "/super-admin/dashboard" : "/admin/dashboard"}
                               onClick={() => setDropdownOpen(false)}
-                              className="flex items-center gap-2.5 px-5 py-3 text-sm font-semibold text-[#50604d] hover:bg-[#d5e8cf]/20 transition-colors border-b border-[#DCCFC0]/20"
+                              className="flex items-center gap-2.5 px-5 py-3 text-sm font-semibold text-[#4D5E4F] hover:bg-[#E8EFE9]/40 transition-colors border-b border-[#DCCFC0]/20"
                             >
-                              <span className="w-8 h-8 rounded-lg bg-[#d5e8cf]/50 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[18px] text-[#50604d]">
+                              <span className="w-8 h-8 rounded-lg bg-[#E8EFE9] flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[18px] text-[#5F7161]">
                                   {user.role === "super_admin" ? "admin_panel_settings" : "dashboard"}
                                 </span>
                               </span>
@@ -293,13 +294,13 @@ const Navbar = () => {
               <div className="flex items-center gap-2 md:gap-3">
                 <Link
                   to="/login"
-                  className="text-sm font-semibold text-[#444842] hover:text-[#778873] px-3 md:px-4 py-2 rounded-lg hover:bg-[#DCCFC0]/10 transition-colors"
+                  className="text-sm font-semibold text-[#444842] hover:text-[#5F7161] px-3 md:px-4 py-2 rounded-lg hover:bg-[#DCCFC0]/10 transition-colors"
                 >
                   Masuk
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-[#778873] text-white text-sm font-semibold px-4 md:px-5 py-2 rounded-xl hover:bg-[#50604d] transition-all shadow-sm active:scale-[0.98] flex items-center gap-1.5"
+                  className="bg-[#5F7161] text-white text-sm font-semibold px-4 md:px-5 py-2 rounded-xl hover:bg-[#4D5E4F] transition-all shadow-sm shadow-[#5F7161]/20 active:scale-[0.98] flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px] hidden sm:inline">person_add</span>
                   Daftar

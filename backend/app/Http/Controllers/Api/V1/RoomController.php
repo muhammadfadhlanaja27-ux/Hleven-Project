@@ -9,6 +9,7 @@ use App\Models\RoomType;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\FileStorageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -124,8 +125,7 @@ class RoomController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('rooms', 'public');
-            $url = asset('storage/' . $path);
+            $url = app(FileStorageService::class)->uploadFile($request->file('image'), 'rooms');
             $room->photos()->create([
                 'photo'        => $url,
                 'is_thumbnail' => true,
@@ -219,8 +219,7 @@ class RoomController extends Controller
 
         // Upload single image jika dikirimkan sebagai 'image'
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('rooms', 'public');
-            $url = asset('storage/' . $path);
+            $url = app(FileStorageService::class)->uploadFile($request->file('image'), 'rooms');
             $room->photos()->create([
                 'photo'        => $url,
                 'is_thumbnail' => $room->photos()->count() === 0,
@@ -231,8 +230,7 @@ class RoomController extends Controller
         if ($request->hasFile('photos')) {
             $hasExistingPhotos = $room->photos()->count() > 0;
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $photo->store('rooms', 'public');
-                $url = asset('storage/' . $path);
+                $url = app(FileStorageService::class)->uploadFile($photo, 'rooms');
                 $room->photos()->create([
                     'photo'        => $url,
                     'is_thumbnail' => ! $hasExistingPhotos && $index === 0,
@@ -264,8 +262,7 @@ class RoomController extends Controller
 
             foreach ($room->photos as $photo) {
                 if ($photo->photo) {
-                    $relativePath = str_replace(asset('storage/'), '', $photo->photo);
-                    Storage::disk('public')->delete(ltrim($relativePath, '/'));
+                    app(FileStorageService::class)->deleteFile($photo->photo);
                 }
                 $photo->delete();
             }
