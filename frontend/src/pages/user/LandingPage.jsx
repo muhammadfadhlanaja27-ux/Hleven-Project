@@ -51,9 +51,8 @@ const LandingPage = () => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        // Build query params
         const params = new URLSearchParams();
-        
+
         if (searchTerm.trim()) params.append("search", searchTerm.trim());
         if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split('T')[0]);
         if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split('T')[0]);
@@ -63,7 +62,7 @@ const LandingPage = () => {
 
         const url = `/hotels${params.toString() ? `?${params.toString()}` : ""}`;
         const { data: responseData, fromCache } = await cachedGet(url);
-        
+
         if (responseData && (responseData.data || Array.isArray(responseData))) {
           const apiHotels = responseData.data || responseData;
           setHotels(apiHotels);
@@ -91,7 +90,6 @@ const LandingPage = () => {
     setCheckOutDate(end);
   };
 
-  // ponytail: hanya param yang didukung backend (search); guest/date diteruskan untuk konsistensi
   const buildSearchUrl = () => {
     const params = new URLSearchParams();
     if (searchTerm.trim()) params.append("search", searchTerm.trim());
@@ -150,22 +148,19 @@ const LandingPage = () => {
     setShowRoomModal(false);
   };
 
-  // Filtered and Sorted Hotels Calculation (API provides pre-filtered data)
+  // Filtered and Sorted Hotels Calculation
   const filteredHotels = useMemo(() => {
     return hotels
       .filter((hotel) => {
-        // 1. Min & Max Price Filter (Frontend)
         const price = Number(hotel.starting_price || hotel.price || 0);
         if (minPrice && price < Number(minPrice)) return false;
         if (maxPrice && price > Number(maxPrice)) return false;
 
-        // 2. Star Rating Filter (Frontend) — API mengirim `average_rating`, bukan `rating`
         if (selectedStars.length > 0) {
           const hotelRatingInt = Math.floor(Number(hotel.rating || hotel.average_rating || 0));
           if (hotelRatingInt > 0 && !selectedStars.includes(hotelRatingInt)) return false;
         }
 
-        // 3. Facilities Filter (Frontend)
         if (selectedFacilities.length > 0) {
           const hotelFacs = (hotel.facilities || []).map((f) =>
             (typeof f === "object" ? f.name : String(f)).toLowerCase()
@@ -187,7 +182,7 @@ const LandingPage = () => {
         if (sortBy === "price_asc") return priceA - priceB;
         if (sortBy === "price_desc") return priceB - priceA;
         if (sortBy === "rating_desc") return ratingB - ratingA;
-        return 0; // Default Recommendation
+        return 0;
       });
   }, [hotels, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
@@ -201,14 +196,17 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased">
-      {/* Hero Section */}
+    <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased overflow-x-hidden max-w-full">
+      {/* Hero Section (overflow-visible agar popover kalender tidak terpotong) */}
       <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-visible py-12 px-4">
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
-          style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
-        >
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"></div>
+        {/* Gambar background dibungkus khusus div overflow-hidden */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
+            style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
+          >
+            <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"></div>
+          </div>
         </div>
 
         <div className="relative z-10 w-full max-w-[1280px] px-4 md:px-10 mx-auto flex flex-col items-center text-center">
@@ -241,7 +239,7 @@ const LandingPage = () => {
             </div>
 
             {/* Tanggal Check-in & Check-out Unified Range */}
-            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left relative z-20">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Tanggal Check-in &amp; Check-out
               </label>
@@ -255,9 +253,11 @@ const LandingPage = () => {
                   endDate={checkOutDate}
                   onChange={handleDateRangeChange}
                   minDate={today}
-                  monthsShown={2}
+                  monthsShown={window.innerWidth > 640 ? 2 : 1}
                   dateFormat="dd/MM/yyyy"
                   placeholderText="Pilih Check-in - Check-out"
+                  popperPlacement="bottom-start"
+                  popperContainer={({ children }) => <div style={{ zIndex: 9999 }}>{children}</div>}
                   className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
                 />
               </div>
@@ -285,7 +285,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Main Content Area: Sidebar Filters & Hotel Cards Grid */}
+      {/* Main Content Area */}
       <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16 flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
         <aside className="w-full lg:w-1/4 flex flex-col gap-6">
@@ -417,7 +417,6 @@ const LandingPage = () => {
               ))}
             </div>
           ) : filteredHotels.length === 0 ? (
-            /* Empty State */
             <div className="bg-[#FDF6ED] border border-[#DCCFC0]/50 rounded-2xl p-12 text-center my-6">
               <span className="material-symbols-outlined text-4xl text-[#747871] mb-3">
                 search_off
@@ -436,7 +435,6 @@ const LandingPage = () => {
               </button>
             </div>
           ) : (
-            /* Hotel Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {displayedHotels.map((hotel) => (
                 <HotelCard key={hotel.id} hotel={hotel} adults={adults} children={children} />
@@ -460,13 +458,11 @@ const LandingPage = () => {
       {/* Room Addition Modal */}
       {showRoomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm"
             onClick={() => setShowRoomModal(false)}
           />
 
-          {/* Modal Content */}
           <div className="relative bg-white rounded-2xl shadow-lg p-8 max-w-md z-10 border border-[#DCCFC0]">
             <div className="mb-6">
               <h3 className="font-headline-md text-2xl font-semibold text-[#2D332C] mb-2">
