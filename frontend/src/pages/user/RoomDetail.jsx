@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
-import { getPublicImageUrl } from "../../services/imageHelper";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const RoomDetail = () => {
   const { hotelId, roomId } = useParams();
@@ -101,7 +101,7 @@ const RoomDetail = () => {
               ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0]) 
               : null;
             const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
-            const roomImage = photoPath ? getPublicImageUrl(photoPath) : null;
+            const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
             const mappedRoom = {
               id: matchedRoomType.id,
@@ -161,7 +161,8 @@ const RoomDetail = () => {
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
-    return getPublicImageUrl(path);
+    if (!path) return null;
+    return getStorageUrl(path);
   };
 
   const roomPhotoUrls = (room?.photos || []).map(getImageUrl).filter(Boolean);
@@ -171,6 +172,9 @@ const RoomDetail = () => {
   let photosList = rawPhotosList;
   if (photosList.length === 0 && thumbFallback) {
     photosList = [thumbFallback];
+  }
+  if (photosList.length === 0) {
+    photosList = ["data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300' fill='%23ccc'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Ctext x='200' y='160' font-family='sans-serif' font-size='18' fill='%23666' text-anchor='middle'%3ENo Photo Available%3C/text%3E%3C/svg%3E"];
   }
 
   // Format Date for URL navigation

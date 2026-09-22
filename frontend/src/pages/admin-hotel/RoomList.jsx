@@ -3,24 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
 
-const normalizeImageUrl = (value) => {
-  if (!value) return "";
-  let str = String(value).trim();
-  if (!str) return "";
-
-  if (str.includes("storage.supabase.co/storage/v1/s3")) {
-    str = str.replace(".storage.supabase.co/storage/v1/s3", ".supabase.co/storage/v1/object/public");
-  } else if (str.includes("/storage/v1/s3")) {
-    str = str.replace("/storage/v1/s3", "/storage/v1/object/public");
-  }
-
-  if (/^https?:\/\//i.test(str) || /^data:/i.test(str)) return str;
-  if (str.startsWith("/")) return `http://localhost:8000${str}`;
-  if (str.startsWith("storage/")) return `http://localhost:8000/${str}`;
-  if (str.startsWith("public/")) return `http://localhost:8000/storage/${str.replace(/^public\//, "")}`;
-  return `http://localhost:8000/storage/${str.replace(/^\/+/, "")}`;
-};
+const normalizeImageUrl = (value) => getStorageUrl(value);
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });

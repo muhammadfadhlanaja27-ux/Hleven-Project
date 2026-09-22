@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getPublicImageUrl } from "../../services/imageHelper";
 
+import { getStorageUrl } from "../../services/imageUrl";
+
 const AVATAR_COLORS = [
   ["#5F7161", "#4D5E4F"],
   ["#615b54", "#4b463f"],
@@ -70,8 +72,11 @@ const Navbar = () => {
     navigate("/login");
   };
 
-  const getAvatarUrl = (avatarPath) => {
-    return getPublicImageUrl(avatarPath);
+  const getAvatarUrl = () => {
+    if (!user) return null;
+    const avatarPath = user.avatar || user.avatar_url || user.avatarPreview;
+    if (!avatarPath) return null;
+    return getStorageUrl(avatarPath);
   };
 
   const getUserName = () => {

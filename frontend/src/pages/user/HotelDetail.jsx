@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { cachedGet } from "../../services/apiCache";
-import { getPublicImageUrl } from "../../services/imageHelper";
+import { getStorageUrl } from "../../services/imageUrl";
 import ReviewSection from "../../components/ReviewSection";
 
 const HotelDetail = () => {
@@ -100,7 +100,7 @@ const HotelDetail = () => {
                 ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
                 : null;
             const photoPath = thumbnailPhoto ? thumbnailPhoto.photo || thumbnailPhoto.url : null;
-            const roomImage = photoPath ? getPublicImageUrl(photoPath) : null;
+            const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
             return {
               id: rt.id,
@@ -211,7 +211,8 @@ const HotelDetail = () => {
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url || photoItem.image_path : photoItem;
-    return getPublicImageUrl(path);
+    if (!path) return null;
+    return getStorageUrl(path);
   };
 
   if (loading) {

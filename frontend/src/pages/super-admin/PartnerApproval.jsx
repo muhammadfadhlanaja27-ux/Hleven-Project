@@ -3,15 +3,11 @@ import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-
-const STORAGE_BASE = "http://localhost:8000/storage/";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const getFileUrl = (path) => {
   if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:") || path.startsWith("blob:")) {
-    return path;
-  }
-  return STORAGE_BASE + String(path).replace(/^\//, "");
+  return getStorageUrl(path);
 };
 
 const getDocLabel = (type) => {

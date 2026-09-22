@@ -19,6 +19,8 @@ return [
         'http://localhost:3000',
         'http://127.0.0.1:5713',
         'http://127.0.0.1:5173',
+        'https://hleven.my.id',
+        'https://www.hleven.my.id',
     ],
 
     'allowed_origins_patterns' => [],

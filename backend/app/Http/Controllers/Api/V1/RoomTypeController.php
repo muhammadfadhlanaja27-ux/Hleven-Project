@@ -76,8 +76,8 @@ class RoomTypeController extends Controller
                 'weekday_price' => $request->weekday_price,
                 'weekend_price' => $request->weekend_price,
                 'stock' => $request->stock,
-                'capacity_adult' => $request->adult_capacity,
-                'capacity_child' => $request->child_capacity ?? 0,
+                'capacity_adult' => $request->capacity_adult,
+                'capacity_child' => $request->capacity_child ?? 0,
                 'breakfast' => $request->boolean('breakfast'),
                 'smoking_area' => $request->boolean('smoking_area'),
                 'is_refundable' => $request->boolean('is_refundable', true),
@@ -93,7 +93,7 @@ class RoomTypeController extends Controller
                 foreach ($request->file('photos') as $index => $photo) {
                     $url = app(\App\Services\FileStorageService::class)->uploadFile($photo, 'room_types');
                     $roomType->photos()->create([
-                        'photo' => $url,
+                        'photo' => $path,
                         'is_thumbnail' => $index === 0,
                     ]);
                 }
@@ -173,11 +173,11 @@ class RoomTypeController extends Controller
         if ($request->has('bed')) {
             $updateData['bed'] = $request->bed;
         }
-        if ($request->has('adult_capacity')) {
-            $updateData['capacity_adult'] = $request->adult_capacity;
+        if ($request->has('capacity_adult')) {
+            $updateData['capacity_adult'] = $request->capacity_adult;
         }
-        if ($request->has('child_capacity')) {
-            $updateData['capacity_child'] = $request->child_capacity;
+        if ($request->has('capacity_child')) {
+            $updateData['capacity_child'] = $request->capacity_child;
         }
         if ($request->has('breakfast')) {
             $updateData['breakfast'] = $request->boolean('breakfast');
@@ -200,7 +200,7 @@ class RoomTypeController extends Controller
             foreach ($request->file('photos') as $index => $photo) {
                 $url = app(\App\Services\FileStorageService::class)->uploadFile($photo, 'room_types');
                 $roomType->photos()->create([
-                    'photo' => $url,
+                    'photo' => $path,
                     'is_thumbnail' => $index === 0,
                 ]);
             }
