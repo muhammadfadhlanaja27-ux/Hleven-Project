@@ -23,7 +23,7 @@ const HotelDetail = () => {
   // State untuk menangani gambar kamar yang error/broken URL
   const [imgErrors, setImgErrors] = useState({});
 
-  // Filter States untuk Kamar — inisialisasi dari URL query params (persistence)
+  // Filter States untuk Kamar
   const initialAdults = searchParams.get("adults") || "";
   const initialChildren = searchParams.get("children") || "";
   const [filterAdults, setFilterAdults] = useState(initialAdults);
@@ -41,7 +41,6 @@ const HotelDetail = () => {
 
   const lightboxContainerRef = useRef(null);
 
-  // Reset scale/pan when lightbox opens
   useEffect(() => {
     if (lightboxOpen) {
       setScale(1);
@@ -50,7 +49,6 @@ const HotelDetail = () => {
     }
   }, [lightboxOpen, lightboxIndex]);
 
-  // Close lightbox on Escape
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setLightboxOpen(false);
@@ -118,9 +116,9 @@ const HotelDetail = () => {
               capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
               description: rt.description,
               bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
-              breakfast: rt.breakfast,
-              smoking_area: rt.smoking_area,
-              is_refundable: rt.is_refundable !== undefined ? rt.is_refundable : true,
+              breakfast: Boolean(rt.breakfast), // Konversi murni ke boolean
+              smoking_area: Boolean(rt.smoking_area), // Konversi murni ke boolean
+              is_refundable: rt.is_refundable !== undefined ? Boolean(rt.is_refundable) : true,
               stock: rt.stock,
             };
           });
@@ -145,13 +143,11 @@ const HotelDetail = () => {
     fetchHotelDetail();
   }, [id]);
 
-  // Live rating state
   const [liveRating, setLiveRating] = useState(0);
   useEffect(() => {
     setLiveRating(Number(hotel?.rating || hotel?.average_rating || 0));
   }, [hotel]);
 
-  // Logika Filter Kamar
   const filteredRooms = useMemo(() => {
     if (!hotel || !hotel.rooms) return [];
 
@@ -243,7 +239,6 @@ const HotelDetail = () => {
     );
   }
 
-  // Foto Hotel
   const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : []).filter((p) => {
     const pth = typeof p === "object" ? p.photo || p.url || p.image_path : p;
     return !!pth;
@@ -321,7 +316,7 @@ const HotelDetail = () => {
           {hasHotelPhotos ? (
             photosList.length === 1 ? (
               <div
-                className="w-full h-[350px] md:h-[500px] rounded-3xl overflow-hidden shadow-sm bg-[#E8E2D9] cursor-pointer border border-[#E8E2D9]"
+                className="w-full h-[350px] md:h-[500px] rounded-3xl overflow-hidden shadow-xs bg-[#E8E2D9] cursor-pointer border border-[#E8E2D9]"
                 onClick={() => {
                   setLightboxIndex(0);
                   setLightboxOpen(true);
@@ -330,7 +325,7 @@ const HotelDetail = () => {
                 <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[580px] rounded-3xl overflow-hidden shadow-sm border border-[#E8E2D9]">
+              <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[580px] rounded-3xl overflow-hidden shadow-xs border border-[#E8E2D9]">
                 <div
                   className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
                   onClick={() => {
@@ -413,7 +408,7 @@ const HotelDetail = () => {
               </div>
             )
           ) : (
-            <div className="h-[350px] md:h-[450px] rounded-3xl bg-white border border-[#E8E2D9] flex flex-col items-center justify-center text-center p-8 shadow-sm">
+            <div className="h-[350px] md:h-[450px] rounded-3xl bg-white border border-[#E8E2D9] flex flex-col items-center justify-center text-center p-8 shadow-xs">
               <span className="material-symbols-outlined text-[#5F7161] text-7xl mb-4 opacity-50">
                 image_not_supported
               </span>
@@ -430,7 +425,7 @@ const HotelDetail = () => {
           {/* Left Column: Info & Description & Amenities Cards */}
           <div className="lg:col-span-2 space-y-8">
             {/* Card 1: Hotel Info & Description */}
-            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-[#E8E2D9] text-left">
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex text-[#D97706]">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -469,7 +464,7 @@ const HotelDetail = () => {
             </div>
 
             {/* Card 2: Fasilitas Hotel */}
-            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-[#E8E2D9] text-left">
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
               <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] mb-6 flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-[#5F7161] text-2xl">home_repair_service</span>
                 Fasilitas Hotel
@@ -500,9 +495,9 @@ const HotelDetail = () => {
             </div>
           </div>
 
-          {/* Right Column: Location Card (Google Maps Card) */}
+          {/* Right Column: Location Card */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#E8E2D9] text-left space-y-5 sticky top-24">
+            <div className="bg-white p-6 rounded-3xl shadow-xs border border-[#E8E2D9] text-left space-y-5 sticky top-24">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-xl">map</span>
@@ -510,7 +505,6 @@ const HotelDetail = () => {
                 <h2 className="font-headline-lg text-xl font-bold text-[#1C251D]">Lokasi Hotel</h2>
               </div>
 
-              {/* Map Embed Container */}
               <div className="rounded-2xl overflow-hidden border border-[#E2DDD3] shadow-xs relative h-60 bg-[#F7F6F2]">
                 <iframe
                   title={`Peta Lokasi ${hotel.name}`}
@@ -535,7 +529,7 @@ const HotelDetail = () => {
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 bg-[#5F7161] hover:bg-[#4D5E4F] text-white rounded-2xl font-label-md text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#5F7161]/20 cursor-pointer"
+                  className="w-full py-3 bg-[#5F7161] hover:bg-[#4D5E4F] text-white rounded-2xl font-label-md text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">open_in_new</span>
                   Buka di Google Maps
@@ -571,14 +565,13 @@ const HotelDetail = () => {
           </div>
 
           {/* Room Filter Box */}
-          <div className="bg-white border border-[#E8E2D9] rounded-3xl p-5 mb-8 shadow-sm">
+          <div className="bg-white border border-[#E8E2D9] rounded-3xl p-5 mb-8 shadow-xs">
             <h3 className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-base">tune</span>
               Filter Kamar Sesuai Kebutuhan
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              {/* Filter Tipe Kamar */}
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Tipe Kamar
@@ -600,7 +593,6 @@ const HotelDetail = () => {
                 </div>
               </div>
 
-              {/* Filter Kapasitas Dewasa */}
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Min. Dewasa
@@ -625,7 +617,6 @@ const HotelDetail = () => {
                 </div>
               </div>
 
-              {/* Filter Kapasitas Anak */}
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Min. Anak
@@ -650,7 +641,6 @@ const HotelDetail = () => {
                 </div>
               </div>
 
-              {/* Filter Tipe Kasur */}
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Tipe Kasur
@@ -672,7 +662,6 @@ const HotelDetail = () => {
               </div>
             </div>
 
-            {/* Checkbox Filter Tambahan */}
             <div className="flex flex-wrap gap-4 pt-3 border-t border-[#F0EBE1]">
               <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
                 <input
@@ -716,9 +705,8 @@ const HotelDetail = () => {
                 return (
                   <div
                     key={room.id}
-                    className="flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden border border-[#E8E2D9] shadow-sm hover:shadow-md transition-shadow"
+                    className="flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md transition-shadow"
                   >
-                    {/* Room Thumbnail Container */}
                     <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-[#E8E2D9] overflow-hidden">
                       {room.thumbnail && !imgErrors[room.id] ? (
                         <img
@@ -742,7 +730,6 @@ const HotelDetail = () => {
                       )}
                     </div>
 
-                    {/* Room Content */}
                     <div className="p-6 flex flex-col justify-between flex-grow min-w-0 text-left">
                       <div>
                         <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
@@ -762,30 +749,36 @@ const HotelDetail = () => {
                             }, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
-                        {/* Features Checkmarks */}
+                        {/* Features Checkmarks (Sudah Aman dari Angka 0) */}
                         <div className="flex flex-wrap gap-2.5 mb-3 text-xs">
-                          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
-                            <span className="material-symbols-outlined text-[14px]">bed</span>
-                            {room.bed}
-                          </div>
-                          {room.breakfast && (
+                          {Boolean(room.bed) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
+                              <span className="material-symbols-outlined text-[14px]">bed</span>
+                              {room.bed}
+                            </div>
+                          )}
+
+                          {Boolean(room.breakfast) && (
                             <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
                               <span className="material-symbols-outlined text-[14px]">check</span>
                               Sarapan Termasuk
                             </div>
                           )}
-                          {room.smoking_area && (
+
+                          {Boolean(room.smoking_area) && (
                             <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold">
                               <span className="material-symbols-outlined text-[14px]">smoking_rooms</span>
                               Smoking Area
                             </div>
                           )}
-                          {room.type && (
+
+                          {Boolean(room.type) && (
                             <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#A0522D]/10 border border-[#A0522D]/20 text-[#A0522D] font-bold uppercase tracking-wide">
                               <span className="material-symbols-outlined text-[14px]">apartment</span>
                               {room.type}
                             </div>
                           )}
+
                           <div
                             className={
                               room.is_refundable
@@ -801,7 +794,6 @@ const HotelDetail = () => {
                         </div>
                       </div>
 
-                      {/* Bottom Price & Booking Button */}
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#F0EBE1] gap-4">
                         <div>
                           <p className="text-xs text-[#8A948C] line-through">
@@ -839,7 +831,7 @@ const HotelDetail = () => {
                           <button
                             type="button"
                             onClick={(e) => handleBookRoom(e, room)}
-                            className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-sm cursor-pointer text-center"
+                            className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
                           >
                             Pilih Kamar
                           </button>
@@ -850,7 +842,6 @@ const HotelDetail = () => {
                 );
               })}
 
-              {/* Pagination Controls */}
               {totalRoomPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                   <p className="text-xs text-[#5A625B]">
@@ -895,7 +886,7 @@ const HotelDetail = () => {
               )}
             </div>
           ) : (
-            <div className="p-12 text-center bg-white rounded-3xl border border-[#E8E2D9] shadow-sm">
+            <div className="p-12 text-center bg-white rounded-3xl border border-[#E8E2D9] shadow-xs">
               <span className="material-symbols-outlined text-4xl text-[#8A948C] mb-2">filter_alt_off</span>
               <h4 className="font-headline-md text-lg font-bold text-[#1C251D] mb-1">
                 Kamar Tidak Ditemukan
@@ -914,11 +905,10 @@ const HotelDetail = () => {
           )}
         </section>
 
-        {/* Section Review & Rating */}
         <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} onReviewSubmitted={handleReviewSubmitted} />
       </main>
 
-      {/* Full-screen Lightbox */}
+      {/* Lightbox */}
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"

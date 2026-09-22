@@ -185,7 +185,7 @@ const LandingPage = () => {
   return (
     <div className="bg-[#FAF8F5] text-[#1e1b16] min-h-screen font-body-md antialiased overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative w-full min-h-[580px] lg:h-[620px] flex items-center justify-center bg-[#DCCFC0] py-12 px-4 z-10">
+      <section className="relative w-full min-h-[520px] lg:h-[620px] flex items-center justify-center bg-[#DCCFC0] py-10 md:py-12 px-4 z-10">
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
@@ -195,11 +195,11 @@ const LandingPage = () => {
           </div>
         </div>
 
-        <div className="relative z-20 w-full max-w-[1280px] px-4 md:px-10 mx-auto flex flex-col items-center text-center">
-          <h1 className="font-headline-xl text-3xl md:text-5xl text-white mb-4 max-w-4xl leading-tight drop-shadow-md">
+        <div className="relative z-20 w-full max-w-[1280px] px-2 md:px-10 mx-auto flex flex-col items-center text-center">
+          <h1 className="font-headline-xl text-2xl md:text-5xl text-white mb-3 md:mb-4 max-w-4xl leading-tight drop-shadow-md font-extrabold">
             Temukan Pengalaman Menginap Terbaik Bersama H'Leven
           </h1>
-          <p className="font-body-lg text-base md:text-lg text-white/90 mb-10 max-w-2xl drop-shadow">
+          <p className="font-body-lg text-xs md:text-lg text-white/90 mb-6 md:mb-10 max-w-2xl drop-shadow">
             Platform reservasi hotel modern yang memberikan kemudahan pencarian, perbandingan harga, dan manajemen pemesanan secara cerdas dan aman.
           </p>
 
@@ -270,10 +270,10 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16 grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Sidebar Filters */}
-        <aside className="lg:col-span-1 flex flex-col gap-6">
+      {/* Main Content Area (Ditambahkan pb-24 agar tidak tertutup Bottom Nav HP) */}
+      <main className="w-full max-w-[1280px] px-3 md:px-10 mx-auto py-8 md:py-16 pb-24 md:pb-16 grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
+        {/* Sidebar Filters (Hanya muncul di Layar Besar atau Terlipat di HP) */}
+        <aside className="lg:col-span-1 hidden lg:flex flex-col gap-6">
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#E8E2D9] text-left">
             <div className="flex items-center justify-between mb-6 border-b border-[#F0EBE1] pb-4">
               <h3 className="font-headline-md text-xl font-bold text-[#1C251D]">
@@ -370,28 +370,28 @@ const LandingPage = () => {
         {/* Featured Hotels Grid */}
         <div className="lg:col-span-3">
           {/* Header Section (Card Container Modern) */}
-          <div className="bg-white p-6 md:p-7 rounded-3xl shadow-sm border border-[#E8E2D9] mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
+          <div className="bg-white p-4 md:p-7 rounded-2xl md:rounded-3xl shadow-xs border border-[#E8E2D9] mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] text-xs font-bold uppercase tracking-wider mb-2.5">
-                <span className="w-2 h-2 rounded-full bg-[#5F7161]"></span>
+              <div className="inline-flex items-center gap-2 px-3 py-0.5 md:py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">
+                <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#5F7161]"></span>
                 Pilihan Terbaik
               </div>
-              <h2 className="font-headline-lg text-2xl md:text-3xl font-extrabold text-[#1C251D] tracking-tight">
+              <h2 className="font-headline-lg text-xl md:text-3xl font-extrabold text-[#1C251D] tracking-tight">
                 Rekomendasi Hotel
               </h2>
-              <p className="font-body-md text-sm text-[#5A625B] mt-1">
-                Properti pilihan dengan fasilitas terbaik untuk kenyamanan liburan Anda ({filteredHotels.length} ditemukan).
+              <p className="font-body-md text-xs md:text-sm text-[#5A625B] mt-0.5">
+                Properti pilihan dengan fasilitas terbaik ({filteredHotels.length} ditemukan).
               </p>
             </div>
 
             {/* Select Filter Inside Card */}
-            <div className="flex items-center gap-2.5 text-sm bg-[#F7F6F2] hover:bg-[#EFECE6] px-4 py-2.5 rounded-2xl border border-[#E2DDD3] focus-within:bg-white focus-within:border-[#5F7161] focus-within:ring-2 focus-within:ring-[#5F7161]/20 transition-all shrink-0">
-              <span className="material-symbols-outlined text-lg text-[#5F7161]">sort</span>
-              <span className="text-[#5A625B] text-xs font-bold">Urutkan:</span>
+            <div className="flex items-center gap-2 text-xs md:text-sm bg-[#F7F6F2] hover:bg-[#EFECE6] px-3 py-2 rounded-xl border border-[#E2DDD3] focus-within:bg-white focus-within:border-[#5F7161] transition-all shrink-0">
+              <span className="material-symbols-outlined text-base md:text-lg text-[#5F7161]">sort</span>
+              <span className="text-[#5A625B] text-[10px] md:text-xs font-bold">Urutkan:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent border-none font-label-md text-xs font-bold text-[#1C251D] focus:ring-0 cursor-pointer outline-none p-0 pr-1"
+                className="bg-transparent border-none font-label-md text-[11px] md:text-xs font-bold text-[#1C251D] focus:ring-0 cursor-pointer outline-none p-0 pr-1"
               >
                 <option value="recommendation">Rekomendasi Utama</option>
                 <option value="price_asc">Harga Terendah</option>
@@ -402,31 +402,33 @@ const LandingPage = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            /* Skeleton Loading Grid: 2 Kolom di HP */
+            <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-[#E8E2D9]"></div>
+                <div key={i} className="bg-white rounded-2xl h-64 md:h-80 animate-pulse border border-[#E8E2D9]"></div>
               ))}
             </div>
           ) : filteredHotels.length === 0 ? (
-            <div className="bg-white border border-[#E8E2D9] rounded-3xl p-12 text-center my-6 shadow-sm">
+            <div className="bg-white border border-[#E8E2D9] rounded-3xl p-8 md:p-12 text-center my-6 shadow-xs">
               <span className="material-symbols-outlined text-4xl text-[#8A948C] mb-3">
                 search_off
               </span>
-              <h3 className="font-headline-md text-lg text-[#1C251D] mb-2 font-semibold">
+              <h3 className="font-headline-md text-base md:text-lg text-[#1C251D] mb-2 font-semibold">
                 Hotel Tidak Ditemukan
               </h3>
-              <p className="text-sm text-[#5A625B] mb-6 max-w-md mx-auto">
+              <p className="text-xs md:text-sm text-[#5A625B] mb-6 max-w-md mx-auto">
                 Maaf, tidak ada hotel yang sesuai dengan kata kunci atau kriteria filter yang Anda pilih.
               </p>
               <button
                 onClick={handleResetFilters}
-                className="bg-[#5F7161] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#4D5E4F] transition-colors cursor-pointer shadow-sm"
+                className="bg-[#5F7161] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#4D5E4F] transition-colors cursor-pointer shadow-xs"
               >
                 Reset Semua Filter
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            /* Hotel Grid: 2 Kolom di Mobile (grid-cols-2), 3 Kolom di Desktop */
+            <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
               {displayedHotels.map((hotel) => (
                 <HotelCard key={hotel.id} hotel={hotel} adults={adults} children={children} />
               ))}
@@ -472,7 +474,7 @@ const LandingPage = () => {
               </button>
               <button
                 onClick={handleConfirmAddRoom}
-                className="px-6 py-2.5 bg-[#5F7161] rounded-xl font-label-md text-sm font-semibold text-white hover:bg-[#4D5E4F] transition-colors cursor-pointer shadow-sm"
+                className="px-6 py-2.5 bg-[#5F7161] rounded-xl font-label-md text-sm font-semibold text-white hover:bg-[#4D5E4F] transition-colors cursor-pointer shadow-xs"
               >
                 Ya, Tambah
               </button>
@@ -480,6 +482,26 @@ const LandingPage = () => {
           </div>
         </div>
       )}
+
+      {/* Bottom Navigation Bar Khusus Tampilan Mobile (HP) */}
+      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[#E8E2D9] px-4 py-2 flex justify-around items-center md:hidden z-40 shadow-lg">
+        <button className="flex flex-col items-center text-[#5F7161]">
+          <span className="material-symbols-outlined text-xl">home</span>
+          <span className="text-[10px] font-bold mt-0.5">Awal</span>
+        </button>
+        <button className="flex flex-col items-center text-[#8A948C] hover:text-[#5F7161]">
+          <span className="material-symbols-outlined text-xl">explore</span>
+          <span className="text-[10px] font-medium mt-0.5">Explore</span>
+        </button>
+        <button className="flex flex-col items-center text-[#8A948C] hover:text-[#5F7161]">
+          <span className="material-symbols-outlined text-xl">receipt_long</span>
+          <span className="text-[10px] font-medium mt-0.5">Pesanan</span>
+        </button>
+        <button className="flex flex-col items-center text-[#8A948C] hover:text-[#5F7161]">
+          <span className="material-symbols-outlined text-xl">bookmark</span>
+          <span className="text-[10px] font-medium mt-0.5">Simpan</span>
+        </button>
+      </div>
     </div>
   );
 };
