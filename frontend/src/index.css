@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 @import "tailwindcss";
 
 @theme {
@@ -41,7 +42,6 @@
   --heading: 'Newsreader', serif;
   --mono: ui-monospace, Consolas, monospace;
 
-
   --spacing-container-max: 1280px;
   --spacing-section-gap: 5rem;
   --spacing-margin-desktop: 2.5rem;
@@ -80,11 +80,11 @@ body {
   flex-direction: column;
 }
 
-/* Material Symbols Outlined Icon Styling */
+/* Material Symbols Outlined Icon Fix */
 .material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
   font-size: 24px;
   line-height: 1;
   letter-spacing: normal;
@@ -93,11 +93,13 @@ body {
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
+  -webkit-font-feature-settings: 'liga' 1 !important;
+  font-feature-settings: 'liga' 1 !important;
   -webkit-font-smoothing: antialiased;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
 }
 
-/* Typography Utility Classes matching design1.md */
+/* Typography Utility Classes */
 .font-headline-xl {
   font-family: 'Libre Caslon Text', serif;
   font-size: 48px;
@@ -158,7 +160,7 @@ body {
   }
 }
 
-/* ========== Floating Input ========== */
+/* Floating Input */
 .floating-input {
   position: relative;
 }
@@ -193,7 +195,9 @@ body {
   top: 0;
   font-size: 0.75rem;
   color: #778873;
-} /* =========================================================
+}
+
+/* =========================================================
    CUSTOM STYLING REACT-DATEPICKER H'LEVEN THEME
    ========================================================= */
 
@@ -201,48 +205,63 @@ body {
   width: 100%;
 }
 
-/* Container Pop-up Kalender */
 .react-datepicker {
   font-family: 'Hanken Grotesk', sans-serif !important;
   background-color: #FDF6ED !important;
   border: 1px solid #DCCFC0 !important;
   border-radius: 1.25rem !important;
   box-shadow: 0 15px 35px -5px rgba(119, 136, 115, 0.25) !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   padding-bottom: 6px;
   position: absolute !important;
   top: 100% !important;
-  left: -160px !important;
   z-index: 50 !important;
   margin-top: 8px !important;
-  width: auto !important;
-  min-width: 600px !important;
 }
 
-/* Tampilkan 2 bulan sejajar */
-.react-datepicker__month-container {
-  float: left !important;
-  width: 50% !important;
-  display: inline-block !important;
-  box-sizing: border-box !important;
+@media (max-width: 639px) {
+  .react-datepicker {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 92vw !important;
+    max-width: 340px !important;
+    min-width: auto !important;
+  }
+  .react-datepicker__month-container {
+    width: 100% !important;
+    float: none !important;
+  }
+  .react-datepicker__month-container:nth-child(2) {
+    display: none !important;
+  }
 }
 
-/* Tambah padding antar bulan */
+@media (min-width: 640px) {
+  .react-datepicker {
+    left: -120px !important;
+    min-width: 580px !important;
+  }
+  .react-datepicker__month-container {
+    float: left !important;
+    width: 50% !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+  }
+}
+
 .react-datepicker__month:first-child {
-  padding-right: 12px !important;
+  padding-right: 8px !important;
 }
 
 .react-datepicker__month {
   margin: 0 !important;
-  padding-left: 12px !important;
+  padding-left: 8px !important;
 }
 
-/* Menyembunyikan panah segitiga bawaan */
 .react-datepicker__triangle {
   display: none !important;
 }
 
-/* Header Kalender (Bulan & Tahun) */
 .react-datepicker__header {
   background-color: #FDF6ED !important;
   border-bottom: 1px solid #DCCFC0 !important;
@@ -258,7 +277,6 @@ body {
   margin-bottom: 6px !important;
 }
 
-/* Nama Hari (Min, Sen, Sel, dll) - Kehitaman */
 .react-datepicker__day-name {
   color: #2D332C !important;
   font-weight: 700 !important;
@@ -268,12 +286,10 @@ body {
   margin: 0.15rem !important;
 }
 
-/* Container Angka Tanggal */
 .react-datepicker__month {
   margin: 10px 12px 4px 12px !important;
 }
 
-/* Angka Tanggal Normal */
 .react-datepicker__day {
   color: #2D332C !important;
   font-weight: 500 !important;
@@ -284,13 +300,11 @@ body {
   transition: all 0.2s ease;
 }
 
-/* Hover Tanggal */
 .react-datepicker__day:hover {
   background-color: #DCCFC0 !important;
   color: #1e1b16 !important;
 }
 
-/* Tanggal Terpilih (Selected) & Range */
 .react-datepicker__day--selected,
 .react-datepicker__day--in-range,
 .react-datepicker__day--range-start,
@@ -306,7 +320,6 @@ body {
   color: #1e1b16 !important;
 }
 
-/* Tanggal Hari Ini (Today Indicator) */
 .react-datepicker__day--today {
   font-weight: 700 !important;
   color: #50604d !important;
@@ -314,7 +327,6 @@ body {
   background-color: rgba(119, 136, 115, 0.08) !important;
 }
 
-/* Tanggal Nonaktif / Masa Lalu (Disabled) */
 .react-datepicker__day--disabled {
   color: #c4c8bf !important;
   opacity: 0.35 !important;
@@ -323,7 +335,6 @@ body {
   background-color: transparent !important;
 }
 
-/* Tombol Navigasi Panah Kiri & Kanan */
 .react-datepicker__navigation {
   top: 12px !important;
 }
@@ -337,7 +348,6 @@ body {
   border-color: #778873 !important;
 }
 
-/* Custom Tampilan Opsi Dropdown Select */
 select option {
   background-color: #FDF6ED !important;
   color: #1e1b16 !important;

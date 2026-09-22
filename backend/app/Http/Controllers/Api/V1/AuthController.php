@@ -113,8 +113,7 @@ class AuthController extends Controller
             if ($user->avatar) {
                 app(\App\Services\FileStorageService::class)->deleteFile($user->avatar);
             }
-            $path = $request->file('avatar')->store('avatars', 's3');
-            $data['avatar'] = Storage::disk('s3')->url($path);
+            $data['avatar'] = app(\App\Services\FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
         }
 
         $user->update($data);

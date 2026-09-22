@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
 use App\Models\City;
+use App\Services\FileStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -138,8 +139,10 @@ class HotelController extends Controller
         ]);
 
         if ($request->hasFile('banner')) {
-            $path = $request->file('banner')->store('hotels/banners', 'public');
-            $hotel->banner = asset('storage/' . $path);
+            if ($hotel->banner) {
+                app(FileStorageService::class)->deleteFile($hotel->banner);
+            }
+            $hotel->banner = app(FileStorageService::class)->uploadFile($request->file('banner'), 'hotels/banners');
         }
 
         $hotel->update($request->only(['name', 'description', 'address']));
@@ -208,8 +211,7 @@ class HotelController extends Controller
             'is_thumbnail' => 'boolean',
         ]);
 
-        $path = $request->file('photo')->store('hotels', 'public');
-        $url = asset('storage/' . $path);
+        $url = app(FileStorageService::class)->uploadFile($request->file('photo'), 'hotels');
 
         if ($request->is_thumbnail) {
             $hotel->photos()->update(['is_thumbnail' => false]);

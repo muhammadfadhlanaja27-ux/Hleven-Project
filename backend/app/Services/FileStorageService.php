@@ -17,25 +17,43 @@ class FileStorageService
     protected function buildPublicUrl(string $path): string
     {
         $baseUrl = trim((string) config('filesystems.disks.s3.url'));
+        $bucket = trim((string) config('filesystems.disks.s3.bucket'));
         $path = ltrim($path, '/');
 
+        // Remove duplicate bucket prefix if path already starts with bucket name
+        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
+            $path = substr($path, strlen($bucket) + 1);
+        }
+
         if ($baseUrl !== '') {
-            return rtrim($baseUrl, '/') . '/' . $path;
+            $url = rtrim($baseUrl, '/') . '/' . $path;
+        } else {
+            $endpoint = trim((string) config('filesystems.disks.s3.endpoint'));
+            if ($bucket !== '' && $endpoint !== '') {
+                $publicEndpoint = str_replace(
+                    ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
+                    ['.supabase.co/storage/v1/object/public', '/storage/v1/object/public'],
+                    $endpoint
+                );
+                $url = rtrim($publicEndpoint, '/') . '/' . $bucket . '/' . $path;
+            } else {
+                return url('/storage/' . $path);
+            }
         }
 
-        $bucket = trim((string) config('filesystems.disks.s3.bucket'));
-        $endpoint = trim((string) config('filesystems.disks.s3.endpoint'));
+        // Convert S3 API host/endpoint to public HTTP host/endpoint if present
+        $publicUrl = str_replace(
+            ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
+            ['.supabase.co/storage/v1/object/public', '/storage/v1/object/public'],
+            $url
+        );
 
-        if ($bucket !== '' && $endpoint !== '') {
-            $publicEndpoint = str_replace(
-                ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
-                ['.supabase.co/storage/v1/object/public', '/storage/v1/object/public'],
-                $endpoint
-            );
-            return rtrim($publicEndpoint, '/') . '/' . $bucket . '/' . $path;
+        // Fix duplicate bucket occurrences in the URL path (e.g. hleven/hleven/)
+        if ($bucket !== '') {
+            $publicUrl = str_replace('/object/public/' . $bucket . '/' . $bucket . '/', '/object/public/' . $bucket . '/', $publicUrl);
         }
 
-        return url('/storage/' . $path);
+        return $publicUrl;
     }
 
     public function uploadFile(UploadedFile $file, string $directory): string
@@ -56,11 +74,8 @@ class FileStorageService
         $path = ltrim($path, '/');
 
         $bucket = trim((string) config('filesystems.disks.s3.bucket'));
-        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
-            $path = substr($path, strlen($bucket) + 1);
-        }
 
-        if (preg_match('#^(?:storage(?:/v1)?/)?(?:s3|object/public|object)?/(.+)$#i', $path, $matches)) {
+        if (preg_match('#^(?:storage(?:/v1)?/)?(?:s3|object/public|object)?/(?:' . preg_quote($bucket, '#') . '/)?(.+)$#i', $path, $matches)) {
             $path = $matches[1];
         }
 

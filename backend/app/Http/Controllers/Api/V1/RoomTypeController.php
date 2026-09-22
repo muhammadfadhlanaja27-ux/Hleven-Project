@@ -91,8 +91,7 @@ class RoomTypeController extends Controller
             // 3. Simpan multiple foto jika ada
             if ($request->hasFile('photos')) {
                 foreach ($request->file('photos') as $index => $photo) {
-                    $path = $photo->store('room_types', 's3');
-                    $url = Storage::disk('s3')->url($path);
+                    $url = app(\App\Services\FileStorageService::class)->uploadFile($photo, 'room_types');
                     $roomType->photos()->create([
                         'photo' => $url,
                         'is_thumbnail' => $index === 0,
@@ -199,8 +198,7 @@ class RoomTypeController extends Controller
             $roomType->photos()->update(['is_thumbnail' => false]);
 
             foreach ($request->file('photos') as $index => $photo) {
-                $path = $photo->store('room_types', 's3');
-                $url = Storage::disk('s3')->url($path);
+                $url = app(\App\Services\FileStorageService::class)->uploadFile($photo, 'room_types');
                 $roomType->photos()->create([
                     'photo' => $url,
                     'is_thumbnail' => $index === 0,

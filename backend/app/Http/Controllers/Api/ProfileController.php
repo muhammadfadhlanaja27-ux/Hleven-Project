@@ -39,8 +39,7 @@ class ProfileController extends Controller
             }
 
             // Simpan foto baru ke Supabase
-            $path = $request->file('avatar')->store('avatars', 's3');
-            $updateData['avatar'] = Storage::disk('s3')->url($path);
+            $updateData['avatar'] = app(\App\Services\FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
         }
 
         // 3. Simpan ke Database
