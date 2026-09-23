@@ -98,6 +98,7 @@ class PartnerApplicationController extends Controller
             'hotel_phone' => 'required|string|max:30',
             'hotel_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->user()?->id)],
             'room_count' => 'required|integer|min:1',
+            'requested_star_rating' => 'nullable|integer|min:1|max:5',
 
             'address' => 'required|string',
             'province' => 'required|string|max:255',
@@ -160,6 +161,7 @@ class PartnerApplicationController extends Controller
                 'bank_name' => $validated['bank_name'],
                 'bank_account_number' => $validated['bank_account_number'],
                 'bank_account_name' => $validated['bank_account_name'],
+                'requested_star_rating' => $validated['requested_star_rating'] ?? null,
                 'status' => 'pending',
             ]);
 
@@ -206,9 +208,15 @@ class PartnerApplicationController extends Controller
 
     public function approve(Request $request, $id): JsonResponse
     {
+        $request->validate([
+            'star_rating' => 'nullable|integer|min:1|max:5',
+            'star_verified_reason' => 'nullable|string|max:1000',
+        ]);
         try {
             $application = PartnerApplication::findOrFail($id);
-            $this->partnerService->approveApplication($application, $request->user());
+            $starOverride = $request->has('star_rating') ? (int) $request->star_rating : null;
+            $reason = $request->input('star_verified_reason');
+            $this->partnerService->approveApplication($application, $request->user(), $starOverride, $reason);
 
             return response()->json([
                 'success' => true,

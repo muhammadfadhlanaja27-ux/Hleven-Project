@@ -12,7 +12,13 @@ class Hotel extends Model
 
     protected $fillable = [
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
-        'average_rating', 'total_review', 'latitude', 'longitude', 'status'
+        'average_rating', 'total_review', 'latitude', 'longitude', 'status',
+        'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason'
+    ];
+
+    protected $casts = [
+        'star_rating' => 'integer',
+        'star_verified_at' => 'datetime',
     ];
 
     protected $appends = ['starting_price', 'thumbnail', 'phone', 'email'];
@@ -54,6 +60,11 @@ class Hotel extends Model
     public function admin()
     {
         return $this->belongsTo(User::class, 'admin_id');
+    }
+
+    public function starVerifier()
+    {
+        return $this->belongsTo(User::class, 'star_verified_by');
     }
 
     public function city()
