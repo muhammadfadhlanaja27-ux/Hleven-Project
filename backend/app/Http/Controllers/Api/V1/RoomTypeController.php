@@ -51,8 +51,8 @@ class RoomTypeController extends Controller
             'weekday_price' => 'required|numeric|min:0',
             'weekend_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'adult_capacity' => 'required|integer|min:1',
-            'child_capacity' => 'nullable|integer|min:0',
+            'capacity_adult' => 'required|integer|min:1',
+            'capacity_child' => 'nullable|integer|min:0',
             'is_refundable' => 'nullable|boolean',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
@@ -93,7 +93,7 @@ class RoomTypeController extends Controller
                 foreach ($request->file('photos') as $index => $photo) {
                     $url = app(\App\Services\FileStorageService::class)->uploadFile($photo, 'room_types');
                     $roomType->photos()->create([
-                        'photo' => $path,
+                        'photo' => $url,
                         'is_thumbnail' => $index === 0,
                     ]);
                 }
@@ -151,8 +151,8 @@ class RoomTypeController extends Controller
             'weekday_price' => 'sometimes|numeric|min:0',
             'weekend_price' => 'sometimes|numeric|min:0',
             'stock' => 'sometimes|integer|min:0',
-            'adult_capacity' => 'sometimes|integer|min:1',
-            'child_capacity' => 'nullable|integer|min:0',
+            'capacity_adult' => 'sometimes|integer|min:1',
+            'capacity_child' => 'nullable|integer|min:0',
             'is_refundable' => 'nullable|boolean',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
@@ -200,7 +200,7 @@ class RoomTypeController extends Controller
             foreach ($request->file('photos') as $index => $photo) {
                 $url = app(\App\Services\FileStorageService::class)->uploadFile($photo, 'room_types');
                 $roomType->photos()->create([
-                    'photo' => $path,
+                    'photo' => $url,
                     'is_thumbnail' => $index === 0,
                 ]);
             }

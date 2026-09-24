@@ -96,10 +96,15 @@ class RoomController extends Controller
             'weekend_price'  => 'required|numeric|min:0',
             'stock'          => 'required|integer|min:0',
             'capacity_adult' => 'required|integer|min:1',
-            'capacity_child' => 'required|integer|min:0',
-            'breakfast'      => 'boolean',
-            'smoking_area'   => 'boolean',
+            'capacity_child' => 'nullable|integer|min:0',
+            'breakfast'      => 'nullable|boolean',
+            'smoking_area'   => 'nullable|boolean',
+            'is_refundable'  => 'nullable|boolean',
+            'facilities'     => 'nullable|array',
+            'facilities.*'   => 'exists:facilities,id',
             'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'photos'         => 'nullable|array',
+            'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -119,10 +124,21 @@ class RoomController extends Controller
             'weekend_price'  => $request->weekend_price,
             'stock'          => $request->stock,
             'capacity_adult' => $request->capacity_adult,
-            'capacity_child' => $request->capacity_child,
-            'breakfast'      => $request->breakfast ?? false,
-            'smoking_area'   => $request->smoking_area ?? false,
+            'capacity_child' => $request->input('capacity_child', 0),
+            'breakfast'      => $request->boolean('breakfast', false),
+            'smoking_area'   => $request->boolean('smoking_area', false),
+            'is_refundable'  => $request->boolean('is_refundable', true),
         ]);
+
+        if ($request->has('facilities')) {
+            $facilities = $request->input('facilities');
+            if ($facilities === '' || $facilities === null) {
+                $facilities = [];
+            }
+            if (is_array($facilities)) {
+                $room->facilities()->sync(array_filter($facilities, fn ($value) => is_numeric($value)));
+            }
+        }
 
         if ($request->hasFile('image')) {
             $url = app(FileStorageService::class)->uploadFile($request->file('image'), 'rooms');
@@ -130,6 +146,16 @@ class RoomController extends Controller
                 'photo'        => $url,
                 'is_thumbnail' => true,
             ]);
+        }
+
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $index => $photo) {
+                $url = app(FileStorageService::class)->uploadFile($photo, 'rooms');
+                $room->photos()->create([
+                    'photo'        => $url,
+                    'is_thumbnail' => $index === 0 && ! $room->photos()->exists(),
+                ]);
+            }
         }
 
         return response()->json([
@@ -204,6 +230,10 @@ class RoomController extends Controller
             'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
             'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
         ]);
+
+        if ($request->has('is_refundable')) {
+            $updateData['is_refundable'] = $request->boolean('is_refundable', true);
+        }
 
         $room->update($updateData);
 

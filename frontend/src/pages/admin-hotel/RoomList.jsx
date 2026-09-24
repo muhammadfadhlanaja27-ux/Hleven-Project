@@ -278,6 +278,7 @@ export default function RoomList() {
       occupied: room.occupied || 0,
       facilityIds: room.facilityIds || [],
       photos: room.photos || [],
+      is_refundable: room.is_refundable !== undefined ? Boolean(room.is_refundable) : true,
       status: room.status || "Available",
     });
     setEditErrors({});
@@ -394,6 +395,7 @@ export default function RoomList() {
       payload.append("capacity_adult", Number(editValues.capacity_adult));
       payload.append("capacity_child", Number(editValues.capacity_child || 0));
       payload.append("stock", Number(editValues.stock));
+      payload.append("is_refundable", editValues.is_refundable ? "1" : "0");
 
       const facilityIds = editValues.facilityIds || [];
       if (facilityIds.length === 0) {
@@ -484,7 +486,7 @@ export default function RoomList() {
           className="bg-[#506147] text-white text-xs font-semibold px-6 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#3b4b33] transition-all shadow-sm hover:shadow active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          + Add Room
+          Add Room
         </Link>
       </div>
 
@@ -719,7 +721,7 @@ export default function RoomList() {
                         </button>
                       ) : (
                         <Link to="/admin/rooms/create" className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors">
-                          + Add Room
+                          Add Room
                         </Link>
                       )}
                     </div>
@@ -976,7 +978,66 @@ export default function RoomList() {
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">4. Room Facilities</h4>
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">4. Refund Policy</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditValues((prev) => ({ ...prev, is_refundable: true }))}
+                    className={`relative flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                      editValues.is_refundable === true
+                        ? "border-[#506147] bg-[#E4EBE0] shadow-sm"
+                        : "border-[#E5E1DA] bg-white hover:border-[#c4c8be]"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 border-2 ${
+                      editValues.is_refundable === true
+                        ? "border-[#506147] bg-[#506147]"
+                        : "border-[#c4c8be] bg-white"
+                    }`}>
+                      {editValues.is_refundable === true && <span className="w-2 h-2 rounded-full bg-white"></span>}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[#4F6F52] text-[18px]">verified</span>
+                        Bisa Refund
+                      </span>
+                      <p className="text-xs text-[#6B6E6A] leading-relaxed">
+                        Tamu dapat membatalkan reservasi dan mendapatkan pengembalian dana sesuai peraturan.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditValues((prev) => ({ ...prev, is_refundable: false }))}
+                    className={`relative flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                      editValues.is_refundable === false
+                        ? "border-[#ba1a1a] bg-[#ffdad6]/30 shadow-sm"
+                        : "border-[#E5E1DA] bg-white hover:border-[#c4c8be]"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 border-2 ${
+                      editValues.is_refundable === false
+                        ? "border-[#ba1a1a] bg-[#ba1a1a]"
+                        : "border-[#c4c8be] bg-white"
+                    }`}>
+                      {editValues.is_refundable === false && <span className="w-2 h-2 rounded-full bg-white"></span>}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[#ba1a1a] text-[18px]">block</span>
+                        Tidak Bisa Refund
+                      </span>
+                      <p className="text-xs text-[#6B6E6A] leading-relaxed">
+                        Pembayaran bersifat non-refundable. Tamu tidak bisa mengembalikan dana bila membatalkan reservasi.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">5. Room Facilities</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-[#E5E1DA] rounded-xl bg-[#fcf9f5]">
                   {roomFacilities.length === 0 && (
                     <div className="col-span-full py-4 text-center text-xs text-[#6B6E6A]">Memuat daftar fasilitas kamar...</div>
@@ -996,9 +1057,9 @@ export default function RoomList() {
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
                 <div className="flex items-center justify-between gap-3">
-                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">5. Room Photos</h4>
+                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">6. Room Photos</h4>
                   <button type="button" onClick={() => photoInputRef.current?.click()} className="px-3 py-2 bg-[#506147] text-white text-[10px] font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors">
-                    + Add Photo
+                    Add Photo
                   </button>
                 </div>
 

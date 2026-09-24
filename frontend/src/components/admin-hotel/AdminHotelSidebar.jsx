@@ -30,7 +30,10 @@ export default function AdminHotelSidebar() {
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto py-4">
+      <div
+        className="admin-sidebar-scroll flex-1 overflow-y-auto py-4"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         <ul className="flex flex-col gap-1">
           <li>
             <Link

@@ -11,11 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (! Schema::hasColumn('room_types', 'bed')) {
+        if (! Schema::hasColumn('room_types', 'is_active')) {
             Schema::table('room_types', function (Blueprint $table) {
-                $table->string('bed', 100)->nullable()->after('type');
+                $table->boolean('is_active')->default(true)->after('is_refundable');
             });
         }
+
+        // Keep previously inserted data active by default if null.
+        \Illuminate\Support\Facades\DB::table('room_types')->whereNull('is_active')->update(['is_active' => true]);
     }
 
     /**
@@ -23,9 +26,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasColumn('room_types', 'bed')) {
+        if (Schema::hasColumn('room_types', 'is_active')) {
             Schema::table('room_types', function (Blueprint $table) {
-                $table->dropColumn('bed');
+                $table->dropColumn('is_active');
             });
         }
     }
