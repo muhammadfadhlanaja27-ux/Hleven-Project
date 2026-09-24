@@ -133,7 +133,7 @@ class BookingController extends Controller
     public function cancelBooking(Request $request, $id)
     {
         $user = $request->user();
-        $booking = Booking::where('id', $id)
+        $booking = Booking::with('bookingRooms.roomType')->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -141,21 +141,41 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
-        if (in_array($booking->status, ['unpaid', 'pending'])) {
-            $request->merge(['status' => 'cancelled']);
-
-            return $this->updateStatus($request, $booking->id);
-        } elseif (in_array($booking->status, ['paid', 'confirmed'])) {
-            $booking->update(['status' => 'refund_pending']);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
-                'data' => $booking,
-            ]);
+        $blocked = ['cancelled', 'expired', 'refunded', 'refund_pending', 'checked_in', 'checked_out'];
+        if (in_array($booking->status, $blocked)) {
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan atau sedang dalam proses refund'], 400);
         }
 
-        return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan atau sedang dalam proses refund'], 400);
+        if (in_array($booking->status, ['unpaid', 'pending'])) {
+            $request->merge(['status' => 'cancelled']);
+            return $this->updateStatus($request, $booking->id);
+        }
+
+        if (in_array($booking->status, ['paid', 'confirmed'])) {
+            $allRefundable = $booking->bookingRooms->isNotEmpty()
+                ? $booking->bookingRooms->every(fn ($br) => (bool) ($br->roomType?->is_refundable ?? true))
+                : true;
+
+            if ($allRefundable) {
+                $booking->update(['status' => 'refund_pending']);
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
+                    'data' => $booking->fresh()->load('bookingRooms.roomType'),
+                ]);
+            }
+
+            $request->merge(['status' => 'cancelled']);
+            $res = $this->updateStatus($request, $booking->id);
+            if ($res->getStatusCode() === 200) {
+                $data = json_decode($res->getContent(), true);
+                $data['message'] = 'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.';
+                $res->setContent(json_encode($data));
+            }
+            return $res;
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan'], 400);
     }
 
     public function handleRefundApproval(Request $request, $id)
@@ -222,7 +242,7 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'review'])
+        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'bookingRooms.roomType', 'payment', 'review'])
             ->where('user_id', $user->id)
             ->latest()
             ->get();

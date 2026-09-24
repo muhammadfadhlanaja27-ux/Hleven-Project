@@ -58,4 +58,17 @@ class Booking extends Model
     {
         return $this->hasMany(BookingStatusHistory::class, 'booking_id');
     }
+
+    protected $appends = ['is_refundable'];
+
+    public function getIsRefundableAttribute(): bool
+    {
+        if (! $this->relationLoaded('bookingRooms')) {
+            return true;
+        }
+        if ($this->bookingRooms->isEmpty()) {
+            return true;
+        }
+        return $this->bookingRooms->every(fn ($br) => (bool) ($br->roomType?->is_refundable ?? true));
+    }
 }

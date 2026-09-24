@@ -1147,6 +1147,16 @@ const UserProfile = () => {
                               </button>
                             )}
 
+                            {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                              <button
+                                type="button"
+                                onClick={() => setCancelModalBooking(item)}
+                                className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
+                              >
+                                {item.is_refundable === false ? "Batalkan (Hangus)" : "Ajukan Refund"}
+                              </button>
+                            )}
+
                             {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && (
                               <button
                                 type="button"
@@ -1213,16 +1223,27 @@ const UserProfile = () => {
       )}
 
       {/* MODAL REFUND / CANCEL */}
-      {cancelModalBooking && (
+      {cancelModalBooking && (() => {
+        const isPaid = ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(cancelModalBooking.status);
+        const isRefundable = cancelModalBooking.is_refundable !== false;
+        const title = !isPaid ? "Batalkan Pesanan" : isRefundable ? "Pengajuan Refund" : "Batalkan Pesanan (Hangus)";
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left">
-            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
-              Batalkan Pemesanan Kamar
-            </h3>
+            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">{title}</h3>
             <p className="font-body-md text-xs text-[#444842]">
               Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
             </p>
-
+            {isPaid && !isRefundable && (
+              <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
+                Kamar non-refundable — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar akan dikembalikan.
+              </div>
+            )}
+            {isPaid && isRefundable && (
+              <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
+                Pengajuan refund akan dikirim ke admin. Dana kembali menunggu persetujuan.
+              </div>
+            )}
             <div className="space-y-2">
               <label className="block font-label-md text-xs font-semibold text-[#444842]">
                 Alasan Pembatalan *
@@ -1235,28 +1256,18 @@ const UserProfile = () => {
                 className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
               />
             </div>
-
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setCancelModalBooking(null)}
-                disabled={isSubmittingCancel}
-                className="px-4 py-2 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20"
-              >
+              <button type="button" onClick={() => setCancelModalBooking(null)} disabled={isSubmittingCancel} className="px-4 py-2 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20">
                 Batal
               </button>
-              <button
-                type="button"
-                onClick={handleProcessCancelOrRefund}
-                disabled={isSubmittingCancel || !cancelReason.trim()}
-                className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
-              >
-                {isSubmittingCancel ? "Memproses..." : "Konfirmasi Batal"}
+              <button type="button" onClick={handleProcessCancelOrRefund} disabled={isSubmittingCancel || !cancelReason.trim()} className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs">
+                {isSubmittingCancel ? "Memproses..." : isPaid && !isRefundable ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* E-Ticket Modal Popup */}
       {selectedBooking && (

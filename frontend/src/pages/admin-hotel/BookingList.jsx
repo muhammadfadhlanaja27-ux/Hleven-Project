@@ -137,6 +137,8 @@ export default function BookingList() {
   const [confirmCheckInBooking, setConfirmCheckInBooking] = useState(null);
   const [confirmCheckOutBooking, setConfirmCheckOutBooking] = useState(null);
   const [confirmCancelBooking, setConfirmCancelBooking] = useState(null);
+  const [confirmRefundApprove, setConfirmRefundApprove] = useState(null);
+  const [confirmRefundReject, setConfirmRefundReject] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -176,6 +178,7 @@ export default function BookingList() {
   const checkedInCount = bookings.filter((b) => b.bookingStatus === "Checked In").length;
   const checkedOutCount = bookings.filter((b) => b.bookingStatus === "Checked Out").length;
   const cancelledCount = bookings.filter((b) => b.bookingStatus === "Cancelled").length;
+  const refundPendingCount = bookings.filter((b) => b.bookingStatus === "Refund Pending").length;
   const paidRevenueTotal = bookings
     .filter((b) => b.paymentStatus === "Paid")
     .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -328,6 +331,29 @@ export default function BookingList() {
     }
   };
 
+  const handleRefundDecision = async (booking, action) => {
+    if (!booking) return;
+    setIsProcessing(true);
+    try {
+      const res = await api.post(`/admin/bookings/${booking.id}/refund-approval`, { action });
+      toast.success(res.data?.message || (action === "approve" ? "Refund disetujui. Stok dikembalikan." : "Refund ditolak. Status kembali Paid."));
+      setConfirmRefundApprove(null);
+      setConfirmRefundReject(null);
+      if (viewingBooking && viewingBooking.id === booking.id) {
+        setViewingBooking((prev) => ({
+          ...prev,
+          bookingStatus: action === "approve" ? "Refunded" : "Confirmed",
+          rawStatus: action === "approve" ? "refunded" : "paid",
+        }));
+      }
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memproses refund.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
@@ -351,7 +377,7 @@ export default function BookingList() {
       </div>
 
       {/* SUMMARY CARDS DASHBOARD HEADER */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Card 1: Total */}
         <div
           onClick={() => {
@@ -473,6 +499,26 @@ export default function BookingList() {
           </p>
         </div>
 
+        {/* Card 6b: Refund Pending */}
+        <div
+          onClick={() => {
+            setBookingStatusFilter("Refund Pending");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            bookingStatusFilter === "Refund Pending"
+              ? "bg-[#0369A1] text-white border-[#0369A1] shadow"
+              : "bg-white text-[#2D312C] border-[#E5E1DA] hover:border-[#0369A1]"
+          }`}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider block opacity-80">
+            Refund Pending
+          </span>
+          <p className="font-['Newsreader',serif] text-2xl font-bold mt-1">
+            {refundPendingCount}
+          </p>
+        </div>
+
         {/* Card 7: Paid Revenue */}
         <div
           onClick={() => {
@@ -533,6 +579,8 @@ export default function BookingList() {
               <option value="Checked Out">Checked Out</option>
               <option value="Cancelled">Cancelled</option>
               <option value="Expired">Expired</option>
+              <option value="Refund Pending">Refund Pending</option>
+              <option value="Refunded">Refunded</option>
             </select>
 
             {/* Payment Status */}
@@ -739,6 +787,14 @@ export default function BookingList() {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FFF0E0] text-[#9B5235]">
                             Pending
                           </span>
+                        ) : b.bookingStatus === "Refund Pending" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E0F2FE] text-[#0369A1] border border-[#0369A1]/20">
+                            Refund Pending
+                          </span>
+                        ) : b.bookingStatus === "Refunded" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a]">
+                            Refunded
+                          </span>
                         ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a]">
                             {b.bookingStatus}
@@ -764,6 +820,22 @@ export default function BookingList() {
                             >
                               Check Out
                             </button>
+                          )}
+                          {b.bookingStatus === "Refund Pending" && (
+                            <>
+                              <button
+                                onClick={() => setConfirmRefundApprove(b)}
+                                className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => setConfirmRefundReject(b)}
+                                className="px-3 py-1.5 border border-[#ba1a1a] text-[#ba1a1a] rounded-lg text-xs font-semibold hover:bg-[#ffdad6] transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => setViewingBooking(b)}
@@ -890,7 +962,23 @@ export default function BookingList() {
               </div>
 
               {/* Dynamic Actions in Header */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {viewingBooking.bookingStatus === "Refund Pending" && (
+                  <>
+                    <button
+                      onClick={() => setConfirmRefundApprove(viewingBooking)}
+                      className="px-4 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm"
+                    >
+                      Approve Refund
+                    </button>
+                    <button
+                      onClick={() => setConfirmRefundReject(viewingBooking)}
+                      className="px-4 py-2 border border-[#ba1a1a] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6] transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
                 {viewingBooking.bookingStatus === "Confirmed" && (
                   <>
                     <button
@@ -1274,6 +1362,50 @@ export default function BookingList() {
               >
                 {isProcessing ? "Cancelling..." : "Confirm Cancellation"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmRefundApprove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-[#E4EBE0] text-[#4A5D43] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">verified</span>
+              </div>
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Approve Refund?</h3>
+                <p className="text-xs text-[#6B6E6A] mt-1">
+                  Setujui refund untuk <strong className="text-[#2D312C]">{confirmRefundApprove.bookingCode}</strong>? Stok kamar akan dikembalikan dan status menjadi Refunded.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmRefundApprove(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors">Batal</button>
+              <button type="button" onClick={() => handleRefundDecision(confirmRefundApprove, "approve")} disabled={isProcessing} className="px-6 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm disabled:opacity-50">{isProcessing ? "Memproses..." : "Approve Refund"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmRefundReject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">block</span>
+              </div>
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Reject Refund?</h3>
+                <p className="text-xs text-[#6B6E6A] mt-1">
+                  Tolak refund <strong className="text-[#2D312C]">{confirmRefundReject.bookingCode}</strong>? Status akan kembali Paid.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmRefundReject(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors">Batal</button>
+              <button type="button" onClick={() => handleRefundDecision(confirmRefundReject, "reject")} disabled={isProcessing} className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50">{isProcessing ? "Memproses..." : "Reject Refund"}</button>
             </div>
           </div>
         </div>

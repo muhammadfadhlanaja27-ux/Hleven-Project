@@ -601,9 +601,9 @@ const BookingHistory = () => {
                         <button
                           type="button"
                           onClick={() => setCancelModalBooking(item)}
-                          className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
+                          className={`px-4 py-2 rounded-xl font-label-md text-xs font-semibold transition-colors cursor-pointer ${item.is_refundable === false ? "bg-[#ba1a1a] text-white hover:bg-[#93000a]" : "bg-[#ba1a1a] text-white hover:bg-[#93000a]"}`}
                         >
-                          Ajukan Refund
+                          {item.is_refundable === false ? "Batalkan (Hangus)" : "Ajukan Refund"}
                         </button>
                       )}
 
@@ -641,15 +641,27 @@ const BookingHistory = () => {
       </main>
 
       {/* MODAL REFUND / CANCEL (Phase 1) */}
-      {cancelModalBooking && (
+      {cancelModalBooking && (() => {
+        const isPaid = ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(cancelModalBooking.status);
+        const isRefundable = cancelModalBooking.is_refundable !== false;
+        const title = !isPaid ? "Batalkan Pesanan" : isRefundable ? "Pengajuan Refund" : "Batalkan Pesanan (Hangus)";
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
-            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
-              {["pending", "unpaid"].includes(cancelModalBooking.status) ? "Batalkan Pesanan" : "Pengajuan Refund"}
-            </h3>
+            <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">{title}</h3>
             <p className="font-body-md text-xs text-[#444842]">
               Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
             </p>
+            {isPaid && !isRefundable && (
+              <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
+                Kamar non-refundable — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar akan dikembalikan, pembayaran tetap hangus.
+              </div>
+            )}
+            {isPaid && isRefundable && (
+              <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
+                Pengajuan refund akan dikirim ke admin. Dana kembali menunggu persetujuan.
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="block font-label-md text-xs font-semibold text-[#444842]">
@@ -679,12 +691,13 @@ const BookingHistory = () => {
                 disabled={isSubmittingCancel || !cancelReason.trim()}
                 className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
               >
-                {isSubmittingCancel ? "Memproses..." : "Konfirmasi Pembatalan"}
+                {isSubmittingCancel ? "Memproses..." : isPaid && !isRefundable ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* E-Ticket Modal Popup (ticket.html design) */}
       {selectedBooking && (
