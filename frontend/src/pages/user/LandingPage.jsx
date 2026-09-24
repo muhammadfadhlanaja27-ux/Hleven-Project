@@ -8,18 +8,16 @@ import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 12;
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Tanggal Default (Hari Ini & Besok) berbasis Object Date
   const today = useMemo(() => new Date(), []);
   const tomorrow = useMemo(() => new Date(Date.now() + 86400000), []);
 
-  // Search Bar States
   const [searchTerm, setSearchTerm] = useState("");
   const [checkInDate, setCheckInDate] = useState(today);
   const [checkOutDate, setCheckOutDate] = useState(tomorrow);
@@ -27,26 +25,21 @@ const LandingPage = () => {
   const [children, setChildren] = useState(0);
   const [rooms, setRooms] = useState(1);
 
-  // Modal State for room addition
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [pendingAdults, setPendingAdults] = useState(2);
 
-  // Sidebar Filter States
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedFacilities, setSelectedFacilities] = useState([]);
 
-  // Sorting & Pagination States
   const [sortBy, setSortBy] = useState("recommendation");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, checkInDate, checkOutDate, adults, children, rooms, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
-  // Fetch Hotels with Search Params (Cached)
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
@@ -83,7 +76,6 @@ const LandingPage = () => {
     fetchHotels();
   }, []);
 
-  // Handler Perubahan Tanggal Check-in & Check-out (Unified Range)
   const handleDateRangeChange = (dates) => {
     const [start, end] = dates;
     setCheckInDate(start);
@@ -102,23 +94,6 @@ const LandingPage = () => {
 
   const handleSearch = () => {
     navigate(buildSearchUrl());
-  };
-
-  // Filter Handlers
-  const handleStarToggle = (starRating) => {
-    setSelectedStars((prev) =>
-      prev.includes(starRating)
-        ? prev.filter((s) => s !== starRating)
-        : [...prev, starRating]
-    );
-  };
-
-  const handleFacilityToggle = (facilityName) => {
-    setSelectedFacilities((prev) =>
-      prev.includes(facilityName)
-        ? prev.filter((f) => f !== facilityName)
-        : [...prev, facilityName]
-    );
   };
 
   const handleResetFilters = () => {
@@ -148,7 +123,6 @@ const LandingPage = () => {
     setShowRoomModal(false);
   };
 
-  // Filtered and Sorted Hotels Calculation
   const filteredHotels = useMemo(() => {
     return hotels
       .filter((hotel) => {
@@ -197,9 +171,7 @@ const LandingPage = () => {
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased overflow-x-hidden max-w-full">
-      {/* Hero Section (overflow-visible agar popover kalender tidak terpotong) */}
       <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-visible py-12 px-4">
-        {/* Gambar background dibungkus khusus div overflow-hidden */}
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
@@ -217,9 +189,7 @@ const LandingPage = () => {
             Platform reservasi hotel modern yang memberikan kemudahan pencarian, perbandingan harga, dan manajemen pemesanan secara cerdas dan aman.
           </p>
 
-          {/* Floating Search Bar */}
           <div className="w-full max-w-5xl bg-[#fff8f0] p-4 rounded-2xl shadow-xl shadow-[#778873]/10 flex flex-col lg:flex-row gap-3 items-center">
-            {/* Destinasi / Hotel Input */}
             <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Destinasi / Hotel
@@ -238,7 +208,6 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Tanggal Check-in & Check-out Unified Range */}
             <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left relative z-20">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Tanggal Check-in &amp; Check-out
@@ -263,7 +232,6 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Tamu & Kamar - Guest Selector Component */}
             <GuestSelector
               adults={adults}
               children={children}
@@ -272,7 +240,6 @@ const LandingPage = () => {
               onAddRoomRequest={handleAddRoomRequest}
             />
 
-            {/* Search Action Button */}
             <button
               type="button"
               onClick={handleSearch}
@@ -285,106 +252,9 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16 flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filters */}
-        <aside className="w-full lg:w-1/4 flex flex-col gap-6">
-          <div className="bg-[#FDF6ED] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
-            <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-3">
-              <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
-                Filter Pencarian
-              </h3>
-              {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedFacilities.length > 0) && (
-                <button
-                  onClick={handleResetFilters}
-                  className="text-xs text-[#778873] font-semibold hover:underline"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-
-            {/* Rentang Harga Filter */}
-            <div className="mb-6">
-              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Rentang Harga (per malam)
-              </h4>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  placeholder="Rp Min"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
-                />
-                <span className="text-[#c4c8bf] font-bold">-</span>
-                <input
-                  type="number"
-                  placeholder="Rp Max"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Star Rating Filter */}
-            <div className="mb-6">
-              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Bintang Hotel
-              </h4>
-              <div className="flex flex-col gap-2.5">
-                {[5, 4, 3].map((star) => (
-                  <label key={star} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedStars.includes(star)}
-                      onChange={() => handleStarToggle(star)}
-                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
-                    />
-                    <div className="flex text-[#D48C45]">
-                      {Array.from({ length: star }).map((_, i) => (
-                        <span
-                          key={i}
-                          className="material-symbols-outlined text-sm"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          star
-                        </span>
-                      ))}
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Facilities Filter */}
-            <div>
-              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Fasilitas Populer
-              </h4>
-              <div className="flex flex-col gap-2.5">
-                {["WiFi Gratis", "Kolam Renang", "Spa & Wellness", "Restoran"].map((fac) => (
-                  <label key={fac} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedFacilities.includes(fac)}
-                      onChange={() => handleFacilityToggle(fac)}
-                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
-                    />
-                    <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
-                      {fac}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Featured Hotels Grid */}
-        <div className="w-full lg:w-3/4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4 text-left">
+      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16">
+        <div className="w-full">
+          <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
             <div>
               <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
                 Rekomendasi Hotel
@@ -394,7 +264,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3 py-1.5 rounded-lg border border-[#DCCFC0]/50">
+            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3.5 py-2 rounded-xl border border-[#DCCFC0]/60 shrink-0">
               <span className="text-[#444842] text-xs font-semibold">Urutkan:</span>
               <select
                 value={sortBy}
@@ -409,15 +279,14 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Skeleton Loader / Grid */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-[#FDF6ED] rounded-2xl h-80 animate-pulse border border-[#DCCFC0]/30"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-[#E8E2D9] shadow-xs"></div>
               ))}
             </div>
           ) : filteredHotels.length === 0 ? (
-            <div className="bg-[#FDF6ED] border border-[#DCCFC0]/50 rounded-2xl p-12 text-center my-6">
+            <div className="bg-white border border-[#E8E2D9] rounded-2xl p-12 text-center my-6 shadow-xs">
               <span className="material-symbols-outlined text-4xl text-[#747871] mb-3">
                 search_off
               </span>
@@ -435,15 +304,21 @@ const LandingPage = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {displayedHotels.map((hotel) => (
-                <HotelCard key={hotel.id} hotel={hotel} adults={adults} children={children} />
+                <HotelCard
+                  key={hotel.id}
+                  hotel={hotel}
+                  adults={adults}
+                  children={children}
+                  variant="vertical"
+                  customUrl="/hotels"
+                />
               ))}
             </div>
           )}
 
-          {/* Pagination */}
-          {!loading && filteredHotels.length > 10 && (
+          {!loading && filteredHotels.length > ITEMS_PER_PAGE && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -455,7 +330,6 @@ const LandingPage = () => {
         </div>
       </main>
 
-      {/* Room Addition Modal */}
       {showRoomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div

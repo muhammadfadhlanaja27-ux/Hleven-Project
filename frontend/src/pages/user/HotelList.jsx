@@ -7,7 +7,8 @@ import Pagination from "../../components/common/Pagination";
 import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
 
-const ITEMS_PER_PAGE = 10;
+const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
+const ITEMS_PER_PAGE = 8;
 
 const HotelList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,7 +17,6 @@ const HotelList = () => {
 
   const today = useMemo(() => new Date(), []);
 
-  // Search & Filter States — diinisialisasi dari URL (sumber kebenaran)
   const parseDateParam = (key) => {
     const raw = searchParams.get(key);
     const parsed = raw ? new Date(`${raw}T00:00:00`) : null;
@@ -35,12 +35,10 @@ const HotelList = () => {
   const [sortBy, setSortBy] = useState("recommendation");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
-  // ponytail: backend /hotels hanya filter `search`; adults/children/date diteruskan untuk konsistensi UI
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
@@ -85,7 +83,6 @@ const HotelList = () => {
     );
   };
 
-  // Sinkronkan guest/date/search ke URL agar bisa di-refresh & dibagikan
   const syncUrlParams = (overrides = {}) => {
     const next = {
       search: searchTerm,
@@ -184,42 +181,51 @@ const HotelList = () => {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 200, behavior: "smooth" });
+    window.scrollTo({ top: 450, behavior: "smooth" });
   };
 
   return (
-    <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
-      {/* Top Banner Header */}
-      <section className="bg-[#FDF6ED] border-b border-[#DCCFC0]/40 py-12 px-4">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-10 text-left">
-          <h1 className="font-headline-xl text-3xl md:text-5xl font-bold text-[#778873] mb-3 leading-tight">
+    <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen overflow-x-hidden max-w-full">
+      {/* Hero Section dengan Foto Background */}
+      <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-visible py-12 px-4">
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
+            style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
+          >
+            <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"></div>
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-[1280px] px-4 md:px-10 mx-auto flex flex-col items-center text-center">
+          <h1 className="font-headline-xl text-3xl md:text-5xl text-white mb-4 max-w-4xl leading-tight drop-shadow-md">
             Jelajah Hotel &amp; Resort H'Leven
           </h1>
-          <p className="font-body-lg text-base md:text-lg text-[#444842] max-w-2xl">
+          <p className="font-body-lg text-base md:text-lg text-white/90 mb-10 max-w-2xl drop-shadow">
             Temukan akomodasi mewah terbaik di berbagai destinasi impian Anda dengan harga dan kenyamanan tak tertandingi.
           </p>
 
-          {/* Inline Search Bar */}
-          <div className="mt-8 bg-[#fff8f0] p-4 rounded-2xl border border-[#DCCFC0] shadow-sm flex flex-col lg:flex-row gap-3 items-center">
+          {/* Floating Search Bar */}
+          <div className="w-full max-w-5xl bg-[#fff8f0] p-4 rounded-2xl shadow-xl shadow-[#778873]/10 flex flex-col lg:flex-row gap-3 items-center">
             <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Destinasi / Hotel
               </label>
               <div className="flex items-center w-full mt-1">
                 <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
-                  search
+                  location_on
                 </span>
                 <input
                   type="text"
-                  placeholder="Cari hotel berdasarkan nama, kota, atau area..."
+                  placeholder="Bandung, Jakarta, Bali..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-transparent border-none focus:ring-0 text-sm font-body-md text-[#1e1b16] outline-none"
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] placeholder-[#747871] outline-none"
                 />
               </div>
             </div>
 
-            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left relative z-20">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Tanggal Check-in &amp; Check-out
               </label>
@@ -233,9 +239,11 @@ const HotelList = () => {
                   endDate={checkOutDate}
                   onChange={handleDateRangeChange}
                   minDate={today}
-                  monthsShown={2}
+                  monthsShown={window.innerWidth > 640 ? 2 : 1}
                   dateFormat="dd/MM/yyyy"
                   placeholderText="Pilih Check-in - Check-out"
+                  popperPlacement="bottom-start"
+                  popperContainer={({ children }) => <div style={{ zIndex: 9999 }}>{children}</div>}
                   className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
                 />
               </div>
@@ -260,11 +268,11 @@ const HotelList = () => {
         </div>
       </section>
 
-      {/* Main Content: Sidebar Filters & Grid */}
-      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-12 flex flex-col lg:flex-row gap-8">
+      {/* Main Content Area: Sidebar Filter + Hotel List */}
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-16 flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
         <aside className="w-full lg:w-1/4 flex flex-col gap-6">
-          <div className="bg-[#FDF6ED] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
+          <div className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
             <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-3">
               <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
                 Filter Pencarian
@@ -290,7 +298,7 @@ const HotelList = () => {
                   placeholder="Rp Min"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
+                  className="w-full bg-[#ffffff] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
                 />
                 <span className="text-[#c4c8bf] font-bold">-</span>
                 <input
@@ -298,12 +306,12 @@ const HotelList = () => {
                   placeholder="Rp Max"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
+                  className="w-full bg-[#ffffff] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
                 />
               </div>
             </div>
 
-            {/* Star Rating Filter */}
+            {/* Bintang Hotel Filter */}
             <div className="mb-6">
               <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
                 Bintang Hotel
@@ -333,7 +341,7 @@ const HotelList = () => {
               </div>
             </div>
 
-            {/* Popular Facilities Filter */}
+            {/* Fasilitas Filter */}
             <div>
               <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
                 Fasilitas Populer
@@ -357,11 +365,12 @@ const HotelList = () => {
           </div>
         </aside>
 
-        {/* Hotel Grid Area */}
+        {/* List Hotel Area */}
         <div className="w-full lg:w-3/4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4 text-left">
+          {/* Card Putih Header & Sort */}
+          <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
             <div>
-              <h2 className="font-headline-lg text-2xl font-semibold text-[#778873] mb-1">
+              <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
                 Semua Hotel ({filteredHotels.length})
               </h2>
               <p className="font-body-md text-sm text-[#444842]">
@@ -369,7 +378,7 @@ const HotelList = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3 py-1.5 rounded-lg border border-[#DCCFC0]/50">
+            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3.5 py-2 rounded-xl border border-[#DCCFC0]/60 shrink-0">
               <span className="text-[#444842] text-xs font-semibold">Urutkan:</span>
               <select
                 value={sortBy}
@@ -384,14 +393,15 @@ const HotelList = () => {
             </div>
           </div>
 
+          {/* List Card Hotel Horizontal */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-[#FDF6ED] rounded-2xl h-80 animate-pulse border border-[#DCCFC0]/30"></div>
+            <div className="flex flex-col gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white rounded-2xl h-48 animate-pulse border border-[#E8E2D9] shadow-xs"></div>
               ))}
             </div>
           ) : filteredHotels.length === 0 ? (
-            <div className="bg-[#FDF6ED] border border-[#DCCFC0]/50 rounded-2xl p-12 text-center my-6">
+            <div className="bg-white border border-[#E8E2D9] rounded-2xl p-12 text-center my-6 shadow-xs">
               <span className="material-symbols-outlined text-4xl text-[#747871] mb-3">
                 search_off
               </span>
@@ -409,14 +419,20 @@ const HotelList = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="flex flex-col gap-4">
               {displayedHotels.map((hotel) => (
-                <HotelCard key={hotel.id} hotel={hotel} />
+                <HotelCard
+                  key={hotel.id}
+                  hotel={hotel}
+                  adults={adults}
+                  children={children}
+                  variant="horizontal"
+                />
               ))}
             </div>
           )}
 
-          {!loading && filteredHotels.length > 10 && (
+          {!loading && filteredHotels.length > ITEMS_PER_PAGE && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
