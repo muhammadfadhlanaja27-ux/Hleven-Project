@@ -117,6 +117,9 @@ export default function Dashboard() {
   const [error, setError]         = useState(null);
   const [revPeriod, setRevPeriod] = useState('monthly');
   const [trendPeriod, setTrendPeriod] = useState('monthly');
+  const [customRevFrom, setCustomRevFrom] = useState('');
+  const [customRevTo, setCustomRevTo] = useState('');
+  const [customRevMonth, setCustomRevMonth] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [warnings, setWarnings]   = useState([]);
 
@@ -145,11 +148,20 @@ export default function Dashboard() {
     fetchWarnings();
   }, []);
 
+  const buildDashboardUrl = () => {
+    const params = new URLSearchParams();
+    if (customRevFrom && customRevTo) { params.set('rev_from', customRevFrom); params.set('rev_to', customRevTo); }
+    else if (customRevMonth) { params.set('rev_month', customRevMonth); }
+    const qs = params.toString();
+    return `/admin/hotel/dashboard${qs ? `?${qs}` : ''}`;
+  };
+
   const fetchStats = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const { data: resData } = await cachedGet('/admin/hotel/dashboard', {}, forceRefresh);
+      const url = buildDashboardUrl();
+      const { data: resData } = await cachedGet(url, {}, forceRefresh);
       const data = resData?.data;
       if (!data) throw new Error('Format data tidak valid dari server.');
       setStats(data);
@@ -185,8 +197,13 @@ export default function Dashboard() {
 
   const chartRaw = Array.isArray(stats?.monthly_chart) ? stats.monthly_chart : [];
 
+  const weeklyRevenueChartRaw = Array.isArray(stats?.weekly_revenue_chart) ? stats.weekly_revenue_chart : [];
   // Filtered revenue data for Recharts BarChart
   const getRevenueChartData = () => {
+    const hasCustom = !!(customRevFrom && customRevTo || customRevMonth);
+    if (hasCustom) {
+      return chartRaw.map((d) => ({ name: d.month, amount: Number(d.amount || 0) }));
+    }
     if (revPeriod === 'monthly') {
       return chartRaw.map((d) => ({ name: d.month, amount: Number(d.amount || 0) }));
     }
@@ -194,7 +211,7 @@ export default function Dashboard() {
       return [{ name: 'Hari Ini', amount: revenueByPeriod.daily }];
     }
     if (revPeriod === 'weekly') {
-      return [{ name: 'Minggu Ini', amount: revenueByPeriod.weekly }];
+      return weeklyRevenueChartRaw.map((d) => ({ name: d.name, amount: Number(d.amount || 0) }));
     }
     if (revPeriod === 'yearly') {
       return [{ name: 'Tahun Ini', amount: revenueByPeriod.yearly }];
@@ -534,25 +551,43 @@ export default function Dashboard() {
               <h3 className="font-['Inter',sans-serif] text-lg font-bold text-[#2D312C]">
                 Analisis Pendapatan
               </h3>
-              <div className="flex gap-1.5 p-1 bg-[#f0ede9] rounded-full self-start">
-                {[
-                  { id: 'daily', label: 'Harian' },
-                  { id: 'weekly', label: 'Mingguan' },
-                  { id: 'monthly', label: 'Bulanan' },
-                  { id: 'yearly', label: 'Tahunan' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setRevPeriod(item.id)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
-                      revPeriod === item.id
-                        ? 'bg-[#506147] text-white shadow-xs'
-                        : 'text-[#6B6E6A] hover:text-[#2D312C]'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex gap-1.5 p-1 bg-[#f0ede9] rounded-full">
+                  {[
+                    { id: 'daily', label: 'Harian' },
+                    { id: 'weekly', label: 'Mingguan' },
+                    { id: 'monthly', label: 'Bulanan' },
+                    { id: 'yearly', label: 'Tahunan' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setRevPeriod(item.id)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+                        revPeriod === item.id
+                          ? 'bg-[#506147] text-white shadow-xs'
+                          : 'text-[#6B6E6A] hover:text-[#2D312C]'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                {revPeriod === 'daily' && (
+                  <div className="flex items-center gap-1.5">
+                    <input type="date" value={customRevFrom} onChange={(e) => setCustomRevFrom(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+                    <span className="text-xs text-[#6B6E6A]">s/d</span>
+                    <input type="date" value={customRevTo} onChange={(e) => setCustomRevTo(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
+                    {(customRevFrom || customRevTo) && <button type="button" onClick={() => { setCustomRevFrom(''); setCustomRevTo(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
+                  </div>
+                )}
+                {revPeriod === 'monthly' && (
+                  <div className="flex items-center gap-1.5">
+                    <input type="month" value={customRevMonth} onChange={(e) => setCustomRevMonth(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
+                    {customRevMonth && <button type="button" onClick={() => { setCustomRevMonth(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
+                  </div>
+                )}
               </div>
             </div>
 

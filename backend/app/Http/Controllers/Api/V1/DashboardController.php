@@ -24,6 +24,12 @@ class DashboardController extends Controller
 
         $hotelId = $hotel->id;
 
+        $revFrom = $request->query('rev_from');
+        $revTo = $request->query('rev_to');
+        $revMonth = $request->query('rev_month');
+        $hasCustomRange = $revFrom && $revTo && strtotime($revFrom) && strtotime($revTo);
+        $hasCustomMonth = $revMonth && preg_match('/^\d{4}-\d{2}$/', $revMonth);
+
         $totalRooms = RoomType::where('hotel_id', $hotelId)->sum('stock');
         $occupiedRooms = BookingRoom::whereHas('booking', function ($q) use ($hotelId) {
             $q->where('hotel_id', $hotelId)->where('status', 'checked_in');
@@ -32,11 +38,26 @@ class DashboardController extends Controller
 
         $revenueQuery = Booking::where('hotel_id', $hotelId)
             ->whereIn('status', ['paid', 'checked_in', 'checked_out']);
+        $bookingTrendBase = Booking::where('hotel_id', $hotelId);
+
+        if ($hasCustomRange) {
+            try {
+                $fromDate = \Carbon\Carbon::parse($revFrom)->startOfDay();
+                $toDate = \Carbon\Carbon::parse($revTo)->endOfDay();
+                $revenueQuery->whereBetween('created_at', [$fromDate, $toDate]);
+                $bookingTrendBase->whereBetween('created_at', [$fromDate, $toDate]);
+            } catch (\Exception $e) {}
+        } elseif ($hasCustomMonth) {
+            [$y, $m] = explode('-', $revMonth);
+            $revenueQuery->whereYear('created_at', (int)$y)->whereMonth('created_at', (int)$m);
+            $bookingTrendBase->whereYear('created_at', (int)$y)->whereMonth('created_at', (int)$m);
+        }
 
         $totalRevenue = (clone $revenueQuery)->sum('grand_total');
+        $hasCustom = $hasCustomRange || $hasCustomMonth;
 
         $today = now()->toDateString();
-        $todayStats = Booking::where('hotel_id', $hotelId)
+        $todayStats = (clone $bookingTrendBase)
             ->selectRaw('
                 COUNT(CASE WHEN DATE(created_at) = ? THEN 1 END) as today_bookings,
                 COUNT(CASE WHEN DATE(check_in) = ? THEN 1 END) as today_checkins,
@@ -44,7 +65,7 @@ class DashboardController extends Controller
             ', [$today, $today, $today])
             ->first();
 
-        $bookingStatuses = Booking::where('hotel_id', $hotelId)
+        $bookingStatuses = (clone $bookingTrendBase)
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
@@ -65,106 +86,191 @@ class DashboardController extends Controller
         $currentMonth = now()->month;
         $currentYear = now()->year;
 
-        $revenueStats = (clone $revenueQuery)
-            ->selectRaw('
-                SUM(CASE WHEN DATE(created_at) = ? THEN grand_total ELSE 0 END) as daily,
-                SUM(CASE WHEN DATE(created_at) BETWEEN ? AND ? THEN grand_total ELSE 0 END) as weekly,
-                SUM(CASE WHEN EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? THEN grand_total ELSE 0 END) as monthly,
-                SUM(CASE WHEN EXTRACT(YEAR FROM created_at) = ? THEN grand_total ELSE 0 END) as yearly
-            ', [$today, $startOfWeek, $endOfWeek, $currentMonth, $currentYear, $currentYear])
-            ->first();
+        if ($hasCustom) {
+            $revenueDetails = [
+                'daily' => (float) $totalRevenue,
+                'weekly' => (float) $totalRevenue,
+                'monthly' => (float) $totalRevenue,
+                'yearly' => (float) $totalRevenue,
+            ];
+        } else {
+            $revenueStats = (clone $revenueQuery)
+                ->selectRaw('
+                    SUM(CASE WHEN DATE(created_at) = ? THEN grand_total ELSE 0 END) as daily,
+                    SUM(CASE WHEN DATE(created_at) BETWEEN ? AND ? THEN grand_total ELSE 0 END) as weekly,
+                    SUM(CASE WHEN EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? THEN grand_total ELSE 0 END) as monthly,
+                    SUM(CASE WHEN EXTRACT(YEAR FROM created_at) = ? THEN grand_total ELSE 0 END) as yearly
+                ', [$today, $startOfWeek, $endOfWeek, $currentMonth, $currentYear, $currentYear])
+                ->first();
 
-        $revenueDetails = [
-            'daily' => (float) ($revenueStats->daily ?? 0),
-            'weekly' => (float) ($revenueStats->weekly ?? 0),
-            'monthly' => (float) ($revenueStats->monthly ?? 0),
-            'yearly' => (float) ($revenueStats->yearly ?? 0),
-        ];
-
-        $monthlyData = (clone $revenueQuery)
-            ->whereYear('created_at', $currentYear)
-            ->selectRaw('EXTRACT(MONTH FROM created_at) as month, SUM(grand_total) as amount')
-            ->groupBy('month')
-            ->pluck('amount', 'month');
+            $revenueDetails = [
+                'daily' => (float) ($revenueStats->daily ?? 0),
+                'weekly' => (float) ($revenueStats->weekly ?? 0),
+                'monthly' => (float) ($revenueStats->monthly ?? 0),
+                'yearly' => (float) ($revenueStats->yearly ?? 0),
+            ];
+        }
 
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        $monthlyChart = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $monthlyChart[] = [
-                'month' => $months[$m - 1],
-                'amount' => (float) ($monthlyData[$m] ?? 0),
-            ];
+        if ($hasCustomMonth) {
+            [$y, $m] = explode('-', $revMonth);
+            $y = (int)$y; $m = (int)$m;
+            $daysInMonth = \Carbon\Carbon::create($y, $m, 1)->daysInMonth;
+            $raw = (clone $revenueQuery)
+                ->selectRaw('EXTRACT(DAY FROM created_at) as d, SUM(grand_total) as amount')
+                ->groupBy('d')
+                ->pluck('amount', 'd');
+            $monthlyChart = [];
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $monthlyChart[] = [
+                    'month' => sprintf('%02d', $d),
+                    'amount' => (float) ($raw[$d] ?? 0),
+                ];
+            }
+        } elseif ($hasCustomRange) {
+            $fromDate = \Carbon\Carbon::parse($revFrom)->startOfDay();
+            $toDate = \Carbon\Carbon::parse($revTo)->startOfDay();
+            $raw = (clone $revenueQuery)
+                ->selectRaw('DATE(created_at) as d, SUM(grand_total) as amount')
+                ->groupBy('d')
+                ->pluck('amount', 'd');
+            $monthlyChart = [];
+            $period = \Carbon\CarbonPeriod::create($fromDate, $toDate);
+            foreach ($period as $date) {
+                $key = $date->format('Y-m-d');
+                $monthlyChart[] = [
+                    'month' => $date->format('d M'),
+                    'amount' => (float) ($raw[$key] ?? 0),
+                ];
+            }
+        } else {
+            $monthlyData = (clone $revenueQuery)
+                ->whereYear('created_at', $currentYear)
+                ->selectRaw('EXTRACT(MONTH FROM created_at) as month, SUM(grand_total) as amount')
+                ->groupBy('month')
+                ->pluck('amount', 'month');
+
+            $monthlyChart = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $monthlyChart[] = [
+                    'month' => $months[$m - 1],
+                    'amount' => (float) ($monthlyData[$m] ?? 0),
+                ];
+            }
         }
 
-        // Booking trend per bulan (Completed = paid/checked_in/checked_out, Pending = pending/unpaid)
-        $bookingTrend = Booking::where('hotel_id', $hotelId)
-            ->whereYear('created_at', $currentYear)
-            ->selectRaw('
-                EXTRACT(MONTH FROM created_at) as month,
-                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
-            ')
-            ->groupBy('month')
-            ->get()
-            ->keyBy('month');
+        if ($hasCustomMonth) {
+            [$y, $m] = explode('-', $revMonth);
+            $y = (int)$y; $m = (int)$m;
+            $daysInMonth = \Carbon\Carbon::create($y, $m, 1)->daysInMonth;
+            $rawTrend = (clone $bookingTrendBase)
+                ->selectRaw('EXTRACT(DAY FROM created_at) as d, SUM(CASE WHEN status IN (\'paid\', \'checked_in\', \'checked_out\') THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status IN (\'pending\', \'unpaid\') THEN 1 ELSE 0 END) as pending')
+                ->groupBy('d')
+                ->get()->keyBy('d');
+            $monthlyBookingChart = [];
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $t = $rawTrend->get($d);
+                $monthlyBookingChart[] = ['month' => sprintf('%02d', $d), 'completed' => (int)($t->completed ?? 0), 'pending' => (int)($t->pending ?? 0)];
+            }
+        } elseif ($hasCustomRange) {
+            $fromDate = \Carbon\Carbon::parse($revFrom)->startOfDay();
+            $toDate = \Carbon\Carbon::parse($revTo)->startOfDay();
+            $rawTrend = (clone $bookingTrendBase)
+                ->selectRaw('DATE(created_at) as d, SUM(CASE WHEN status IN (\'paid\', \'checked_in\', \'checked_out\') THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status IN (\'pending\', \'unpaid\') THEN 1 ELSE 0 END) as pending')
+                ->groupBy('d')
+                ->get()->keyBy('d');
+            $monthlyBookingChart = [];
+            $period = \Carbon\CarbonPeriod::create($fromDate, $toDate);
+            foreach ($period as $date) {
+                $key = $date->format('Y-m-d');
+                $t = $rawTrend->get($key);
+                $monthlyBookingChart[] = ['month' => $date->format('d M'), 'completed' => (int)($t->completed ?? 0), 'pending' => (int)($t->pending ?? 0)];
+            }
+        } else {
+            // Booking trend per bulan (Completed = paid/checked_in/checked_out, Pending = pending/unpaid)
+            $bookingTrend = (clone $bookingTrendBase)
+                ->whereYear('created_at', $currentYear)
+                ->selectRaw('
+                    EXTRACT(MONTH FROM created_at) as month,
+                    SUM(CASE WHEN status IN (\'paid\', \'checked_in\', \'checked_out\') THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN status IN (\'pending\', \'unpaid\') THEN 1 ELSE 0 END) as pending
+                ')
+                ->groupBy('month')
+                ->get()
+                ->keyBy('month');
 
-        $monthlyBookingChart = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $trend = $bookingTrend->get($m);
-            $monthlyBookingChart[] = [
-                'month' => $months[$m - 1],
-                'completed' => (int) ($trend->completed ?? 0),
-                'pending' => (int) ($trend->pending ?? 0),
-            ];
+            $monthlyBookingChart = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $trend = $bookingTrend->get($m);
+                $monthlyBookingChart[] = [
+                    'month' => $months[$m - 1],
+                    'completed' => (int) ($trend->completed ?? 0),
+                    'pending' => (int) ($trend->pending ?? 0),
+                ];
+            }
         }
 
-        // Booking trend harian — 7 hari terakhir
-        $dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-        $dailyTrend = Booking::where('hotel_id', $hotelId)
-            ->whereBetween('created_at', [now()->subDays(6)->startOfDay(), now()->endOfDay()])
+        // Booking trend harian — Hari Ini saja (1 nilai total)
+        $todayRow = Booking::where('hotel_id', $hotelId)
+            ->whereDate('created_at', $today)
             ->selectRaw('
-                DATE(created_at) as day,
-                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
+                SUM(CASE WHEN status IN (\'paid\', \'checked_in\', \'checked_out\') THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status IN (\'pending\', \'unpaid\') THEN 1 ELSE 0 END) as pending
             ')
-            ->groupBy('day')
-            ->get()
-            ->keyBy(fn ($r) => substr($r->day, 5));
+            ->first();
 
-        $dailyBookingChart = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $key = $date->format('Y-m-d');
-            $trend = $dailyTrend->get($key);
-            $dailyBookingChart[] = [
-                'label' => $dayNames[$date->dayOfWeek] . ' ' . $date->day,
-                'completed' => (int) ($trend->completed ?? 0),
-                'pending' => (int) ($trend->pending ?? 0),
-            ];
-        }
+        $dailyBookingChart = [[
+            'label' => 'Hari Ini',
+            'completed' => (int) ($todayRow->completed ?? 0),
+            'pending' => (int) ($todayRow->pending ?? 0),
+        ]];
 
-        // Booking trend mingguan — 8 minggu terakhir
-        $weeklyTrend = Booking::where('hotel_id', $hotelId)
-            ->whereBetween('created_at', [now()->subWeeks(7)->startOfWeek(), now()->endOfWeek()])
-            ->selectRaw('
-                EXTRACT(WEEK FROM created_at) as week,
-                EXTRACT(YEAR FROM created_at) as year,
-                SUM(CASE WHEN status IN ("paid", "checked_in", "checked_out") THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status IN ("pending", "unpaid") THEN 1 ELSE 0 END) as pending
-            ')
-            ->groupBy('year', 'week')
-            ->get();
+        // Booking trend mingguan — Minggu 1-4 dalam bulan (tanggal 1-7, 8-14, 15-21, 22-akhir)
+        $weekBaseMonth = $hasCustomMonth ? \Carbon\Carbon::createFromFormat('Y-m', $revMonth)->startOfMonth() : now()->startOfMonth();
+        $weekHotelId = $hotelId;
+        $weeklyTrendRaw = (clone $bookingTrendBase)
+            ->whereYear('created_at', $weekBaseMonth->year)
+            ->whereMonth('created_at', $weekBaseMonth->month)
+            ->selectRaw("
+                CASE WHEN EXTRACT(DAY FROM created_at) BETWEEN 1 AND 7 THEN 1
+                     WHEN EXTRACT(DAY FROM created_at) BETWEEN 8 AND 14 THEN 2
+                     WHEN EXTRACT(DAY FROM created_at) BETWEEN 15 AND 21 THEN 3
+                     ELSE 4 END as minggu,
+                SUM(CASE WHEN status IN ('paid', 'checked_in', 'checked_out') THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status IN ('pending', 'unpaid') THEN 1 ELSE 0 END) as pending
+            ")
+            ->groupBy('minggu')
+            ->get()->keyBy('minggu');
 
         $weeklyBookingChart = [];
-        for ($i = 7; $i >= 0; $i--) {
-            $weekStart = now()->subWeeks($i)->startOfWeek();
-            $weekYear = $weekStart->year;
-            $weekNum = $weekStart->weekOfYear;
-            $trend = $weeklyTrend->first(fn ($r) => (int) $r->year === $weekYear && (int) $r->week === $weekNum);
+        for ($w = 1; $w <= 4; $w++) {
+            $t = $weeklyTrendRaw->get($w);
             $weeklyBookingChart[] = [
-                'label' => 'M' . $weekNum,
-                'completed' => (int) ($trend->completed ?? 0),
-                'pending' => (int) ($trend->pending ?? 0),
+                'label' => 'Minggu ' . $w,
+                'completed' => (int) ($t->completed ?? 0),
+                'pending' => (int) ($t->pending ?? 0),
+            ];
+        }
+
+        // Revenue mingguan Minggu 1-4 (untuk grafik Analisis Pendapatan mode Mingguan)
+        $weeklyRevenueRaw = (clone $revenueQuery)
+            ->whereYear('created_at', $weekBaseMonth->year)
+            ->whereMonth('created_at', $weekBaseMonth->month)
+            ->selectRaw("
+                CASE WHEN EXTRACT(DAY FROM created_at) BETWEEN 1 AND 7 THEN 1
+                     WHEN EXTRACT(DAY FROM created_at) BETWEEN 8 AND 14 THEN 2
+                     WHEN EXTRACT(DAY FROM created_at) BETWEEN 15 AND 21 THEN 3
+                     ELSE 4 END as minggu,
+                SUM(grand_total) as amount
+            ")
+            ->groupBy('minggu')
+            ->pluck('amount', 'minggu');
+
+        $weeklyRevenueChart = [];
+        for ($w = 1; $w <= 4; $w++) {
+            $weeklyRevenueChart[] = [
+                'name' => 'Minggu ' . $w,
+                'amount' => (float) ($weeklyRevenueRaw[$w] ?? 0),
             ];
         }
 
@@ -213,6 +319,7 @@ class DashboardController extends Controller
                 'booking_breakdown' => $bookingBreakdown,
                 'revenue_details' => $revenueDetails,
                 'monthly_chart' => $monthlyChart,
+                'weekly_revenue_chart' => $weeklyRevenueChart,
                 'monthly_booking_chart' => $monthlyBookingChart,
                 'daily_booking_chart' => $dailyBookingChart,
                 'weekly_booking_chart' => $weeklyBookingChart,
