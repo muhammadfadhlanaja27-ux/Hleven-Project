@@ -16,13 +16,8 @@ export const getStorageUrl = (path = "") => {
     return str.replace("/storage/v1/s3", "/storage/v1/object/public");
   }
 
-  // Legacy localhost URLs stored in DB fix
-  if (str.includes("localhost:8000") || str.includes("127.0.0.1:8000")) {
-    return str.replace(/^(https?:\/\/)?(localhost|127\.0\.0\.1):8000\/?/, "");
-  }
-
-  // If already absolute URL or data URI
-  if (/^https?:\/\//i.test(str) || /^data:/i.test(str)) {
+  // Already absolute URL, blob URL, or data URI: keep as-is.
+  if (/^https?:\/\//i.test(str) || /^data:/i.test(str) || /^blob:/i.test(str)) {
     return str;
   }
 
@@ -33,6 +28,10 @@ export const getStorageUrl = (path = "") => {
   }
   if (cleanPath.startsWith("storage/")) {
     cleanPath = cleanPath.replace(/^storage\//, "");
+  }
+
+  if (str.startsWith("/storage/") || str.startsWith("storage/")) {
+    return `${base}/${str.startsWith("/") ? str.slice(1) : str}`;
   }
 
   return `${base}/storage/${cleanPath}`;

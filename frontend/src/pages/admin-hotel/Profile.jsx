@@ -33,12 +33,58 @@ const INITIAL_PROFILE = {
   },
 };
 
+const asText = (value, fallback = "") => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "object") {
+    if (typeof value.name === "string") return value.name;
+    if (typeof value.city === "string") return value.city;
+    if (typeof value.province === "string") return value.province;
+    return fallback;
+  }
+  return fallback;
+};
+
+const normalizeProfile = (value = {}) => {
+  const safeValue = value && typeof value === "object" ? value : {};
+  const safeHotel = safeValue.hotel && typeof safeValue.hotel === "object" ? safeValue.hotel : {};
+  const safePreferences = safeValue.preferences && typeof safeValue.preferences === "object" ? safeValue.preferences : {};
+
+  return {
+    ...INITIAL_PROFILE,
+    ...safeValue,
+    name: safeValue.name || "Admin Hotel",
+    email: safeValue.email || "admin@example.com",
+    phone: safeValue.phone || "",
+    role:
+      safeValue.role === "admin_hotel"
+        ? "Hotel Administrator"
+        : safeValue.role || "Hotel Administrator",
+    avatar: safeValue.avatar || null,
+    hotel: {
+      ...INITIAL_PROFILE.hotel,
+      ...safeHotel,
+      city: asText(safeHotel.city, INITIAL_PROFILE.hotel.city),
+      province: asText(safeHotel.province, INITIAL_PROFILE.hotel.province),
+      name: asText(safeHotel.name, INITIAL_PROFILE.hotel.name),
+      description: asText(safeHotel.description, INITIAL_PROFILE.hotel.description),
+      address: asText(safeHotel.address, INITIAL_PROFILE.hotel.address),
+      phone: asText(safeHotel.phone, INITIAL_PROFILE.hotel.phone),
+      email: asText(safeHotel.email, INITIAL_PROFILE.hotel.email),
+    },
+    preferences: {
+      ...INITIAL_PROFILE.preferences,
+      ...safePreferences,
+    },
+  };
+};
+
 const getInitialUser = () => {
   try {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const u = JSON.parse(userStr);
-      return {
+      return normalizeProfile({
         ...INITIAL_PROFILE,
         name: u.name || "Admin Hotel",
         email: u.email || "admin@example.com",
@@ -48,12 +94,12 @@ const getInitialUser = () => {
             ? "Hotel Administrator"
             : u.role || "Hotel Administrator",
         avatar: u.avatar || null,
-      };
+      });
     }
   } catch (e) {
     console.error(e);
   }
-  return INITIAL_PROFILE;
+  return normalizeProfile(INITIAL_PROFILE);
 };
 
 // ─── Password Strength Evaluator ──────────────────────────────────────────────
@@ -73,26 +119,26 @@ const evaluatePasswordStrength = (pwd) => {
 
 export default function Profile() {
   // ─── Local State ────────────────────────────────────────────────────────────
-  const [profile, setProfile] = useState(getInitialUser);
+  const [profile, setProfile] = useState(() => normalizeProfile(getInitialUser()));
 
   // Account Edit State
   const [editAccount, setEditAccount] = useState(false);
   const [accountForm, setAccountForm] = useState({
-    name: profile.name,
-    email: profile.email,
-    phone: profile.phone,
+    name: profile?.name || "",
+    email: profile?.email || "",
+    phone: profile?.phone || "",
   });
   const [accountErrors, setAccountErrors] = useState({});
   const [savingAccount, setSavingAccount] = useState(false);
 
   // Hotel Edit State
   const [editHotel, setEditHotel] = useState(false);
-  const [hotelForm, setHotelForm] = useState({ ...profile.hotel });
+  const [hotelForm, setHotelForm] = useState({ ...(profile?.hotel || INITIAL_PROFILE.hotel) });
   const [hotelErrors, setHotelErrors] = useState({});
   const [savingHotel, setSavingHotel] = useState(false);
 
   // Preferences State
-  const [preferencesForm, setPreferencesForm] = useState({ ...profile.preferences });
+  const [preferencesForm, setPreferencesForm] = useState({ ...(profile?.preferences || INITIAL_PROFILE.preferences) });
   const [savingPreferences, setSavingPreferences] = useState(false);
 
   // Password Modal State
@@ -139,15 +185,20 @@ export default function Profile() {
         if (hotelRes.status === "fulfilled" && hotelRes.value.data) {
           const h = hotelRes.value.data.data || hotelRes.value.data;
           if (h) {
-            setProfile((prev) => ({
+            const cityText = asText(h.city?.name || h.city?.city || h.city, prev.hotel.city);
+            const provinceText = asText(h.city?.province || h.province, prev.hotel.province);
+
+            setProfile((prev) => normalizeProfile({
               ...prev,
               hotel: {
                 ...prev.hotel,
-                name: h.name || prev.hotel.name,
-                description: h.description || prev.hotel.description,
-                address: h.address || prev.hotel.address,
-                city: h.city?.name || h.city || prev.hotel.city,
-                phone: h.phone || prev.hotel.phone,
+                name: asText(h.name, prev.hotel.name),
+                description: asText(h.description, prev.hotel.description),
+                address: asText(h.address, prev.hotel.address),
+                city: cityText,
+                province: provinceText,
+                phone: asText(h.phone, prev.hotel.phone),
+                email: asText(h.email, prev.hotel.email),
               },
             }));
           }
@@ -163,12 +214,12 @@ export default function Profile() {
   // Keep form states in sync when profile updates
   useEffect(() => {
     setAccountForm({
-      name: profile.name,
-      email: profile.email,
-      phone: profile.phone,
+      name: profile?.name || "",
+      email: profile?.email || "",
+      phone: profile?.phone || "",
     });
-    setHotelForm({ ...profile.hotel });
-    setPreferencesForm({ ...profile.preferences });
+    setHotelForm({ ...(profile?.hotel || INITIAL_PROFILE.hotel) });
+    setPreferencesForm({ ...(profile?.preferences || INITIAL_PROFILE.preferences) });
   }, [profile]);
 
   // ─── Image Handlers ─────────────────────────────────────────────────────────
@@ -181,17 +232,18 @@ export default function Profile() {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProfile((prev) => ({ ...prev, avatar: reader.result }));
+        setProfile((prev) => normalizeProfile({ ...prev, avatar: reader.result }));
       };
       reader.readAsDataURL(file);
 
       try {
         const formData = new FormData();
         formData.append("avatar", file);
-        const nameParts = profile.name.trim().split(" ");
+        const safeName = String(profile?.name || "").trim();
+        const nameParts = safeName ? safeName.split(/\s+/) : ["Admin"];
         formData.append("first_name", nameParts[0]);
         formData.append("last_name", nameParts.slice(1).join(" ") || "");
-        formData.append("email", profile.email);
+        formData.append("email", profile?.email || "");
         await api.put("/user/profile", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
@@ -266,8 +318,8 @@ export default function Profile() {
       const res = await api.put("/user/profile", {
         first_name,
         last_name,
-        email: accountForm.email.trim(),
-        phone: accountForm.phone.trim(),
+        email: (accountForm.email || "").trim(),
+        phone: (accountForm.phone || "").trim(),
       });
 
       const updatedUser =
@@ -286,11 +338,11 @@ export default function Profile() {
         console.error(err);
       }
 
-      setProfile((prev) => ({
+      setProfile((prev) => normalizeProfile({
         ...prev,
-        name: accountForm.name.trim(),
-        email: accountForm.email.trim(),
-        phone: accountForm.phone.trim(),
+        name: (accountForm.name || "").trim(),
+        email: (accountForm.email || "").trim(),
+        phone: (accountForm.phone || "").trim(),
       }));
 
       setEditAccount(false);
@@ -360,7 +412,7 @@ export default function Profile() {
         phone: hotelForm.phone.trim(),
       });
 
-      setProfile((prev) => ({
+      setProfile((prev) => normalizeProfile({
         ...prev,
         hotel: { ...hotelForm },
       }));
@@ -385,7 +437,7 @@ export default function Profile() {
     e.preventDefault();
     setSavingPreferences(true);
     setTimeout(() => {
-      setProfile((prev) => ({
+      setProfile((prev) => normalizeProfile({
         ...prev,
         preferences: { ...preferencesForm },
       }));
@@ -485,8 +537,9 @@ export default function Profile() {
               />
             ) : (
               <span className="font-['Newsreader',serif] text-4xl">
-                {profile.name
+                {(profile?.name || "Admin")
                   .split(" ")
+                  .filter(Boolean)
                   .map((n) => n[0])
                   .join("")
                   .slice(0, 2)}
@@ -515,7 +568,7 @@ export default function Profile() {
           <p className="text-sm text-[#6B6E6A] mt-1">{profile.email}</p>
           <div className="flex items-center justify-center md:justify-start gap-1.5 text-xs text-[#506147] font-medium mt-3">
             <span className="material-symbols-outlined text-[16px]">location_on</span>
-            <span>{profile.hotel.name} &bull; {profile.hotel.city}</span>
+            <span>{profile?.hotel?.name || "Grand H'Leven Hotel"} &bull; {asText(profile?.hotel?.city, "Bandung")}</span>
           </div>
         </div>
 
