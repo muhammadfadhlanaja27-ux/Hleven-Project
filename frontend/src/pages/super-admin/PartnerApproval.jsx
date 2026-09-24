@@ -52,9 +52,10 @@ const PartnerApproval = () => {
   const [rejectPartnerId, setRejectPartnerId] = useState(null);
   const [rejectLoading, setRejectLoading] = useState(false);
 
-  // Approve confirmation dialog
   const [pendingApprove, setPendingApprove] = useState(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [approveStar, setApproveStar] = useState("");
+  const [approveStarReason, setApproveStarReason] = useState("");
 
   // Fetch partners
   const fetchPartners = async (forceRefresh = false) => {
@@ -88,15 +89,20 @@ const PartnerApproval = () => {
   }, []);
 
   const handleApprove = (id) => {
+    const p = partners.find((x) => x.id === id);
+    setApproveStar(p?.requested_star_rating ? String(p.requested_star_rating) : "");
+    setApproveStarReason("");
     setPendingApprove(id);
   };
 
   const performApprove = async () => {
     if (!pendingApprove) return;
     const id = pendingApprove;
+    const selected = partners.find((x) => x.id === id);
+    const starToSend = approveStar ? Number(approveStar) : (selected?.requested_star_rating || null);
     setIsApproving(true);
     try {
-      await api.patch(`/super-admin/partners/${id}/approve`);
+      await api.patch(`/super-admin/partners/${id}/approve`, { star_rating: starToSend, star_verified_reason: approveStarReason || null });
       invalidateCache("/super-admin/partners");
       invalidateCache("/super-admin/dashboard");
       toast.success("Pengajuan mitra berhasil disetujui!");
@@ -564,6 +570,10 @@ const PartnerApproval = () => {
                       </p>
                     </div>
                     <div>
+                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">Bintang (Klaim Mitra)</p>
+                      <p className="font-medium text-[#191c1b] mt-0.5">{selectedPartner.requested_star_rating ? `★ ${selectedPartner.requested_star_rating}` : "Belum Bersertifikat"}</p>
+                    </div>
+                    <div>
                       <p className="text-[11px] uppercase tracking-wider text-[#747872]">
                         Application Date
                       </p>
@@ -738,17 +748,25 @@ const PartnerApproval = () => {
         </div>
       )}
 
-      {/* Confirm Approve Dialog */}
-      <ConfirmDialog
-        open={!!pendingApprove}
-        type="success"
-        title="Setujui Pengajuan Mitra"
-        message="Apakah Anda yakin ingin menyetujui pengajuan mitra ini?"
-        confirmText="Ya, Setujui"
-        processing={isApproving}
-        onConfirm={performApprove}
-        onCancel={() => setPendingApprove(null)}
-      />
+      {pendingApprove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => !isApproving && setPendingApprove(null)}></div>
+          <div className="relative bg-white rounded-xl border border-[#E5E0D8] p-6 max-w-md w-full z-10 font-hanken">
+            <h3 className="font-newsreader text-lg font-semibold mb-1">Setujui Mitra + Bintang</h3>
+            {(() => { const p = partners.find((x) => x.id === pendingApprove); return p?.requested_star_rating ? <p className="text-xs text-[#747872] mb-3">Klaim mitra: ★ {p.requested_star_rating} — koreksi di bawah jika perlu.</p> : null; })()}
+            <div className="space-y-3">
+              <select value={approveStar} onChange={(e) => setApproveStar(e.target.value)} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm">
+                <option value="">Belum Terverifikasi</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Bintang</option>)}
+              </select>
+              <textarea value={approveStarReason} onChange={(e) => setApproveStarReason(e.target.value)} placeholder="Alasan koreksi (opsional)" rows={2} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm resize-none" />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setPendingApprove(null)} disabled={isApproving} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-sm">Batal</button>
+              <button onClick={performApprove} disabled={isApproving} className="px-4 py-2 bg-[#4F6F52] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{isApproving ? "..." : "Ya, Setujui"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

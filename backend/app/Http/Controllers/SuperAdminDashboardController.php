@@ -111,6 +111,21 @@ class SuperAdminDashboardController extends Controller
         }
     }
 
+    public function updateHotelStar(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'star_rating' => 'nullable|integer|min:1|max:5',
+            'star_verified_reason' => 'nullable|string|max:1000',
+        ]);
+        try {
+            $hotel = Hotel::findOrFail($id);
+            $this->dashboardService->updateHotelStar($hotel, $request->input('star_rating'), $request->input('star_verified_reason'), $request->user());
+            return response()->json(['success' => true, 'message' => 'Bintang hotel berhasil diperbarui.'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal memperbarui bintang hotel.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function destroyHotel($id): JsonResponse
     {
         try {

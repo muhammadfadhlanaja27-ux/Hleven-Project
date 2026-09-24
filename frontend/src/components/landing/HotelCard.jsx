@@ -47,6 +47,9 @@ const HotelCard = ({ hotel, adults, children }) => {
   };
 
   const cityName = (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) || "Bandung";
+  const verifiedStar = hotel.star_rating ? Number(hotel.star_rating) : null;
+  const reviewRating = Number(hotel.rating || hotel.average_rating || 0);
+  const reviewCount = Number(hotel.reviews_count ?? hotel.total_review ?? hotel.total_reviews ?? 0);
 
   const renderFacilityIcon = (fac, idx) => {
     const facObj = typeof fac === 'object' ? fac : null;
@@ -76,9 +79,8 @@ const HotelCard = ({ hotel, adults, children }) => {
   return (
     <Link
       to={buildDetailUrl()}
-      className="bg-white rounded-2xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D0C8BC] hover:-translate-y-0.5 transition-all duration-300 group flex flex-col h-full text-left cursor-pointer"
+      className="bg-white rounded-2xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#5F7161]/20 hover:-translate-y-0.5 transition-all duration-300 group flex flex-col h-full text-left cursor-pointer"
     >
-      {/* Image Header */}
       <div className="relative aspect-4/3 md:h-48 overflow-hidden bg-[#F2EFE9] shrink-0">
         {hasValidImage ? (
           <img
@@ -98,31 +100,32 @@ const HotelCard = ({ hotel, adults, children }) => {
           </div>
         )}
 
-        {/* Badge Lokasi Kota (Pojok Kiri Atas Gambar) */}
         <div className="absolute top-2.5 left-2.5 bg-[#1C251D]/75 backdrop-blur-xs text-white text-[10px] md:text-xs font-bold px-2.5 py-1 rounded-lg">
           {cityName}
         </div>
 
-        {/* Rating Badge (Pojok Kanan Atas Gambar) */}
         <div className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
-          <span className="material-symbols-outlined text-[#D97706] text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-            star
-          </span>
-          <span className="font-label-sm text-[11px] md:text-xs font-bold text-[#1C251D]">
-            {getRating()}
-          </span>
+          {verifiedStar ? (
+            <>
+              <span className="material-symbols-outlined text-[#D97706] text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                star
+              </span>
+              <span className="font-label-sm text-[11px] md:text-xs font-bold text-[#1C251D]">
+                {verifiedStar} Bintang
+              </span>
+            </>
+          ) : (
+            <span className="font-label-sm text-[10px] md:text-xs font-semibold text-[#8C968D]">Belum Terverifikasi</span>
+          )}
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="p-3.5 md:p-5 flex flex-col flex-grow justify-between">
         <div>
-          {/* Hotel Name */}
           <h3 className="font-headline-md text-xs md:text-base font-bold text-[#1C251D] leading-snug line-clamp-2 mb-1.5 group-hover:text-[#5F7161] transition-colors">
             {hotel.name}
           </h3>
 
-          {/* Location Address */}
           <div className="flex items-center gap-1 text-[#59635A] mb-3 text-[10px] md:text-xs">
             <span className="material-symbols-outlined text-xs md:text-base text-[#5F7161] shrink-0">location_on</span>
             <span className="font-body-md truncate">
@@ -130,7 +133,6 @@ const HotelCard = ({ hotel, adults, children }) => {
             </span>
           </div>
 
-          {/* Facilities Icons */}
           {facilities.length > 0 && (
             <div className="flex gap-1.5 mb-3">
               {facilities.slice(0, 4).map(renderFacilityIcon)}
@@ -138,7 +140,6 @@ const HotelCard = ({ hotel, adults, children }) => {
           )}
         </div>
 
-        {/* Bottom Price Section (Bersih Tanpa Teks Mobile) */}
         <div className="pt-3 border-t border-[#F0EBE1] mt-auto">
           <p className="text-[10px] md:text-xs text-[#7A857B] mb-0.5 font-medium">Mulai dari</p>
           <div className="flex items-baseline gap-1">
@@ -147,6 +148,12 @@ const HotelCard = ({ hotel, adults, children }) => {
             </span>
             <span className="text-[10px] md:text-xs text-[#7A857B]">/ malam</span>
           </div>
+          {reviewRating > 0 && (
+            <p className="text-[10px] text-[#8C968D] mt-1 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[11px] text-[#9CA3AF]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+              {reviewRating.toFixed(1)}{reviewCount > 0 ? ` · ${reviewCount} ulasan` : " · ulasan tamu"}
+            </p>
+          )}
         </div>
       </div>
     </Link>

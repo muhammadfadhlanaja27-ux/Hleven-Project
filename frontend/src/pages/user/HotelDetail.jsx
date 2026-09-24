@@ -284,7 +284,9 @@ const HotelDetail = () => {
   const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";
   const hotelAddress = hotel.address || `${hotelCityName}, Jawa Barat`;
 
-  const starCount = Math.floor(liveRating);
+  const verifiedStar = hotel?.star_rating ? Number(hotel.star_rating) : null;
+  const starCount = verifiedStar || 0;
+  const reviewCount = Number(hotel?.reviews_count ?? hotel?.total_review ?? hotel?.total_reviews ?? 0);
 
   const handleReviewSubmitted = (newStats) => {
     if (newStats?.average_rating) {
@@ -427,22 +429,40 @@ const HotelDetail = () => {
           <div className="lg:col-span-2 space-y-8">
             {/* Card 1: Hotel Info & Description */}
             <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
                 <div className="flex text-[#D97706]">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span
                       key={i}
                       className="material-symbols-outlined text-lg"
-                      style={{ fontVariationSettings: i < starCount ? "'FILL' 1" : "'FILL' 0" }}
+                      style={{
+                        fontVariationSettings: i < starCount ? "'FILL' 1" : "'FILL' 0",
+                        color: i < starCount ? "#D97706" : "#E2E8E2",
+                      }}
                     >
                       star
                     </span>
                   ))}
                 </div>
-                <span className="bg-[#5F7161]/10 text-[#5F7161] border border-[#5F7161]/20 px-3 py-1 rounded-full font-label-sm text-xs font-bold uppercase tracking-wider">
-                  Hotel Bintang {starCount}
-                </span>
+                {verifiedStar ? (
+                  <span className="inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] px-3 py-1 rounded-full font-label-sm text-xs font-bold">
+                    {verifiedStar} Bintang
+                  </span>
+                ) : (
+                  <span className="bg-[#F3F4F3] text-[#8C968D] border border-[#E2E8E2] px-3 py-1 rounded-full font-label-sm text-xs font-semibold">
+                    Belum Terverifikasi
+                  </span>
+                )}
               </div>
+              {liveRating > 0 && (
+                <p className="text-xs text-[#8C968D] mb-4 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs text-[#9CA3AF]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    star
+                  </span>
+                  {liveRating.toFixed(1)}
+                  {reviewCount > 0 ? ` · ${reviewCount} ulasan` : " · ulasan tamu"}
+                </p>
+              )}
 
               <h1 className="font-headline-xl text-3xl md:text-4xl font-extrabold text-[#1C251D] mb-4 leading-tight">
                 {hotel.name}
