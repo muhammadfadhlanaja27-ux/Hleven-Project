@@ -22,6 +22,7 @@ use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\PartnerApplicationController;
+use App\Http\Controllers\AppealController;
 
 /*
 |--------------------------------------------------------------------------
@@ -121,10 +122,16 @@ Route::prefix('v1')->group(function () {
     });
 });
 
+
+
 // ==========================================
 // 3. ADMIN HOTEL ROUTES
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
+    Route::get('/appeals', [AppealController::class, 'indexAdmin']);
+    Route::post('/appeals', [AppealController::class, 'storeAdmin']);
+});
+Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
     // --- Dashboard Admin Hotel ---
     Route::get('/dashboard-stats', function () {
@@ -212,6 +219,11 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::post('/', [WarningController::class, 'store']);
         Route::patch('/{id}/status', [WarningController::class, 'updateStatus']);
         Route::delete('/{id}', [WarningController::class, 'destroy']);
+    });
+
+    Route::prefix('appeals')->group(function () {
+        Route::get('/', [AppealController::class, 'indexSuperAdmin']);
+        Route::patch('/{id}/status', [AppealController::class, 'updateStatus']);
     });
 });
 

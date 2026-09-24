@@ -97,7 +97,7 @@ class WarningController extends Controller
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $request->validate([
-            'status' => 'required|in:pending,resolved' // Menggunakan pending / resolved sesuai Endpoint Summary[cite: 1]
+            'status' => 'required|in:unread,read,closed,pending,resolved'
         ]);
 
         try {

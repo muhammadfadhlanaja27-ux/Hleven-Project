@@ -5,6 +5,11 @@ export default function AdminHotelSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const user = (() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  })();
+  const isBlocked = user.hotel_status === 'blocked' || user.hotel?.status === 'blocked';
+
   const handleLogout = () => {
     localStorage.clear();
     navigate('/admin/login');
@@ -34,7 +39,12 @@ export default function AdminHotelSidebar() {
         className="admin-sidebar-scroll flex-1 overflow-y-auto py-4"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        <ul className="flex flex-col gap-1">
+        {isBlocked && (
+          <div className="mx-4 mb-3 p-3 rounded-lg bg-red-950/40 border border-red-800 text-xs text-red-200">
+            Hotel diblokir. Menu terkunci — silakan <Link to="/admin/suspended" className="underline font-bold">Aju Banding</Link>.
+          </div>
+        )}
+        <ul className={`flex flex-col gap-1 ${isBlocked ? 'opacity-40 pointer-events-none' : ''}`}>
           <li>
             <Link
               to="/admin/dashboard"

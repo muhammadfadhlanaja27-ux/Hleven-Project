@@ -102,6 +102,29 @@ class ReviewController extends Controller
 
         $this->syncHotelRatingStats((int) $hotelId);
 
+        // Alert Super Admin jika rating turun di bawah 3.0 dengan minimal 5 ulasan
+        $hotel = Hotel::find($hotelId);
+        if ($hotel && (float)$hotel->average_rating < 3.0 && (int)$hotel->total_review >= 5) {
+            $superAdminIds = \App\Models\User::where('role', 'super_admin')->pluck('id');
+            foreach ($superAdminIds as $saId) {
+                $exists = \App\Models\Notification::where('user_id', $saId)
+                    ->where('type', 'low_rating_alert')
+                    ->where('title', 'like', "%{$hotel->name}%")
+                    ->where('is_read', false)
+                    ->exists();
+
+                if (!$exists) {
+                    \App\Models\Notification::create([
+                        'user_id' => $saId,
+                        'title' => "Peringatan Rating Rendah: {$hotel->name}",
+                        'message' => "Rating hotel {$hotel->name} saat ini turun menjadi {$hotel->average_rating} dari total {$hotel->total_review} ulasan. Pertimbangkan untuk meninjau atau menerbitkan warning.",
+                        'type' => 'low_rating_alert',
+                        'is_read' => false,
+                    ]);
+                }
+            }
+        }
+
         return response()->json(['status' => 'success', 'data' => $review]);
     }
 

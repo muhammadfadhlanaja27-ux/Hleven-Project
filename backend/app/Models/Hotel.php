@@ -96,4 +96,14 @@ class Hotel extends Model
     {
         return $this->hasMany(Review::class, 'hotel_id');
     }
+
+    public function warnings()
+    {
+        return $this->hasMany(Warning::class, 'hotel_id');
+    }
+
+    public function appeals()
+    {
+        return $this->hasMany(Appeal::class, 'hotel_id');
+    }
 }

@@ -294,17 +294,30 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {(() => { const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })(); const blocked = u.hotel_status === 'blocked' || u.hotel?.status === 'blocked'; if (blocked) return (
+          <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <span className="w-10 h-10 rounded-full bg-[#ba1a1a] text-white flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[24px]">block</span></span>
+              <div>
+                <h4 className="font-bold text-base text-[#93000a]">Hotel Diblokir — Akses Terkunci</h4>
+                <p className="text-xs text-[#434842] mt-1">Hotel diblokir setelah 2 peringatan. Dashboard terkunci. Silakan aju banding.</p>
+              </div>
+            </div>
+            <a href="/admin/suspended" className="shrink-0 px-5 py-2.5 bg-[#ba1a1a] text-white rounded-xl text-sm font-bold hover:bg-[#93000a] transition-colors">Aju Banding</a>
+          </div>
+        ); return null; })()}
+
         {/* ─── ACTIVE COMPLIANCE WARNING BANNER ────────────────────────────── */}
         {warnings.some((w) => !w.is_read) && (
-          <div className="bg-[#ffdad6]/60 border border-[#ba1a1a]/30 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
             <div className="flex items-start gap-3.5">
-              <span className="w-10 h-10 rounded-full bg-[#ba1a1a] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <span className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <span className="material-symbols-outlined text-[24px]">warning</span>
               </span>
               <div>
-                <h4 className="font-semibold text-base text-[#93000a] flex items-center gap-2">
+                <h4 className="font-semibold text-base text-amber-900 flex items-center gap-2">
                   <span>Peringatan Kepatuhan Resmi dari Super Admin</span>
-                  <span className="px-2 py-0.5 rounded bg-[#ba1a1a] text-white text-[10px] uppercase font-bold tracking-wider">
+                  <span className="px-2 py-0.5 rounded bg-amber-500 text-white text-[10px] uppercase font-bold tracking-wider">
                     Perhatian
                   </span>
                 </h4>

@@ -7,6 +7,7 @@ const navItems = [
   { name: "Users Management", to: "/super-admin/users", icon: "group" },
   { name: "Partner Approvals", to: "/super-admin/partners", icon: "handshake" },
   { name: "Warning Management", to: "/super-admin/warnings", icon: "warning" },
+  { name: "Appeals (Banding)", to: "/super-admin/appeals", icon: "gavel" },
   { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
   { name: "Reports & Analytics", to: "/super-admin/reports", icon: "monitoring" },
 ];
