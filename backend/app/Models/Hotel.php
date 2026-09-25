@@ -13,7 +13,8 @@ class Hotel extends Model
     protected $fillable = [
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
         'average_rating', 'total_review', 'latitude', 'longitude', 'status',
-        'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason'
+        'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
+        'policies'
     ];
 
     protected $casts = [
@@ -95,5 +96,15 @@ class Hotel extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class, 'hotel_id');
+    }
+
+    public function warnings()
+    {
+        return $this->hasMany(Warning::class, 'hotel_id');
+    }
+
+    public function appeals()
+    {
+        return $this->hasMany(Appeal::class, 'hotel_id');
     }
 }

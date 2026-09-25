@@ -4,25 +4,15 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
+import { getInitialSearchValues, fmtDateStr } from "../../services/searchStorage";
 
 const BookingPage = () => {
   const { hotelId, roomId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getLocalDateStr = (date = new Date()) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const searchParams = new URLSearchParams(location.search);
-  const paramCheckIn = searchParams.get("checkIn") || searchParams.get("check_in");
-  const paramCheckOut = searchParams.get("checkOut") || searchParams.get("check_out");
-
-  const todayStr = getLocalDateStr();
-  const next2Days = getLocalDateStr(new Date(Date.now() + 2 * 86400000));
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
 
   // Data States
   const [hotel, setHotel] = useState(null);
@@ -35,13 +25,13 @@ const BookingPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
-  const [checkInDate, setCheckInDate] = useState(paramCheckIn || todayStr);
-  const [checkOutDate, setCheckOutDate] = useState(paramCheckOut || next2Days);
+  const [checkInDate, setCheckInDate] = useState(init.checkInStr);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutStr);
 
   // Dynamic Guest & Room Input States
-  const [adults, setAdults] = useState(Number(searchParams.get("adults")) || 2);
-  const [children, setChildren] = useState(Number(searchParams.get("children")) || 0);
-  const [roomQty, setRoomQty] = useState(1);
+  const [adults, setAdults] = useState(init.adults);
+  const [children, setChildren] = useState(init.children);
+  const [roomQty, setRoomQty] = useState(init.rooms);
 
   // Modal States
   const [suggestionData, setSuggestionData] = useState(null);
@@ -180,7 +170,7 @@ const BookingPage = () => {
 
   const roomPrice = Number(room?.price || room?.weekday_price || 3500000);
   const subtotalPrice = roomPrice * nightsCount * roomQty;
-  const taxAndFees = Math.round(subtotalPrice * 0.21);
+  const taxAndFees = Math.round(subtotalPrice * 0.05);
   const totalPrice = subtotalPrice + taxAndFees;
 
   const dynamicQrUrl = useMemo(() => {
@@ -540,7 +530,7 @@ const BookingPage = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-[#778873]">
-                  <span>Pajak &amp; Pelayanan (21%)</span>
+                  <span>Pajak &amp; Pelayanan (5%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
               </div>

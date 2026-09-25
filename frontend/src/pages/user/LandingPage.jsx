@@ -1,29 +1,36 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import HotelCard from "../../components/landing/HotelCard";
 import Pagination from "../../components/common/Pagination";
 import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
+import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
 const ITEMS_PER_PAGE = 10;
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const today = useMemo(() => new Date(), []);
+  const tomorrow = useMemo(() => new Date(Date.now() + 86400000), []);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const today = useMemo(() => new Date(), []);
-  const tomorrow = useMemo(() => new Date(Date.now() + 86400000), []);
+  const [searchTerm, setSearchTerm] = useState(init.searchTerm);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
+  const [adults, setAdults] = useState(init.adults);
+  const [children, setChildren] = useState(init.children);
+  const [rooms, setRooms] = useState(init.rooms);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [checkInDate, setCheckInDate] = useState(today);
-  const [checkOutDate, setCheckOutDate] = useState(tomorrow);
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [rooms, setRooms] = useState(1);
+  useEffect(() => {
+    saveSearchState({ search: searchTerm, checkIn: checkInDate, checkOut: checkOutDate, adults, children, rooms });
+  }, [searchTerm, checkInDate, checkOutDate, adults, children, rooms]);
 
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [pendingAdults, setPendingAdults] = useState(2);
@@ -249,13 +256,15 @@ const LandingPage = () => {
             </div>
 
             {/* Guest Selector Component */}
-            <GuestSelector
-              adults={adults}
-              children={children}
-              rooms={rooms}
-              onGuestChange={handleGuestChange}
-              onAddRoomRequest={handleAddRoomRequest}
-            />
+            <div className="w-full lg:w-1/3">
+              <GuestSelector
+                adults={adults}
+                children={children}
+                rooms={rooms}
+                onGuestChange={handleGuestChange}
+                onAddRoomRequest={handleAddRoomRequest}
+              />
+            </div>
 
             {/* Search Button */}
             <button

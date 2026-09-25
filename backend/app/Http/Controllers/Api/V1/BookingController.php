@@ -359,7 +359,7 @@ class BookingController extends Controller
                 ? ($weekendPrice * $qty)
                 : ($weekdayPrice * $qty);
         }
-        $tax = (int) round($subtotal * 0.21);
+        $tax = (int) round($subtotal * 0.05);
         $grandTotal = $subtotal + $tax;
 
         DB::beginTransaction();

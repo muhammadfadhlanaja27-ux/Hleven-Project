@@ -54,6 +54,7 @@ class RoomTypeController extends Controller
             'capacity_adult' => 'required|integer|min:1',
             'capacity_child' => 'nullable|integer|min:0',
             'is_refundable' => 'nullable|boolean',
+            'policies' => 'nullable|string|max:5000',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
             'photos' => 'nullable|array',
@@ -81,6 +82,7 @@ class RoomTypeController extends Controller
                 'breakfast' => $request->boolean('breakfast'),
                 'smoking_area' => $request->boolean('smoking_area'),
                 'is_refundable' => $request->boolean('is_refundable', true),
+                'policies' => $request->policies,
             ]);
 
             // 2. Simpan relasi fasilitas ke tabel pivot `room_facilities`
@@ -154,6 +156,7 @@ class RoomTypeController extends Controller
             'capacity_adult' => 'sometimes|integer|min:1',
             'capacity_child' => 'nullable|integer|min:0',
             'is_refundable' => 'nullable|boolean',
+            'policies' => 'nullable|string|max:5000',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
             'photos' => 'nullable|array',
@@ -166,8 +169,8 @@ class RoomTypeController extends Controller
 
         // Mapping inputan dari request ke kolom database model
         $updateData = $request->only([
-            'name', 'type', 'description', 'weekday_price', 'weekend_price', 
-            'stock'
+            'name', 'type', 'description', 'weekday_price', 'weekend_price',
+            'stock', 'policies'
         ]);
 
         if ($request->has('bed')) {
@@ -184,6 +187,12 @@ class RoomTypeController extends Controller
         }
         if ($request->has('smoking_area')) {
             $updateData['smoking_area'] = $request->boolean('smoking_area');
+        }
+        if ($request->has('is_refundable')) {
+            $updateData['is_refundable'] = $request->boolean('is_refundable');
+        }
+        if ($request->has('policies')) {
+            $updateData['policies'] = $request->policies;
         }
 
         $roomType->update($updateData);

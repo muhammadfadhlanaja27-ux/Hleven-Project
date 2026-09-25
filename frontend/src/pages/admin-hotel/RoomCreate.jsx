@@ -113,6 +113,15 @@ export default function RoomCreate() {
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [rawFiles, setRawFiles] = useState([]);
 
+  const ROOM_POLICY_TEMPLATE = `Waktu Check-in & Check-out
+Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
+Kebijakan Bebas Asap Rokok
+Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+Hewan Peliharaan
+Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
+Pembatalan
+Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.`;
+
   // Form State
   const [formData, setFormData] = useState({
     name: "",
@@ -125,6 +134,7 @@ export default function RoomCreate() {
     capacity_child: "",
     stock: "",
     is_refundable: true,
+    policies: ROOM_POLICY_TEMPLATE,
     facilityIds: [],
     photos: [],
   });
@@ -261,6 +271,7 @@ export default function RoomCreate() {
       payload.append("capacity_child", formData.capacity_child || 0);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
+      payload.append("policies", (formData.policies || "").trim());
 
       (formData.facilityIds || []).forEach((fId, idx) => {
         payload.append(`facilities[${idx}]`, fId);
@@ -670,6 +681,24 @@ export default function RoomCreate() {
                 </div>
               </button>
             </div>
+          </div>
+
+          {/* Kebijakan Kamar (Policies Textarea) */}
+          <div className="pt-2 flex flex-col gap-1.5">
+            <label htmlFor="policies" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Kebijakan Kamar
+            </label>
+            <textarea
+              id="policies"
+              name="policies"
+              rows={6}
+              value={formData.policies}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              placeholder="Kebijakan khusus kamar ini..."
+              className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed whitespace-pre-wrap"
+            />
+            <p className="text-[11px] text-[#6B6E6A]">Sudah terisi template standar. Anda bisa mengubah aturan khusus kamar ini.</p>
           </div>
 
           <div className="bg-[#F6F3EF] p-4 rounded-xl text-xs text-[#6B6E6A] border border-[#E5E1DA]">

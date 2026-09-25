@@ -189,7 +189,14 @@ class SuperAdminDashboardService
 
     public function updateHotelStatus(Hotel $hotel, string $status): void
     {
+        $old = $hotel->status;
         $hotel->update(['status' => $status]);
+        ActivityLog::create([
+            'user_id' => auth()->id() ?? $hotel->admin_id,
+            'activity' => 'Update Hotel Status',
+            'description' => "Hotel {$hotel->name} status {$old} -> {$status}",
+            'ip_address' => request()->ip(),
+        ]);
         Cache::forget('super_admin_summary');
     }
 
