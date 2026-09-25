@@ -93,6 +93,15 @@ const normalizeImageUrl = (value) => getStorageUrl(value);
 
 const initialPhotos = [];
 
+const DEFAULT_HOTEL_POLICIES = `Waktu Check-in & Check-out
+Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
+Kebijakan Bebas Asap Rokok
+Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+Hewan Peliharaan
+Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
+Pembatalan
+Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.`;
+
 const initialHotelData = {
   name: "Grand H'Leven Hotel",
   description:
@@ -109,6 +118,7 @@ const initialHotelData = {
   website: "www.hleven.com",
   photos: [],
   facilities: [],
+  policies: DEFAULT_HOTEL_POLICIES,
 };
 
 const parseCityName = (cityVal) => {
@@ -241,6 +251,7 @@ export default function HotelInformation() {
             website: "www.hleven.com",
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
             facilities: assignedFacilities,
+            policies: raw.policies || DEFAULT_HOTEL_POLICIES,
           };
 
           setHotelData(updatedData);
@@ -413,6 +424,7 @@ export default function HotelInformation() {
         city: formValues.city.trim(),
         phone: formValues.phone.trim(),
         email: formValues.email.trim(),
+        policies: (formValues.policies || "").trim(),
         facilities: formFacilityIds,
       };
 
@@ -737,6 +749,17 @@ export default function HotelInformation() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* VIEW MODE: HOTEL POLICIES */}
+          <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-2 border-b border-[#E5E1DA] pb-4">
+              <span className="material-symbols-outlined text-[#506147] text-[22px]">policy</span>
+              <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Kebijakan Hotel</h3>
+            </div>
+            <div className="text-sm text-[#444840] leading-relaxed whitespace-pre-wrap bg-[#fcf9f5] p-4 rounded-xl border border-[#E5E1DA]">
+              {hotelData.policies || DEFAULT_HOTEL_POLICIES}
             </div>
           </div>
 
@@ -1135,6 +1158,23 @@ export default function HotelInformation() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="policies" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Kebijakan Hotel
+              </label>
+              <textarea
+                id="policies"
+                name="policies"
+                rows={8}
+                value={formValues.policies || ""}
+                onChange={handleChange}
+                disabled={isSaving}
+                placeholder={DEFAULT_HOTEL_POLICIES}
+                className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed whitespace-pre-wrap"
+              />
+              <p className="text-[11px] text-[#6B6E6A]">Tampilkan di Hotel Detail setelah fasilitas. Biarkan kosong untuk pakai template default.</p>
             </div>
 
             <div className="pt-4 border-t border-[#E5E1DA] bg-[#F6F3EF] p-4 rounded-xl flex items-center justify-between gap-4">

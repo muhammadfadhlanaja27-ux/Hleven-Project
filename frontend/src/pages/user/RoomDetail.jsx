@@ -1,13 +1,116 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
+import GuestSelector from "../../components/common/GuestSelector";
+import { getInitialSearchValues, saveSearchState, fmtDateStr } from "../../services/searchStorage";
+
+const FACILITY_ICON_MAP = {
+  "AC": "ac_unit",
+  "Air Conditioning": "ac_unit",
+  "AC Area Umum": "ac_unit",
+  "TV": "tv",
+  "Smart TV": "tv",
+  "Television": "tv",
+  "Kamar mandi pribadi": "bathtub",
+  "Private Bathroom": "bathtub",
+  "Bathtub": "bathtub",
+  "Balkon": "balcony",
+  "Private Balcony": "balcony",
+  "Mini fridge": "kitchen",
+  "Mini Refrigerator": "kitchen",
+  "Kulkas Mini": "kitchen",
+  "Hair dryer": "lotion",
+  "Hair Dryer": "lotion",
+  "Pengering Rambut": "lotion",
+  "Meja kerja": "desk",
+  "Work Desk": "desk",
+  "Lemari": "checkroom",
+  "Wardrobe": "checkroom",
+  "Closet": "checkroom",
+  "Lemari Pakaian": "checkroom",
+  "Air mineral": "water_drop",
+  "Mineral Water": "water_drop",
+  "Air Mineral": "water_drop",
+  "Water Heater": "water_drop",
+  "Shower": "shower",
+  "Toilet": "bathtub",
+  "Washtafel": "bathtub",
+  "Wi-Fi": "wifi",
+  "Wi-Fi Gratis": "wifi",
+  "Internet": "wifi",
+  "Kolam renang": "pool",
+  "Swimming Pool": "pool",
+  "Kolam Renang": "pool",
+  "Parkir": "local_parking",
+  "Parkir Gratis": "local_parking",
+  "Parking": "local_parking",
+  "Restoran": "restaurant",
+  "Restaurant": "restaurant",
+  "Gym": "fitness_center",
+  "Fitness Center": "fitness_center",
+  "Pusat Kebugaran": "fitness_center",
+  "Spa": "hot_tub",
+  "Spa & Massage": "hot_tub",
+  "Spa & Wellness": "hot_tub",
+  "Resepsionis 24 jam": "concierge",
+  "Reception 24h": "concierge",
+  "Front Desk 24h": "concierge",
+  "Lift": "elevator",
+  "Elevator": "elevator",
+  "Laundry": "local_laundry_service",
+  "Laundry Service": "local_laundry_service",
+  "Safety Box": "lock",
+  "Brankas Kamar": "lock",
+  "Coffee Maker": "local_cafe",
+  "Pembuat Teh/Kopi": "local_cafe",
+  "Bar & Lounge": "local_bar",
+  "Room Service": "room_service",
+  "Bed / Room": "bed",
+  "Tempat Tidur": "bed",
+  "Hotel General": "hotel",
+  "Peralatan Mandi Gratis": "bathtub",
+  "Free Toiletries": "bathtub",
+};
+
+const getFacilityIcon = (fac) => {
+  if (typeof fac === "object" && fac?.icon && fac.icon !== "stars") return fac.icon;
+  const name = String(typeof fac === "object" ? fac.name : fac || "").trim();
+  if (FACILITY_ICON_MAP[name]) return FACILITY_ICON_MAP[name];
+  const lower = name.toLowerCase();
+  if (lower.includes("ac") || lower.includes("air condition")) return "ac_unit";
+  if (lower.includes("tv") || lower.includes("televisi") || lower.includes("television")) return "tv";
+  if (lower.includes("mandi") || lower.includes("bath") || lower.includes("toilet") || lower.includes("kloset") || lower.includes("wash") || lower.includes("washtafel")) return "bathtub";
+  if (lower.includes("bathtub") || lower.includes("bak")) return "bathtub";
+  if (lower.includes("balkon") || lower.includes("teras") || lower.includes("balcony")) return "balcony";
+  if (lower.includes("kulkas") || lower.includes("fridge") || lower.includes("minibar") || lower.includes("refrigerator")) return "kitchen";
+  if (lower.includes("meja") || lower.includes("kerja") || lower.includes("desk")) return "desk";
+  if (lower.includes("lemari") || lower.includes("wardrobe") || lower.includes("closet")) return "checkroom";
+  if (lower.includes("air mineral") || lower.includes("mineral water") || lower.includes("drink") || lower.includes("water heater")) return "water_drop";
+  if (lower.includes("shower")) return "shower";
+  if (lower.includes("wifi") || lower.includes("internet")) return "wifi";
+  if (lower.includes("kolam") || lower.includes("pool") || lower.includes("renang")) return "pool";
+  if (lower.includes("parkir") || lower.includes("parking")) return "local_parking";
+  if (lower.includes("restoran") || lower.includes("makan") || lower.includes("restaurant")) return "restaurant";
+  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("kebugaran")) return "fitness_center";
+  if (lower.includes("spa") || lower.includes("massage") || lower.includes("wellness")) return "hot_tub";
+  if (lower.includes("resepsionis") || lower.includes("reception") || lower.includes("front desk")) return "concierge";
+  if (lower.includes("lift") || lower.includes("elevator")) return "elevator";
+  if (lower.includes("laundry") || lower.includes("cuci")) return "local_laundry_service";
+  if (lower.includes("brankas") || lower.includes("safety box") || lower.includes("safe") || lower.includes("lock")) return "lock";
+  if (lower.includes("coffee") || lower.includes("kopi") || lower.includes("tea") || lower.includes("teh")) return "local_cafe";
+  if (lower.includes("bar") || lower.includes("lounge")) return "local_bar";
+  if (lower.includes("room service")) return "room_service";
+  if (lower.includes("bed") || lower.includes("tidur")) return "bed";
+  return "star";
+};
 
 const RoomDetail = () => {
   const { hotelId, roomId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [hotel, setHotel] = useState(null);
   const [room, setRoom] = useState(null);
@@ -65,24 +168,27 @@ const RoomDetail = () => {
 
   const handlePointerUp = () => setIsDragging(false);
 
-  // Reservation Form State (React DatePicker Object Dates)
   const today = useMemo(() => new Date(), []);
-  const defaultCheckOut = useMemo(() => new Date(Date.now() + 86400000), []); // Besok
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
+  const [adults, setAdults] = useState(init.adults);
+  const [children, setChildren] = useState(init.children);
 
-  const [checkInDate, setCheckInDate] = useState(today);
-  const [checkOutDate, setCheckOutDate] = useState(defaultCheckOut);
-  const [guestCount, setGuestCount] = useState("2 Tamu Dewasa");
+  useEffect(() => {
+    saveSearchState({ checkIn: checkInDate, checkOut: checkOutDate, adults, children });
+  }, [checkInDate, checkOutDate, adults, children]);
 
-  // Handler Perubahan Check-in dengan Auto-adjust Check-out H+1
-  const handleCheckInChange = (date) => {
-    setCheckInDate(date);
-    if (checkOutDate && date >= checkOutDate) {
-      const nextDay = new Date(date);
-      nextDay.setDate(nextDay.getDate() + 1);
-      setCheckOutDate(nextDay);
-    }
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setCheckInDate(start);
+    setCheckOutDate(end);
   };
 
+  const handleGuestChange = ({ adults: a, children: c }) => {
+    setAdults(a);
+    setChildren(c);
+  };
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
@@ -103,6 +209,8 @@ const RoomDetail = () => {
             const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
             const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
+            const facilities = matchedRoomType.facilities || [];
+            const policies = matchedRoomType.policies || "";
             const mappedRoom = {
               id: matchedRoomType.id,
               name: matchedRoomType.name,
@@ -111,12 +219,16 @@ const RoomDetail = () => {
               weekend_price: matchedRoomType.weekend_price,
               thumbnail: roomImage,
               capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+              capacity_adult: matchedRoomType.capacity_adult,
+              capacity_child: matchedRoomType.capacity_child,
               description: matchedRoomType.description,
               bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
               breakfast: matchedRoomType.breakfast,
               smoking_area: matchedRoomType.smoking_area,
               is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
               stock: matchedRoomType.stock,
+              policies,
+              facilities,
               photos: matchedRoomType.photos || []
             };
 
@@ -155,7 +267,7 @@ const RoomDetail = () => {
 
   const roomPrice = Number(room?.price || room?.weekday_price || 3200000);
   const subtotalPrice = roomPrice * nightsCount;
-  const taxAndFees = Math.round(subtotalPrice * 0.21);
+  const taxAndFees = Math.round(subtotalPrice * 0.05);
   const totalPrice = subtotalPrice + taxAndFees;
 
   const getImageUrl = (photoItem) => {
@@ -192,7 +304,13 @@ const RoomDetail = () => {
     const rId = room?.id || roomId || 101;
     const checkInStr = formatDateForUrl(checkInDate);
     const checkOutStr = formatDateForUrl(checkOutDate);
-    navigate(`/booking/${hId}/${rId}?checkIn=${checkInStr}&checkOut=${checkOutStr}`);
+    const qs = new URLSearchParams({
+      checkIn: checkInStr,
+      checkOut: checkOutStr,
+      adults: String(adults),
+      children: String(children),
+    }).toString();
+    navigate(`/booking/${hId}/${rId}?${qs}`);
   };
 
   if (loading) {
@@ -351,55 +469,28 @@ const RoomDetail = () => {
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
                 Fasilitas Kamar
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">pool</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Private Infinity Pool</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Pengaturan suhu air</p>
-                  </div>
+              {Array.isArray(room?.facilities) && room.facilities.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
+                  {room.facilities.map((fac, idx) => {
+                    const facName = typeof fac === "object" ? fac.name : String(fac);
+                    const facDesc = typeof fac === "object" ? (fac.description || "") : "";
+                    const iconName = getFacilityIcon(fac);
+                    return (
+                      <div key={idx} className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-[#778873] text-2xl">{iconName}</span>
+                        <div>
+                          <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">{facName}</h3>
+                          {facDesc && <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">{facDesc}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">bathtub</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Kamar Mandi Marmer</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Bathub &amp; rain shower</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">coffee_maker</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Mesin Kopi Nespresso</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Kapsul harian gratis</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">room_service</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Layanan Kamar 24/7</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Menu dalam kamar</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">kitchen</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Mini Bar Premium</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Pilihan minuman &amp; camilan</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">wifi</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">WiFi Kecepatan Tinggi</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Akses gratis tanpa batas</p>
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
+                  Belum ada fasilitas khusus yang terdaftar untuk kamar ini.
+                </p>
+              )}
             </section>
 
             <hr className="border-[#DCCFC0]/40" />
@@ -408,47 +499,38 @@ const RoomDetail = () => {
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
                 Kebijakan Kamar
               </h2>
-              <ul className="space-y-5">
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">schedule</span>
+              {room?.policies ? (
+                <div className="text-sm text-[#444842] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
+                  {room.policies}
+                </div>
+              ) : (
+                <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Waktu Check-in &amp; Check-out</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Waktu Check-in &amp; Check-out</h4>
+                    <p className="text-xs text-[#444842] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
                   </div>
-                </li>
-
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">smoke_free</span>
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Kebijakan Bebas Asap Rokok</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Kebijakan Bebas Asap Rokok</h4>
+                    <p className="text-xs text-[#444842] mt-1">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
                   </div>
-                </li>
-
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">pets</span>
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Hewan Peliharaan</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Hewan Peliharaan</h4>
+                    <p className="text-xs text-[#444842] mt-1">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
                   </div>
-                </li>
-
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">event_busy</span>
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Pembatalan</h4>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Pembatalan</h4>
                     {room?.is_refundable ? (
-                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                      <p className="text-xs text-[#444842] mt-1">
                         <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.
                       </p>
                     ) : (
-                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                      <p className="text-xs text-[#444842] mt-1">
                         <span className="font-bold text-[#ba1a1a]">Tidak dapat dibatalkan:</span> Kamar ini bersifat non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.
                       </p>
                     )}
                   </div>
-                </li>
-              </ul>
+                </div>
+              )}
             </section>
           </div>
 
@@ -488,68 +570,32 @@ const RoomDetail = () => {
                 </div>
               )}
 
-              {/* Custom DatePicker Controls with Icons */}
+              {/* Date Range + GuestSelector — mirror LandingPage L228 */}
               <div className="flex flex-col gap-4 mb-6">
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Check-In Input */}
-                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
-                    <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                      Check-In
-                    </label>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="material-symbols-outlined text-[#778873] text-base select-none">
-                        calendar_today
-                      </span>
-                      <DatePicker
-                        selected={checkInDate}
-                        onChange={handleCheckInChange}
-                        minDate={today}
-                        dateFormat="dd / MM / yyyy"
-                        className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                      />
-                    </div>
+                <div className="w-full group flex items-center gap-3 bg-[#FDF6ED] hover:bg-[#EFECE6] px-4 py-3 rounded-xl border border-[#DCCFC0] focus-within:bg-white focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873]/20 transition-all text-left relative z-40">
+                  <div className="w-10 h-10 rounded-xl bg-[#778873]/10 group-hover:bg-[#778873] text-[#778873] group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
+                    <span className="material-symbols-outlined text-xl">calendar_month</span>
                   </div>
-
-                  {/* Check-Out Input */}
-                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
-                    <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                      Check-Out
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">
+                      Check-in &amp; Check-out
                     </label>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="material-symbols-outlined text-[#778873] text-base select-none">
-                        calendar_month
-                      </span>
-                      <DatePicker
-                        selected={checkOutDate}
-                        onChange={(date) => setCheckOutDate(date)}
-                        minDate={new Date(checkInDate.getTime() + 86400000)}
-                        dateFormat="dd / MM / yyyy"
-                        className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                      />
-                    </div>
+                    <DatePicker
+                      selectsRange={true}
+                      startDate={checkInDate}
+                      endDate={checkOutDate}
+                      onChange={handleDateRangeChange}
+                      minDate={today}
+                      monthsShown={2}
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Pilih Tanggal Menginap"
+                      popperClassName="!z-[9999]"
+                      className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate"
+                    />
                   </div>
                 </div>
 
-                {/* Guests Select */}
-                <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors text-left">
-                  <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                    Jumlah Tamu
-                  </label>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="material-symbols-outlined text-[#778873] text-base select-none">
-                      group
-                    </span>
-                    <select
-                      value={guestCount}
-                      onChange={(e) => setGuestCount(e.target.value)}
-                      className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                    >
-                      <option value="1 Tamu Dewasa">1 Tamu Dewasa</option>
-                      <option value="2 Tamu Dewasa">2 Tamu Dewasa</option>
-                      <option value="4 Tamu Dewasa">4 Tamu Dewasa</option>
-                    </select>
-                  </div>
-                </div>
+                <GuestSelector adults={adults} children={children} rooms={1} onGuestChange={handleGuestChange} />
               </div>
 
               {/* Dynamic Price Breakdown */}
@@ -559,7 +605,7 @@ const RoomDetail = () => {
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Pajak &amp; Biaya Layanan (21%)</span>
+                  <span>Pajak &amp; Biaya Layanan (5%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
                 <hr className="border-[#DCCFC0]/50 my-2" />

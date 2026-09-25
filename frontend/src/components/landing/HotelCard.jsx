@@ -8,11 +8,15 @@ const HotelCard = ({ hotel, adults, children }) => {
 
   const effectiveAdults = (adults ?? Number(urlSearchParams.get('adults'))) || 0;
   const effectiveChildren = (children ?? Number(urlSearchParams.get('children'))) || 0;
+  const effectiveCheckIn = urlSearchParams.get('check_in') || urlSearchParams.get('check_in_date') || urlSearchParams.get('checkIn') || '';
+  const effectiveCheckOut = urlSearchParams.get('check_out') || urlSearchParams.get('check_out_date') || urlSearchParams.get('checkOut') || '';
 
   const buildDetailUrl = () => {
     const params = new URLSearchParams();
     if (effectiveAdults > 0) params.set('adults', effectiveAdults);
     if (effectiveChildren > 0) params.set('children', effectiveChildren);
+    if (effectiveCheckIn) params.set('check_in', effectiveCheckIn);
+    if (effectiveCheckOut) params.set('check_out', effectiveCheckOut);
     const qs = params.toString();
     return `/hotels/${hotel.id}${qs ? `?${qs}` : ''}`;
   };

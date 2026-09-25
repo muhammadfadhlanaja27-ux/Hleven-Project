@@ -1,8 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
+import GuestSelector from "../../components/common/GuestSelector";
 import ReviewSection from "../../components/ReviewSection";
+import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HotelDetail = () => {
   const { id } = useParams();
@@ -23,17 +27,42 @@ const HotelDetail = () => {
   // State untuk menangani gambar kamar yang error/broken URL
   const [imgErrors, setImgErrors] = useState({});
 
-  // Filter States untuk Kamar
-  const initialAdults = searchParams.get("adults") || "";
-  const initialChildren = searchParams.get("children") || "";
-  const [filterAdults, setFilterAdults] = useState(initialAdults);
-  const [filterChildren, setFilterChildren] = useState(initialChildren);
+  // Filter States untuk Kamar — prefill dari URL / Storage (Landing → Detail)
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+  const [filterAdults, setFilterAdults] = useState(String(init.adults));
+  const [filterChildren, setFilterChildren] = useState(init.children > 0 ? String(init.children) : "");
+  const [filterCheckIn, setFilterCheckIn] = useState(init.checkInDate);
+  const [filterCheckOut, setFilterCheckOut] = useState(init.checkOutDate);
+  const [rooms, setRooms] = useState(init.rooms);
+
+  useEffect(() => {
+    saveSearchState({
+      checkIn: filterCheckIn,
+      checkOut: filterCheckOut,
+      adults: Number(filterAdults) || 2,
+      children: Number(filterChildren) || 0,
+      rooms,
+    });
+  }, [filterCheckIn, filterCheckOut, filterAdults, filterChildren, rooms]);
   const [filterRoomType, setFilterRoomType] = useState("all");
   const [filterBedType, setFilterBedType] = useState("all");
   const [filterRoomName, setFilterRoomName] = useState("");
   const [filterBreakfast, setFilterBreakfast] = useState(false);
   const [filterSmoking, setFilterSmoking] = useState(false);
   const [filterRefundable, setFilterRefundable] = useState(false);
+
+  const today = useMemo(() => new Date(), []);
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setFilterCheckIn(start || null);
+    setFilterCheckOut(end || null);
+  };
+  const handleGuestChange = ({ adults: a, children: c, rooms: r }) => {
+    setFilterAdults(a > 0 ? String(a) : "");
+    setFilterChildren(c > 0 ? String(c) : "");
+    setRooms(r);
+  };
+  const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,"0"); const day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
 
   // Pagination Kamar
   const ROOMS_PER_PAGE = 5;
@@ -183,6 +212,8 @@ const HotelDetail = () => {
   }, [
     filterAdults,
     filterChildren,
+    filterCheckIn,
+    filterCheckOut,
     filterRoomType,
     filterBedType,
     filterRoomName,
@@ -190,6 +221,19 @@ const HotelDetail = () => {
     filterSmoking,
     filterRefundable,
   ]);
+
+  // Sync URL agar RoomDetail/Booking dapat prefill — must be before early returns
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (filterAdults) params.set("adults", filterAdults); else params.delete("adults");
+    if (filterChildren) params.set("children", filterChildren); else params.delete("children");
+    if (filterCheckIn) params.set("check_in", fmtDateParam(filterCheckIn)); else params.delete("check_in");
+    if (filterCheckOut) params.set("check_out", fmtDateParam(filterCheckOut)); else params.delete("check_out");
+    const qs = params.toString();
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    if (qs !== searchParams.toString()) window.history.replaceState(null, "", newUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterAdults, filterChildren, filterCheckIn, filterCheckOut]);
 
   const totalRoomPages = Math.ceil(filteredRooms.length / ROOMS_PER_PAGE) || 1;
   const paginatedRooms = useMemo(
@@ -200,6 +244,9 @@ const HotelDetail = () => {
   const handleResetRoomFilters = () => {
     setFilterAdults("");
     setFilterChildren("");
+    setFilterCheckIn(null);
+    setFilterCheckOut(null);
+    setRooms(1);
     setFilterRoomType("all");
     setFilterBedType("all");
     setFilterRoomName("");
@@ -298,12 +345,20 @@ const HotelDetail = () => {
     e.preventDefault();
     const targetHotelId = hotel?.id || id || 1;
     const targetRoomId = room?.id || 101;
-    navigate(`/booking/${targetHotelId}/${targetRoomId}`);
+    const qs = new URLSearchParams();
+    if (filterAdults) qs.set("adults", String(filterAdults));
+    if (filterChildren) qs.set("children", String(filterChildren));
+    if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
+    if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+    const q = qs.toString();
+    navigate(`/booking/${targetHotelId}/${targetRoomId}${q ? `?${q}` : ""}`);
   };
 
   const hasActiveFilters =
     filterAdults ||
     filterChildren ||
+    filterCheckIn ||
+    filterCheckOut ||
     filterRoomType !== "all" ||
     filterBedType !== "all" ||
     filterRoomName ||
@@ -514,6 +569,37 @@ const HotelDetail = () => {
                 </p>
               )}
             </div>
+
+            {/* Card 3: Kebijakan Hotel */}
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
+              <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] mb-4">
+                Kebijakan Hotel
+              </h2>
+              {hotel.policies ? (
+                <div className="text-sm text-[#5A625B] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
+                  {hotel.policies}
+                </div>
+              ) : (
+                <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Waktu Check-in &amp; Check-out</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Kebijakan Bebas Asap Rokok</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Hewan Peliharaan</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Pembatalan</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Column: Location Card */}
@@ -592,7 +678,21 @@ const HotelDetail = () => {
               Filter Kamar Sesuai Kebutuhan
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {/* Prefill dari Landing: Tanggal + Tamu */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
+              <div className="w-full group flex items-center gap-3 bg-[#F7F6F2] hover:bg-[#EFECE6] px-4 py-3 rounded-2xl border border-[#E2DDD3] focus-within:bg-white focus-within:border-[#5F7161] focus-within:ring-2 focus-within:ring-[#5F7161]/20 transition-all text-left relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-[#5F7161]/10 group-hover:bg-[#5F7161] text-[#5F7161] group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
+                  <span className="material-symbols-outlined text-xl">calendar_month</span>
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in &amp; Check-out</label>
+                  <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Pilih Tanggal" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
+                </div>
+              </div>
+              <GuestSelector adults={Number(filterAdults)||2} children={Number(filterChildren)||0} rooms={rooms} onGuestChange={handleGuestChange} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Tipe Kamar
@@ -614,54 +714,6 @@ const HotelDetail = () => {
                 </div>
               </div>
 
-              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] transition-colors text-left">
-                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
-                  Min. Dewasa
-                </label>
-                <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <button
-                    onClick={() => setFilterAdults((prev) => Math.max(0, (Number(prev) || 0) - 1) || "")}
-                    disabled={!filterAdults || Number(filterAdults) <= 0}
-                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm font-bold shrink-0"
-                  >
-                    −
-                  </button>
-                  <span className="font-body-md font-bold text-[#1C251D] text-sm min-w-8 text-center">
-                    {filterAdults || 0}
-                  </span>
-                  <button
-                    onClick={() => setFilterAdults(String((Number(filterAdults) || 0) + 1))}
-                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] transition-colors text-sm font-bold shrink-0"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] transition-colors text-left">
-                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
-                  Min. Anak
-                </label>
-                <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <button
-                    onClick={() => setFilterChildren((prev) => Math.max(0, (Number(prev) || 0) - 1) || "")}
-                    disabled={!filterChildren || Number(filterChildren) <= 0}
-                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm font-bold shrink-0"
-                  >
-                    −
-                  </button>
-                  <span className="font-body-md font-bold text-[#1C251D] text-sm min-w-8 text-center">
-                    {filterChildren || 0}
-                  </span>
-                  <button
-                    onClick={() => setFilterChildren(String((Number(filterChildren) || 0) + 1))}
-                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-[#5F7161] text-white hover:bg-[#4D5E4F] transition-colors text-sm font-bold shrink-0"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
                   Tipe Kasur
@@ -680,6 +732,10 @@ const HotelDetail = () => {
                     <option value="single">Single Bed</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex flex-col gap-1.5 justify-center">
+                <label className="font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider">Cari Nama Kamar</label>
+                <input type="text" placeholder="Nama kamar..." value={filterRoomName} onChange={(e) => setFilterRoomName(e.target.value)} className="w-full bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#1C251D] focus:outline-none focus:border-[#5F7161] placeholder:#8A948C" />
               </div>
             </div>
 
@@ -844,7 +900,17 @@ const HotelDetail = () => {
                         <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
                           <button
                             type="button"
-                            onClick={() => navigate(`/hotels/${hotel?.id || id || 1}/rooms/${room?.id || 101}`)}
+                            onClick={() => {
+                              const targetHotelId = hotel?.id || id || 1;
+                              const targetRoomId = room?.id || 101;
+                              const qs = new URLSearchParams();
+                              if (filterAdults) qs.set("adults", String(filterAdults));
+                              if (filterChildren) qs.set("children", String(filterChildren));
+                              if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
+                              if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+                              const q = qs.toString();
+                              navigate(`/hotels/${targetHotelId}/rooms/${targetRoomId}${q ? `?${q}` : ""}`);
+                            }}
                             className="w-full sm:w-auto border border-[#5F7161] text-[#5F7161] font-label-md text-xs font-bold px-5 py-3 rounded-2xl hover:bg-[#5F7161]/10 transition-colors cursor-pointer text-center"
                           >
                             Detail Kamar

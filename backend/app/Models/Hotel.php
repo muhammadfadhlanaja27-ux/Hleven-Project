@@ -13,7 +13,8 @@ class Hotel extends Model
     protected $fillable = [
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
         'average_rating', 'total_review', 'latitude', 'longitude', 'status',
-        'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason'
+        'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
+        'policies'
     ];
 
     protected $casts = [

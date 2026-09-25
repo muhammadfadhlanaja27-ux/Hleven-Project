@@ -139,6 +139,8 @@ const normalizeRoom = (r) => {
     capacity_child: Number(r.capacity_child || 0),
     stock: Number(r.stock || 0),
     occupied: Number(r.occupied || 0),
+    is_refundable: r.is_refundable !== undefined ? Boolean(r.is_refundable) : true,
+    policies: r.policies || "",
     facilityIds: facIds,
     facilities: r.facilities || [],
     photos: photos,
@@ -279,6 +281,7 @@ export default function RoomList() {
       facilityIds: room.facilityIds || [],
       photos: room.photos || [],
       is_refundable: room.is_refundable !== undefined ? Boolean(room.is_refundable) : true,
+      policies: room.policies || "",
       status: room.status || "Available",
     });
     setEditErrors({});
@@ -396,6 +399,7 @@ export default function RoomList() {
       payload.append("capacity_child", Number(editValues.capacity_child || 0));
       payload.append("stock", Number(editValues.stock));
       payload.append("is_refundable", editValues.is_refundable ? "1" : "0");
+      payload.append("policies", (editValues.policies || "").trim());
 
       const facilityIds = editValues.facilityIds || [];
       if (facilityIds.length === 0) {
@@ -1034,6 +1038,18 @@ export default function RoomList() {
                     </div>
                   </button>
                 </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Kebijakan Kamar</h4>
+                <textarea
+                  name="policies"
+                  rows={5}
+                  value={editValues.policies || ""}
+                  onChange={handleEditChange}
+                  placeholder="Kebijakan khusus kamar ini..."
+                  className="w-full p-3 border border-[#E5E0D8] rounded-lg text-sm leading-relaxed whitespace-pre-wrap focus:outline-none focus:border-[#506147]"
+                />
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
