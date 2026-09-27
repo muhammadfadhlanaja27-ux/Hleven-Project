@@ -224,4 +224,95 @@ class PaymentController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * GET /api/v1/hotel/payments
+     * Menampilkan riwayat transaksi (pembayaran) khusus untuk Admin Hotel
+     */
+    public function hotelPayments(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $hotelId = $user->hotel->id ?? null;
+
+            if (!$hotelId) {
+                // Ambil hotel pertama jika admin_id tidak terikat via hasOne (fallback)
+                $hotelId = \App\Models\Hotel::where('admin_id', $user->id)->value('id');
+            }
+
+            if (!$hotelId) {
+                return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            }
+
+            $query = Payment::whereHas('booking', function ($q) use ($hotelId) {
+                $q->where('hotel_id', $hotelId);
+            })->with(['booking.user', 'booking.guests']);
+
+            // Filter Status
+            if ($request->filled('status')) {
+                $query->where('payment_status', $request->status);
+            }
+
+            // Filter Date Range
+            if ($request->filled('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+            if ($request->filled('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            $payments = $query->latest()->paginate($request->input('per_page', 10));
+
+            return response()->json([
+                'success' => true,
+                'data' => $payments->items(),
+                'pagination' => [
+                    'total' => $payments->total(),
+                    'per_page' => $payments->perPage(),
+                    'current_page' => $payments->currentPage(),
+                    'last_page' => $payments->lastPage(),
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat riwayat transaksi.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/hotel/payments/{orderId}/check-status
+     * Sinkronisasi status pembayaran manual dengan Midtrans untuk Admin Hotel
+     */
+    public function syncStatus(Request $request, $orderId): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $hotelId = $user->hotel->id ?? \App\Models\Hotel::where('admin_id', $user->id)->value('id');
+
+            $payment = Payment::where('order_id', $orderId)
+                ->whereHas('booking', function ($q) use ($hotelId) {
+                    $q->where('hotel_id', $hotelId);
+                })
+                ->firstOrFail();
+
+            $this->midtransService->syncPaymentStatus($payment);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status pembayaran berhasil diperbarui.',
+                'data' => $payment->fresh(),
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyinkronkan status pembayaran.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
