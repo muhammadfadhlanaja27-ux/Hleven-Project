@@ -73,6 +73,8 @@ Route::prefix('v1')->group(function () {
 
         // --- Laporan & Staf ---
         Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
+        Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
+        Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
         Route::get('hotel/staffs', [StaffController::class, 'index']);
         Route::post('hotel/staffs', [StaffController::class, 'store']);
         Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
