@@ -139,11 +139,59 @@ export default function BookingList() {
   const [confirmCancelBooking, setConfirmCancelBooking] = useState(null);
   const [confirmRefundApprove, setConfirmRefundApprove] = useState(null);
   const [confirmRefundReject, setConfirmRefundReject] = useState(null);
+  const [extendingBooking, setExtendingBooking] = useState(null);
+  const [extensionType, setExtensionType] = useState("hours");
+  const [extensionDuration, setExtensionDuration] = useState(1);
+  const [extensionNotes, setExtensionNotes] = useState("");
+  const AUTO_CHECKOUT_KEY = "hleven_bookings_auto_checkout";
+  const [autoCheckout, setAutoCheckout] = useState(() => {
+    try { return localStorage.getItem(AUTO_CHECKOUT_KEY) === "true"; } catch { return false; }
+  });
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem(AUTO_CHECKOUT_KEY, String(autoCheckout)); } catch {}
+  }, [autoCheckout]);
+
+  useEffect(() => {
+    if (!autoCheckout || !bookings.length) return;
+    const now = new Date();
+    bookings.forEach((b) => {
+      if (b.rawStatus !== "checked_in") return;
+      const out = new Date(b.checkOut + "T12:00:00");
+      if (now >= out) {
+        api.patch(`/admin/bookings/${b.id}/status`, { status: "checked_out" }).catch(() => {});
+      }
+    });
+  }, [autoCheckout, bookings]);
+
+  const handleExtendBooking = async () => {
+    if (!extendingBooking) return;
+    if (extensionDuration < 1) { toast.error("Durasi minimal 1"); return; }
+    setIsProcessing(true);
+    try {
+      const res = await api.post(`/admin/bookings/${extendingBooking.id}/extend`, {
+        type: extensionType,
+        duration: Number(extensionDuration),
+        notes: extensionNotes || undefined,
+      });
+      toast.success(res.data?.message || "Booking diperpanjang");
+      const fresh = res.data?.data ? normalizeBooking(res.data.data) : null;
+      if (fresh && viewingBooking && viewingBooking.id === fresh.id) setViewingBooking(fresh);
+      setExtendingBooking(null);
+      setExtensionDuration(1);
+      setExtensionNotes("");
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memperpanjang booking");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -374,6 +422,15 @@ export default function BookingList() {
             Manage and monitor hotel reservations and guest check-ins.
           </p>
         </div>
+        <label className="flex items-center gap-3 bg-white border border-[#E5E1DA] rounded-2xl px-5 py-3.5 shadow-sm cursor-pointer select-none">
+          <span className="text-xs font-bold text-[#2D312C] whitespace-nowrap">Auto Check-Out</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${autoCheckout ? "bg-[#E4EBE0] text-[#4A5D43]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>{autoCheckout ? "ON" : "OFF"}</span>
+          <span className="relative inline-flex items-center">
+            <input type="checkbox" checked={autoCheckout} onChange={(e) => setAutoCheckout(e.target.checked)} className="sr-only peer" />
+            <span className="w-11 h-6 bg-[#D1CCC5] rounded-full peer peer-checked:bg-[#506147] transition-colors" />
+            <span className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform" />
+          </span>
+        </label>
       </div>
 
       {/* SUMMARY CARDS DASHBOARD HEADER */}
@@ -997,6 +1054,21 @@ export default function BookingList() {
                   </>
                 )}
 
+                {(viewingBooking.bookingStatus === "Confirmed" || viewingBooking.bookingStatus === "Checked In") && (
+                  <button
+                    onClick={() => {
+                      setExtendingBooking(viewingBooking);
+                      setExtensionType("hours");
+                      setExtensionDuration(1);
+                      setExtensionNotes("");
+                    }}
+                    className="px-4 py-2 bg-[#7A5C3A] text-white text-xs font-semibold rounded-lg hover:bg-[#5c4428] transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">more_time</span>
+                    Extend Stay
+                  </button>
+                )}
+
                 {viewingBooking.bookingStatus === "Checked In" && (
                   <button
                     onClick={() => setConfirmCheckOutBooking(viewingBooking)}
@@ -1388,6 +1460,56 @@ export default function BookingList() {
           </div>
         </div>
       )}
+
+      {extendingBooking && (() => {
+        const basePrice = Number(extendingBooking.room?.weekdayPrice || extendingBooking.room?.price || extendingBooking.roomPriceSum || 350000);
+        const qty = extendingBooking.bookingRooms?.reduce((s, br) => s + (br.qty || 1), 0) || 1;
+        const hourlyRate = Math.round(basePrice / 24);
+        const sub = extensionType === "hours" ? hourlyRate * Number(extensionDuration || 0) * qty : basePrice * Number(extensionDuration || 0) * qty;
+        const tax = Math.round(sub * 0.05);
+        const total = sub + tax;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#E4EBE0] text-[#4A5D43] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">more_time</span>
+                </div>
+                <div>
+                  <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Extend Stay — {extendingBooking.bookingCode}</h3>
+                  <p className="text-xs text-[#6B6E6A] mt-1">Tambah durasi menginap. Per jam = harga/malam ÷ 24. Per hari = penuh.</p>
+                </div>
+              </div>
+              <div className="p-4 bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] space-y-3 text-xs">
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setExtensionType("hours")} className={`flex-1 py-2 rounded-lg font-bold ${extensionType === "hours" ? "bg-[#506147] text-white" : "bg-white border border-[#E5E1DA]"}`}>Per Jam</button>
+                  <button type="button" onClick={() => setExtensionType("days")} className={`flex-1 py-2 rounded-lg font-bold ${extensionType === "days" ? "bg-[#506147] text-white" : "bg-white border border-[#E5E1DA]"}`}>Per Hari</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-[#2D312C]">Durasi ({extensionType === "hours" ? "jam" : "hari"})</label>
+                    <input type="number" min={1} value={extensionDuration} onChange={(e) => setExtensionDuration(Math.max(1, Number(e.target.value) || 1))} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-[#2D312C]">Catatan (opsional)</label>
+                    <input type="text" placeholder="Late check-out 15:00" value={extensionNotes} onChange={(e) => setExtensionNotes(e.target.value)} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" maxLength={255} />
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg border border-[#E5E1DA] p-3 space-y-1.5">
+                  <div className="flex justify-between"><span className="text-[#6B6E6A]">{extensionType === "hours" ? `Rp ${hourlyRate.toLocaleString("id-ID")}/jam × ${extensionDuration} jam × ${qty} kamar` : `Rp ${basePrice.toLocaleString("id-ID")}/malam × ${extensionDuration} hari × ${qty} kamar`}</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
+                  <div className="flex justify-between text-[#6B6E6A]"><span>Pajak 5%</span><span>{fmtRupiah(tax)}</span></div>
+                  <div className="flex justify-between font-bold text-[#506147] text-sm pt-1 border-t border-[#E5E1DA]"><span>Total Tambahan</span><span>{fmtRupiah(total)}</span></div>
+                </div>
+                <p className="text-[11px] text-[#6B6E6A]">{extensionType === "hours" ? "Jam: tanggal check-out tidak berubah, dicatat di special_request. Tagihan bertambah." : "Hari: check-out mundur, total_night + stok hari tambahan dipotong."}</p>
+              </div>
+              <div className="pt-3 border-t border-[#E5E1DA] flex justify-end gap-2">
+                <button type="button" onClick={() => setExtendingBooking(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold">Batal</button>
+                <button type="button" onClick={handleExtendBooking} disabled={isProcessing} className="px-6 py-2 bg-[#7A5C3A] text-white text-xs font-bold rounded-lg hover:bg-[#5c4428] disabled:opacity-50">{isProcessing ? "Memproses..." : "Perpanjang"}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {confirmRefundReject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">

@@ -214,6 +214,128 @@ class BookingController extends Controller
         }
     }
 
+    public function extendBooking(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:hours,days',
+            'duration' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = Booking::with(['bookingRooms.roomType', 'payment', 'hotel', 'guests'])->find($id);
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        $allowedStatuses = ['paid', 'confirmed', 'checked_in'];
+        if (! in_array(strtolower($booking->status), $allowedStatuses)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hanya pesanan yang lunas (Paid / Confirmed / Checked In) yang dapat diperpanjang.',
+            ], 400);
+        }
+
+        $type = $request->type;
+        $duration = (int) $request->duration;
+        $notes = $request->notes;
+
+        $firstBookingRoom = $booking->bookingRooms->first();
+        $roomType = $firstBookingRoom?->roomType;
+        $qty = $booking->bookingRooms->sum('qty') ?: 1;
+
+        $basePrice = (float) ($firstBookingRoom?->price_per_night ?? $roomType?->weekday_price ?? 350000);
+
+        DB::beginTransaction();
+        try {
+            $extensionSubtotal = 0;
+            $extensionLabel = '';
+
+            if ($type === 'hours') {
+                $hourlyRate = (int) round($basePrice / 24);
+                $extensionSubtotal = $hourlyRate * $duration * $qty;
+                $extensionLabel = "[Late Check-Out +{$duration} Jam]";
+            } else {
+                $extensionSubtotal = $basePrice * $duration * $qty;
+                $extensionLabel = "[Perpanjang +{$duration} Hari]";
+
+                $currentCheckOut = Carbon::parse($booking->check_out);
+                $newCheckOut = $currentCheckOut->copy()->addDays($duration);
+                $period = CarbonPeriod::create($currentCheckOut, $newCheckOut->copy()->subDay());
+
+                foreach ($booking->bookingRooms as $bRoom) {
+                    $totalPhysicalStock = max(1, (int) ($bRoom->roomType?->stock ?? 10));
+
+                    foreach ($period as $date) {
+                        $dateStr = $date->format('Y-m-d');
+                        $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
+                            ->where('date', $dateStr)
+                            ->first();
+
+                        if ($avail) {
+                            $avail->decrement('available_stock', $bRoom->qty);
+                            $avail->increment('booked_room', $bRoom->qty);
+                        } else {
+                            RoomAvailability::create([
+                                'room_type_id' => $bRoom->room_type_id,
+                                'date' => $dateStr,
+                                'available_stock' => max(0, $totalPhysicalStock - $bRoom->qty),
+                                'booked_room' => $bRoom->qty,
+                            ]);
+                        }
+                    }
+                }
+
+                $booking->check_out = $newCheckOut->toDateString();
+                $booking->total_night = ($booking->total_night ?? 1) + $duration;
+            }
+
+            $addedTax = (int) round($extensionSubtotal * 0.05);
+            $addedGrandTotal = $extensionSubtotal + $addedTax;
+
+            $booking->subtotal = ($booking->subtotal ?? 0) + $extensionSubtotal;
+            $booking->tax = ($booking->tax ?? 0) + $addedTax;
+            $booking->grand_total = ($booking->grand_total ?? 0) + $addedGrandTotal;
+
+            $existingNote = $booking->special_request ?? '';
+            $newNote = trim("{$existingNote} {$extensionLabel} " . ($notes ? "({$notes})" : ""));
+            $booking->special_request = $newNote;
+
+            $booking->save();
+
+            if ($booking->payment) {
+                $booking->payment->gross_amount = $booking->grand_total;
+                $booking->payment->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Booking berhasil diperpanjang (+{$duration} " . ($type === 'hours' ? 'Jam' : 'Hari') . ").",
+                'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
+                'extension_summary' => [
+                    'type' => $type,
+                    'duration' => $duration,
+                    'subtotal_added' => $extensionSubtotal,
+                    'tax_added' => $addedTax,
+                    'grand_total_added' => $addedGrandTotal,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal memperpanjang booking: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function downloadETicket(Request $request, $id)
     {
         $booking = Booking::with(['hotel', 'bookingRooms.roomType', 'guests', 'user'])
