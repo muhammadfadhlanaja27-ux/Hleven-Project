@@ -8,7 +8,7 @@ import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 9;
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -47,8 +47,8 @@ const LandingPage = () => {
         const params = new URLSearchParams();
 
         if (searchTerm.trim()) params.append("search", searchTerm.trim());
-        if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split('T')[0]);
-        if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split('T')[0]);
+        if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
+        if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
         if (adults) params.append("adults", adults);
         if (children) params.append("children", children);
         if (rooms) params.append("rooms", rooms);
@@ -280,8 +280,8 @@ const LandingPage = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
                 <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-[#E8E2D9] shadow-xs"></div>
               ))}
             </div>
@@ -304,7 +304,7 @@ const LandingPage = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {displayedHotels.map((hotel) => (
                 <HotelCard
                   key={hotel.id}

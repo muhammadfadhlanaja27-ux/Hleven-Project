@@ -83,11 +83,12 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
         isHorizontal ? "flex-col sm:flex-row" : "flex-col h-full"
       }`}
     >
+      {/* Container Gambar: dibuat w-full h-48 md:h-52 agar tinggi dan tidak gepeng */}
       <div
         className={`relative shrink-0 overflow-hidden bg-[#F2EFE9] ${
           isHorizontal
-            ? "w-full sm:w-48 md:w-56 h-36 sm:h-auto"
-            : "aspect-4/3 md:h-40 w-full"
+            ? "w-full sm:w-48 md:w-56 h-48 sm:h-auto"
+            : "w-full h-48 md:h-52"
         }`}
       >
         {hasValidImage ? (

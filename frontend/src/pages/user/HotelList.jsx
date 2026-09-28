@@ -8,7 +8,7 @@ import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 9;
 
 const HotelList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
