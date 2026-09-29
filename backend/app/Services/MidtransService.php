@@ -131,8 +131,15 @@ class MidtransService
         $this->syncConfig();
         $booking = $payment->booking;
 
-        // Memanggil API Midtrans untuk mendapatkan status terbaru
-        $statusResponse = Transaction::status($booking->booking_code);
+        try {
+            $statusResponse = Transaction::status($booking->booking_code);
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, "doesn't exist") || str_contains($msg, '404')) {
+                throw new \Exception("Transaction not found at Midtrans — order {$booking->booking_code} belum terdaftar di Midtrans (mungkin pembayaran manual / belum generate Snap).", 404);
+            }
+            throw $e;
+        }
 
         $transactionStatus = $statusResponse->transaction_status;
         $paymentType = $statusResponse->payment_type ?? null;

@@ -35,10 +35,13 @@ const TransactionHistory = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const [selected, setSelected] = useState(null);
   const selectedRef = useRef(null);
   const pollRef = useRef(null);
   const tickingRef = useRef(false);
+  const skippedSyncRef = useRef(new Set());
 
   const fetchPayments = async (page = 1, silent = false) => {
     if (!silent) setLoading(true);
@@ -50,6 +53,7 @@ const TransactionHistory = () => {
       if (filterStatus) params.append("status", filterStatus);
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
+      if (searchDebounced) params.append("search", searchDebounced);
 
       const response = await api.get(`/hotel/payments?${params.toString()}`);
       if (response.data.success) {
@@ -71,8 +75,13 @@ const TransactionHistory = () => {
   }, [selected]);
 
   useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
     fetchPayments(1);
-  }, [filterStatus, startDate, endDate]);
+  }, [filterStatus, startDate, endDate, searchDebounced]);
 
   useEffect(() => {
     const tick = async () => {
@@ -83,19 +92,24 @@ const TransactionHistory = () => {
         if (filterStatus) params.append("status", filterStatus);
         if (startDate) params.append("start_date", startDate);
         if (endDate) params.append("end_date", endDate);
+        if (searchDebounced) params.append("search", searchDebounced);
         const res = await api.get(`/hotel/payments?${params.toString()}`);
         if (!res.data.success) return;
         const list = res.data.data;
         setPayments(list);
         setTotalPages(res.data.pagination.last_page);
-        const pendings = list.filter((p) => String(p.payment_status).toLowerCase() === "pending");
+        const pendings = list.filter((p) => String(p.payment_status).toLowerCase() === "pending" && !skippedSyncRef.current.has(p.order_id));
         if (pendings.length > 0) {
           let changed = false;
           await Promise.all(pendings.map(async (p) => {
             try {
               const r = await api.post(`/hotel/payments/${p.order_id}/check-status`);
-              if (r.data?.success) changed = true;
-            } catch {}
+              if (r.data?.not_midtrans) skippedSyncRef.current.add(p.order_id);
+              else if (r.data?.success) changed = true;
+            } catch (e) {
+              const d = e?.response?.data;
+              if (d?.not_midtrans || e?.response?.status === 404) skippedSyncRef.current.add(p.order_id);
+            }
           }));
           if (changed) {
             const res2 = await api.get(`/hotel/payments?${params.toString()}`);
@@ -114,18 +128,32 @@ const TransactionHistory = () => {
     };
     pollRef.current = setInterval(tick, 2000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [currentPage, filterStatus, startDate, endDate]);
+  }, [currentPage, filterStatus, startDate, endDate, searchDebounced]);
 
   const handleSync = async (orderId) => {
     setSyncing(orderId);
     try {
       const response = await api.post(`/hotel/payments/${orderId}/check-status`);
+      if (response.data?.not_midtrans) {
+        skippedSyncRef.current.add(orderId);
+        toast(response.data.message || "Transaksi manual / belum di Midtrans — tidak perlu sync.", { icon: "ℹ️" });
+        return;
+      }
       if (response.data.success) {
         toast.success("Transaction status updated.");
+        skippedSyncRef.current.delete(orderId);
         fetchPayments(currentPage, true);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to sync with Midtrans.");
+      const status = error?.response?.status;
+      const d = error?.response?.data;
+      const msg = d?.message || d?.error || "";
+      if (d?.not_midtrans || status === 404) {
+        skippedSyncRef.current.add(orderId);
+        toast(d?.message || msg || "Transaksi belum ada di Midtrans — pembayaran manual / belum Snap.", { icon: "ℹ️" });
+      } else {
+        toast.error(msg || "Failed to sync with Midtrans.");
+      }
     } finally {
       setSyncing(null);
     }
@@ -160,6 +188,20 @@ const TransactionHistory = () => {
       </div>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E8E2D9] mb-6 flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
+          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Search</label>
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">search</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search order, customer..."
+              className="w-full pl-10 pr-4 py-2 bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none"
+            />
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Payment Status</label>
           <select
@@ -195,7 +237,7 @@ const TransactionHistory = () => {
         </div>
 
         <button
-          onClick={() => { setFilterStatus(""); setStartDate(""); setEndDate(""); }}
+          onClick={() => { setFilterStatus(""); setStartDate(""); setEndDate(""); setSearch(""); }}
           className="px-4 py-2 text-sm font-bold text-[#5F7161] hover:bg-[#5F7161]/5 transition-colors rounded-xl underline"
         >
           Reset Filters

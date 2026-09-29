@@ -82,7 +82,6 @@ Route::prefix('v1')->group(function () {
         // --- Ulasan ---
         Route::get('hotel/reviews', [ReviewController::class, 'index']);
         Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
-        Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
         // --- Fasilitas (Admin/Super Admin) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
