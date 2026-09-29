@@ -175,6 +175,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
     Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
+    Route::post('/bookings/{id}/extend', [BookingController::class, 'extendBooking']);
 });
 
 // ==========================================
