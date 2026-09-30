@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Mail\BookingConfirmedMail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Transaction;
@@ -98,6 +101,8 @@ class MidtransService
 
                 app(QRCodeService::class)->generateTicket($booking);
 
+                $this->sendConfirmationEmail($booking);
+
                 $activity = 'Payment Success';
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                 $status = $transactionStatus === 'expire' ? 'expired' : 'cancelled';
@@ -158,6 +163,8 @@ class MidtransService
 
                     app(QRCodeService::class)->generateTicket($booking);
 
+                    $this->sendConfirmationEmail($booking);
+
                     $this->logSyncActivity($booking->user_id, 'Payment Success', $booking->booking_code);
                 } elseif ($paymentType && $payment->payment_method !== $paymentType) {
                     $payment->update(['payment_method' => $paymentType, 'transaction_id' => $trxId ?? $payment->transaction_id]);
@@ -193,5 +200,19 @@ class MidtransService
             'description' => "Manual Sync Midtrans status untuk Order ID {$orderId}", // Aturan PAYMENT-010[cite: 1]
             'ip_address' => request()->ip(),
         ]);
+    }
+
+    private function sendConfirmationEmail(Booking $booking): void
+    {
+        try {
+            $booking->load(['guests', 'hotel', 'bookingRooms.roomType', 'user', 'eTicket']);
+            $recipient = $booking->guests->first()->email ?? $booking->user->email;
+
+            if ($recipient) {
+                Mail::to($recipient)->send(new BookingConfirmedMail($booking));
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to send booking confirmation email for {$booking->booking_code}: " . $e->getMessage());
+        }
     }
 }

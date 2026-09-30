@@ -47,6 +47,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
 
+    // Public booking (guest checkout — auto-creates a session token in controller)
+    Route::post('/bookings', [BookingController::class, 'store']);
+
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
     // ==========================================
@@ -96,7 +99,6 @@ Route::prefix('v1')->group(function () {
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
-            Route::post('/bookings', [BookingController::class, 'store']);
             
             // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
