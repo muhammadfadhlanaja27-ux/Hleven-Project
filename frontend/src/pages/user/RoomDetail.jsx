@@ -210,27 +210,36 @@ const RoomDetail = () => {
             const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
             const facilities = matchedRoomType.facilities || [];
-            const policies = matchedRoomType.policies || "";
-            const mappedRoom = {
-              id: matchedRoomType.id,
-              name: matchedRoomType.name,
-              price: matchedRoomType.weekday_price,
-              weekday_price: matchedRoomType.weekday_price,
-              weekend_price: matchedRoomType.weekend_price,
-              thumbnail: roomImage,
-              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
-              capacity_adult: matchedRoomType.capacity_adult,
-              capacity_child: matchedRoomType.capacity_child,
-              description: matchedRoomType.description,
-              bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
-              breakfast: matchedRoomType.breakfast,
-              smoking_area: matchedRoomType.smoking_area,
-              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
-              stock: matchedRoomType.stock,
-              policies,
-              facilities,
-              photos: matchedRoomType.photos || []
-            };
+const policies = matchedRoomType.policies || "";
+let liveRooms = [];
+if (checkInDate && checkOutDate) {
+  const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
+  const { data: liveResponse } = await cachedGet(`/hotels/${targetHotelId}/rooms`, {
+    params: { check_in: fmtDateParam(checkInDate), check_out: fmtDateParam(checkOutDate) },
+  });
+  liveRooms = liveResponse?.data || [];
+}
+const liveStock = (liveRooms.find(r=>Number(r.id)===Number(matchedRoomType.id))||{}).available_stock;
+const mappedRoom = {
+  id: matchedRoomType.id,
+  name: matchedRoomType.name,
+  price: matchedRoomType.weekday_price,
+  weekday_price: matchedRoomType.weekday_price,
+  weekend_price: matchedRoomType.weekend_price,
+  thumbnail: roomImage,
+  capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+  capacity_adult: matchedRoomType.capacity_adult,
+  capacity_child: matchedRoomType.capacity_child,
+  description: matchedRoomType.description,
+  bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
+  breakfast: matchedRoomType.breakfast,
+  smoking_area: matchedRoomType.smoking_area,
+  is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
+  stock: liveStock ?? matchedRoomType.stock,
+  policies,
+  facilities,
+  photos: matchedRoomType.photos || [],
+};
 
             setHotel(apiHotel);
             setRoom(mappedRoom);
@@ -255,7 +264,7 @@ const RoomDetail = () => {
     };
 
     fetchDetail();
-  }, [hotelId, roomId]);
+  }, [hotelId, roomId, checkInDate, checkOutDate]);
 
   // Price & Nights Calculation
   const nightsCount = useMemo(() => {

@@ -23,7 +23,7 @@ class RoomController extends Controller
     {
         $user = $request->user();
 
-        $hotelId = $request->query('hotel_id');
+        $hotelId = $request->query('hotel_id') ?? $request->route('id');
         if (! $hotelId) {
             $hotel = $user?->hotel ?? Hotel::first();
             $hotelId = $hotel?->id;

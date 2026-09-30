@@ -180,23 +180,4 @@ class ReviewController extends Controller
             'data'    => $review
         ]);
     }
-
-    // Menghapus ulasan (jika mengandung konten tidak pantas)
-    public function destroy($id)
-    {
-        $review = Review::find($id);
-
-        if (!$review) {
-            return response()->json(['status' => 'error', 'message' => 'Review not found'], 404);
-        }
-
-        $review->delete();
-
-        $this->syncHotelRatingStats($review->hotel_id);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Review deleted successfully'
-        ]);
-    }
 }

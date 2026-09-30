@@ -159,11 +159,14 @@ class PaymentController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            $code = (int) ($e->getCode() ?: 0);
+            $isNotFound = $code === 404 || str_contains($msg, "doesn't exist") || str_contains($msg, '404') || str_contains($msg, 'not found');
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menyinkronkan data dengan Midtrans.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => $isNotFound ? $msg : 'Gagal menyinkronkan data dengan Midtrans.',
+                'error' => $msg,
+            ], $isNotFound ? 404 : 500);
         }
     }
 
@@ -248,6 +251,23 @@ class PaymentController extends Controller
                 $q->where('hotel_id', $hotelId);
             })->with(['booking.user', 'booking.guests']);
 
+            if ($request->filled('search')) {
+                $like = '%' . $request->search . '%';
+                $query->where(function ($q) use ($like) {
+                    $q->where('order_id', 'like', $like)
+                        ->orWhere('transaction_id', 'like', $like)
+                        ->orWhereHas('booking', function ($qb) use ($like) {
+                            $qb->where('booking_code', 'like', $like)
+                                ->orWhereHas('guests', function ($qg) use ($like) {
+                                    $qg->where('name', 'like', $like)->orWhere('phone', 'like', $like);
+                                })
+                                ->orWhereHas('user', function ($qu) use ($like) {
+                                    $qu->where('name', 'like', $like)->orWhere('email', 'like', $like);
+                                });
+                        });
+                });
+            }
+
             // Filter Status
             if ($request->filled('status')) {
                 $query->where('payment_status', $request->status);
@@ -299,7 +319,22 @@ class PaymentController extends Controller
                 })
                 ->firstOrFail();
 
-            $this->midtransService->syncPaymentStatus($payment);
+            try {
+                $this->midtransService->syncPaymentStatus($payment);
+            } catch (\Exception $e) {
+                $msg = $e->getMessage();
+                $code = (int) ($e->getCode() ?: 0);
+                $isNotFound = $code === 404 || str_contains($msg, "doesn't exist") || str_contains($msg, '404') || str_contains($msg, 'not found');
+                if ($isNotFound) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Transaksi belum ada di Midtrans — order belum generate Snap / pembayaran manual, status lokal tetap pending.',
+                        'not_midtrans' => true,
+                        'data' => $payment->fresh(),
+                    ], 200);
+                }
+                throw $e;
+            }
 
             return response()->json([
                 'success' => true,

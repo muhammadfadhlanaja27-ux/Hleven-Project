@@ -23,6 +23,11 @@
     <div class="box">
         <div class="label">Kode Booking</div>
         <div class="code">{{ $booking->booking_code }}</div>
+        @if($booking->eTicket)
+            <div style="text-align: center; margin-top: 15px;">
+                <img src="data:image/svg+xml;base64,{{ base64_encode(SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(150)->generate($booking->eTicket->qr_code)) }}" alt="QR Code">
+            </div>
+        @endif
     </div>
 
     <table class="table">
