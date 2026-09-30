@@ -14,6 +14,9 @@ use App\Models\RoomType;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -24,13 +27,13 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
+        $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $bookings = Booking::with(['user', 'bookingRooms.roomType', 'payment'])
+        $bookings = Booking::with(['user', 'guests', 'bookingRooms.roomType', 'payment'])
             ->where('hotel_id', $hotel->id)
             ->latest()
             ->get();
@@ -133,7 +136,7 @@ class BookingController extends Controller
     public function cancelBooking(Request $request, $id)
     {
         $user = $request->user();
-        $booking = Booking::where('id', $id)
+        $booking = Booking::with('bookingRooms.roomType')->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -141,21 +144,41 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
-        if (in_array($booking->status, ['unpaid', 'pending'])) {
-            $request->merge(['status' => 'cancelled']);
-
-            return $this->updateStatus($request, $booking->id);
-        } elseif (in_array($booking->status, ['paid', 'confirmed'])) {
-            $booking->update(['status' => 'refund_pending']);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
-                'data' => $booking,
-            ]);
+        $blocked = ['cancelled', 'expired', 'refunded', 'refund_pending', 'checked_in', 'checked_out'];
+        if (in_array($booking->status, $blocked)) {
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan atau sedang dalam proses refund'], 400);
         }
 
-        return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan atau sedang dalam proses refund'], 400);
+        if (in_array($booking->status, ['unpaid', 'pending'])) {
+            $request->merge(['status' => 'cancelled']);
+            return $this->updateStatus($request, $booking->id);
+        }
+
+        if (in_array($booking->status, ['paid', 'confirmed'])) {
+            $allRefundable = $booking->bookingRooms->isNotEmpty()
+                ? $booking->bookingRooms->every(fn ($br) => (bool) ($br->roomType?->is_refundable ?? true))
+                : true;
+
+            if ($allRefundable) {
+                $booking->update(['status' => 'refund_pending']);
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
+                    'data' => $booking->fresh()->load('bookingRooms.roomType'),
+                ]);
+            }
+
+            $request->merge(['status' => 'cancelled']);
+            $res = $this->updateStatus($request, $booking->id);
+            if ($res->getStatusCode() === 200) {
+                $data = json_decode($res->getContent(), true);
+                $data['message'] = 'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.';
+                $res->setContent(json_encode($data));
+            }
+            return $res;
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan'], 400);
     }
 
     public function handleRefundApproval(Request $request, $id)
@@ -194,6 +217,128 @@ class BookingController extends Controller
         }
     }
 
+    public function extendBooking(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:hours,days',
+            'duration' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = Booking::with(['bookingRooms.roomType', 'payment', 'hotel', 'guests'])->find($id);
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        $allowedStatuses = ['paid', 'confirmed', 'checked_in'];
+        if (! in_array(strtolower($booking->status), $allowedStatuses)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hanya pesanan yang lunas (Paid / Confirmed / Checked In) yang dapat diperpanjang.',
+            ], 400);
+        }
+
+        $type = $request->type;
+        $duration = (int) $request->duration;
+        $notes = $request->notes;
+
+        $firstBookingRoom = $booking->bookingRooms->first();
+        $roomType = $firstBookingRoom?->roomType;
+        $qty = $booking->bookingRooms->sum('qty') ?: 1;
+
+        $basePrice = (float) ($firstBookingRoom?->price_per_night ?? $roomType?->weekday_price ?? 350000);
+
+        DB::beginTransaction();
+        try {
+            $extensionSubtotal = 0;
+            $extensionLabel = '';
+
+            if ($type === 'hours') {
+                $hourlyRate = (int) round($basePrice / 24);
+                $extensionSubtotal = $hourlyRate * $duration * $qty;
+                $extensionLabel = "[Late Check-Out +{$duration} Jam]";
+            } else {
+                $extensionSubtotal = $basePrice * $duration * $qty;
+                $extensionLabel = "[Perpanjang +{$duration} Hari]";
+
+                $currentCheckOut = Carbon::parse($booking->check_out);
+                $newCheckOut = $currentCheckOut->copy()->addDays($duration);
+                $period = CarbonPeriod::create($currentCheckOut, $newCheckOut->copy()->subDay());
+
+                foreach ($booking->bookingRooms as $bRoom) {
+                    $totalPhysicalStock = max(1, (int) ($bRoom->roomType?->stock ?? 10));
+
+                    foreach ($period as $date) {
+                        $dateStr = $date->format('Y-m-d');
+                        $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
+                            ->where('date', $dateStr)
+                            ->first();
+
+                        if ($avail) {
+                            $avail->decrement('available_stock', $bRoom->qty);
+                            $avail->increment('booked_room', $bRoom->qty);
+                        } else {
+                            RoomAvailability::create([
+                                'room_type_id' => $bRoom->room_type_id,
+                                'date' => $dateStr,
+                                'available_stock' => max(0, $totalPhysicalStock - $bRoom->qty),
+                                'booked_room' => $bRoom->qty,
+                            ]);
+                        }
+                    }
+                }
+
+                $booking->check_out = $newCheckOut->toDateString();
+                $booking->total_night = ($booking->total_night ?? 1) + $duration;
+            }
+
+            $addedTax = (int) round($extensionSubtotal * 0.05);
+            $addedGrandTotal = $extensionSubtotal + $addedTax;
+
+            $booking->subtotal = ($booking->subtotal ?? 0) + $extensionSubtotal;
+            $booking->tax = ($booking->tax ?? 0) + $addedTax;
+            $booking->grand_total = ($booking->grand_total ?? 0) + $addedGrandTotal;
+
+            $existingNote = $booking->special_request ?? '';
+            $newNote = trim("{$existingNote} {$extensionLabel} " . ($notes ? "({$notes})" : ""));
+            $booking->special_request = $newNote;
+
+            $booking->save();
+
+            if ($booking->payment) {
+                $booking->payment->gross_amount = $booking->grand_total;
+                $booking->payment->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Booking berhasil diperpanjang (+{$duration} " . ($type === 'hours' ? 'Jam' : 'Hari') . ").",
+                'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
+                'extension_summary' => [
+                    'type' => $type,
+                    'duration' => $duration,
+                    'subtotal_added' => $extensionSubtotal,
+                    'tax_added' => $addedTax,
+                    'grand_total_added' => $addedGrandTotal,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal memperpanjang booking: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function downloadETicket(Request $request, $id)
     {
         $booking = Booking::with(['hotel', 'bookingRooms.roomType', 'guests', 'user'])
@@ -222,7 +367,7 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'review'])
+        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'bookingRooms.roomType', 'payment', 'review'])
             ->where('user_id', $user->id)
             ->latest()
             ->get();
@@ -312,7 +457,7 @@ class BookingController extends Controller
 
         $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
             ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
-                $query->whereIn('status', ['paid', 'checked_in', 'confirmed', 'refund_pending'])
+                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
                     ->where('check_in', '<', $checkOutStr)
                     ->where('check_out', '>', $checkInStr);
             })
@@ -339,13 +484,32 @@ class BookingController extends Controller
                 ? ($weekendPrice * $qty)
                 : ($weekdayPrice * $qty);
         }
-        $tax = (int) round($subtotal * 0.21);
+        $tax = (int) round($subtotal * 0.05);
         $grandTotal = $subtotal + $tax;
 
         DB::beginTransaction();
         try {
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
-            $userId = $request->user()?->id;
+            $user = $request->user();
+            $token = null;
+
+            if (! $user) {
+                $user = User::where('email', $request->guest_email)->first();
+                
+                if (! $user) {
+                    $user = User::create([
+                        'name' => $request->guest_name,
+                        'email' => $request->guest_email,
+                        'phone' => $request->guest_phone,
+                        'password' => Hash::make(Str::random(16)),
+                        'role' => 'user',
+                    ]);
+                }
+                
+                $token = $user->createToken('guest_token')->plainTextToken;
+            }
+
+            $userId = $user->id;
 
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
@@ -391,6 +555,7 @@ class BookingController extends Controller
             Guest::create([
                 'booking_id' => $booking->id,
                 'name' => $request->guest_name,
+                'email' => $request->guest_email,
                 'phone' => $request->guest_phone,
                 'identity_number' => $request->guest_identity ?? '-',
             ]);
@@ -424,6 +589,7 @@ class BookingController extends Controller
                 'data' => [
                     'booking' => $booking,
                     'payment' => $payment,
+                    'token' => $token,
                 ],
             ], 201);
         } catch (\Exception $e) {

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 
 use App\Models\Hotel;
 use App\Models\RoomType;
+use App\Models\RoomPhoto;
 use Illuminate\Database\Seeder;
 
 class HotelSeeder extends Seeder
@@ -13,7 +14,7 @@ class HotelSeeder extends Seeder
     {
         Hotel::factory(3)->create()->each(function ($hotel) {
             // Buat tipe kamar untuk setiap hotel yang digenerate
-            RoomType::create([
+            $deluxe = RoomType::create([
                 'hotel_id' => $hotel->id,
                 'name' => 'Deluxe Room',
                 'description' => 'Kamar luas dengan pemandangan kota.',
@@ -26,7 +27,13 @@ class HotelSeeder extends Seeder
                 'smoking_area' => false,
             ]);
 
-            RoomType::create([
+            RoomPhoto::create([
+                'room_type_id' => $deluxe->id,
+                'photo' => 'room_types/placeholder_deluxe.jpg',
+                'is_thumbnail' => true,
+            ]);
+
+            $suite = RoomType::create([
                 'hotel_id' => $hotel->id,
                 'name' => 'Suite Room',
                 'description' => 'Kamar mewah fasilitas lengkap dengan ruang tamu terpisah.',
@@ -37,6 +44,12 @@ class HotelSeeder extends Seeder
                 'capacity_child' => 2,
                 'breakfast' => true,
                 'smoking_area' => true,
+            ]);
+
+            RoomPhoto::create([
+                'room_type_id' => $suite->id,
+                'photo' => 'room_types/placeholder_suite.jpg',
+                'is_thumbnail' => true,
             ]);
         });
     }

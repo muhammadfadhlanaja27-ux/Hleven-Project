@@ -189,7 +189,31 @@ class SuperAdminDashboardService
 
     public function updateHotelStatus(Hotel $hotel, string $status): void
     {
+        $old = $hotel->status;
         $hotel->update(['status' => $status]);
+        ActivityLog::create([
+            'user_id' => auth()->id() ?? $hotel->admin_id,
+            'activity' => 'Update Hotel Status',
+            'description' => "Hotel {$hotel->name} status {$old} -> {$status}",
+            'ip_address' => request()->ip(),
+        ]);
+        Cache::forget('super_admin_summary');
+    }
+
+    public function updateHotelStar(Hotel $hotel, ?int $starRating, ?string $reason, User $verifier): void
+    {
+        $hotel->update([
+            'star_rating' => $starRating,
+            'star_verified_by' => $starRating ? $verifier->id : null,
+            'star_verified_at' => $starRating ? now() : null,
+            'star_verified_reason' => $starRating ? $reason : null,
+        ]);
+        ActivityLog::create([
+            'user_id' => $verifier->id,
+            'activity' => 'Update Star Rating',
+            'description' => $starRating ? "Set bintang hotel {$hotel->name} ke {$starRating}" . ($reason ? " (Alasan: {$reason})" : "") : "Hapus bintang hotel {$hotel->name}",
+            'ip_address' => request()->ip(),
+        ]);
         Cache::forget('super_admin_summary');
     }
 }

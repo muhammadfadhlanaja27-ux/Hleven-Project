@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getPublicImageUrl } from '../../services/imageHelper';
+import { getStorageUrl } from '../../services/imageUrl';
 
 const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl }) => {
   const [urlSearchParams] = useSearchParams();
@@ -8,6 +8,8 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
 
   const effectiveAdults = (adults ?? Number(urlSearchParams.get('adults'))) || 0;
   const effectiveChildren = (children ?? Number(urlSearchParams.get('children'))) || 0;
+  const effectiveCheckIn = urlSearchParams.get('check_in') || urlSearchParams.get('check_in_date') || urlSearchParams.get('checkIn') || '';
+  const effectiveCheckOut = urlSearchParams.get('check_out') || urlSearchParams.get('check_out_date') || urlSearchParams.get('checkOut') || '';
 
   const buildTargetUrl = () => {
     if (customUrl) return customUrl;
@@ -15,6 +17,8 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
     const params = new URLSearchParams();
     if (effectiveAdults > 0) params.set('adults', effectiveAdults);
     if (effectiveChildren > 0) params.set('children', effectiveChildren);
+    if (effectiveCheckIn) params.set('check_in', effectiveCheckIn);
+    if (effectiveCheckOut) params.set('check_out', effectiveCheckOut);
     const qs = params.toString();
     return `/hotels/${hotel?.id}${qs ? `?${qs}` : ''}`;
   };
@@ -26,13 +30,13 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
   const getImageUrl = () => {
     if (!hotel) return null;
     if (hotel.thumbnail) {
-      return getPublicImageUrl(hotel.thumbnail);
+      return getStorageUrl(hotel.thumbnail);
     }
     if (hotel.photos && hotel.photos.length > 0) {
       const firstPhoto = hotel.photos[0];
       const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
       if (photoPath) {
-        return getPublicImageUrl(photoPath);
+        return getStorageUrl(photoPath);
       }
     }
     return null;
@@ -48,7 +52,10 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
     return Number(hotel?.rating || hotel?.average_rating || 0).toFixed(1);
   };
 
-  const cityName = (typeof hotel?.city === 'object' ? hotel.city?.city : hotel?.city) || "Bandung";
+  const cityName = (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) || "Bandung";
+  const verifiedStar = hotel.star_rating ? Number(hotel.star_rating) : null;
+  const reviewRating = Number(hotel.rating || hotel.average_rating || 0);
+  const reviewCount = Number(hotel.reviews_count ?? hotel.total_review ?? hotel.total_reviews ?? 0);
 
   const renderFacilityIcon = (fac, idx) => {
     const facObj = typeof fac === 'object' ? fac : null;

@@ -24,20 +24,20 @@ const GuestSelector = ({ adults, children, rooms, onGuestChange, onAddRoomReques
   };
 
   return (
-    <div className="relative w-full lg:w-1/4">
-      {/* Display Button */}
+    <div className="relative w-full">
+      {/* Display Button — same size as Check-in box (px-4 py-3, rounded-xl, w-10 icon) */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 hover:border-[#778873] focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left cursor-pointer"
+        className="w-full group flex items-center gap-3 bg-[#FDF6ED] hover:bg-[#EFECE6] px-4 py-3 rounded-xl border border-[#DCCFC0] focus-within:bg-white focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873]/20 transition-all text-left cursor-pointer"
       >
-        <label className="font-label-sm text-xs font-semibold text-[#444842]">
-          Tamu &amp; Kamar
-        </label>
-        <div className="flex items-center w-full mt-1">
-          <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
-            group
-          </span>
-          <span className="w-full bg-transparent font-body-md text-sm text-[#1e1b16] outline-none truncate">
+        <div className="w-10 h-10 rounded-xl bg-[#778873]/10 group-hover:bg-[#778873] text-[#778873] group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
+          <span className="material-symbols-outlined text-xl">group</span>
+        </div>
+        <div className="flex flex-col flex-1 min-w-0">
+          <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">
+            Tamu &amp; Kamar
+          </label>
+          <span className="w-full bg-transparent font-body-md text-sm font-bold text-[#1C251D] outline-none truncate">
             {adults} Adult{adults !== 1 ? "s" : ""}, {children} Child{children !== 1 ? "ren" : ""}, {rooms} Room{rooms !== 1 ? "s" : ""}
           </span>
         </div>

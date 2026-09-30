@@ -29,7 +29,7 @@ const formatRpShort = (value) => {
 };
 
 // ─── Date Helpers ─────────────────────────────────────────────────────────────
-const getPeriodRange = (period) => {
+const getPeriodRange = (period, customStart, customEnd, customMonth) => {
   const now = new Date();
   const d = new Date(now);
   switch (period) {
@@ -62,6 +62,25 @@ const getPeriodRange = (period) => {
       const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
       const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
       return { start, end };
+    }
+    case "custom": {
+      if (customMonth) {
+        const [y, m] = customMonth.split("-").map(Number);
+        const start = new Date(y, m - 1, 1, 0, 0, 0);
+        const end = new Date(y, m, 0, 23, 59, 59);
+        return { start, end };
+      }
+      if (customStart && customEnd) {
+        const s = new Date(customStart + "T00:00:00");
+        const e = new Date(customEnd + "T23:59:59");
+        return { start: s, end: e };
+      }
+      if (customStart) {
+        const s = new Date(customStart + "T00:00:00");
+        const e = new Date(customStart + "T23:59:59");
+        return { start: s, end: e };
+      }
+      return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
     }
     case "all": {
       return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
@@ -200,6 +219,9 @@ const Skeleton = ({ className }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RevenueReport() {
   const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [customMonth, setCustomMonth] = useState("");
   const [chartPeriod, setChartPeriod] = useState("daily");
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -233,31 +255,39 @@ export default function RevenueReport() {
 
       if (data && data.status === "success") {
         const mapped = (data.data || []).map((b) => {
-          const roomType = b.booking_rooms?.[0]?.room_type || {};
+          const roomType = b.booking_rooms?.[0]?.room_type || b.bookingRooms?.[0]?.roomType || {};
 
           let statusLabel = "Pending";
-          if (b.status === "confirmed") statusLabel = "Confirmed";
-          else if (b.status === "checked_in") statusLabel = "Checked In";
-          else if (b.status === "completed") statusLabel = "Checked Out";
-          else if (b.status === "cancelled") statusLabel = "Cancelled";
+          const st = (b.status || "").toLowerCase();
+          if (st === "confirmed") statusLabel = "Confirmed";
+          else if (st === "checked_in") statusLabel = "Checked In";
+          else if (st === "checked_out" || st === "completed") statusLabel = "Checked Out";
+          else if (st === "cancelled") statusLabel = "Cancelled";
+          else if (st === "expired") statusLabel = "Expired";
+          else if (st === "refunded") statusLabel = "Refunded";
+          else if (st === "refund_pending") statusLabel = "Refund Pending";
+          else if (st === "paid" || st === "success") statusLabel = "Paid";
 
           let paymentStatusLabel = "Unpaid";
-          if (b.payment?.payment_status === "success") paymentStatusLabel = "Paid";
-          else if (b.payment?.payment_status === "pending") paymentStatusLabel = "Pending";
-          else if (b.payment?.payment_status === "refunded") paymentStatusLabel = "Refunded";
+          const paySt = (b.payment?.payment_status || b.payment_status || "").toLowerCase();
+          if (paySt === "success" || st === "paid" || st === "checked_in" || st === "checked_out") paymentStatusLabel = "Paid";
+          else if (paySt === "pending" || paySt === "unpaid") paymentStatusLabel = "Pending";
+          else if (paySt === "refunded" || st === "refunded") paymentStatusLabel = "Refunded";
 
-          const checkInDate = b.check_in ? b.check_in.slice(0, 10) : (b.created_at ? b.created_at.slice(0, 10) : "");
+          const bookingDate = b.created_at ? b.created_at.slice(0, 10) : "";
+          const checkInDate = b.check_in ? b.check_in.slice(0, 10) : (bookingDate);
           const roomNameStr = roomType.name || "Standard Room";
-          const roomTypeStr = roomType.name || "Standard";
+          const roomTypeStr = roomType.type || roomType.name || "Standard";
+          const grand = Number(b.grand_total ?? b.total_amount ?? 0);
 
           return {
             id: b.id,
             bookingCode: b.booking_code || `BK-${b.id}`,
-            bookingDate: b.created_at ? b.created_at.slice(0, 10) : "",
+            bookingDate: bookingDate,
             checkIn: checkInDate,
             checkOut: b.check_out ? b.check_out.slice(0, 10) : "",
-            guestName: b.user ? b.user.name : "Guest",
-            guestPhone: b.user ? b.user.phone : "—",
+            guestName: b.user ? b.user.name : (b.guest_name || "Guest"),
+            guestPhone: b.user ? b.user.phone : (b.guest_phone || "—"),
             room: {
               name: roomNameStr,
               type: roomTypeStr,
@@ -265,14 +295,14 @@ export default function RevenueReport() {
               weekendPrice: Number(roomType.weekend_price) || 0,
             },
             guests: b.guests_count || 1,
-            nights: b.nights_count || 1,
-            totalAmount: Number(b.total_amount) || 0,
+            nights: Number(b.total_night ?? b.nights_count ?? 1),
+            totalAmount: grand,
             bookingStatus: statusLabel,
             paymentStatus: paymentStatusLabel,
-            weekdayNights: b.weekday_nights || 1,
-            weekendNights: b.weekend_nights || 0,
-            discount: Number(b.discount_amount) || 0,
-            roomPriceSum: Number(b.total_amount) || 0,
+            weekdayNights: Number(b.weekday_nights ?? 0) || 0,
+            weekendNights: Number(b.weekend_nights ?? 0) || 0,
+            discount: Number(b.discount_amount ?? 0) || 0,
+            roomPriceSum: grand,
             additionalCharges: 0,
           };
         });
@@ -294,16 +324,16 @@ export default function RevenueReport() {
 
   // ─── Filtered Data ─────────────────────────────────────────────────────────
   const allBookings = bookings;
-  const range = getPeriodRange(selectedPeriod);
+  const range = getPeriodRange(selectedPeriod, customStart, customEnd, customMonth);
   const prevRange = getPreviousPeriodRange(selectedPeriod);
 
   const filteredBookings = useMemo(
-    () => (selectedPeriod === "all" ? allBookings : allBookings.filter((b) => isInRange(b.checkIn, range))),
-    [allBookings, selectedPeriod]
+    () => (selectedPeriod === "all" ? allBookings : allBookings.filter((b) => isInRange(b.bookingDate, range))),
+    [allBookings, selectedPeriod, customStart, customEnd, customMonth]
   );
 
   const prevBookings = useMemo(
-    () => allBookings.filter((b) => isInRange(b.checkIn, prevRange)),
+    () => allBookings.filter((b) => isInRange(b.bookingDate, prevRange)),
     [allBookings, selectedPeriod]
   );
 
@@ -648,6 +678,7 @@ export default function RevenueReport() {
     thisMonth: "This Month",
     lastMonth: "Last Month",
     thisYear: "This Year",
+    custom: "Custom",
   };
 
   const ROOM_TYPE_COLORS = { Deluxe: "#506147", Suite: "#ad6042", Standard: "#6B6E6A" };
@@ -708,6 +739,25 @@ export default function RevenueReport() {
               </button>
             ))}
           </div>
+          {selectedPeriod === "custom" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-[#6B6E6A]">Daily range:</span>
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+              <span className="text-xs text-[#6B6E6A]">s/d</span>
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+              <span className="text-xs font-semibold text-[#6B6E6A] ml-2">Monthly:</span>
+              <input type="month" value={customMonth} onChange={(e) => setCustomMonth(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+              {(customStart || customEnd || customMonth) && (
+                <button
+                  type="button"
+                  onClick={() => { setCustomStart(""); setCustomEnd(""); setCustomMonth(""); }}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#6B6E6A] hover:text-[#2D312C] border border-[#E5E1DA] rounded-lg bg-white"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Export Button */}
           <div className="relative" ref={exportRef}>

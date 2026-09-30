@@ -35,6 +35,7 @@ class PartnerApplication extends Model
         'bank_name',
         'bank_account_number',
         'bank_account_name',
+        'requested_star_rating',
         'status',
         'rejection_reason',
         'revision_notes',
@@ -42,6 +43,7 @@ class PartnerApplication extends Model
 
     protected $casts = [
         'room_count' => 'integer',
+        'requested_star_rating' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

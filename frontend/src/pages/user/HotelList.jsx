@@ -6,6 +6,7 @@ import HotelCard from "../../components/landing/HotelCard";
 import Pagination from "../../components/common/Pagination";
 import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
+import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
 const ITEMS_PER_PAGE = 9;
@@ -16,18 +17,17 @@ const HotelList = () => {
   const [loading, setLoading] = useState(true);
 
   const today = useMemo(() => new Date(), []);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
 
-  const parseDateParam = (key) => {
-    const raw = searchParams.get(key);
-    const parsed = raw ? new Date(`${raw}T00:00:00`) : null;
-    return parsed && !isNaN(parsed.getTime()) ? parsed : null;
-  };
+  const [searchTerm, setSearchTerm] = useState(init.searchTerm);
+  const [adults, setAdults] = useState(init.adults);
+  const [children, setChildren] = useState(init.children);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
 
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [adults, setAdults] = useState(Number(searchParams.get("adults")) || 2);
-  const [children, setChildren] = useState(Number(searchParams.get("children")) || 0);
-  const [checkInDate, setCheckInDate] = useState(parseDateParam("check_in_date"));
-  const [checkOutDate, setCheckOutDate] = useState(parseDateParam("check_out_date"));
+  useEffect(() => {
+    saveSearchState({ search: searchTerm, checkIn: checkInDate, checkOut: checkOutDate, adults, children });
+  }, [searchTerm, checkInDate, checkOutDate, adults, children]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
@@ -249,12 +249,14 @@ const HotelList = () => {
               </div>
             </div>
 
-            <GuestSelector
-              adults={adults}
-              children={children}
-              rooms={1}
-              onGuestChange={handleGuestChange}
-            />
+            <div className="w-full lg:w-1/3">
+              <GuestSelector
+                adults={adults}
+                children={children}
+                rooms={1}
+                onGuestChange={handleGuestChange}
+              />
+            </div>
 
             <button
               type="button"

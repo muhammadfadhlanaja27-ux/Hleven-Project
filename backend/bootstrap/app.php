@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Daftarkan alias middleware Anda di sini
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'hotel_suspended' => \App\Http\Middleware\CheckHotelSuspended::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

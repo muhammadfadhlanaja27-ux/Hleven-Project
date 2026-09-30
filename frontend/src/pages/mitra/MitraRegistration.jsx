@@ -40,6 +40,7 @@ const emptyForm = {
   hotel_phone: "",
   hotel_email: "",
   room_count: "",
+  requested_star_rating: "",
   address: "",
   province: "",
   city: "",
@@ -217,6 +218,7 @@ const MitraRegistration = () => {
       const payload = new FormData();
       Object.entries(form).forEach(([k, v]) => {
         if (k === "agree") return;
+        if (k === "requested_star_rating" && (v === "" || v == null)) return;
         if (k.startsWith("doc_") && v instanceof File) {
           payload.append(k, v);
         } else if (v !== null && v !== undefined) {
@@ -314,6 +316,14 @@ const MitraRegistration = () => {
             className={`${INPUT_BASE} resize-y ${errors.hotel_description ? INPUT_ERROR : ""}`}
           />
           {errors.hotel_description && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_description}</span>}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className={LABEL} htmlFor="requested_star_rating">Klasifikasi Bintang (Klaim)</label>
+          <select id="requested_star_rating" value={form.requested_star_rating} onChange={(e) => update("requested_star_rating", e.target.value)} className={INPUT_BASE}>
+            <option value="">-- Belum Bersertifikat / Pilih --</option>
+            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} Bintang</option>)}
+          </select>
+          <span className={HELPER}>Akan diverifikasi Super Admin. Kosong = belum terklasifikasi.</span>
         </div>
         <div className="flex flex-col gap-2">
           <label className={LABEL} htmlFor="hotel_phone">Nomor Telepon Hotel *</label>
@@ -661,6 +671,7 @@ const MitraRegistration = () => {
         <Row label="Nomor Telepon" value={form.hotel_phone} />
         <Row label="Email Properti" value={form.hotel_email} />
         <Row label="Jumlah Kamar" value={form.room_count ? `${form.room_count} Kamar` : ""} />
+        <Row label="Bintang (Klaim)" value={form.requested_star_rating ? `${form.requested_star_rating} Bintang` : "Belum Bersertifikat"} />
       </ReviewCard>
 
       <ReviewCard title="Lokasi" icon="location_on" step={2}>

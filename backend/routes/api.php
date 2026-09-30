@@ -22,6 +22,7 @@ use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\PartnerApplicationController;
+use App\Http\Controllers\AppealController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,9 @@ Route::prefix('v1')->group(function () {
     // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
+
+    // Public booking (guest checkout — auto-creates a session token in controller)
+    Route::post('/bookings', [BookingController::class, 'store']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -72,6 +76,8 @@ Route::prefix('v1')->group(function () {
 
         // --- Laporan & Staf ---
         Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
+        Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
+        Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
         Route::get('hotel/staffs', [StaffController::class, 'index']);
         Route::post('hotel/staffs', [StaffController::class, 'store']);
         Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
@@ -79,7 +85,6 @@ Route::prefix('v1')->group(function () {
         // --- Ulasan ---
         Route::get('hotel/reviews', [ReviewController::class, 'index']);
         Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
-        Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
         // --- Fasilitas (Admin/Super Admin) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
@@ -94,7 +99,6 @@ Route::prefix('v1')->group(function () {
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
-            Route::post('/bookings', [BookingController::class, 'store']);
             
             // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
@@ -121,10 +125,16 @@ Route::prefix('v1')->group(function () {
     });
 });
 
+
+
 // ==========================================
 // 3. ADMIN HOTEL ROUTES
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
+    Route::get('/appeals', [AppealController::class, 'indexAdmin']);
+    Route::post('/appeals', [AppealController::class, 'storeAdmin']);
+});
+Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
     // --- Dashboard Admin Hotel ---
     Route::get('/dashboard-stats', function () {
@@ -166,6 +176,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
     Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
+    Route::post('/bookings/{id}/extend', [BookingController::class, 'extendBooking']);
 });
 
 // ==========================================
@@ -195,6 +206,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     Route::prefix('hotels')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'hotels']);
         Route::patch('/{id}/status', [SuperAdminDashboardController::class, 'updateHotelStatus']);
+        Route::patch('/{id}/star', [SuperAdminDashboardController::class, 'updateHotelStar']);
         Route::delete('/{id}', [SuperAdminDashboardController::class, 'destroyHotel']);
     });
 
@@ -211,6 +223,11 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::post('/', [WarningController::class, 'store']);
         Route::patch('/{id}/status', [WarningController::class, 'updateStatus']);
         Route::delete('/{id}', [WarningController::class, 'destroy']);
+    });
+
+    Route::prefix('appeals')->group(function () {
+        Route::get('/', [AppealController::class, 'indexSuperAdmin']);
+        Route::patch('/{id}/status', [AppealController::class, 'updateStatus']);
     });
 });
 

@@ -5,6 +5,11 @@ export default function AdminHotelSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const user = (() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  })();
+  const isBlocked = user.hotel_status === 'blocked' || user.hotel?.status === 'blocked';
+
   const handleLogout = () => {
     localStorage.clear();
     navigate('/admin/login');
@@ -30,8 +35,16 @@ export default function AdminHotelSidebar() {
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <ul className="flex flex-col gap-1">
+      <div
+        className="admin-sidebar-scroll flex-1 overflow-y-auto py-4"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {isBlocked && (
+          <div className="mx-4 mb-3 p-3 rounded-lg bg-red-950/40 border border-red-800 text-xs text-red-200">
+            Hotel diblokir. Menu terkunci — silakan <Link to="/admin/suspended" className="underline font-bold">Aju Banding</Link>.
+          </div>
+        )}
+        <ul className={`flex flex-col gap-1 ${isBlocked ? 'opacity-40 pointer-events-none' : ''}`}>
           <li>
             <Link
               to="/admin/dashboard"
@@ -109,6 +122,22 @@ export default function AdminHotelSidebar() {
                 calendar_today
               </span>
               <span>Bookings Management</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/admin/transactions"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/transactions')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                receipt_long
+              </span>
+              <span>Transaction History</span>
             </Link>
           </li>
 

@@ -12,7 +12,14 @@ class Hotel extends Model
 
     protected $fillable = [
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
-        'average_rating', 'total_review', 'latitude', 'longitude', 'status'
+        'average_rating', 'total_review', 'latitude', 'longitude', 'status',
+        'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
+        'policies'
+    ];
+
+    protected $casts = [
+        'star_rating' => 'integer',
+        'star_verified_at' => 'datetime',
     ];
 
     protected $appends = ['starting_price', 'thumbnail', 'phone', 'email'];
@@ -56,6 +63,11 @@ class Hotel extends Model
         return $this->belongsTo(User::class, 'admin_id');
     }
 
+    public function starVerifier()
+    {
+        return $this->belongsTo(User::class, 'star_verified_by');
+    }
+
     public function city()
     {
         return $this->belongsTo(City::class, 'city_id');
@@ -84,5 +96,15 @@ class Hotel extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class, 'hotel_id');
+    }
+
+    public function warnings()
+    {
+        return $this->hasMany(Warning::class, 'hotel_id');
+    }
+
+    public function appeals()
+    {
+        return $this->hasMany(Appeal::class, 'hotel_id');
     }
 }

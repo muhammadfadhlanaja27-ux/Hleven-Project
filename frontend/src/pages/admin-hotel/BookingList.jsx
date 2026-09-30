@@ -38,17 +38,23 @@ const normalizeBooking = (b) => {
     rawStatus === "checked_out" ||
     rawStatus === "refund_pending";
 
+  const firstGuest = Array.isArray(b.guests) ? b.guests[0] : b.guests || {};
   const total = Number(
     b.total_price ||
       b.total_amount ||
+      b.grand_total ||
       payment.amount ||
       payment.gross_amount ||
       0
+  );
+  const nights = Number(
+    b.nights || b.total_night || b.total_nights || 1
   );
 
   return {
     id: b.id,
     bookingCode: b.booking_code || `BK-${b.id}`,
+    bookingTimestamp: b.created_at ? new Date(b.created_at).getTime() : 0,
     bookingDate: b.created_at
       ? new Date(b.created_at).toLocaleString("en-GB", {
           day: "2-digit",
@@ -59,10 +65,10 @@ const normalizeBooking = (b) => {
         })
       : "-",
     guest: {
-      name: b.user?.name || b.guest_name || "Guest",
-      email: b.user?.email || b.guest_email || "-",
-      phone: b.user?.phone || b.guest_phone || "-",
-      identityNumber: b.user?.identity_number || "-",
+      name: firstGuest?.name || b.user?.name || b.guest_name || "Guest",
+      email: firstGuest?.email || b.user?.email || b.guest_email || "-",
+      phone: firstGuest?.phone || b.user?.phone || b.guest_phone || "-",
+      identityNumber: firstGuest?.identity_number || b.user?.identity_number || "-",
       gender: b.user?.gender || "Male",
     },
     room: {
@@ -79,7 +85,7 @@ const normalizeBooking = (b) => {
     },
     checkIn: b.check_in_date || b.check_in || "-",
     checkOut: b.check_out_date || b.check_out || "-",
-    nights: Number(b.nights || 1),
+    nights: nights,
     weekdayNights: Number(b.weekday_nights || 1),
     weekendNights: Number(b.weekend_nights || 0),
     roomPriceSum: total,
@@ -137,14 +143,71 @@ export default function BookingList() {
   const [confirmCheckInBooking, setConfirmCheckInBooking] = useState(null);
   const [confirmCheckOutBooking, setConfirmCheckOutBooking] = useState(null);
   const [confirmCancelBooking, setConfirmCancelBooking] = useState(null);
+  const [confirmRefundApprove, setConfirmRefundApprove] = useState(null);
+  const [confirmRefundReject, setConfirmRefundReject] = useState(null);
+  const [extendingBooking, setExtendingBooking] = useState(null);
+  const [extensionType, setExtensionType] = useState("hours");
+  const [extensionDuration, setExtensionDuration] = useState(1);
+  const [extensionNotes, setExtensionNotes] = useState("");
+  const AUTO_CHECKOUT_KEY = "hleven_bookings_auto_checkout";
+  const [autoCheckout, setAutoCheckout] = useState(() => {
+    try { return localStorage.getItem(AUTO_CHECKOUT_KEY) === "true"; } catch { return false; }
+  });
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadData();
+    const t = setInterval(() => loadData(true), 10000);
+    const onFocus = () => loadData(true);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    try { localStorage.setItem(AUTO_CHECKOUT_KEY, String(autoCheckout)); } catch {}
+  }, [autoCheckout]);
+
+  useEffect(() => {
+    if (!autoCheckout || !bookings.length) return;
+    const now = new Date();
+    bookings.forEach((b) => {
+      if (b.rawStatus !== "checked_in") return;
+      const out = new Date(b.checkOut + "T12:00:00");
+      if (now >= out) {
+        api.patch(`/admin/bookings/${b.id}/status`, { status: "checked_out" }).catch(() => {});
+      }
+    });
+  }, [autoCheckout, bookings]);
+
+  const handleExtendBooking = async () => {
+    if (!extendingBooking) return;
+    if (extensionDuration < 1) { toast.error("Durasi minimal 1"); return; }
+    setIsProcessing(true);
+    try {
+      const res = await api.post(`/admin/bookings/${extendingBooking.id}/extend`, {
+        type: extensionType,
+        duration: Number(extensionDuration),
+        notes: extensionNotes || undefined,
+      });
+      toast.success(res.data?.message || "Booking diperpanjang");
+      const fresh = res.data?.data ? normalizeBooking(res.data.data) : null;
+      if (fresh && viewingBooking && viewingBooking.id === fresh.id) setViewingBooking(fresh);
+      setExtendingBooking(null);
+      setExtensionDuration(1);
+      setExtensionNotes("");
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memperpanjang booking");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [bookingsRes, roomsRes] = await Promise.allSettled([
         api.get("/admin/bookings"),
@@ -155,6 +218,15 @@ export default function BookingList() {
         const raw =
           bookingsRes.value.data.data || bookingsRes.value.data || [];
         setBookings(Array.isArray(raw) ? raw.map(normalizeBooking) : []);
+      } else if (bookingsRes.status === "rejected") {
+        const status = bookingsRes.reason?.response?.status;
+        if (!silent || status === 403) {
+          toast.error(
+            status === 403
+              ? "Akses booking ditolak (403). Login sebagai admin_hotel pemilik hotel ini."
+              : "Gagal memuat data reservasi dari server."
+          );
+        }
       }
       if (roomsRes.status === "fulfilled" && roomsRes.value.data) {
         const rawRooms =
@@ -163,9 +235,9 @@ export default function BookingList() {
       }
     } catch (err) {
       console.error("Failed to load bookings:", err);
-      toast.error("Gagal memuat data reservasi dari server.");
+      if (!silent) toast.error("Gagal memuat data reservasi dari server.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -176,6 +248,7 @@ export default function BookingList() {
   const checkedInCount = bookings.filter((b) => b.bookingStatus === "Checked In").length;
   const checkedOutCount = bookings.filter((b) => b.bookingStatus === "Checked Out").length;
   const cancelledCount = bookings.filter((b) => b.bookingStatus === "Cancelled").length;
+  const refundPendingCount = bookings.filter((b) => b.bookingStatus === "Refund Pending").length;
   const paidRevenueTotal = bookings
     .filter((b) => b.paymentStatus === "Paid")
     .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -187,6 +260,7 @@ export default function BookingList() {
     const matchesSearch =
       b.bookingCode.toLowerCase().includes(q) ||
       b.guest.name.toLowerCase().includes(q) ||
+      b.guest.email.toLowerCase().includes(q) ||
       b.guest.phone.toLowerCase().includes(q) ||
       b.room.name.toLowerCase().includes(q);
 
@@ -228,6 +302,12 @@ export default function BookingList() {
   const sortedBookings = [...filteredBookings].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
+
+    if (sortBy === "bookingDate") {
+      aVal = a.bookingTimestamp || 0;
+      bVal = b.bookingTimestamp || 0;
+      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+    }
 
     if (sortBy === "guestName") {
       aVal = a.guest.name;
@@ -328,6 +408,29 @@ export default function BookingList() {
     }
   };
 
+  const handleRefundDecision = async (booking, action) => {
+    if (!booking) return;
+    setIsProcessing(true);
+    try {
+      const res = await api.post(`/admin/bookings/${booking.id}/refund-approval`, { action });
+      toast.success(res.data?.message || (action === "approve" ? "Refund disetujui. Stok dikembalikan." : "Refund ditolak. Status kembali Paid."));
+      setConfirmRefundApprove(null);
+      setConfirmRefundReject(null);
+      if (viewingBooking && viewingBooking.id === booking.id) {
+        setViewingBooking((prev) => ({
+          ...prev,
+          bookingStatus: action === "approve" ? "Refunded" : "Confirmed",
+          rawStatus: action === "approve" ? "refunded" : "paid",
+        }));
+      }
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memproses refund.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
@@ -348,10 +451,19 @@ export default function BookingList() {
             Manage and monitor hotel reservations and guest check-ins.
           </p>
         </div>
+        <label className="flex items-center gap-3 bg-white border border-[#E5E1DA] rounded-2xl px-5 py-3.5 shadow-sm cursor-pointer select-none">
+          <span className="text-xs font-bold text-[#2D312C] whitespace-nowrap">Auto Check-Out</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${autoCheckout ? "bg-[#E4EBE0] text-[#4A5D43]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>{autoCheckout ? "ON" : "OFF"}</span>
+          <span className="relative inline-flex items-center">
+            <input type="checkbox" checked={autoCheckout} onChange={(e) => setAutoCheckout(e.target.checked)} className="sr-only peer" />
+            <span className="w-11 h-6 bg-[#D1CCC5] rounded-full peer peer-checked:bg-[#506147] transition-colors" />
+            <span className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform" />
+          </span>
+        </label>
       </div>
 
       {/* SUMMARY CARDS DASHBOARD HEADER */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Card 1: Total */}
         <div
           onClick={() => {
@@ -473,6 +585,26 @@ export default function BookingList() {
           </p>
         </div>
 
+        {/* Card 6b: Refund Pending */}
+        <div
+          onClick={() => {
+            setBookingStatusFilter("Refund Pending");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            bookingStatusFilter === "Refund Pending"
+              ? "bg-[#0369A1] text-white border-[#0369A1] shadow"
+              : "bg-white text-[#2D312C] border-[#E5E1DA] hover:border-[#0369A1]"
+          }`}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider block opacity-80">
+            Refund Pending
+          </span>
+          <p className="font-['Newsreader',serif] text-2xl font-bold mt-1">
+            {refundPendingCount}
+          </p>
+        </div>
+
         {/* Card 7: Paid Revenue */}
         <div
           onClick={() => {
@@ -533,6 +665,8 @@ export default function BookingList() {
               <option value="Checked Out">Checked Out</option>
               <option value="Cancelled">Cancelled</option>
               <option value="Expired">Expired</option>
+              <option value="Refund Pending">Refund Pending</option>
+              <option value="Refunded">Refunded</option>
             </select>
 
             {/* Payment Status */}
@@ -739,6 +873,14 @@ export default function BookingList() {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FFF0E0] text-[#9B5235]">
                             Pending
                           </span>
+                        ) : b.bookingStatus === "Refund Pending" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E0F2FE] text-[#0369A1] border border-[#0369A1]/20">
+                            Refund Pending
+                          </span>
+                        ) : b.bookingStatus === "Refunded" ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a]">
+                            Refunded
+                          </span>
                         ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a]">
                             {b.bookingStatus}
@@ -764,6 +906,22 @@ export default function BookingList() {
                             >
                               Check Out
                             </button>
+                          )}
+                          {b.bookingStatus === "Refund Pending" && (
+                            <>
+                              <button
+                                onClick={() => setConfirmRefundApprove(b)}
+                                className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => setConfirmRefundReject(b)}
+                                className="px-3 py-1.5 border border-[#ba1a1a] text-[#ba1a1a] rounded-lg text-xs font-semibold hover:bg-[#ffdad6] transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => setViewingBooking(b)}
@@ -890,7 +1048,23 @@ export default function BookingList() {
               </div>
 
               {/* Dynamic Actions in Header */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {viewingBooking.bookingStatus === "Refund Pending" && (
+                  <>
+                    <button
+                      onClick={() => setConfirmRefundApprove(viewingBooking)}
+                      className="px-4 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm"
+                    >
+                      Approve Refund
+                    </button>
+                    <button
+                      onClick={() => setConfirmRefundReject(viewingBooking)}
+                      className="px-4 py-2 border border-[#ba1a1a] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6] transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
                 {viewingBooking.bookingStatus === "Confirmed" && (
                   <>
                     <button
@@ -907,6 +1081,21 @@ export default function BookingList() {
                       Cancel Booking
                     </button>
                   </>
+                )}
+
+                {(viewingBooking.bookingStatus === "Confirmed" || viewingBooking.bookingStatus === "Checked In") && (
+                  <button
+                    onClick={() => {
+                      setExtendingBooking(viewingBooking);
+                      setExtensionType("hours");
+                      setExtensionDuration(1);
+                      setExtensionNotes("");
+                    }}
+                    className="px-4 py-2 bg-[#7A5C3A] text-white text-xs font-semibold rounded-lg hover:bg-[#5c4428] transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">more_time</span>
+                    Extend Stay
+                  </button>
                 )}
 
                 {viewingBooking.bookingStatus === "Checked In" && (
@@ -1274,6 +1463,100 @@ export default function BookingList() {
               >
                 {isProcessing ? "Cancelling..." : "Confirm Cancellation"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmRefundApprove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-[#E4EBE0] text-[#4A5D43] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">verified</span>
+              </div>
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Approve Refund?</h3>
+                <p className="text-xs text-[#6B6E6A] mt-1">
+                  Setujui refund untuk <strong className="text-[#2D312C]">{confirmRefundApprove.bookingCode}</strong>? Stok kamar akan dikembalikan dan status menjadi Refunded.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmRefundApprove(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors">Batal</button>
+              <button type="button" onClick={() => handleRefundDecision(confirmRefundApprove, "approve")} disabled={isProcessing} className="px-6 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] transition-colors shadow-sm disabled:opacity-50">{isProcessing ? "Memproses..." : "Approve Refund"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {extendingBooking && (() => {
+        const basePrice = Number(extendingBooking.room?.weekdayPrice || extendingBooking.room?.price || extendingBooking.roomPriceSum || 350000);
+        const qty = extendingBooking.bookingRooms?.reduce((s, br) => s + (br.qty || 1), 0) || 1;
+        const hourlyRate = Math.round(basePrice / 24);
+        const sub = extensionType === "hours" ? hourlyRate * Number(extensionDuration || 0) * qty : basePrice * Number(extensionDuration || 0) * qty;
+        const tax = Math.round(sub * 0.05);
+        const total = sub + tax;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#E4EBE0] text-[#4A5D43] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">more_time</span>
+                </div>
+                <div>
+                  <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Extend Stay — {extendingBooking.bookingCode}</h3>
+                  <p className="text-xs text-[#6B6E6A] mt-1">Tambah durasi menginap. Per jam = harga/malam ÷ 24. Per hari = penuh.</p>
+                </div>
+              </div>
+              <div className="p-4 bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] space-y-3 text-xs">
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setExtensionType("hours")} className={`flex-1 py-2 rounded-lg font-bold ${extensionType === "hours" ? "bg-[#506147] text-white" : "bg-white border border-[#E5E1DA]"}`}>Per Jam</button>
+                  <button type="button" onClick={() => setExtensionType("days")} className={`flex-1 py-2 rounded-lg font-bold ${extensionType === "days" ? "bg-[#506147] text-white" : "bg-white border border-[#E5E1DA]"}`}>Per Hari</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-[#2D312C]">Durasi ({extensionType === "hours" ? "jam" : "hari"})</label>
+                    <input type="number" min={1} value={extensionDuration} onChange={(e) => setExtensionDuration(Math.max(1, Number(e.target.value) || 1))} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-[#2D312C]">Catatan (opsional)</label>
+                    <input type="text" placeholder="Late check-out 15:00" value={extensionNotes} onChange={(e) => setExtensionNotes(e.target.value)} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" maxLength={255} />
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg border border-[#E5E1DA] p-3 space-y-1.5">
+                  <div className="flex justify-between"><span className="text-[#6B6E6A]">{extensionType === "hours" ? `Rp ${hourlyRate.toLocaleString("id-ID")}/jam × ${extensionDuration} jam × ${qty} kamar` : `Rp ${basePrice.toLocaleString("id-ID")}/malam × ${extensionDuration} hari × ${qty} kamar`}</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
+                  <div className="flex justify-between text-[#6B6E6A]"><span>Pajak 5%</span><span>{fmtRupiah(tax)}</span></div>
+                  <div className="flex justify-between font-bold text-[#506147] text-sm pt-1 border-t border-[#E5E1DA]"><span>Total Tambahan</span><span>{fmtRupiah(total)}</span></div>
+                </div>
+                <p className="text-[11px] text-[#6B6E6A]">{extensionType === "hours" ? "Jam: tanggal check-out tidak berubah, dicatat di special_request. Tagihan bertambah." : "Hari: check-out mundur, total_night + stok hari tambahan dipotong."}</p>
+              </div>
+              <div className="pt-3 border-t border-[#E5E1DA] flex justify-end gap-2">
+                <button type="button" onClick={() => setExtendingBooking(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold">Batal</button>
+                <button type="button" onClick={handleExtendBooking} disabled={isProcessing} className="px-6 py-2 bg-[#7A5C3A] text-white text-xs font-bold rounded-lg hover:bg-[#5c4428] disabled:opacity-50">{isProcessing ? "Memproses..." : "Perpanjang"}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {confirmRefundReject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">block</span>
+              </div>
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Reject Refund?</h3>
+                <p className="text-xs text-[#6B6E6A] mt-1">
+                  Tolak refund <strong className="text-[#2D312C]">{confirmRefundReject.bookingCode}</strong>? Status akan kembali Paid.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmRefundReject(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4] transition-colors">Batal</button>
+              <button type="button" onClick={() => handleRefundDecision(confirmRefundReject, "reject")} disabled={isProcessing} className="px-6 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors shadow-sm disabled:opacity-50">{isProcessing ? "Memproses..." : "Reject Refund"}</button>
             </div>
           </div>
         </div>

@@ -51,9 +51,10 @@ class RoomTypeController extends Controller
             'weekday_price' => 'required|numeric|min:0',
             'weekend_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'adult_capacity' => 'required|integer|min:1',
-            'child_capacity' => 'nullable|integer|min:0',
+            'capacity_adult' => 'required|integer|min:1',
+            'capacity_child' => 'nullable|integer|min:0',
             'is_refundable' => 'nullable|boolean',
+            'policies' => 'nullable|string|max:5000',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
             'photos' => 'nullable|array',
@@ -76,11 +77,12 @@ class RoomTypeController extends Controller
                 'weekday_price' => $request->weekday_price,
                 'weekend_price' => $request->weekend_price,
                 'stock' => $request->stock,
-                'capacity_adult' => $request->adult_capacity,
-                'capacity_child' => $request->child_capacity ?? 0,
+                'capacity_adult' => $request->capacity_adult,
+                'capacity_child' => $request->capacity_child ?? 0,
                 'breakfast' => $request->boolean('breakfast'),
                 'smoking_area' => $request->boolean('smoking_area'),
                 'is_refundable' => $request->boolean('is_refundable', true),
+                'policies' => $request->policies,
             ]);
 
             // 2. Simpan relasi fasilitas ke tabel pivot `room_facilities`
@@ -151,9 +153,10 @@ class RoomTypeController extends Controller
             'weekday_price' => 'sometimes|numeric|min:0',
             'weekend_price' => 'sometimes|numeric|min:0',
             'stock' => 'sometimes|integer|min:0',
-            'adult_capacity' => 'sometimes|integer|min:1',
-            'child_capacity' => 'nullable|integer|min:0',
+            'capacity_adult' => 'sometimes|integer|min:1',
+            'capacity_child' => 'nullable|integer|min:0',
             'is_refundable' => 'nullable|boolean',
+            'policies' => 'nullable|string|max:5000',
             'facilities' => 'nullable|array',
             'facilities.*' => 'exists:facilities,id',
             'photos' => 'nullable|array',
@@ -166,24 +169,30 @@ class RoomTypeController extends Controller
 
         // Mapping inputan dari request ke kolom database model
         $updateData = $request->only([
-            'name', 'type', 'description', 'weekday_price', 'weekend_price', 
-            'stock'
+            'name', 'type', 'description', 'weekday_price', 'weekend_price',
+            'stock', 'policies'
         ]);
 
         if ($request->has('bed')) {
             $updateData['bed'] = $request->bed;
         }
-        if ($request->has('adult_capacity')) {
-            $updateData['capacity_adult'] = $request->adult_capacity;
+        if ($request->has('capacity_adult')) {
+            $updateData['capacity_adult'] = $request->capacity_adult;
         }
-        if ($request->has('child_capacity')) {
-            $updateData['capacity_child'] = $request->child_capacity;
+        if ($request->has('capacity_child')) {
+            $updateData['capacity_child'] = $request->capacity_child;
         }
         if ($request->has('breakfast')) {
             $updateData['breakfast'] = $request->boolean('breakfast');
         }
         if ($request->has('smoking_area')) {
             $updateData['smoking_area'] = $request->boolean('smoking_area');
+        }
+        if ($request->has('is_refundable')) {
+            $updateData['is_refundable'] = $request->boolean('is_refundable');
+        }
+        if ($request->has('policies')) {
+            $updateData['policies'] = $request->policies;
         }
 
         $roomType->update($updateData);

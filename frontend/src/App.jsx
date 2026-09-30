@@ -38,9 +38,11 @@ import FacilityManager from "./pages/admin-hotel/FacilityManager";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
 import BookingList from "./pages/admin-hotel/BookingList";
+import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
 import AdminProfile from "./pages/admin-hotel/Profile";
+import SuspendedPage from "./pages/admin-hotel/SuspendedPage";
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
@@ -49,6 +51,7 @@ import UserManagement from "./pages/super-admin/UserManagement";
 import HotelMonitoring from "./pages/super-admin/HotelMonitoring";
 import PartnerApproval from "./pages/super-admin/PartnerApproval";
 import WarningManagement from "./pages/super-admin/WarningManagement";
+import AppealManagement from "./pages/super-admin/AppealManagement";
 import ActivityLogs from "./pages/super-admin/ActivityLogs";
 import Reports from "./pages/super-admin/Reports";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
@@ -81,6 +84,14 @@ const AdminHotelProtectedRoute = () => {
     const user = JSON.parse(userString);
     if (user.role !== "admin_hotel" && user.role !== "super_admin") {
       return <Navigate to="/admin/login" replace />;
+    }
+    const blocked = user.hotel_status === "blocked" || user.hotel?.status === "blocked";
+    const onSuspended = window.location.pathname.startsWith("/admin/suspended");
+    if (blocked && !onSuspended) {
+      return <Navigate to="/admin/suspended" replace />;
+    }
+    if (!blocked && onSuspended) {
+      return <Navigate to="/admin/dashboard" replace />;
     }
   } catch (e) {
     localStorage.clear();
@@ -154,6 +165,7 @@ function App() {
 
           {/* GRUP 2: Rute Admin Hotel */}
           <Route element={<AdminHotelProtectedRoute />}>
+            <Route path="/admin/suspended" element={<SuspendedPage />} />
             <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/hotel" element={<HotelInformation />} />
@@ -161,6 +173,7 @@ function App() {
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
               <Route path="/admin/bookings" element={<BookingList />} />
+              <Route path="/admin/transactions" element={<TransactionHistory />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
@@ -179,6 +192,7 @@ function App() {
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
               <Route path="warnings" element={<WarningManagement />} />
+              <Route path="appeals" element={<AppealManagement />} />
               <Route path="activity-logs" element={<ActivityLogs />} />
               <Route path="reports" element={<Reports />} />
             </Route>

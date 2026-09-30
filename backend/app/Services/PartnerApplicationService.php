@@ -14,9 +14,9 @@ use Illuminate\Support\Str;
 
 class PartnerApplicationService
 {
-    public function approveApplication(PartnerApplication $application, User $admin): void
+    public function approveApplication(PartnerApplication $application, User $admin, ?int $starOverride = null, ?string $starReason = null): void
     {
-        DB::transaction(function () use ($application, $admin) {
+        DB::transaction(function () use ($application, $admin, $starOverride, $starReason) {
             $application->update(['status' => 'approved']);
 
             $adminEmail = $application->hotel_email;
@@ -94,6 +94,8 @@ class PartnerApplicationService
                 $counter++;
             }
 
+            $finalStar = $starOverride ?? $application->requested_star_rating;
+
             Hotel::create([
                 'admin_id' => $hotelAdmin->id,
                 'city_id' => $city->id,
@@ -106,6 +108,10 @@ class PartnerApplicationService
                 'status' => 'active',
                 'average_rating' => 0,
                 'total_review' => 0,
+                'star_rating' => $finalStar,
+                'star_verified_by' => $finalStar ? $admin->id : null,
+                'star_verified_at' => $finalStar ? now() : null,
+                'star_verified_reason' => $finalStar ? $starReason : null,
             ]);
 
             ActivityLog::create([
