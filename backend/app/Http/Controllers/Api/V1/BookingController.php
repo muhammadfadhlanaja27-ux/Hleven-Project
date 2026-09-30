@@ -30,7 +30,7 @@ class BookingController extends Controller
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $bookings = Booking::with(['user', 'bookingRooms.roomType', 'payment'])
+        $bookings = Booking::with(['user', 'bookingRooms.roomType', 'payment', 'guests'])
             ->where('hotel_id', $hotel->id)
             ->latest()
             ->get();
@@ -39,6 +39,158 @@ class BookingController extends Controller
             'status' => 'success',
             'data' => $bookings,
         ]);
+    }
+
+    public function storeManual(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'required|integer|min:1',
+            'children' => 'required|integer|between:0,32767',
+            'guest_name' => 'required|string|max:255',
+            'guest_email' => 'nullable|email|max:255',
+            'guest_phone' => 'required|string|max:30',
+            'payment_method' => 'required|in:cash,bank_transfer,card,unpaid',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+        if (! $hotel) {
+            return response()->json(['status' => 'error', 'message' => 'Hotel tidak ditemukan.'], 404);
+        }
+
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $checkInStr = $checkIn->toDateString();
+        $checkOutStr = $checkOut->toDateString();
+        $qty = (int) $request->qty;
+        $adults = (int) $request->adults;
+        $children = (int) $request->children;
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+
+        DB::beginTransaction();
+        try {
+            $roomType = RoomType::where('id', $request->room_type_id)
+                ->where('hotel_id', $hotel->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $roomType) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => 'Tipe kamar tidak ditemukan di hotel ini.'], 422);
+            }
+
+            if ($adults > max(1, (int) $roomType->capacity_adult) * $qty) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => 'Jumlah tamu dewasa melebihi kapasitas kamar.'], 422);
+            }
+
+            if ($children > max(0, (int) $roomType->capacity_child) * $qty) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => 'Jumlah anak melebihi kapasitas kamar.'], 422);
+            }
+
+            $bookedQty = BookingRoom::where('room_type_id', $roomType->id)
+                ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                    $query->whereIn('status', ['paid', 'checked_in', 'confirmed', 'refund_pending'])
+                        ->where('check_in', '<', $checkOutStr)
+                        ->where('check_out', '>', $checkInStr);
+                })
+                ->sum('qty');
+            $available = max(0, (int) ($roomType->stock ?? 10) - $bookedQty);
+
+            if ($available < $qty) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => "Stok tidak cukup. Tersedia {$available} kamar."], 422);
+            }
+
+            $weekdayPrice = (float) ($roomType->weekday_price ?? $roomType->price ?? 0);
+            $weekendPrice = (float) ($roomType->weekend_price ?? $weekdayPrice);
+            $subtotal = 0;
+            foreach ($period as $date) {
+                $subtotal += ($date->isWeekend() ? $weekendPrice : $weekdayPrice) * $qty;
+            }
+            $tax = (int) round($subtotal * 0.05);
+            $grandTotal = $subtotal + $tax;
+            $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
+            $isPaid = $request->payment_method !== 'unpaid';
+
+            $booking = Booking::create([
+                'booking_code' => $bookingCode,
+                'user_id' => $user->id,
+                'hotel_id' => $hotel->id,
+                'check_in' => $checkInStr,
+                'check_out' => $checkOutStr,
+                'total_night' => max(1, $checkIn->diffInDays($checkOut)),
+                'children_count' => $children,
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'grand_total' => $grandTotal,
+                'status' => $isPaid ? 'paid' : 'unpaid',
+            ]);
+
+            BookingRoom::create([
+                'booking_id' => $booking->id,
+                'room_type_id' => $roomType->id,
+                'qty' => $qty,
+                'price_per_night' => ($weekdayPrice + $weekendPrice) / 2,
+                'subtotal' => $subtotal,
+            ]);
+
+            Guest::create([
+                'booking_id' => $booking->id,
+                'name' => $request->guest_name,
+                'phone' => $request->guest_phone,
+                'email' => $request->filled('guest_email') ? strtolower(trim($request->guest_email)) : null,
+                'identity_number' => null,
+            ]);
+
+            foreach ($period as $date) {
+                $availability = RoomAvailability::where('room_type_id', $roomType->id)
+                    ->where('date', $date->format('Y-m-d'))
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($availability) {
+                    $availability->decrement('available_stock', $qty);
+                    $availability->increment('booked_room', $qty);
+                } else {
+                    RoomAvailability::create([
+                        'room_type_id' => $roomType->id,
+                        'date' => $date->format('Y-m-d'),
+                        'available_stock' => max(0, (int) ($roomType->stock ?? 10) - $qty),
+                        'booked_room' => $qty,
+                    ]);
+                }
+            }
+
+            Payment::create([
+                'booking_id' => $booking->id,
+                'payment_method' => $isPaid ? $request->payment_method : null,
+                'payment_status' => $isPaid ? 'success' : 'pending',
+                'gross_amount' => $grandTotal,
+                'order_id' => $bookingCode,
+                'paid_at' => $isPaid ? Carbon::now() : null,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Booking manual berhasil dibuat.',
+                'data' => $booking->load(['user', 'bookingRooms.roomType', 'payment', 'guests']),
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => 'Gagal membuat booking: '.$e->getMessage()], 500);
+        }
     }
 
     public function show(Request $request, $id)

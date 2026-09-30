@@ -11,7 +11,7 @@ class Guest extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['booking_id', 'name', 'phone', 'gender', 'identity_number'];
+    protected $fillable = ['booking_id', 'name', 'phone', 'email', 'gender', 'identity_number'];
 
     public function booking()
     {

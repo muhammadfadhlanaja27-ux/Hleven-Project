@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
+const dateInputValue = (offset = 0) => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+};
 
 const normalizeBooking = (b) => {
   const rawStatus = (b.status || "unpaid").toLowerCase();
@@ -29,6 +37,7 @@ const normalizeBooking = (b) => {
     b.booking_rooms?.[0]?.roomType ||
     {};
   const payment = b.payment || {};
+  const guest = b.guests?.[0] || {};
   // Nilai enum payments.payment_status: pending, success, failed, expired, cancelled
   const isPaid =
     payment.payment_status === "success" ||
@@ -59,11 +68,11 @@ const normalizeBooking = (b) => {
         })
       : "-",
     guest: {
-      name: b.user?.name || b.guest_name || "Guest",
-      email: b.user?.email || b.guest_email || "-",
-      phone: b.user?.phone || b.guest_phone || "-",
-      identityNumber: b.user?.identity_number || "-",
-      gender: b.user?.gender || "Male",
+      name: guest.name || b.guest_name || b.user?.name || "Guest",
+      email: guest.email || b.guest_email || b.user?.email || "-",
+      phone: guest.phone || b.guest_phone || b.user?.phone || "-",
+      identityNumber: guest.identity_number || b.user?.identity_number || "-",
+      gender: guest.gender || b.user?.gender || "Male",
     },
     room: {
       id: firstRoom.id || 1,
@@ -80,6 +89,7 @@ const normalizeBooking = (b) => {
     checkIn: b.check_in_date || b.check_in || "-",
     checkOut: b.check_out_date || b.check_out || "-",
     nights: Number(b.nights || 1),
+    childrenCount: Number(b.children_count ?? b.children ?? 0),
     weekdayNights: Number(b.weekday_nights || 1),
     weekendNights: Number(b.weekend_nights || 0),
     roomPriceSum: total,
@@ -88,6 +98,10 @@ const normalizeBooking = (b) => {
     totalAmount: total,
     bookingStatus: bookingStatusMap[rawStatus] || "Pending",
     rawStatus: rawStatus,
+    canCheckIn: ["paid", "confirmed"].includes(rawStatus),
+    canCheckOut: rawStatus === "checked_in",
+    canCancel: ["pending", "unpaid", "paid", "confirmed"].includes(rawStatus),
+    canExtend: ["paid", "confirmed", "checked_in"].includes(rawStatus),
     paymentStatus: isPaid ? "Paid" : "Pending",
     paymentMethod: payment.payment_method || "Payment Gateway",
     transactionId: payment.transaction_id || `TRX-${b.id}`,
@@ -139,6 +153,30 @@ export default function BookingList() {
   const [confirmCancelBooking, setConfirmCancelBooking] = useState(null);
   const [confirmRefundApprove, setConfirmRefundApprove] = useState(null);
   const [confirmRefundReject, setConfirmRefundReject] = useState(null);
+  const [showCheckInCode, setShowCheckInCode] = useState(false);
+  const [checkInCode, setCheckInCode] = useState("");
+  const [showManualBooking, setShowManualBooking] = useState(false);
+  const [manualBookingCode, setManualBookingCode] = useState("");
+  const [manualForm, setManualForm] = useState(() => ({
+    room_type_id: "",
+    check_in: dateInputValue(),
+    check_out: dateInputValue(1),
+    qty: 1,
+    adults: 1,
+    children: 0,
+    guest_name: "",
+    guest_phone: "",
+    payment_method: "cash",
+  }));
+  const selectedManualRoom = rooms.find(
+    (room) => String(room.id) === String(manualForm.room_type_id)
+  );
+  const selectedManualRoomPhoto = selectedManualRoom?.photos?.find(
+    (photo) => photo.is_thumbnail
+  ) || selectedManualRoom?.photos?.[0];
+  const selectedManualFacilities = (selectedManualRoom?.facilities || [])
+    .map((facility) => typeof facility === "string" ? facility : facility.name || facility.title)
+    .filter(Boolean);
   const [extendingBooking, setExtendingBooking] = useState(null);
   const [extensionType, setExtensionType] = useState("hours");
   const [extensionDuration, setExtensionDuration] = useState(1);
@@ -327,6 +365,48 @@ export default function BookingList() {
     }
   };
 
+  const handleCheckInByCode = async (event) => {
+    event.preventDefault();
+    if (!checkInCode.trim()) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await api.post("/admin/verify-qr", {
+        booking_code: checkInCode.trim(),
+      });
+      toast.success(response.data?.message || "Check-in berhasil.");
+      setCheckInCode("");
+      setShowCheckInCode(false);
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Kode booking tidak valid.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleManualBooking = async (event) => {
+    event.preventDefault();
+    setIsProcessing(true);
+    try {
+      const response = await api.post("/admin/bookings/manual", {
+        ...manualForm,
+        qty: Number(manualForm.qty),
+        adults: Number(manualForm.adults),
+        children: Number(manualForm.children),
+      });
+      const bookingCode = response.data?.data?.booking_code;
+      setManualBookingCode(bookingCode || "");
+      toast.success(`Booking ${bookingCode || "manual"} berhasil dibuat.`);
+      loadData();
+    } catch (err) {
+      const validationMessage = Object.values(err.response?.data?.errors || {}).flat()[0];
+      toast.error(err.response?.data?.message || validationMessage || "Gagal membuat booking manual.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Check Out Handler
   const handleConfirmCheckOut = async () => {
     if (!confirmCheckOutBooking) return;
@@ -422,7 +502,27 @@ export default function BookingList() {
             Manage and monitor hotel reservations and guest check-ins.
           </p>
         </div>
-        <label className="flex items-center gap-3 bg-white border border-[#E5E1DA] rounded-2xl px-5 py-3.5 shadow-sm cursor-pointer select-none">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCheckInCode(true)}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-[#E5E1DA] rounded-xl text-sm font-semibold text-[#2D312C] hover:border-[#506147] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[19px]">key</span>
+            Input Kode Hotel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setManualBookingCode("");
+              setShowManualBooking(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-[#506147] border border-[#506147] rounded-xl text-sm font-semibold text-white hover:bg-[#3b4b33] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[19px]">add</span>
+            Manual Booking
+          </button>
+          <label className="flex items-center gap-3 bg-white border border-[#E5E1DA] rounded-2xl px-5 py-3.5 shadow-sm cursor-pointer select-none">
           <span className="text-xs font-bold text-[#2D312C] whitespace-nowrap">Auto Check-Out</span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${autoCheckout ? "bg-[#E4EBE0] text-[#4A5D43]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>{autoCheckout ? "ON" : "OFF"}</span>
           <span className="relative inline-flex items-center">
@@ -430,7 +530,8 @@ export default function BookingList() {
             <span className="w-11 h-6 bg-[#D1CCC5] rounded-full peer peer-checked:bg-[#506147] transition-colors" />
             <span className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform" />
           </span>
-        </label>
+          </label>
+        </div>
       </div>
 
       {/* SUMMARY CARDS DASHBOARD HEADER */}
@@ -862,38 +963,6 @@ export default function BookingList() {
                       {/* Action */}
                       <td className="p-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
-                          {b.bookingStatus === "Confirmed" && (
-                            <button
-                              onClick={() => setConfirmCheckInBooking(b)}
-                              className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
-                            >
-                              Check In
-                            </button>
-                          )}
-                          {b.bookingStatus === "Checked In" && (
-                            <button
-                              onClick={() => setConfirmCheckOutBooking(b)}
-                              className="px-3 py-1.5 bg-[#ba1a1a] text-white rounded-lg text-xs font-semibold hover:bg-[#93000a] transition-colors"
-                            >
-                              Check Out
-                            </button>
-                          )}
-                          {b.bookingStatus === "Refund Pending" && (
-                            <>
-                              <button
-                                onClick={() => setConfirmRefundApprove(b)}
-                                className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => setConfirmRefundReject(b)}
-                                className="px-3 py-1.5 border border-[#ba1a1a] text-[#ba1a1a] rounded-lg text-xs font-semibold hover:bg-[#ffdad6] transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
                           <button
                             onClick={() => setViewingBooking(b)}
                             className="px-3 py-1.5 border border-[#506147] text-[#506147] hover:bg-[#506147] hover:text-white rounded-lg text-xs font-semibold transition-colors"
@@ -1036,7 +1105,7 @@ export default function BookingList() {
                     </button>
                   </>
                 )}
-                {viewingBooking.bookingStatus === "Confirmed" && (
+                {viewingBooking.canCheckIn && (
                   <>
                     <button
                       onClick={() => setConfirmCheckInBooking(viewingBooking)}
@@ -1045,16 +1114,19 @@ export default function BookingList() {
                       <span className="material-symbols-outlined text-[16px]">login</span>
                       Check In
                     </button>
-                    <button
-                      onClick={() => setConfirmCancelBooking(viewingBooking)}
-                      className="px-4 py-2 border border-[#ba1a1a] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6] transition-colors"
-                    >
-                      Cancel Booking
-                    </button>
                   </>
                 )}
 
-                {(viewingBooking.bookingStatus === "Confirmed" || viewingBooking.bookingStatus === "Checked In") && (
+                {viewingBooking.canCancel && (
+                  <button
+                    onClick={() => setConfirmCancelBooking(viewingBooking)}
+                    className="px-4 py-2 border border-[#ba1a1a] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6] transition-colors"
+                  >
+                    Cancel Booking
+                  </button>
+                )}
+
+                {viewingBooking.canExtend && (
                   <button
                     onClick={() => {
                       setExtendingBooking(viewingBooking);
@@ -1069,22 +1141,13 @@ export default function BookingList() {
                   </button>
                 )}
 
-                {viewingBooking.bookingStatus === "Checked In" && (
+                {viewingBooking.canCheckOut && (
                   <button
                     onClick={() => setConfirmCheckOutBooking(viewingBooking)}
                     className="px-4 py-2 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors flex items-center gap-1.5 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[16px]">logout</span>
                     Check Out
-                  </button>
-                )}
-
-                {viewingBooking.bookingStatus === "Pending" && (
-                  <button
-                    onClick={() => setConfirmCancelBooking(viewingBooking)}
-                    className="px-4 py-2 border border-[#ba1a1a] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6] transition-colors"
-                  >
-                    Cancel Booking
                   </button>
                 )}
 
@@ -1130,9 +1193,9 @@ export default function BookingList() {
                       </p>
                     </div>
                     <div>
-                      <span className="text-[#6B6E6A]">Identity Number (KTP/Passport):</span>
+                      <span className="text-[#6B6E6A]">Jumlah Anak:</span>
                       <p className="font-semibold text-[#2D312C] mt-0.5">
-                        {viewingBooking.guest.identityNumber}
+                        {viewingBooking.childrenCount}
                       </p>
                     </div>
                   </div>
@@ -1276,6 +1339,193 @@ export default function BookingList() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {showCheckInCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <form onSubmit={handleCheckInByCode} className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-md shadow-2xl p-6 space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-[#E4EBE0] text-[#4A5D43] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">key</span>
+              </div>
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Input Kode Hotel untuk Check-in</h3>
+                <p className="text-xs text-[#6B6E6A] mt-1">Masukkan kode booking atau e-ticket tamu yang akan check-in.</p>
+              </div>
+            </div>
+            <input
+              type="text"
+              autoFocus
+              autoCapitalize="characters"
+              required
+              value={checkInCode}
+              onChange={(event) => setCheckInCode(event.target.value.toUpperCase())}
+                placeholder="Kode booking / e-ticket"
+              className="w-full px-4 py-3 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] uppercase focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
+            />
+            <div className="flex justify-end gap-3 pt-2 border-t border-[#E5E1DA]">
+              <button type="button" onClick={() => setShowCheckInCode(false)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4]">
+                Batal
+              </button>
+              <button type="submit" disabled={isProcessing || !checkInCode.trim()} className="px-5 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] disabled:opacity-50">
+                {isProcessing ? "Memproses..." : "Check-in"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showManualBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <form onSubmit={handleManualBooking} className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">Manual Booking</h3>
+                <p className="text-xs text-[#6B6E6A] mt-1">Data tamu dan reservasi</p>
+              </div>
+              <button type="button" onClick={() => setShowManualBooking(false)} disabled={isProcessing} title="Tutup" className="p-2 rounded-lg text-[#6B6E6A] hover:bg-[#f0ede9]">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <label className="block text-xs font-semibold text-[#2D312C] space-y-1.5">
+              Kode booking untuk check-in
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={manualBookingCode}
+                  placeholder="Dibuat otomatis setelah booking disimpan"
+                  className="min-w-0 flex-1 px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-mono font-normal text-[#2D312C] placeholder:font-sans placeholder:text-xs"
+                />
+                {manualBookingCode && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(manualBookingCode);
+                        toast.success("Kode booking disalin.");
+                      } catch {
+                        toast.error("Kode booking gagal disalin.");
+                      }
+                    }}
+                    title="Salin kode booking"
+                    className="shrink-0 px-3 border border-[#E5E1DA] rounded-lg text-[#506147] hover:bg-[#f0ede9]"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                  </button>
+                )}
+              </div>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="sm:col-span-2 text-xs font-semibold text-[#2D312C] space-y-1.5">
+                Tipe kamar
+                <select name="room_type_id" required value={manualForm.room_type_id} onChange={(event) => setManualForm((prev) => ({ ...prev, room_type_id: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]">
+                  <option value="">Pilih tipe kamar</option>
+                  {rooms.map((room) => (
+                    <option key={room.id} value={room.id}>{room.name} · {fmtRupiah(room.weekday_price)} / malam</option>
+                  ))}
+                </select>
+              </label>
+              {selectedManualRoom && (
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-[160px_minmax(0,1fr)] overflow-hidden rounded-xl border border-[#E5E1DA] bg-[#fcf9f5]">
+                  {selectedManualRoomPhoto?.photo || selectedManualRoomPhoto?.url ? (
+                    <img
+                      src={getStorageUrl(selectedManualRoomPhoto.photo || selectedManualRoomPhoto.url)}
+                      alt={selectedManualRoom.name}
+                      className="h-40 w-full object-cover sm:h-full"
+                    />
+                  ) : (
+                    <div className="flex min-h-32 items-center justify-center bg-[#E8E5DF] text-[#6B6E6A]">
+                      <span className="material-symbols-outlined text-4xl">bed</span>
+                    </div>
+                  )}
+                  <div className="space-y-3 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-[#2D312C]">{selectedManualRoom.name}</p>
+                        <p className="text-xs text-[#6B6E6A]">{selectedManualRoom.type || "Tipe kamar"}{selectedManualRoom.bed ? ` · ${selectedManualRoom.bed}` : ""}</p>
+                      </div>
+                      <span className="text-xs font-semibold text-[#4A5D43]">Stok {selectedManualRoom.stock ?? "-"}</span>
+                    </div>
+                    {selectedManualRoom.description && (
+                      <p className="text-xs leading-relaxed text-[#5F7161]">{selectedManualRoom.description}</p>
+                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#2D312C]">
+                      <span>{selectedManualRoom.capacity_adult ?? 0} dewasa</span>
+                      <span>{selectedManualRoom.capacity_child ?? 0} anak</span>
+                      <span>Weekday {fmtRupiah(selectedManualRoom.weekday_price)}</span>
+                      <span>Weekend {fmtRupiah(selectedManualRoom.weekend_price)}</span>
+                    </div>
+                    <div className="space-y-2 border-t border-[#E5E1DA] pt-3">
+                      <p className="text-xs font-semibold text-[#2D312C]">Fasilitas kamar</p>
+                      {selectedManualFacilities.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedManualFacilities.map((facility, index) => (
+                            <span key={`${facility}-${index}`} className="rounded-md border border-[#D8DDD3] bg-white px-2 py-1 text-[11px] text-[#4A5D43]">
+                              {facility}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[#6B6E6A]">Belum ada fasilitas untuk tipe kamar ini.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                Check-in
+                <input name="check_in" type="date" min={dateInputValue()} required value={manualForm.check_in} onChange={(event) => setManualForm((prev) => ({ ...prev, check_in: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+              </label>
+              <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                Check-out
+                <input name="check_out" type="date" min={manualForm.check_in} required value={manualForm.check_out} onChange={(event) => setManualForm((prev) => ({ ...prev, check_out: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+              </label>
+              <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                Nama tamu
+                <input name="guest_name" required maxLength={255} value={manualForm.guest_name} onChange={(event) => setManualForm((prev) => ({ ...prev, guest_name: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+              </label>
+              <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                Nomor telepon
+                <input name="guest_phone" type="tel" required maxLength={30} value={manualForm.guest_phone} onChange={(event) => setManualForm((prev) => ({ ...prev, guest_phone: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                  Jumlah kamar
+                  <input name="qty" type="number" min="1" required value={manualForm.qty} onChange={(event) => setManualForm((prev) => ({ ...prev, qty: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+                </label>
+                <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                  Jumlah dewasa
+                  <input name="adults" type="number" min="1" required value={manualForm.adults} onChange={(event) => setManualForm((prev) => ({ ...prev, adults: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+                </label>
+                <label className="text-xs font-semibold text-[#2D312C] space-y-1.5">
+                  Jumlah anak
+                  <input name="children" type="number" min="0" max="32767" required value={manualForm.children} onChange={(event) => setManualForm((prev) => ({ ...prev, children: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]" />
+                </label>
+              </div>
+              <label className="sm:col-span-2 text-xs font-semibold text-[#2D312C] space-y-1.5">
+                Pembayaran
+                <select name="payment_method" required value={manualForm.payment_method} onChange={(event) => setManualForm((prev) => ({ ...prev, payment_method: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]">
+                  <option value="cash">Tunai · sudah dibayar</option>
+                  <option value="bank_transfer">Transfer bank · sudah dibayar</option>
+                  <option value="card">Kartu · sudah dibayar</option>
+                  <option value="unpaid">Belum dibayar</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-[#E5E1DA]">
+              <button type="button" onClick={() => setShowManualBooking(false)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4]">
+                {manualBookingCode ? "Selesai" : "Batal"}
+              </button>
+              <button type="submit" disabled={isProcessing || rooms.length === 0 || !!manualBookingCode} className="px-5 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] disabled:opacity-50">
+                {isProcessing ? "Menyimpan..." : manualBookingCode ? "Booking Dibuat" : "Buat Booking"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
