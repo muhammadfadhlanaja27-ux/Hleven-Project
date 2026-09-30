@@ -369,3 +369,74 @@ select option:checked {
   background-color: #778873 !important;
   color: #ffffff !important;
 }
+
+/* Styling Kontainer Utama Datepicker */
+.react-datepicker {
+  border: 1px solid #E8E2D9 !important;
+  background-color: #ffffff !important;
+  border-radius: 1rem !important;
+  padding: 1.5rem !important; /* Memberikan padding dalam yang seimbang */
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+  display: flex !important;
+  gap: 2.5rem !important; /* Menambah jarak konsisten antara bulan kiri & kanan */
+  font-family: inherit !important;
+}
+
+/* Pengaturan Bulan Kiri & Kanan */
+.react-datepicker__month-container {
+  float: none !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Header Bulan & Navigasi */
+.react-datepicker__header {
+  background-color: transparent !important;
+  border-bottom: none !important;
+  padding-top: 0 !important;
+  padding-bottom: 0.75rem !important;
+}
+
+.react-datepicker__current-month {
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  color: #1c251d !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Header Nama Hari (Su, Mo, Tu, dst) */
+.react-datepicker__day-name {
+  width: 2.5rem !important;
+  line-height: 2.5rem !important;
+  margin: 0.15rem !important;
+  font-weight: 600 !important;
+  color: #444842 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Grid & Item Tanggal */
+.react-datepicker__month {
+  margin: 0.4rem 0 0 0 !important;
+}
+
+.react-datepicker__day {
+  width: 2.5rem !important;
+  line-height: 2.5rem !important;
+  margin: 0.15rem !important;
+  border-radius: 0.5rem !important;
+  font-size: 0.875rem !important;
+  color: #1c251d !important;
+}
+
+/* Tombol Navigasi Panah Panah */
+.react-datepicker__navigation {
+  top: 1.5rem !important;
+}
+
+.react-datepicker__navigation--next {
+  right: 1.5rem !important;
+}
+
+.react-datepicker__navigation--previous {
+  left: 1.5rem !important;
+}

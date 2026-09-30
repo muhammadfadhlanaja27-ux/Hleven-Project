@@ -42,7 +42,10 @@ const BookingPage = () => {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+
+
+  const [phone, setPhone] = useState('');
+  const [bookingFor, setBookingFor] = useState('me');
   const [specialRequests, setSpecialRequests] = useState("");
   const [checkInDate, setCheckInDate] = useState(init.checkInStr);
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutStr);
@@ -55,8 +58,10 @@ const BookingPage = () => {
   const [orderId, setOrderId] = useState("HLVN-98234-AX");
   const [paymentId, setPaymentId] = useState(null);
   const [successModalData, setSuccessModalData] = useState(null);
+  const [confirmData, setConfirmData] = useState(null);
 
   const pollRef = useRef(null);
+  const wasGuestRef = useRef(false);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -126,14 +131,24 @@ const BookingPage = () => {
                   ? (hotelThumbRaw.photo || hotelThumbRaw.url ? getStorageUrl(hotelThumbRaw.photo || hotelThumbRaw.url) : null)
                   : getStorageUrl(hotelThumbRaw))
               : null;
-
+            let liveStock = null;
+            if (checkInDate && checkOutDate) {
+              try {
+                const ci = checkInDate instanceof Date ? fmtDateStr(checkInDate) : String(checkInDate).split('T')[0];
+                const co = checkOutDate instanceof Date ? fmtDateStr(checkOutDate) : String(checkOutDate).split('T')[0];
+                const { data: liveResponse } = await cachedGet(`/hotels/${hotelId}/rooms`, { params: { check_in: ci, check_out: co } });
+                const liveRooms = liveResponse?.data || [];
+                const liveRoom = liveRooms.find(r => String(r.id) === String(matchedRoomType.id));
+                if (liveRoom && liveRoom.available_stock !== undefined) liveStock = liveRoom.available_stock;
+              } catch (e) {}
+            }
             const mappedRoom = {
               id: matchedRoomType.id,
               name: matchedRoomType.name,
               price: matchedRoomType.weekday_price,
               weekday_price: matchedRoomType.weekday_price,
               weekend_price: matchedRoomType.weekend_price,
-              stock: matchedRoomType.stock ?? 10,
+              stock: liveStock ?? matchedRoomType.stock ?? 10,
               capacity: `${matchedRoomType.capacity_adult || 2} Dewasa, ${matchedRoomType.capacity_child || 0} Anak`,
               capacity_adult: matchedRoomType.capacity_adult || 2,
               capacity_child: matchedRoomType.capacity_child || 0,
@@ -162,7 +177,7 @@ const BookingPage = () => {
     };
 
     fetchBookingData();
-  }, [hotelId, roomId]);
+  }, [hotelId, roomId, checkInDate, checkOutDate]);
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -181,20 +196,23 @@ const BookingPage = () => {
   const taxAndFees = Math.round(subtotalPrice * 0.05);
   const totalPrice = subtotalPrice + taxAndFees;
 
-  const showSuccess = (oid, methodName = "Midtrans") => {
+  const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
     if (pollRef.current) clearInterval(pollRef.current);
     setSuccessModalData({
       orderId: oid,
+      bookingId,
       hotelName: hotel?.name,
       roomName: room?.name,
       roomQty,
       fullName,
+      email,
       methodName,
       totalPrice,
+      wasGuest: wasGuestRef.current,
     });
   };
 
-  const startPolling = (pid, oid) => {
+  const startPolling = (pid, oid, bookingId) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
     pollRef.current = setInterval(async () => {
@@ -211,7 +229,7 @@ const BookingPage = () => {
         const bs = res.data?.data?.booking_status;
         if (ps === "success" || bs === "paid" || bs === "confirmed") {
           clearInterval(pollRef.current);
-          showSuccess(oid, res.data?.data?.payment_method || "Midtrans");
+          showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
           toast.success("Pembayaran terkonfirmasi!");
         }
       } catch {}
@@ -219,7 +237,25 @@ const BookingPage = () => {
     setTimeout(() => { if (pollRef.current) clearInterval(pollRef.current); }, 120000);
   };
 
-  const payWithSnap = async (token, pid, oid) => {
+  const handleDownloadETicket = async (bookingId, bookingCode) => {
+    try {
+      const response = await api.get(`/user/bookings/${bookingId}/e-ticket`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `E-Ticket-${bookingCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success("E-Tiket PDF berhasil diunduh.");
+    } catch (err) {
+      toast.error("E-Tiket belum tersedia — cek email Anda.");
+    }
+  };
+
+  const payWithSnap = async (token, pid, oid, bookingId) => {
     try {
       await loadSnapScript();
     } catch (e) {
@@ -230,14 +266,14 @@ const BookingPage = () => {
       toast.error("Midtrans Snap belum siap");
       return;
     }
-    startPolling(pid, oid);
+    startPolling(pid, oid, bookingId);
     window.snap.pay(token, {
       onSuccess: async () => {
         try { await api.post(`/payments/${pid}/sync`); } catch {}
         try {
           const res = await api.get(`/payments/${pid}/status`);
-          showSuccess(oid, res.data?.data?.payment_method || "Midtrans");
-        } catch { showSuccess(oid, "Midtrans"); }
+          showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
+        } catch { showSuccess(oid, "Midtrans", bookingId); }
         toast.success("Pembayaran berhasil!");
       },
       onPending: () => {
@@ -253,7 +289,7 @@ const BookingPage = () => {
     });
   };
 
-  const handleOpenPaymentModal = async (e) => {
+  const handleOpenPaymentModal = (e) => {
     e.preventDefault();
     if (!fullName || !email || !phone) {
       toast.error("Harap lengkapi Data Tamu (Nama, Email, dan No. Telepon).");
@@ -273,6 +309,22 @@ const BookingPage = () => {
       return;
     }
 
+    wasGuestRef.current = !localStorage.getItem('token');
+    if (wasGuestRef.current) {
+      setConfirmData({ targetHotelId, targetRoomTypeId });
+    } else {
+      doBooking(targetHotelId, targetRoomTypeId);
+    }
+  };
+
+  const confirmBooking = async () => {
+    const { targetHotelId, targetRoomTypeId } = confirmData || {};
+    if (!targetHotelId || !targetRoomTypeId) return;
+    setConfirmData(null);
+    doBooking(targetHotelId, targetRoomTypeId);
+  };
+
+  const doBooking = async (targetHotelId, targetRoomTypeId) => {
     setSubmitting(true);
     const payload = {
       hotel_id: Number(targetHotelId),
@@ -301,12 +353,18 @@ const BookingPage = () => {
         }
       }
 
-      if (res.data && res.data.data) {
-        const createdBooking = res.data.data.booking || res.data.data;
-        const bookingCode = createdBooking.booking_code || createdBooking.order_id || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`;
-        const pid = createdBooking.payment?.id || createdBooking.payment_id;
-        setOrderId(bookingCode);
-        if (pid) setPaymentId(pid);
+        if (res.data && res.data.data) {
+            const createdBooking = res.data.data.booking || res.data.data;
+            const bookingCode = createdBooking.booking_code || createdBooking.order_id || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`;
+            const bookingId = createdBooking.id || null;
+            const pid = createdBooking.payment?.id || createdBooking.payment_id;
+            setOrderId(bookingCode);
+            if (pid) setPaymentId(pid);
+
+            // Save auto-generated token only for true guests (never clobber existing session)
+            if (res.data.data.token && !localStorage.getItem('token')) {
+                localStorage.setItem('token', res.data.data.token);
+            }
 
         let token = null;
         if (pid) {
@@ -325,7 +383,7 @@ const BookingPage = () => {
           return;
         }
 
-        payWithSnap(token, pid, bookingCode);
+        payWithSnap(token, pid, bookingCode, bookingId);
       }
     } catch (err) {
       const responseData = err.response?.data;
@@ -450,6 +508,20 @@ const BookingPage = () => {
                     required
                     className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
                   />
+                </div>
+
+                <div>
+                  <span className="block font-label-md text-xs font-semibold text-[#444842] mb-2">Is this for you or someone else?</span>
+                  <div className="flex items-center space-x-4">
+                    <label className="inline-flex items-center">
+                      <input type="radio" name="bookingFor" value="me" checked={bookingFor === 'me'} onChange={(e) => setBookingFor(e.target.value)} className="form-radio text-[#778873]" />
+                      <span className="ml-2">For me</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input type="radio" name="bookingFor" value="someone_else" checked={bookingFor === 'someone_else'} onChange={(e) => setBookingFor(e.target.value)} className="form-radio text-[#778873]" />
+                      <span className="ml-2">For someone else</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 flex items-center justify-between">
@@ -617,6 +689,52 @@ const BookingPage = () => {
         </div>
       </main>
 
+      {confirmData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 animate-in zoom-in-95 duration-200">
+            <div className="p-6 space-y-4 text-left font-body-md text-sm text-[#2D332C]">
+              <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">Cek Data Tamu</h3>
+              <div className="bg-[#faf3ea] rounded-xl p-4 space-y-2.5 border border-[#DCCFC0]/40">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Nama:</span>
+                  <span className="font-semibold">{fullName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Email:</span>
+                  <span className="font-semibold">{email}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">No. HP:</span>
+                  <span className="font-semibold">{phone}</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">warning</span>
+                <p className="font-body-md text-xs text-[#1e1b16] leading-snug">
+                  Pastikan <span className="font-bold">No. HP dan Email sudah benar</span> — E-Tiket hanya dikirim ke email tersebut.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmData(null)}
+                  className="flex-1 py-3.5 rounded-xl font-label-md text-sm font-semibold border border-[#DCCFC0] text-[#444842] hover:bg-[#faf3ea] transition-all cursor-pointer active:scale-95"
+                >
+                  Kembali
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmBooking}
+                  className="flex-1 py-3.5 rounded-xl font-label-md text-sm font-semibold bg-[#778873] text-white hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
+                >
+                  Sudah Benar, Lanjut Bayar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {successModalData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 text-center animate-in zoom-in-95 duration-200">
@@ -653,16 +771,49 @@ const BookingPage = () => {
                   <span className="font-bold text-lg text-[#778873]">Rp {successModalData.totalPrice.toLocaleString("id-ID")}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSuccessModalData(null);
-                  navigate("/profile/bookings");
-                }}
-                className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
-              >
-                Lihat Pesanan Saya
-              </button>
+              {successModalData.wasGuest && (
+              <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">mail</span>
+                <p className="font-body-md text-xs text-[#1e1b16] leading-snug text-left">
+                  Pesanan selesai! E-Tiket dikirim ke <span className="font-bold">{successModalData.email}</span> — cek Inbox/Spam.
+                </p>
+              </div>
+              )}
+              {successModalData.wasGuest ? (
+                <>
+                  {successModalData.bookingId && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadETicket(successModalData.bookingId, successModalData.orderId)}
+                      className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-base">download</span>
+                      Download E-Tiket (PDF)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuccessModalData(null);
+                      navigate("/");
+                    }}
+                    className="w-full py-3.5 rounded-xl font-label-md text-sm font-semibold border border-[#DCCFC0] text-[#444842] hover:bg-[#faf3ea] transition-all cursor-pointer active:scale-95"
+                  >
+                    Kembali ke Beranda
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuccessModalData(null);
+                    navigate("/profile", { state: { defaultTab: "history" } });
+                  }}
+                  className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
+                >
+                  Lihat Pesanan Saya
+                </button>
+              )}
             </div>
           </div>
         </div>

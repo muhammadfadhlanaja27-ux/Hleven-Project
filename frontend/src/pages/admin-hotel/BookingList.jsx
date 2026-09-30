@@ -47,17 +47,23 @@ const normalizeBooking = (b) => {
     rawStatus === "checked_out" ||
     rawStatus === "refund_pending";
 
+  const firstGuest = Array.isArray(b.guests) ? b.guests[0] : b.guests || {};
   const total = Number(
     b.total_price ||
       b.total_amount ||
+      b.grand_total ||
       payment.amount ||
       payment.gross_amount ||
       0
+  );
+  const nights = Number(
+    b.nights || b.total_night || b.total_nights || 1
   );
 
   return {
     id: b.id,
     bookingCode: b.booking_code || `BK-${b.id}`,
+    bookingTimestamp: b.created_at ? new Date(b.created_at).getTime() : 0,
     bookingDate: b.created_at
       ? new Date(b.created_at).toLocaleString("en-GB", {
           day: "2-digit",
@@ -189,6 +195,13 @@ export default function BookingList() {
 
   useEffect(() => {
     loadData();
+    const t = setInterval(() => loadData(true), 10000);
+    const onFocus = () => loadData(true);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -231,8 +244,8 @@ export default function BookingList() {
     }
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [bookingsRes, roomsRes] = await Promise.allSettled([
         api.get("/admin/bookings"),
@@ -243,6 +256,15 @@ export default function BookingList() {
         const raw =
           bookingsRes.value.data.data || bookingsRes.value.data || [];
         setBookings(Array.isArray(raw) ? raw.map(normalizeBooking) : []);
+      } else if (bookingsRes.status === "rejected") {
+        const status = bookingsRes.reason?.response?.status;
+        if (!silent || status === 403) {
+          toast.error(
+            status === 403
+              ? "Akses booking ditolak (403). Login sebagai admin_hotel pemilik hotel ini."
+              : "Gagal memuat data reservasi dari server."
+          );
+        }
       }
       if (roomsRes.status === "fulfilled" && roomsRes.value.data) {
         const rawRooms =
@@ -251,9 +273,9 @@ export default function BookingList() {
       }
     } catch (err) {
       console.error("Failed to load bookings:", err);
-      toast.error("Gagal memuat data reservasi dari server.");
+      if (!silent) toast.error("Gagal memuat data reservasi dari server.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -276,6 +298,7 @@ export default function BookingList() {
     const matchesSearch =
       b.bookingCode.toLowerCase().includes(q) ||
       b.guest.name.toLowerCase().includes(q) ||
+      b.guest.email.toLowerCase().includes(q) ||
       b.guest.phone.toLowerCase().includes(q) ||
       b.room.name.toLowerCase().includes(q);
 
@@ -317,6 +340,12 @@ export default function BookingList() {
   const sortedBookings = [...filteredBookings].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
+
+    if (sortBy === "bookingDate") {
+      aVal = a.bookingTimestamp || 0;
+      bVal = b.bookingTimestamp || 0;
+      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+    }
 
     if (sortBy === "guestName") {
       aVal = a.guest.name;

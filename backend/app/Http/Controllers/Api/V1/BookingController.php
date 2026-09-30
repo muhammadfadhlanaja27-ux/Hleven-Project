@@ -14,6 +14,9 @@ use App\Models\RoomType;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -24,7 +27,7 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
+        $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
             return response()->json(['status' => 'success', 'data' => []]);
@@ -606,7 +609,7 @@ class BookingController extends Controller
 
         $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
             ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
-                $query->whereIn('status', ['paid', 'checked_in', 'confirmed', 'refund_pending'])
+                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
                     ->where('check_in', '<', $checkOutStr)
                     ->where('check_out', '>', $checkInStr);
             })
@@ -639,7 +642,26 @@ class BookingController extends Controller
         DB::beginTransaction();
         try {
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
-            $userId = $request->user()?->id;
+            $user = $request->user();
+            $token = null;
+
+            if (! $user) {
+                $user = User::where('email', $request->guest_email)->first();
+                
+                if (! $user) {
+                    $user = User::create([
+                        'name' => $request->guest_name,
+                        'email' => $request->guest_email,
+                        'phone' => $request->guest_phone,
+                        'password' => Hash::make(Str::random(16)),
+                        'role' => 'user',
+                    ]);
+                }
+                
+                $token = $user->createToken('guest_token')->plainTextToken;
+            }
+
+            $userId = $user->id;
 
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
@@ -685,6 +707,7 @@ class BookingController extends Controller
             Guest::create([
                 'booking_id' => $booking->id,
                 'name' => $request->guest_name,
+                'email' => $request->guest_email,
                 'phone' => $request->guest_phone,
                 'identity_number' => $request->guest_identity ?? '-',
             ]);
@@ -718,6 +741,7 @@ class BookingController extends Controller
                 'data' => [
                     'booking' => $booking,
                     'payment' => $payment,
+                    'token' => $token,
                 ],
             ], 201);
         } catch (\Exception $e) {

@@ -47,6 +47,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
 
+    // Public booking (guest checkout — auto-creates a session token in controller)
+    Route::post('/bookings', [BookingController::class, 'store']);
+
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
     // ==========================================
@@ -82,7 +85,6 @@ Route::prefix('v1')->group(function () {
         // --- Ulasan ---
         Route::get('hotel/reviews', [ReviewController::class, 'index']);
         Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
-        Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
         // --- Fasilitas (Admin/Super Admin) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
@@ -97,7 +99,6 @@ Route::prefix('v1')->group(function () {
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
-            Route::post('/bookings', [BookingController::class, 'store']);
             
             // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);

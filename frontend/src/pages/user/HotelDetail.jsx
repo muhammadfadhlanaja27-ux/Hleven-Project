@@ -123,14 +123,20 @@ const HotelDetail = () => {
         if (responseData && responseData.data) {
           const apiData = responseData.data;
 
-          const mappedRooms = (apiData.room_types || []).map((rt) => {
+          let liveRooms = [];
+          if (filterCheckIn && filterCheckOut) {
+            const { data: liveResponse } = await cachedGet(`/hotels/${id}/rooms`, {
+              params: { check_in: fmtDateParam(filterCheckIn), check_out: fmtDateParam(filterCheckOut) },
+            });
+            liveRooms = liveResponse?.data || [];
+          }
+const mappedRooms = (apiData.room_types || []).map((rt) => {
             const thumbnailPhoto =
               rt.photos && rt.photos.length > 0
                 ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
                 : null;
             const photoPath = thumbnailPhoto ? thumbnailPhoto.photo || thumbnailPhoto.url : null;
             const roomImage = photoPath ? getStorageUrl(photoPath) : null;
-
             return {
               id: rt.id,
               name: rt.name,
@@ -145,10 +151,10 @@ const HotelDetail = () => {
               capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
               description: rt.description,
               bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
-              breakfast: Boolean(rt.breakfast), // Konversi murni ke boolean
-              smoking_area: Boolean(rt.smoking_area), // Konversi murni ke boolean
+              breakfast: Boolean(rt.breakfast),
+              smoking_area: Boolean(rt.smoking_area),
               is_refundable: rt.is_refundable !== undefined ? Boolean(rt.is_refundable) : true,
-              stock: rt.stock,
+              stock: (liveRooms.find((r) => String(r.id) === String(rt.id)) || {}).available_stock ?? rt.stock,
             };
           });
 
@@ -170,7 +176,7 @@ const HotelDetail = () => {
     };
 
     fetchHotelDetail();
-  }, [id]);
+  }, [id, filterCheckIn, filterCheckOut]);
 
   const [liveRating, setLiveRating] = useState(0);
   useEffect(() => {
