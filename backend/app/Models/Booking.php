@@ -11,7 +11,11 @@ class Booking extends Model
 
     protected $fillable = [
         'booking_code', 'user_id', 'hotel_id', 'check_in', 'check_out',
-        'total_night', 'subtotal', 'tax', 'grand_total', 'special_request', 'status'
+        'total_night', 'children_count', 'subtotal', 'tax', 'grand_total', 'special_request', 'status'
+    ];
+
+    protected $casts = [
+        'children_count' => 'integer',
     ];
 
     public function user()

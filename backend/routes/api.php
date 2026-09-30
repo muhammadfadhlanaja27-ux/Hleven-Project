@@ -173,6 +173,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
 
     // --- Booking Admin ---
     Route::get('/bookings', [BookingController::class, 'index']); 
+    Route::post('/bookings/manual', [BookingController::class, 'storeManual']);
     Route::get('/bookings/{id}', [BookingController::class, 'show']); 
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
     Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
