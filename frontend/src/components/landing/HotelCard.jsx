@@ -64,11 +64,17 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
     let title = facObj ? facObj.name : String(fac);
 
     if (!facObj?.icon || facObj.icon === 'stars') {
-      if (facName.includes('wifi')) iconName = 'wifi';
-      else if (facName.includes('kolam') || facName.includes('pool')) iconName = 'pool';
-      else if (facName.includes('spa') || facName.includes('wellness')) iconName = 'spa';
-      else if (facName.includes('restoran') || facName.includes('restaurant')) iconName = 'restaurant';
-      else if (facName.includes('gym') || facName.includes('fitness')) iconName = 'fitness_center';
+      if (facName.includes('wifi') || facName.includes('internet')) iconName = 'wifi';
+      else if (facName.includes('kolam') || facName.includes('pool') || facName.includes('renang')) iconName = 'pool';
+      else if (facName.includes('spa') || facName.includes('wellness') || facName.includes('pijat')) iconName = 'spa';
+      else if (facName.includes('restoran') || facName.includes('restaurant') || facName.includes('makan')) iconName = 'restaurant';
+      else if (facName.includes('gym') || facName.includes('fitness') || facName.includes('kebugaran')) iconName = 'fitness_center';
+      else if (facName.includes('parkir') || facName.includes('parking')) iconName = 'local_parking';
+      else if (facName.includes('resepsionis') || facName.includes('reception') || facName.includes('front desk')) iconName = 'concierge';
+      else if (facName.includes('lift') || facName.includes('elevator')) iconName = 'elevator';
+      else if (facName.includes('laundry') || facName.includes('cuci')) iconName = 'local_laundry_service';
+      else if (facName.includes('ac') || facName.includes('air cond')) iconName = 'ac_unit';
+      else iconName = 'hotel';
     }
 
     return (
@@ -124,9 +130,9 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
           <span className="material-symbols-outlined text-[#D97706] text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             star
           </span>
-          <span className="font-label-sm text-[10px] font-bold text-[#1C251D]">
-            {getRating()}
-          </span>
+            <span className="font-label-sm text-[10px] font-bold text-[#1C251D]">
+              {verifiedStar ? verifiedStar : 'Belum Terverifikasi'}
+            </span>
         </div>
       </div>
 
@@ -152,17 +158,18 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
           )}
         </div>
 
-        <div className={`pt-2 border-t border-[#F0EBE1] mt-auto flex items-center ${isHorizontal ? "justify-between" : ""}`}>
-          <div>
+        <div className={`pt-2 border-t border-[#F0EBE1] mt-auto flex flex-col ${isHorizontal ? "sm:flex-row sm:justify-between items-center" : ""} items-start`}>
+          <div className="flex flex-col">
             <p className="text-[9px] md:text-[10px] text-[#7A857B] font-medium">Mulai dari</p>
             <div className="flex items-baseline gap-0.5">
-              <span className={`font-headline-md font-extrabold text-[#5F7161] ${
-                isHorizontal ? "text-sm md:text-base" : "text-xs md:text-sm"
-              }`}>
-                Rp {formattedPrice}
-              </span>
+              <span className={`font-headline-md font-extrabold text-[#5F7161] ${isHorizontal ? "text-sm md:text-base" : "text-xs md:text-sm"}`}>Rp {formattedPrice}</span>
               <span className="text-[9px] md:text-[10px] text-[#7A857B]">/ malam</span>
             </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-[#5F7161] mt-1 sm:mt-0">
+            <span className="material-symbols-outlined text-[11px]">star_rate</span>
+            <span className="font-label-sm">Review {reviewRating} ({reviewCount})</span>
           </div>
 
           {isHorizontal && (
