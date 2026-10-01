@@ -104,7 +104,9 @@ const getFacilityIcon = (fac) => {
   if (lower.includes("bar") || lower.includes("lounge")) return "local_bar";
   if (lower.includes("room service")) return "room_service";
   if (lower.includes("bed") || lower.includes("tidur")) return "bed";
-  return "star";
+  if (lower.includes("hair") || lower.includes("dryer") || lower.includes("pengering")) return "air";
+  if (lower.includes("heater") || lower.includes("thermostat") || lower.includes("pemanas")) return "thermostat";
+  return "hotel";
 };
 
 const RoomDetail = () => {

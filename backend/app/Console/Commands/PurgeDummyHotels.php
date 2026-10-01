@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
 use App\Models\RoomPhoto;
@@ -44,6 +46,21 @@ class PurgeDummyHotels extends Command
             }
             $roomTypeIds = RoomType::whereIn('hotel_id', $hotelIds)->pluck('id');
 
+            $bookingIds = Booking::whereIn('hotel_id', $hotelIds)->pluck('id');
+            if ($bookingIds->isNotEmpty()) {
+                DB::table('booking_status_histories')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('guests')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('payments')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('refunds')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('e_tickets')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('reviews')->whereIn('booking_id', $bookingIds)->delete();
+                BookingRoom::whereIn('booking_id', $bookingIds)->delete();
+                Booking::whereIn('id', $bookingIds)->delete();
+                $this->info("Bookings deleted: " . count($bookingIds));
+            }
+
+            DB::table('room_availabilities')->whereIn('room_type_id', $roomTypeIds)->delete();
+            DB::table('room_price_histories')->whereIn('room_type_id', $roomTypeIds)->delete();
             RoomPhoto::whereIn('room_type_id', $roomTypeIds)->delete();
             DB::table('room_facilities')->whereIn('room_type_id', $roomTypeIds)->delete();
             RoomType::whereIn('hotel_id', $hotelIds)->forceDelete();
