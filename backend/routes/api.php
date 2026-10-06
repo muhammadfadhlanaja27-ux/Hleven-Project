@@ -133,6 +133,9 @@ Route::prefix('v1')->group(function () {
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     Route::get('/appeals', [AppealController::class, 'indexAdmin']);
     Route::post('/appeals', [AppealController::class, 'storeAdmin']);
+    Route::get('/warnings', [WarningController::class, 'index']);
+    Route::get('/warnings/{id}', [WarningController::class, 'show']);
+    Route::patch('/warnings/{id}/read', [WarningController::class, 'markAsRead']);
 });
 Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
