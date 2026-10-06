@@ -10,6 +10,7 @@ const navItems = [
   { name: "Appeals (Banding)", to: "/super-admin/appeals", icon: "gavel" },
   { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
   { name: "Reports & Analytics", to: "/super-admin/reports", icon: "monitoring" },
+  { name: "App Revenue", to: "/super-admin/application-revenue", icon: "attach_money" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {

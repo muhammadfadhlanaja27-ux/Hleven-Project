@@ -54,6 +54,7 @@ import WarningManagement from "./pages/super-admin/WarningManagement";
 import AppealManagement from "./pages/super-admin/AppealManagement";
 import ActivityLogs from "./pages/super-admin/ActivityLogs";
 import Reports from "./pages/super-admin/Reports";
+import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
 
 // ---------------------------------------------------------
@@ -195,6 +196,7 @@ function App() {
               <Route path="appeals" element={<AppealManagement />} />
               <Route path="activity-logs" element={<ActivityLogs />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="application-revenue" element={<ApplicationRevenue />} />
             </Route>
           </Route>
 
