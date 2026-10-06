@@ -64,7 +64,7 @@ class WarningService
                 'ip_address' => request()->ip()
             ]);
 
-            $activeWarnings = Warning::where('hotel_id', $hotel->id)->whereIn('status', ['unread', 'pending'])->count();
+            $activeWarnings = Warning::where('hotel_id', $hotel->id)->whereIn('status', ['unread', 'read'])->count();
             if ($activeWarnings >= 2 && $hotel->status !== 'blocked') {
                 $hotel->update(['status' => 'blocked']);
                 Notification::create([
@@ -86,11 +86,20 @@ class WarningService
         });
     }
 
+    public function markAsRead(Warning $warning): Warning
+    {
+        if ($warning->status === 'unread') {
+            $warning->update(['status' => 'read', 'read_at' => now()]);
+        }
+        return $warning->fresh();
+    }
+
     /**
      * Mengubah status warning menjadi resolved[cite: 1]
      */
     public function updateStatus(Warning $warning, string $status, $superAdmin): void
     {
+        $status = ['pending' => 'unread', 'resolved' => 'closed'][$status] ?? $status;
         DB::transaction(function () use ($warning, $status, $superAdmin) {
             $warning->update(['status' => $status]);
 

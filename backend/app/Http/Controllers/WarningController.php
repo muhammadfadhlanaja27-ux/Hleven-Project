@@ -94,6 +94,25 @@ class WarningController extends Controller
         }
     }
 
+    public function markAsRead(Request $request, $id): JsonResponse
+    {
+        try {
+            $warning = Warning::findOrFail($id);
+            if ($request->user()->role === 'admin_hotel') {
+                $isOwner = Hotel::where('id', $warning->hotel_id)
+                    ->where('admin_id', $request->user()->id)
+                    ->exists();
+                if (!$isOwner) {
+                    return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+                }
+            }
+            $warning = $this->warningService->markAsRead($warning);
+            return response()->json(['success' => true, 'message' => 'Warning ditandai dibaca.', 'data' => $warning], 200);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
+        }
+    }
+
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $request->validate([

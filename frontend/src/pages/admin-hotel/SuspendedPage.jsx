@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import WarningList from "../../components/admin-hotel/WarningList";
 
 export default function SuspendedPage() {
   const [reason, setReason] = useState("");
@@ -62,6 +63,12 @@ export default function SuspendedPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="bg-white border border-[#E5E1DA] rounded-2xl p-6 shadow-sm">
+          <h2 className="font-semibold text-[#2D312C] mb-1">Surat Peringatan</h2>
+          <p className="text-xs text-[#6B6E6A] mb-4">Buka detail untuk menandai dibaca. Status dibaca terlihat oleh Super Admin.</p>
+          <WarningList />
         </div>
 
         <div className="bg-white border border-[#E5E1DA] rounded-2xl p-6 shadow-sm">
