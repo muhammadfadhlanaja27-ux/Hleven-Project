@@ -191,6 +191,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/payments', [SuperAdminDashboardController::class, 'payments']);
         Route::get('/refunds', [SuperAdminDashboardController::class, 'refunds']);
         Route::get('/revenue', [SuperAdminDashboardController::class, 'revenue']);
+        Route::get('/hotel-commission', [SuperAdminDashboardController::class, 'hotelCommission']);
         Route::get('/charts', [SuperAdminDashboardController::class, 'charts']);
         Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
     });
@@ -214,6 +215,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     Route::prefix('partners')->group(function () {
         Route::get('/stats', [SuperAdminDashboardController::class, 'partners']);
         Route::get('/', [PartnerApplicationController::class, 'index']);
+        Route::get('/{id}/documents/{docId}', [PartnerApplicationController::class, 'document']);
         Route::patch('/{id}/approve', [PartnerApplicationController::class, 'approve']);
         Route::patch('/{id}/reject', [PartnerApplicationController::class, 'reject']);
     });

@@ -11,16 +11,16 @@ use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\RoomAvailability;
 use App\Models\RoomType;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
@@ -87,16 +87,19 @@ class BookingController extends Controller
 
             if (! $roomType) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => 'Tipe kamar tidak ditemukan di hotel ini.'], 422);
             }
 
             if ($adults > max(1, (int) $roomType->capacity_adult) * $qty) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => 'Jumlah tamu dewasa melebihi kapasitas kamar.'], 422);
             }
 
             if ($children > max(0, (int) $roomType->capacity_child) * $qty) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => 'Jumlah anak melebihi kapasitas kamar.'], 422);
             }
 
@@ -111,6 +114,7 @@ class BookingController extends Controller
 
             if ($available < $qty) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => "Stok tidak cukup. Tersedia {$available} kamar."], 422);
             }
 
@@ -192,6 +196,7 @@ class BookingController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['status' => 'error', 'message' => 'Gagal membuat booking: '.$e->getMessage()], 500);
         }
     }
@@ -303,6 +308,7 @@ class BookingController extends Controller
 
         if (in_array($booking->status, ['unpaid', 'pending'])) {
             $request->merge(['status' => 'cancelled']);
+
             return $this->updateStatus($request, $booking->id);
         }
 
@@ -313,6 +319,7 @@ class BookingController extends Controller
 
             if ($allRefundable) {
                 $booking->update(['status' => 'refund_pending']);
+
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
@@ -327,6 +334,7 @@ class BookingController extends Controller
                 $data['message'] = 'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.';
                 $res->setContent(json_encode($data));
             }
+
             return $res;
         }
 
@@ -457,7 +465,7 @@ class BookingController extends Controller
             $booking->grand_total = ($booking->grand_total ?? 0) + $addedGrandTotal;
 
             $existingNote = $booking->special_request ?? '';
-            $newNote = trim("{$existingNote} {$extensionLabel} " . ($notes ? "({$notes})" : ""));
+            $newNote = trim("{$existingNote} {$extensionLabel} ".($notes ? "({$notes})" : ''));
             $booking->special_request = $newNote;
 
             $booking->save();
@@ -471,7 +479,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => "Booking berhasil diperpanjang (+{$duration} " . ($type === 'hours' ? 'Jam' : 'Hari') . ").",
+                'message' => "Booking berhasil diperpanjang (+{$duration} ".($type === 'hours' ? 'Jam' : 'Hari').').',
                 'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
                 'extension_summary' => [
                     'type' => $type,
@@ -479,7 +487,7 @@ class BookingController extends Controller
                     'subtotal_added' => $extensionSubtotal,
                     'tax_added' => $addedTax,
                     'grand_total_added' => $addedGrandTotal,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -617,6 +625,35 @@ class BookingController extends Controller
 
         $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
 
+        $dedupEmailNorm = strtolower(trim((string) $request->guest_email));
+        if ($dedupEmailNorm !== '') {
+            $recentDup = Booking::where('hotel_id', $request->hotel_id)
+                ->where('check_in', $checkInStr)
+                ->where('check_out', $checkOutStr)
+                ->whereHas('bookingRooms', fn ($q) => $q->where('room_type_id', $request->room_type_id)->where('qty', $qty))
+                ->whereHas('guests', fn ($q) => $q->where('email', $dedupEmailNorm))
+                ->where('created_at', '>=', now()->subSeconds(60))
+                ->with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
+                ->latest('id')
+                ->first();
+            if ($recentDup) {
+                $tok = null;
+                if (! $request->user()) {
+                    $u = User::where('email', $dedupEmailNorm)->first();
+                    if ($u) {
+                        $tok = $u->createToken('guest_token')->plainTextToken;
+                    }
+                }
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Booking sudah dibuat.',
+                    'data' => ['booking' => $recentDup, 'payment' => $recentDup->payment, 'token' => $tok],
+                    'deduped' => true,
+                ], 200);
+            }
+        }
+
         if ($remainingStockDirect < $qty) {
             $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
 
@@ -647,7 +684,7 @@ class BookingController extends Controller
 
             if (! $user) {
                 $user = User::where('email', $request->guest_email)->first();
-                
+
                 if (! $user) {
                     $user = User::create([
                         'name' => $request->guest_name,
@@ -657,7 +694,7 @@ class BookingController extends Controller
                         'role' => 'user',
                     ]);
                 }
-                
+
                 $token = $user->createToken('guest_token')->plainTextToken;
             }
 

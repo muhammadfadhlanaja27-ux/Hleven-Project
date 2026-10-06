@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Hotel;
 use App\Services\SuperAdminDashboardService;
 use Illuminate\Http\JsonResponse;
-use App\Models\Hotel;
+use Illuminate\Http\Request;
+
 class SuperAdminDashboardController extends Controller
 {
     protected SuperAdminDashboardService $dashboardService;
@@ -20,7 +21,7 @@ class SuperAdminDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Data berhasil diambil.',
-            'data' => $data
+            'data' => $data,
         ], 200);
     }
 
@@ -48,7 +49,31 @@ class SuperAdminDashboardController extends Controller
     {
         $month = $request->query('month');
         $year = $request->query('year');
+
         return $this->successResponse($this->dashboardService->getRevenueStats($month, $year));
+    }
+
+    public function hotelCommission(Request $request): JsonResponse
+    {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'sort_by' => 'nullable|in:hotel_revenue,platform_commission,hotel_name,transactions_count',
+            'sort_dir' => 'nullable|in:asc,desc',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        $data = $this->dashboardService->getHotelCommissionStats(
+            $request->query('start_date'),
+            $request->query('end_date'),
+            $request->query('sort_by', 'platform_commission'),
+            $request->query('sort_dir', 'desc'),
+            (int) $request->query('per_page', 10),
+            $request->query('search')
+        );
+
+        return $this->successResponse($data);
     }
 
     public function users(): JsonResponse
@@ -84,7 +109,7 @@ class SuperAdminDashboardController extends Controller
     public function updateHotelStatus(Request $request, $id): JsonResponse
     {
         $request->validate([
-            'status' => 'required|string'
+            'status' => 'required|string',
         ]);
 
         try {
@@ -100,13 +125,13 @@ class SuperAdminDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Status hotel berhasil diperbarui.'
+                'message' => 'Status hotel berhasil diperbarui.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memperbarui status hotel.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -120,6 +145,7 @@ class SuperAdminDashboardController extends Controller
         try {
             $hotel = Hotel::findOrFail($id);
             $this->dashboardService->updateHotelStar($hotel, $request->input('star_rating'), $request->input('star_verified_reason'), $request->user());
+
             return response()->json(['success' => true, 'message' => 'Bintang hotel berhasil diperbarui.'], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal memperbarui bintang hotel.', 'error' => $e->getMessage()], 500);
@@ -134,13 +160,13 @@ class SuperAdminDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Hotel berhasil dihapus.'
+                'message' => 'Hotel berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus hotel.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

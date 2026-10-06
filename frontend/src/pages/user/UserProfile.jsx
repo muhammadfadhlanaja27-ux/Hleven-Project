@@ -215,11 +215,9 @@ const UserProfile = () => {
       state: {
         prefill: {
           hotel_name: partnerApplication?.hotel_name || "",
-          hotel_type: partnerApplication?.hotel_type || "",
           hotel_description: partnerApplication?.hotel_description || "",
           hotel_phone: partnerApplication?.hotel_phone || "",
           hotel_email: partnerApplication?.hotel_email || "",
-          room_count: partnerApplication?.room_count || "",
           address: partnerApplication?.address || "",
           province: partnerApplication?.province || "",
           city: partnerApplication?.city || "",
