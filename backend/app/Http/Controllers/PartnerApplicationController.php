@@ -10,6 +10,7 @@ use App\Services\PartnerApplicationService;
 use App\Services\FileStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PartnerApplicationController extends Controller
@@ -93,11 +94,9 @@ class PartnerApplicationController extends Controller
     {
         $validated = $request->validate([
             'hotel_name' => 'required|string|max:255',
-            'hotel_type' => 'required|string|max:100',
             'hotel_description' => 'required|string',
             'hotel_phone' => 'required|string|max:30',
             'hotel_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->user()?->id)],
-            'room_count' => 'required|integer|min:1',
             'requested_star_rating' => 'nullable|integer|min:1|max:5',
 
             'address' => 'required|string',
@@ -141,11 +140,9 @@ class PartnerApplicationController extends Controller
             $application = PartnerApplication::create([
                 'user_id' => $request->user()->id,
                 'hotel_name' => $validated['hotel_name'],
-                'hotel_type' => $validated['hotel_type'],
                 'hotel_description' => $validated['hotel_description'],
                 'hotel_phone' => $validated['hotel_phone'],
                 'hotel_email' => $validated['hotel_email'],
-                'room_count' => $validated['room_count'],
                 'address' => $validated['address'],
                 'province' => $validated['province'],
                 'city' => $validated['city'],
@@ -251,5 +248,37 @@ class PartnerApplicationController extends Controller
                 'message' => 'Gagal menolak partner.'
             ], 500);
         }
+    }
+
+    public function document(Request $request, $id, $docId)
+    {
+        $application = PartnerApplication::findOrFail($id);
+        $doc = PartnerDocument::where('partner_application_id', $application->id)
+            ->where('id', $docId)
+            ->firstOrFail();
+
+        $path = $this->resolveDocumentPath($doc->file_path);
+
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return response()->json(['success' => false, 'message' => 'File dokumen tidak ditemukan.'], 404);
+        }
+
+        return Storage::disk('public')->response($path);
+    }
+
+    protected function resolveDocumentPath(?string $stored): ?string
+    {
+        if (!$stored) {
+            return null;
+        }
+        $str = trim($stored);
+        $path = parse_url($str, PHP_URL_PATH) ?: $str;
+        $path = ltrim($path, '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, 8);
+        } elseif (str_starts_with($path, 'public/')) {
+            $path = substr($path, 7);
+        }
+        return $path ?: null;
     }
 }

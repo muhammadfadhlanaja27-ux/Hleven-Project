@@ -133,6 +133,9 @@ Route::prefix('v1')->group(function () {
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     Route::get('/appeals', [AppealController::class, 'indexAdmin']);
     Route::post('/appeals', [AppealController::class, 'storeAdmin']);
+    Route::get('/warnings', [WarningController::class, 'index']);
+    Route::get('/warnings/{id}', [WarningController::class, 'show']);
+    Route::patch('/warnings/{id}/read', [WarningController::class, 'markAsRead']);
 });
 Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
@@ -191,6 +194,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/payments', [SuperAdminDashboardController::class, 'payments']);
         Route::get('/refunds', [SuperAdminDashboardController::class, 'refunds']);
         Route::get('/revenue', [SuperAdminDashboardController::class, 'revenue']);
+        Route::get('/hotel-commission', [SuperAdminDashboardController::class, 'hotelCommission']);
         Route::get('/charts', [SuperAdminDashboardController::class, 'charts']);
         Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
     });
@@ -214,6 +218,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     Route::prefix('partners')->group(function () {
         Route::get('/stats', [SuperAdminDashboardController::class, 'partners']);
         Route::get('/', [PartnerApplicationController::class, 'index']);
+        Route::get('/{id}/documents/{docId}', [PartnerApplicationController::class, 'document']);
         Route::patch('/{id}/approve', [PartnerApplicationController::class, 'approve']);
         Route::patch('/{id}/reject', [PartnerApplicationController::class, 'reject']);
     });

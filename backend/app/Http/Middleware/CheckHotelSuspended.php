@@ -18,6 +18,7 @@ class CheckHotelSuspended
                 $allowed = [
                     'api/v1/admin/appeals',
                     'api/v1/admin/hotel/profile',
+                    'api/v1/admin/warnings',
                     'api/v1/notifications',
                     'api/v1/profile',
                     'api/v1/user/profile',

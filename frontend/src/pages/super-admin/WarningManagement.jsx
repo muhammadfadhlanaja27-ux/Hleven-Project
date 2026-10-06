@@ -115,12 +115,12 @@ const WarningManagement = () => {
     const id = pendingResolve;
     setIsResolving(true);
     try {
-      await api.patch(`/super-admin/warnings/${id}/status`, { status: "resolved" });
+      await api.patch(`/super-admin/warnings/${id}/status`, { status: "closed" });
       invalidateCache("/super-admin/warnings");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Status peringatan berhasil diubah menjadi Resolved!");
+      toast.success("Status peringatan berhasil diubah menjadi Selesai!");
       if (selectedWarning && selectedWarning.id === id) {
-        setSelectedWarning((prev) => ({ ...prev, status: "resolved" }));
+        setSelectedWarning((prev) => ({ ...prev, status: "closed" }));
       }
       setPendingResolve(null);
       fetchWarnings(true);
@@ -141,7 +141,7 @@ const WarningManagement = () => {
     const matchesSearch =
       !q || hotelName.includes(q) || title.includes(q) || message.includes(q);
 
-    const status = (item.status || "pending").toLowerCase();
+    const status = (item.status || "unread").toLowerCase();
     const matchesStatus =
       !statusFilter || status === statusFilter.toLowerCase();
 
@@ -191,8 +191,9 @@ const WarningManagement = () => {
             className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
             <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="resolved">Resolved</option>
+            <option value="unread">Belum Dilihat</option>
+            <option value="read">Dilihat</option>
+            <option value="closed">Selesai</option>
           </select>
 
           {/* Refresh Button */}
@@ -258,9 +259,11 @@ const WarningManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E0D8] font-hanken text-[13.5px]">
-                  {paginatedWarnings.length > 0 ? (
+                    {paginatedWarnings.length > 0 ? (
                     paginatedWarnings.map((row) => {
-                      const isResolved = (row.status || "").toLowerCase() === "resolved";
+                      const st = (row.status || "unread").toLowerCase();
+                      const isClosed = st === "closed" || st === "resolved";
+                      const isRead = st === "read" || isClosed;
                       const hotelName = row.hotel?.name || row.hotel_name || "Hotel Partner";
                       const hotelCity = row.hotel?.city?.name || row.hotel?.address || "";
 
@@ -308,16 +311,26 @@ const WarningManagement = () => {
 
                           {/* Status */}
                           <td className="py-4 px-6 text-center">
-                            {isResolved ? (
+                            {isClosed ? (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#d1eac9] text-[#0c200c] text-[11px] font-semibold uppercase tracking-[0.05em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#768875]"></span>
-                                Resolved
+                                Selesai
+                              </span>
+                            ) : isRead ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#dbeafe] text-[#1e40af] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]"></span>
+                                Dilihat
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ffdad6] text-[#93000a] text-[11px] font-semibold uppercase tracking-[0.05em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]"></span>
-                                Pending
+                                Belum Dilihat
                               </span>
+                            )}
+                            {row.read_at && (
+                              <p className="text-[11px] text-[#747872] mt-1 whitespace-nowrap">
+                                {new Date(row.read_at).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </p>
                             )}
                           </td>
 
@@ -327,7 +340,7 @@ const WarningManagement = () => {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex items-center justify-end gap-2">
-                              {!isResolved && (
+                              {!isClosed && (
                                 <button
                                   onClick={() => handleResolveWarning(row.id)}
                                   className="px-3 py-1.5 bg-[#768875] text-white rounded-lg font-hanken text-[12px] font-semibold hover:bg-[#657764] transition-all active:scale-95 shadow-sm"
@@ -485,23 +498,43 @@ const WarningManagement = () => {
                   <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
                     Status Peringatan
                   </label>
-                  {(selectedWarning.status || "").toLowerCase() === "resolved" ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d1eac9] text-[#0c200c] text-[11px] font-semibold uppercase tracking-[0.05em]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#768875]"></span>
-                      Resolved
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ffdad6] text-[#93000a] text-[11px] font-semibold uppercase tracking-[0.05em]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]"></span>
-                      Pending
-                    </span>
-                  )}
+                  {(() => {
+                    const s = (selectedWarning.status || "unread").toLowerCase();
+                    if (s === "closed" || s === "resolved") return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d1eac9] text-[#0c200c] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#768875]"></span>
+                        Selesai
+                      </span>
+                    );
+                    if (s === "read") return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dbeafe] text-[#1e40af] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]"></span>
+                        Dilihat
+                      </span>
+                    );
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ffdad6] text-[#93000a] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]"></span>
+                        Belum Dilihat
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
+                    Waktu Dilihat
+                  </label>
+                  <p className="text-[#434842]">
+                    {selectedWarning.read_at
+                      ? new Date(selectedWarning.read_at).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                      : "Belum dilihat"}
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="pt-4 border-t border-[#E5E0D8] flex justify-end gap-3">
-              {(selectedWarning.status || "").toLowerCase() !== "resolved" && (
+              {!["closed", "resolved"].includes((selectedWarning.status || "").toLowerCase()) && (
                 <button
                   onClick={() => handleResolveWarning(selectedWarning.id)}
                   className="px-4 py-2 bg-[#768875] text-white rounded-lg font-hanken text-[13px] font-semibold hover:bg-[#657764] transition-all shadow-sm active:scale-95"

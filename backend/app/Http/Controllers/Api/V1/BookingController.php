@@ -87,16 +87,19 @@ class BookingController extends Controller
 
             if (! $roomType) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => 'Tipe kamar tidak ditemukan di hotel ini.'], 422);
             }
 
             if ($adults > max(1, (int) $roomType->capacity_adult) * $qty) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => 'Jumlah tamu dewasa melebihi kapasitas kamar.'], 422);
             }
 
             if ($children > max(0, (int) $roomType->capacity_child) * $qty) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => 'Jumlah anak melebihi kapasitas kamar.'], 422);
             }
 
@@ -111,6 +114,7 @@ class BookingController extends Controller
 
             if ($available < $qty) {
                 DB::rollBack();
+
                 return response()->json(['status' => 'error', 'message' => "Stok tidak cukup. Tersedia {$available} kamar."], 422);
             }
 
@@ -192,6 +196,7 @@ class BookingController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['status' => 'error', 'message' => 'Gagal membuat booking: '.$e->getMessage()], 500);
         }
     }
@@ -301,6 +306,7 @@ class BookingController extends Controller
 
         if (in_array($booking->status, ['unpaid', 'pending'])) {
             $request->merge(['status' => 'cancelled']);
+
             return $this->updateStatus($request, $booking->id);
         }
 
@@ -311,6 +317,7 @@ class BookingController extends Controller
 
             if ($allRefundable) {
                 $booking->update(['status' => 'refund_pending']);
+
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
@@ -325,6 +332,7 @@ class BookingController extends Controller
                 $data['message'] = 'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.';
                 $res->setContent(json_encode($data));
             }
+
             return $res;
         }
 
@@ -456,7 +464,7 @@ class BookingController extends Controller
             $booking->grand_total = ($booking->grand_total ?? 0) + $addedGrandTotal;
 
             $existingNote = $booking->special_request ?? '';
-            $newNote = trim("{$existingNote} {$extensionLabel} " . ($notes ? "({$notes})" : ""));
+            $newNote = trim("{$existingNote} {$extensionLabel} ".($notes ? "({$notes})" : ''));
             $booking->special_request = $newNote;
 
             $booking->save();
@@ -470,7 +478,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => "Booking berhasil diperpanjang (+{$duration} " . ($type === 'hours' ? 'Jam' : 'Hari') . ").",
+                'message' => "Booking berhasil diperpanjang (+{$duration} ".($type === 'hours' ? 'Jam' : 'Hari').').',
                 'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
                 'extension_summary' => [
                     'type' => $type,
@@ -478,7 +486,7 @@ class BookingController extends Controller
                     'subtotal_added' => $extensionSubtotal,
                     'tax_added' => $addedTax,
                     'grand_total_added' => $addedGrandTotal,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

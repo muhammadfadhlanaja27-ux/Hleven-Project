@@ -70,6 +70,7 @@ const BookingPage = () => {
 
   const pollRef = useRef(null);
   const wasGuestRef = useRef(false);
+  const submitLockRef = useRef(false);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -223,6 +224,8 @@ const BookingPage = () => {
     });
   };
 
+  const releaseSubmitLock = () => { submitLockRef.current = false; setSubmitting(false); };
+
   const startPolling = (pid, oid, bookingId) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
@@ -230,7 +233,8 @@ const BookingPage = () => {
       attempts += 1;
       if (attempts > 40) {
         clearInterval(pollRef.current);
-        toast("Pembayaran belum terkonfirmasi. Cek Transaction History.", { icon: "ℹ️" });
+        releaseSubmitLock();
+        toast("Pembayaran belum terkonfirmasi. Cek Transaction History → Sync.", { icon: "ℹ️" });
         return;
       }
       try {
@@ -240,12 +244,13 @@ const BookingPage = () => {
         const bs = res.data?.data?.booking_status;
         if (ps === "success" || bs === "paid" || bs === "confirmed") {
           clearInterval(pollRef.current);
+          releaseSubmitLock();
           showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
           toast.success("Pembayaran terkonfirmasi!");
         }
       } catch {}
     }, 3000);
-    setTimeout(() => { if (pollRef.current) clearInterval(pollRef.current); }, 120000);
+    setTimeout(() => { if (pollRef.current) { clearInterval(pollRef.current); releaseSubmitLock(); } }, 120000);
   };
 
   const handleDownloadETicket = async (bookingId, bookingCode) => {
@@ -280,6 +285,7 @@ const BookingPage = () => {
     startPolling(pid, oid, bookingId);
     window.snap.pay(token, {
       onSuccess: async () => {
+        releaseSubmitLock();
         try { await api.post(`/payments/${pid}/sync`); } catch {}
         try {
           const res = await api.get(`/payments/${pid}/status`);
@@ -292,6 +298,7 @@ const BookingPage = () => {
       },
       onError: () => {
         if (pollRef.current) clearInterval(pollRef.current);
+        releaseSubmitLock();
         toast.error("Pembayaran gagal");
       },
       onClose: () => {
@@ -342,6 +349,7 @@ const BookingPage = () => {
     if (isSubmittingRef.current || submitting) return;
     const { targetHotelId, targetRoomTypeId } = confirmData || {};
     if (!targetHotelId || !targetRoomTypeId) return;
+    if (submitLockRef.current) return;
     setConfirmData(null);
     doBooking(targetHotelId, targetRoomTypeId);
   };
@@ -409,6 +417,7 @@ const BookingPage = () => {
           return;
         }
 
+        snapOpened = true;
         payWithSnap(token, pid, bookingCode, bookingId);
       }
     } catch (err) {
