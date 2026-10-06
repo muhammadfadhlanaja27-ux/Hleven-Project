@@ -261,8 +261,6 @@ class BookingController extends Controller
 
             $booking->update(['status' => $newStatus]);
 
-            // Saat admin menandai booking selesai (checked out), ajukan user menulis ulasan.
-            // Ulasan hanya boleh ditulis setelah checkout (lihat ReviewController::eligibleBookings).
             if ($newStatus === 'checked_out' && $booking->user_id && ! $booking->review()->exists()) {
                 Notification::create([
                     'user_id' => $booking->user_id,
@@ -437,6 +435,7 @@ class BookingController extends Controller
                         $dateStr = $date->format('Y-m-d');
                         $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
                             ->where('date', $dateStr)
+                            ->lockForUpdate()
                             ->first();
 
                         if ($avail) {
@@ -541,9 +540,9 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'hotel_id' => 'required|integer',
-            'room_type_id' => 'required|integer',
-            'check_in' => 'required|date',
+            'hotel_id' => 'required|integer|exists:hotels,id',
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'qty' => 'required|integer|min:1',
             'adults' => 'nullable|integer|min:1',
@@ -571,113 +570,89 @@ class BookingController extends Controller
         $adults = (int) ($request->adults ?? 1);
         $specialNotes = $request->special_requests ?? $request->special_request ?? null;
 
-        $queryRoomType = RoomType::where('id', $request->room_type_id)
-            ->where('hotel_id', $request->hotel_id);
-
-        if (Schema::hasColumn('room_types', 'is_active')) {
-            $queryRoomType->where('is_active', true);
-        }
-
-        $queryRoomType->whereHas('hotel', function ($query) {
-            $query->where('status', 'active');
-        });
-
-        $roomType = $queryRoomType->first();
-
-        if (! $roomType) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.',
-            ], 422);
-        }
-
-        $capacityAdult = max(1, (int) ($roomType->capacity_adult ?? 2));
-        $maxAdultAllowed = $capacityAdult * $qty;
-
-        if ($adults > $maxAdultAllowed) {
-            $minQtyNeeded = (int) ceil($adults / $capacityAdult);
-            $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $request->check_in, $request->check_out, $adults);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
-                'suggestions' => $suggestions,
-            ], 422);
-        }
-
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
         $checkInStr = $checkIn->toDateString();
         $checkOutStr = $checkOut->toDateString();
-
         $totalNight = max(1, $checkIn->diffInDays($checkOut));
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
-        $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
-
-        $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
-            ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
-                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
-                    ->where('check_in', '<', $checkOutStr)
-                    ->where('check_out', '>', $checkInStr);
-            })
-            ->sum('qty');
-
-        $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
-
-        $dedupEmailNorm = strtolower(trim((string) $request->guest_email));
-        if ($dedupEmailNorm !== '') {
-            $recentDup = Booking::where('hotel_id', $request->hotel_id)
-                ->where('check_in', $checkInStr)
-                ->where('check_out', $checkOutStr)
-                ->whereHas('bookingRooms', fn ($q) => $q->where('room_type_id', $request->room_type_id)->where('qty', $qty))
-                ->whereHas('guests', fn ($q) => $q->where('email', $dedupEmailNorm))
-                ->where('created_at', '>=', now()->subSeconds(60))
-                ->with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
-                ->latest('id')
-                ->first();
-            if ($recentDup) {
-                $tok = null;
-                if (! $request->user()) {
-                    $u = User::where('email', $dedupEmailNorm)->first();
-                    if ($u) {
-                        $tok = $u->createToken('guest_token')->plainTextToken;
-                    }
-                }
-
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Booking sudah dibuat.',
-                    'data' => ['booking' => $recentDup, 'payment' => $recentDup->payment, 'token' => $tok],
-                    'deduped' => true,
-                ], 200);
-            }
-        }
-
-        if ($remainingStockDirect < $qty) {
-            $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
-                'suggestions' => $suggestions,
-            ], 422);
-        }
-
-        $subtotal = 0;
-        $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
-        $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
-
-        foreach ($period as $date) {
-            $subtotal += ($date->isWeekend())
-                ? ($weekendPrice * $qty)
-                : ($weekdayPrice * $qty);
-        }
-        $tax = (int) round($subtotal * 0.05);
-        $grandTotal = $subtotal + $tax;
-
         DB::beginTransaction();
         try {
+            // Ambil roomType dengan pessimistic locking agar thread-safe
+            $queryRoomType = RoomType::where('id', $request->room_type_id)
+                ->where('hotel_id', $request->hotel_id)
+                ->lockForUpdate();
+
+            if (Schema::hasColumn('room_types', 'is_active')) {
+                $queryRoomType->where('is_active', true);
+            }
+
+            $queryRoomType->whereHas('hotel', function ($query) {
+                $query->where('status', 'active');
+            });
+
+            $roomType = $queryRoomType->first();
+
+            if (! $roomType) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.',
+                ], 422);
+            }
+
+            $capacityAdult = max(1, (int) ($roomType->capacity_adult ?? 2));
+            $maxAdultAllowed = $capacityAdult * $qty;
+
+            if ($adults > $maxAdultAllowed) {
+                DB::rollBack();
+                $minQtyNeeded = (int) ceil($adults / $capacityAdult);
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
+                    'suggestions' => $suggestions,
+                ], 422);
+            }
+
+            $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
+
+            // Pengecekan stok di dalam DB Transaction
+            $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
+                ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                    $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
+                        ->where('check_in', '<', $checkOutStr)
+                        ->where('check_out', '>', $checkInStr);
+                })
+                ->sum('qty');
+
+            $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
+
+            if ($remainingStockDirect < $qty) {
+                DB::rollBack();
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                    'suggestions' => $suggestions,
+                ], 422);
+            }
+
+            $subtotal = 0;
+            $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
+            $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
+
+            foreach ($period as $date) {
+                $subtotal += ($date->isWeekend())
+                    ? ($weekendPrice * $qty)
+                    : ($weekdayPrice * $qty);
+            }
+            $tax = (int) round($subtotal * 0.05);
+            $grandTotal = $subtotal + $tax;
+
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
             $user = $request->user();
             $token = null;
@@ -726,6 +701,7 @@ class BookingController extends Controller
                 $dateStr = $date->format('Y-m-d');
                 $avail = RoomAvailability::where('room_type_id', $roomType->id)
                     ->where('date', $dateStr)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($avail) {
