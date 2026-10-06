@@ -62,6 +62,7 @@ const BookingPage = () => {
 
   const pollRef = useRef(null);
   const wasGuestRef = useRef(false);
+  const submitLockRef = useRef(false);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -212,6 +213,8 @@ const BookingPage = () => {
     });
   };
 
+  const releaseSubmitLock = () => { submitLockRef.current = false; setSubmitting(false); };
+
   const startPolling = (pid, oid, bookingId) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
@@ -219,6 +222,7 @@ const BookingPage = () => {
       attempts += 1;
       if (attempts > 40) {
         clearInterval(pollRef.current);
+        releaseSubmitLock();
         toast("Pembayaran belum terkonfirmasi. Cek Transaction History → Sync.", { icon: "ℹ️" });
         return;
       }
@@ -229,12 +233,13 @@ const BookingPage = () => {
         const bs = res.data?.data?.booking_status;
         if (ps === "success" || bs === "paid" || bs === "confirmed") {
           clearInterval(pollRef.current);
+          releaseSubmitLock();
           showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
           toast.success("Pembayaran terkonfirmasi!");
         }
       } catch {}
     }, 3000);
-    setTimeout(() => { if (pollRef.current) clearInterval(pollRef.current); }, 120000);
+    setTimeout(() => { if (pollRef.current) { clearInterval(pollRef.current); releaseSubmitLock(); } }, 120000);
   };
 
   const handleDownloadETicket = async (bookingId, bookingCode) => {
@@ -269,6 +274,7 @@ const BookingPage = () => {
     startPolling(pid, oid, bookingId);
     window.snap.pay(token, {
       onSuccess: async () => {
+        releaseSubmitLock();
         try { await api.post(`/payments/${pid}/sync`); } catch {}
         try {
           const res = await api.get(`/payments/${pid}/status`);
@@ -281,6 +287,7 @@ const BookingPage = () => {
       },
       onError: () => {
         if (pollRef.current) clearInterval(pollRef.current);
+        releaseSubmitLock();
         toast.error("Pembayaran gagal");
       },
       onClose: () => {
@@ -291,6 +298,7 @@ const BookingPage = () => {
 
   const handleOpenPaymentModal = (e) => {
     e.preventDefault();
+    if (submitLockRef.current) return;
     if (!fullName || !email || !phone) {
       toast.error("Harap lengkapi Data Tamu (Nama, Email, dan No. Telepon).");
       return;
@@ -320,12 +328,16 @@ const BookingPage = () => {
   const confirmBooking = async () => {
     const { targetHotelId, targetRoomTypeId } = confirmData || {};
     if (!targetHotelId || !targetRoomTypeId) return;
+    if (submitLockRef.current) return;
     setConfirmData(null);
     doBooking(targetHotelId, targetRoomTypeId);
   };
 
   const doBooking = async (targetHotelId, targetRoomTypeId) => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setSubmitting(true);
+    let snapOpened = false;
     const payload = {
       hotel_id: Number(targetHotelId),
       room_type_id: Number(targetRoomTypeId),
@@ -346,8 +358,25 @@ const BookingPage = () => {
       try {
         res = await api.post("/bookings", payload);
       } catch (firstErr) {
-        if (firstErr.response?.status === 405) {
-          res = await api.post("/user/bookings", payload);
+        const sc = firstErr.response?.status;
+        if (sc === 405) {
+          try {
+            res = await api.post("/user/bookings", payload);
+          } catch (secondErr) {
+            const sc2 = secondErr.response?.status;
+            if (secondErr.code === "ERR_NETWORK" || !secondErr.response) {
+              toast.error("Permintaan pertama mungkin sudah berhasil. Cek Riwayat Pemesanan sebelum mencoba lagi.");
+              throw secondErr;
+            }
+            if (sc2 !== 422 && sc2 !== 401) {
+              toast.error("Gagal membuat pesanan. Cek Riwayat Pemesanan sebelum mencoba lagi.");
+              throw secondErr;
+            }
+            throw secondErr;
+          }
+        } else if (!firstErr.response || firstErr.code === "ERR_NETWORK") {
+          toast.error("Koneksi bermasalah. Cek Riwayat Pemesanan sebelum mencoba lagi.");
+          throw firstErr;
         } else {
           throw firstErr;
         }
@@ -383,6 +412,7 @@ const BookingPage = () => {
           return;
         }
 
+        snapOpened = true;
         payWithSnap(token, pid, bookingCode, bookingId);
       }
     } catch (err) {
@@ -405,6 +435,9 @@ const BookingPage = () => {
       }
     } finally {
       setSubmitting(false);
+      // ponytail: hold lock when snap opened — reset hanya setelah snap close/polling selesai
+      if (!snapOpened) submitLockRef.current = false;
+      else setTimeout(() => { submitLockRef.current = false; }, 120000);
     }
   };
 

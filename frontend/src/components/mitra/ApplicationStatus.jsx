@@ -183,21 +183,13 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
         )}
 
       {application.hotel_name && (
-        <div className="bg-[#faf3ea]/70 rounded-2xl border border-[#DCCFC0]/40 p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-[#faf3ea]/70 rounded-2xl border border-[#DCCFC0]/40 p-5 mb-6">
           <div>
             <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-0.5">
               Nama Hotel
             </span>
             <span className="font-body-md text-sm font-semibold text-[#1c1c19]">{application.hotel_name}</span>
           </div>
-          {application.hotel_type && (
-            <div>
-              <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-0.5">
-                Tipe Hotel
-              </span>
-              <span className="font-body-md text-sm text-[#1c1c19]">{application.hotel_type}</span>
-            </div>
-          )}
         </div>
       )}
 

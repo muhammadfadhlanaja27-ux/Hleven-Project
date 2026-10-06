@@ -14,15 +14,6 @@ const STEP_LABELS = [
   "Review",
 ];
 
-const HOTEL_TYPES = [
-  "Hotel",
-  "Resort",
-  "Villa",
-  "Guest House",
-  "Boutique Hotel",
-  "Lainnya",
-];
-
 const INPUT_BASE =
   "bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3.5 font-body-md text-sm text-[#1c1c19] focus:outline-none focus:border-[#778873] focus:ring-2 focus:ring-[#778873]/20 transition-all placeholder:text-[#747871]/70";
 const INPUT_ERROR = "border-[#ba1a1a] focus:border-[#ba1a1a] focus:ring-[#ba1a1a]/20";
@@ -35,11 +26,9 @@ const isValidPostal = (v) => /^\d{4,10}$/.test(v);
 
 const emptyForm = {
   hotel_name: "",
-  hotel_type: "",
   hotel_description: "",
   hotel_phone: "",
   hotel_email: "",
-  room_count: "",
   requested_star_rating: "",
   address: "",
   province: "",
@@ -142,15 +131,12 @@ const MitraRegistration = () => {
     const e = {};
     if (step === 1) {
       if (!form.hotel_name.trim()) e.hotel_name = "Nama hotel wajib diisi";
-      if (!form.hotel_type) e.hotel_type = "Pilih tipe hotel";
       if (!form.hotel_description.trim()) e.hotel_description = "Deskripsi hotel wajib diisi";
       if (!form.hotel_phone.trim()) e.hotel_phone = "Nomor telepon hotel wajib diisi";
       else if (!isValidPhone(form.hotel_phone)) e.hotel_phone = "Format nomor telepon tidak valid";
       if (!form.hotel_email.trim()) e.hotel_email = "Email hotel wajib diisi";
       else if (!isValidEmail(form.hotel_email)) e.hotel_email = "Format email tidak valid";
       else if (emailAvailable === false) e.hotel_email = "Email ini sudah terpakai. Silakan gunakan email lain.";
-      if (!form.room_count) e.room_count = "Jumlah kamar wajib diisi";
-      else if (isNaN(Number(form.room_count)) || Number(form.room_count) < 1) e.room_count = "Jumlah kamar harus angka minimal 1";
     }
     if (step === 2) {
       if (!form.address.trim()) e.address = "Alamat lengkap wajib diisi";
@@ -277,34 +263,6 @@ const MitraRegistration = () => {
           />
           {errors.hotel_name && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_name}</span>}
         </div>
-        <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="hotel_type">Tipe Hotel *</label>
-          <select
-            id="hotel_type"
-            value={form.hotel_type}
-            onChange={(e) => update("hotel_type", e.target.value)}
-            className={`${INPUT_BASE} ${errors.hotel_type ? INPUT_ERROR : ""}`}
-          >
-            <option value="">-- Pilih Tipe Hotel --</option>
-            {HOTEL_TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          {errors.hotel_type && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_type}</span>}
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="room_count">Jumlah Kamar *</label>
-          <input
-            id="room_count"
-            type="number"
-            min="1"
-            value={form.room_count}
-            onChange={(e) => update("room_count", e.target.value)}
-            placeholder="Contoh: 50"
-            className={`${INPUT_BASE} ${errors.room_count ? INPUT_ERROR : ""}`}
-          />
-          {errors.room_count && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.room_count}</span>}
-        </div>
         <div className="flex flex-col gap-2 md:col-span-2">
           <label className={LABEL} htmlFor="hotel_description">Deskripsi Hotel *</label>
           <textarea
@@ -347,6 +305,7 @@ const MitraRegistration = () => {
             placeholder="hotel@example.com"
             className={`${INPUT_BASE} ${errors.hotel_email ? INPUT_ERROR : ""}`}
           />
+          <span className={HELPER}>Email ini akan digunakan sebagai akun admin hotel.</span>
           {errors.hotel_email && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_email}</span>}
         </div>
       </div>
@@ -663,14 +622,12 @@ const MitraRegistration = () => {
 
       <ReviewCard title="Informasi Hotel" icon="domain" step={1}>
         <Row label="Nama Properti" value={form.hotel_name} />
-        <Row label="Tipe Properti" value={form.hotel_type} />
         <div className="md:col-span-2">
           <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Deskripsi</span>
           <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">{form.hotel_description}</p>
         </div>
         <Row label="Nomor Telepon" value={form.hotel_phone} />
         <Row label="Email Properti" value={form.hotel_email} />
-        <Row label="Jumlah Kamar" value={form.room_count ? `${form.room_count} Kamar` : ""} />
         <Row label="Bintang (Klaim)" value={form.requested_star_rating ? `${form.requested_star_rating} Bintang` : "Belum Bersertifikat"} />
       </ReviewCard>
 
