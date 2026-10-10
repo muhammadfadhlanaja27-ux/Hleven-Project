@@ -9,16 +9,36 @@ import { getInitialSearchValues, fmtDateStr } from "../../services/searchStorage
 const SNAP_URL = "https://app.sandbox.midtrans.com/snap/snap.js";
 const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
 
+// Helper validasi token ketat
+const isUserLoggedIn = () => {
+  const token = localStorage.getItem("token");
+  return Boolean(
+    token &&
+    token !== "null" &&
+    token !== "undefined" &&
+    token.trim() !== ""
+  );
+};
+
 const loadSnapScript = () =>
   new Promise((resolve, reject) => {
     if (window.snap) return resolve();
-    if (document.querySelector(`script[src="${SNAP_URL}"]`)) {
+
+    const existingScript = document.querySelector(`script[src="${SNAP_URL}"]`);
+    if (existingScript) {
       const check = setInterval(() => {
-        if (window.snap) { clearInterval(check); resolve(); }
+        if (window.snap) {
+          clearInterval(check);
+          resolve();
+        }
       }, 100);
-      setTimeout(() => { clearInterval(check); reject(new Error("Snap load timeout")); }, 8000);
+      setTimeout(() => {
+        clearInterval(check);
+        reject(new Error("Snap load timeout"));
+      }, 8000);
       return;
     }
+
     const s = document.createElement("script");
     s.src = SNAP_URL;
     s.setAttribute("data-client-key", CLIENT_KEY || "");
@@ -40,8 +60,10 @@ const BookingPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Synchronous submission lock
+  // Synchronous submission locks
   const isSubmittingRef = useRef(false);
+  const submitLockRef = useRef(false);
+  const pollRef = useRef(null);
 
   // Form State: Pemesan Utama
   const [fullName, setFullName] = useState("");
@@ -55,22 +77,17 @@ const BookingPage = () => {
   const [guestPhone, setGuestPhone] = useState("");
 
   const [specialRequests, setSpecialRequests] = useState("");
-  const [checkInDate, setCheckInDate] = useState(init.checkInStr);
-  const [checkOutDate, setCheckOutDate] = useState(init.checkOutStr);
+  const [checkInDate] = useState(init.checkInStr);
+  const [checkOutDate] = useState(init.checkOutStr);
 
-  const [adults, setAdults] = useState(init.adults);
-  const [children, setChildren] = useState(init.children);
+  const [adults] = useState(init.adults);
+  const [children] = useState(init.children);
   const [roomQty, setRoomQty] = useState(init.rooms);
 
   const [suggestionData, setSuggestionData] = useState(null);
-  const [orderId, setOrderId] = useState("HLVN-98234-AX");
-  const [paymentId, setPaymentId] = useState(null);
+  const [, setOrderId] = useState("");
+  const [, setPaymentId] = useState(null);
   const [successModalData, setSuccessModalData] = useState(null);
-  const [confirmData, setConfirmData] = useState(null);
-
-  const pollRef = useRef(null);
-  const wasGuestRef = useRef(false);
-  const submitLockRef = useRef(false);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -81,6 +98,14 @@ const BookingPage = () => {
     return Math.max(1, room?.stock ?? 10);
   }, [room]);
 
+  // PROTEKSI HALAMAN ON-MOUNT: Jika guest, langsung alihkan ke login
+  useEffect(() => {
+    if (!isUserLoggedIn()) {
+      toast.error("Silakan login terlebih dahulu untuk melakukan pemesanan.");
+      navigate("/login", { state: { from: location }, replace: true });
+    }
+  }, [navigate, location]);
+
   useEffect(() => {
     if (roomQty < minRequiredRooms) {
       setRoomQty(minRequiredRooms);
@@ -89,8 +114,9 @@ const BookingPage = () => {
     }
   }, [minRequiredRooms, maxAvailableStock, roomQty]);
 
-  // Autofill data pemesan jika user sedang login
+  // Autofill data pemesan dari profile user yang terautentikasi
   useEffect(() => {
+    if (!isUserLoggedIn()) return;
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
@@ -105,13 +131,17 @@ const BookingPage = () => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchBookingData = async () => {
       setLoading(true);
 
       if (!hotelId || !roomId) {
-        setHotel(null);
-        setRoom(null);
-        setLoading(false);
+        if (isMounted) {
+          setHotel(null);
+          setRoom(null);
+          setLoading(false);
+        }
         return;
       }
 
@@ -123,35 +153,42 @@ const BookingPage = () => {
           false,
           TTL_2MENIT
         );
-        if (responseData && responseData.data) {
+
+        if (responseData && responseData.data && isMounted) {
           const apiHotel = responseData.data;
           const apiRooms = (apiHotel.room_types || []).filter((r) => r.is_active !== false);
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(roomId));
 
           if (matchedRoomType) {
             const thumbnailPhoto = matchedRoomType.photos && matchedRoomType.photos.length > 0
-              ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0])
+              ? (matchedRoomType.photos.find((p) => p.is_thumbnail) || matchedRoomType.photos[0])
               : null;
             const roomPhotoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
-            const roomImage = roomPhotoPath ? getStorageUrl(roomPhotoPath) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300' fill='%23ccc'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Ctext x='200' y='160' font-family='sans-serif' font-size='18' fill='%23666' text-anchor='middle'%3ENo Photo Available%3C/text%3E%3C/svg%3E";
+            const roomImage = roomPhotoPath
+              ? getStorageUrl(roomPhotoPath)
+              : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300' fill='%23ccc'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Ctext x='200' y='160' font-family='sans-serif' font-size='18' fill='%23666' text-anchor='middle'%3ENo Photo Available%3C/text%3E%3C/svg%3E";
 
             const hotelThumbRaw = apiHotel.thumbnail;
             const hotelImage = hotelThumbRaw
-              ? (typeof hotelThumbRaw === 'object'
+              ? (typeof hotelThumbRaw === "object"
                   ? (hotelThumbRaw.photo || hotelThumbRaw.url ? getStorageUrl(hotelThumbRaw.photo || hotelThumbRaw.url) : null)
                   : getStorageUrl(hotelThumbRaw))
               : null;
+
             let liveStock = null;
             if (checkInDate && checkOutDate) {
               try {
-                const ci = checkInDate instanceof Date ? fmtDateStr(checkInDate) : String(checkInDate).split('T')[0];
-                const co = checkOutDate instanceof Date ? fmtDateStr(checkOutDate) : String(checkOutDate).split('T')[0];
+                const ci = checkInDate instanceof Date ? fmtDateStr(checkInDate) : String(checkInDate).split("T")[0];
+                const co = checkOutDate instanceof Date ? fmtDateStr(checkOutDate) : String(checkOutDate).split("T")[0];
                 const { data: liveResponse } = await cachedGet(`/hotels/${hotelId}/rooms`, { params: { check_in: ci, check_out: co } });
                 const liveRooms = liveResponse?.data || [];
-                const liveRoom = liveRooms.find(r => String(r.id) === String(matchedRoomType.id));
+                const liveRoom = liveRooms.find((r) => String(r.id) === String(matchedRoomType.id));
                 if (liveRoom && liveRoom.available_stock !== undefined) liveStock = liveRoom.available_stock;
-              } catch (e) {}
+              } catch (e) {
+                console.error("Gagal mengambil stok live:", e);
+              }
             }
+
             const mappedRoom = {
               id: matchedRoomType.id,
               name: matchedRoomType.name,
@@ -173,24 +210,32 @@ const BookingPage = () => {
             setHotel(apiHotel);
             setRoom(null);
           }
-        } else {
+        } else if (isMounted) {
           setHotel(null);
           setRoom(null);
         }
       } catch (err) {
         console.error("Backend Error / Gagal memuat data booking:", err);
-        setHotel(null);
-        setRoom(null);
+        if (isMounted) {
+          setHotel(null);
+          setRoom(null);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchBookingData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [hotelId, roomId, checkInDate, checkOutDate]);
 
   useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, []);
 
   const nightsCount = useMemo(() => {
@@ -201,9 +246,9 @@ const BookingPage = () => {
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
 
-  const roomPrice = Number(room?.price || room?.weekday_price || 3500000);
+  const roomPrice = Number(room?.price || room?.weekday_price || 350000);
   const subtotalPrice = roomPrice * nightsCount * roomQty;
-  const taxAndFees = Math.round(subtotalPrice * 0.21);
+  const taxAndFees = Math.round(subtotalPrice * 0.05);
   const totalPrice = subtotalPrice + taxAndFees;
 
   const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
@@ -220,11 +265,13 @@ const BookingPage = () => {
       guestName: bookingFor === "someone_else" ? guestName : fullName,
       methodName,
       totalPrice,
-      wasGuest: wasGuestRef.current,
     });
   };
 
-  const releaseSubmitLock = () => { submitLockRef.current = false; setSubmitting(false); };
+  const releaseSubmitLock = () => {
+    submitLockRef.current = false;
+    setSubmitting(false);
+  };
 
   const startPolling = (pid, oid, bookingId) => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -250,25 +297,13 @@ const BookingPage = () => {
         }
       } catch {}
     }, 3000);
-    setTimeout(() => { if (pollRef.current) { clearInterval(pollRef.current); releaseSubmitLock(); } }, 120000);
-  };
 
-  const handleDownloadETicket = async (bookingId, bookingCode) => {
-    try {
-      const response = await api.get(`/user/bookings/${bookingId}/e-ticket`, {
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `E-Ticket-${bookingCode}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      toast.success("E-Tiket PDF berhasil diunduh.");
-    } catch (err) {
-      toast.error("E-Tiket belum tersedia — cek email Anda.");
-    }
+    setTimeout(() => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        releaseSubmitLock();
+      }
+    }, 120000);
   };
 
   const payWithSnap = async (token, pid, oid, bookingId) => {
@@ -290,7 +325,9 @@ const BookingPage = () => {
         try {
           const res = await api.get(`/payments/${pid}/status`);
           showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
-        } catch { showSuccess(oid, "Midtrans", bookingId); }
+        } catch {
+          showSuccess(oid, "Midtrans", bookingId);
+        }
         toast.success("Pembayaran berhasil!");
       },
       onPending: () => {
@@ -310,15 +347,20 @@ const BookingPage = () => {
   const handleOpenPaymentModal = (e) => {
     e.preventDefault();
 
+    // STRICT AUTH CHECK: Jika Guest, langsung lempar ke login
+    if (!isUserLoggedIn()) {
+      toast.error("Silakan login terlebih dahulu untuk melakukan pemesanan.");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     if (isSubmittingRef.current || submitting) return;
 
-    // Validasi Pemesan Utama
     if (!fullName || !email || !phone) {
       toast.error("Harap lengkapi Data Pemesan (Nama, Email, dan No. Telepon).");
       return;
     }
 
-    // Validasi Tamu Menginap jika pesan untuk orang lain
     if (bookingFor === "someone_else" && (!guestName || !guestEmail || !guestPhone)) {
       toast.error("Harap lengkapi Data Tamu Menginap (Nama, Email, dan No. Telepon).");
       return;
@@ -337,24 +379,17 @@ const BookingPage = () => {
       return;
     }
 
-    wasGuestRef.current = !localStorage.getItem("token");
-    if (wasGuestRef.current) {
-      setConfirmData({ targetHotelId, targetRoomTypeId });
-    } else {
-      doBooking(targetHotelId, targetRoomTypeId);
-    }
-  };
-
-  const confirmBooking = async () => {
-    if (isSubmittingRef.current || submitting) return;
-    const { targetHotelId, targetRoomTypeId } = confirmData || {};
-    if (!targetHotelId || !targetRoomTypeId) return;
-    if (submitLockRef.current) return;
-    setConfirmData(null);
     doBooking(targetHotelId, targetRoomTypeId);
   };
 
   const doBooking = async (targetHotelId, targetRoomTypeId) => {
+    // DOUBLE CHECK AUTH
+    if (!isUserLoggedIn()) {
+      toast.error("Silakan login terlebih dahulu untuk melakukan pemesanan.");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     setSubmitting(true);
@@ -369,18 +404,10 @@ const BookingPage = () => {
       qty: Number(roomQty),
       adults: Number(adults),
       children: Number(children),
-
-      // Data Pemesan Utama
-      booker_name: fullName,
-      booker_email: email,
-      booker_phone: phone,
-
-      // Data Tamu Menginap
       is_for_other_guest: isForOtherGuest,
       guest_name: isForOtherGuest ? guestName : fullName,
       guest_email: isForOtherGuest ? guestEmail : email,
       guest_phone: isForOtherGuest ? guestPhone : phone,
-
       special_request: specialRequests,
       special_requests: specialRequests,
     };
@@ -390,15 +417,11 @@ const BookingPage = () => {
 
       if (res.data && res.data.data) {
         const createdBooking = res.data.data.booking || res.data.data;
-        const bookingCode = createdBooking.booking_code || createdBooking.order_id || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`;
+        const bookingCode = createdBooking.booking_code || createdBooking.order_id;
         const bookingId = createdBooking.id || null;
         const pid = createdBooking.payment?.id || createdBooking.payment_id;
         setOrderId(bookingCode);
         if (pid) setPaymentId(pid);
-
-        if (res.data.data.token && !localStorage.getItem("token")) {
-          localStorage.setItem("token", res.data.data.token);
-        }
 
         let token = null;
         if (pid) {
@@ -417,13 +440,17 @@ const BookingPage = () => {
           return;
         }
 
-        snapOpened = true;
         payWithSnap(token, pid, bookingCode, bookingId);
       }
     } catch (err) {
       const responseData = err.response?.data;
 
-      if (err.response?.status === 422) {
+      if (err.response?.status === 401) {
+        toast.error("Sesi Anda telah berakhir. Silakan login kembali.");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login", { state: { from: location } });
+      } else if (err.response?.status === 422) {
         const errorMessage = responseData?.message || "Kamar tidak memenuhi kriteria pesanan.";
         toast.error(errorMessage);
 
@@ -737,7 +764,7 @@ const BookingPage = () => {
                 <div className="flex justify-between items-center">
                   <span>Pemesan:</span>
                   <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
-                    {fullName || "Guest"}
+                    {fullName || "-"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -786,7 +813,7 @@ const BookingPage = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-[#778873]">
-                  <span>Pajak &amp; Pelayanan (21%)</span>
+                  <span>Pajak (5%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
               </div>
@@ -818,66 +845,6 @@ const BookingPage = () => {
           </div>
         </div>
       </main>
-
-      {/* MODAL KONFIRMASI DATA GUEST CHECKOUT */}
-      {confirmData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 animate-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4 text-left font-body-md text-sm text-[#2D332C]">
-              <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">Konfirmasi Data Pemesan</h3>
-              
-              <div className="bg-[#faf3ea] rounded-xl p-4 space-y-2.5 border border-[#DCCFC0]/40">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">Nama Pemesan:</span>
-                  <span className="font-semibold">{fullName}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">Email Pemesan:</span>
-                  <span className="font-semibold">{email}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">No. HP Pemesan:</span>
-                  <span className="font-semibold">{phone}</span>
-                </div>
-                {bookingFor === "someone_else" && (
-                  <>
-                    <hr className="border-t border-[#DCCFC0]/60 my-1" />
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-[#444842]">Tamu Menginap:</span>
-                      <span className="font-semibold">{guestName}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
-                <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">warning</span>
-                <p className="font-body-md text-xs text-[#1e1b16] leading-snug">
-                  Pastikan <span className="font-bold">Email Pemesan sudah benar</span> — E-Tiket reservasi akan dikirimkan ke email tersebut.
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setConfirmData(null)}
-                  className="flex-1 py-3.5 rounded-xl font-label-md text-sm font-semibold border border-[#DCCFC0] text-[#444842] hover:bg-[#faf3ea] transition-all cursor-pointer active:scale-95"
-                >
-                  Kembali
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmBooking}
-                  disabled={submitting}
-                  className="flex-1 py-3.5 rounded-xl font-label-md text-sm font-semibold bg-[#778873] text-white hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
-                >
-                  {submitting ? "Memproses..." : "Sudah Benar, Lanjut Bayar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODAL SUKSES RESERVASI */}
       {successModalData && (
@@ -923,50 +890,16 @@ const BookingPage = () => {
                 </div>
               </div>
 
-              {successModalData.wasGuest && (
-                <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
-                  <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">mail</span>
-                  <p className="font-body-md text-xs text-[#1e1b16] leading-snug text-left">
-                    Pesanan selesai! E-Tiket dikirim ke <span className="font-bold">{successModalData.email}</span> — cek Inbox/Spam.
-                  </p>
-                </div>
-              )}
-
-              {successModalData.wasGuest ? (
-                <>
-                  {successModalData.bookingId && (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadETicket(successModalData.bookingId, successModalData.orderId)}
-                      className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base">download</span>
-                      Download E-Tiket (PDF)
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuccessModalData(null);
-                      navigate("/");
-                    }}
-                    className="w-full py-3.5 rounded-xl font-label-md text-sm font-semibold border border-[#DCCFC0] text-[#444842] hover:bg-[#faf3ea] transition-all cursor-pointer active:scale-95"
-                  >
-                    Kembali ke Beranda
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSuccessModalData(null);
-                    navigate("/profile", { state: { defaultTab: "history" } });
-                  }}
-                  className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
-                >
-                  Lihat Pesanan Saya
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccessModalData(null);
+                  navigate("/profile", { state: { defaultTab: "history" } });
+                }}
+                className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
+              >
+                Lihat Pesanan Saya
+              </button>
             </div>
           </div>
         </div>

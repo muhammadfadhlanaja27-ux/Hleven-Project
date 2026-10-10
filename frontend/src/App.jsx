@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useLocation,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -72,7 +73,28 @@ const MainLayout = () => (
 );
 
 // ---------------------------------------------------------
-// 2. SATPAM AMAN: Protected Route untuk Admin Hotel (Hanya 1 buah)
+// 2. SATPAM AMAN: Protected Route untuk User Biasa (Wajib Login)
+// ---------------------------------------------------------
+const UserProtectedRoute = () => {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+  const userString = localStorage.getItem("user");
+
+  const isValidToken =
+    token &&
+    token !== "null" &&
+    token !== "undefined" &&
+    token.trim() !== "";
+
+  if (!isValidToken || !userString || userString === "null" || userString === "undefined") {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
+};
+
+// ---------------------------------------------------------
+// 3. SATPAM AMAN: Protected Route untuk Admin Hotel
 // ---------------------------------------------------------
 const AdminHotelProtectedRoute = () => {
   const token = localStorage.getItem("token");
@@ -104,7 +126,7 @@ const AdminHotelProtectedRoute = () => {
 };
 
 // ---------------------------------------------------------
-// 3. SATPAM AMAN: Protected Route untuk Super Admin
+// 4. SATPAM AMAN: Protected Route untuk Super Admin
 // ---------------------------------------------------------
 const SuperAdminProtectedRoute = () => {
   const token = localStorage.getItem("token");
@@ -144,25 +166,28 @@ function App() {
 
           {/* GRUP 1: Rute Publik & User */}
           <Route element={<MainLayout />}>
+            {/* Rute Bebas Publik */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/hotels" element={<HotelList />} />
             <Route path="/hotels/:id" element={<HotelDetail />} />
             <Route path="/hotels/:hotelId/rooms/:roomId" element={<RoomDetail />} />
             <Route path="/rooms/:hotelId/:roomId" element={<RoomDetail />} />
-
-            {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
-            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
-
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="/booking-history" element={<BookingHistory />} />
+
+            {/* Rute Khusus User Terautentikasi (WAJIB LOGIN) */}
+            <Route element={<UserProtectedRoute />}>
+              <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/booking-history" element={<BookingHistory />} />
+            </Route>
 
             {/* Mitra Hotel */}
             <Route path="/mitra" element={<MitraLanding />} />
             <Route path="/mitra/sukses" element={<MitraRegistrationSuccess />} />
           </Route>
-          {/* Form Pendaftaran Mitra (layout terpisah: header onboarding) */}
+
+          {/* Form Pendaftaran Mitra */}
           <Route path="/mitra/daftar" element={<MitraRegistration />} />
 
           {/* GRUP 2: Rute Admin Hotel */}
@@ -186,9 +211,7 @@ function App() {
           {/* GRUP 3: Rute Khusus Super Admin */}
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
-              {/* Tambahkan baris di bawah ini agar otomatis redirect ke dashboard */}
               <Route index element={<Navigate to="dashboard" replace />} />
-
               <Route path="dashboard" element={<SuperAdminDashboard />} />
               <Route path="profile" element={<SuperAdminProfile />} />
               <Route path="users" element={<UserManagement />} />
