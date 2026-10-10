@@ -25,9 +25,16 @@ const HotelList = () => {
   const [checkInDate, setCheckInDate] = useState(init.checkInDate);
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
 
+  // Sync state searchTerm kalau URL searchParams berubah dari Landing Page / Navbar
+  useEffect(() => {
+    const queryFromUrl = searchParams.get("search") || "";
+    setSearchTerm(queryFromUrl);
+  }, [searchParams]);
+
   useEffect(() => {
     saveSearchState({ search: searchTerm, checkIn: checkInDate, checkOut: checkOutDate, adults, children });
   }, [searchTerm, checkInDate, checkOutDate, adults, children]);
+
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
@@ -43,14 +50,7 @@ const HotelList = () => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (searchTerm.trim()) params.append("search", searchTerm.trim());
-        if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
-        if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
-        if (adults) params.append("adults", adults);
-        if (children) params.append("children", children);
-
-        const { data: responseData, fromCache } = await cachedGet(`/hotels${params.toString() ? `?${params.toString()}` : ""}`);
+        const { data: responseData, fromCache } = await cachedGet("/hotels");
         if (responseData && (responseData.data || Array.isArray(responseData))) {
           const apiHotels = responseData.data || responseData;
           setHotels(apiHotels);
@@ -127,13 +127,25 @@ const HotelList = () => {
     setSelectedFacilities([]);
     setSortBy("recommendation");
     setCurrentPage(1);
+    setSearchParams({}, { replace: true });
   };
 
+  const selectedHotelId = searchParams.get("selected") || searchParams.get("highlight") || searchParams.get("hotelId") || searchParams.get("id") || "";
+
   const filteredHotels = useMemo(() => {
+    // 1. Jika diklik spesifik berdasarkan ID
+    if (selectedHotelId) {
+      const target = hotels.find((hotel) => String(hotel.id) === String(selectedHotelId));
+      return target ? [target] : [];
+    }
+
+    // 2. Filter gabungan kata kunci search + filter sidebar
+    const query = searchTerm.trim().toLowerCase();
+
     return hotels
       .filter((hotel) => {
-        if (searchTerm.trim()) {
-          const query = searchTerm.toLowerCase();
+        // Match Search Query
+        if (query) {
           const matchName = hotel.name?.toLowerCase().includes(query);
           const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
           const matchCity = cityStr?.toLowerCase().includes(query);
@@ -141,15 +153,18 @@ const HotelList = () => {
           if (!matchName && !matchCity && !matchAddress) return false;
         }
 
+        // Match Harga
         const price = Number(hotel.starting_price || hotel.price || 0);
         if (minPrice && price < Number(minPrice)) return false;
         if (maxPrice && price > Number(maxPrice)) return false;
 
+        // Match Rating Bintang
         if (selectedStars.length > 0) {
           const hotelRatingInt = Math.floor(Number(hotel.rating || hotel.average_rating || 0));
           if (hotelRatingInt > 0 && !selectedStars.includes(hotelRatingInt)) return false;
         }
 
+        // Match Fasilitas
         if (selectedFacilities.length > 0) {
           const hotelFacs = (hotel.facilities || []).map((f) =>
             (typeof f === "object" ? f.name : String(f)).toLowerCase()
@@ -173,7 +188,7 @@ const HotelList = () => {
         if (sortBy === "rating_desc") return ratingB - ratingA;
         return 0;
       });
-  }, [hotels, searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+  }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
   const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -282,7 +297,7 @@ const HotelList = () => {
               {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedFacilities.length > 0) && (
                 <button
                   onClick={handleResetFilters}
-                  className="text-xs text-[#778873] font-semibold hover:underline"
+                  className="text-xs text-[#778873] font-semibold hover:underline cursor-pointer"
                 >
                   Reset
                 </button>
@@ -373,7 +388,7 @@ const HotelList = () => {
           <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
             <div>
               <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-                Semua Hotel ({filteredHotels.length})
+                Hasil Pencarian ({filteredHotels.length})
               </h2>
               <p className="font-body-md text-sm text-[#444842]">
                 Pilihan akomodasi siap huni untuk perjalanan bisnis maupun liburan Anda.
@@ -415,7 +430,7 @@ const HotelList = () => {
               </p>
               <button
                 onClick={handleResetFilters}
-                className="bg-[#778873] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#50604d] transition-colors"
+                className="bg-[#778873] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#50604d] transition-colors cursor-pointer"
               >
                 Reset Semua Filter
               </button>

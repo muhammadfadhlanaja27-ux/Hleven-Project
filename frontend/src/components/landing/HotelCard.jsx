@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { getStorageUrl } from '../../services/imageUrl';
 
 const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl }) => {
   const [urlSearchParams] = useSearchParams();
+  const location = useLocation();
   const [imgError, setImgError] = useState(false);
 
   const effectiveAdults = (adults ?? Number(urlSearchParams.get('adults'))) || 0;
@@ -13,12 +14,21 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
 
   const buildTargetUrl = () => {
     if (customUrl) return customUrl;
-    
+
     const params = new URLSearchParams();
     if (effectiveAdults > 0) params.set('adults', effectiveAdults);
     if (effectiveChildren > 0) params.set('children', effectiveChildren);
     if (effectiveCheckIn) params.set('check_in', effectiveCheckIn);
     if (effectiveCheckOut) params.set('check_out', effectiveCheckOut);
+
+    // Jika diklik di Landing Page ('/'), arahkan ke /hotels?selected=ID agar HotelList HANYA menampilkan 1 hotel ini
+    if (location.pathname === '/' || location.pathname === '') {
+      params.set('selected', hotel?.id);
+      const qs = params.toString();
+      return `/hotels?${qs}`;
+    }
+
+    // Jika sudah berada di /hotels, klik kartu baru mengarahkan ke detail hotel (/hotels/:id)
     const qs = params.toString();
     return `/hotels/${hotel?.id}${qs ? `?${qs}` : ''}`;
   };
@@ -47,10 +57,6 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
 
   const rawPrice = Number(hotel?.starting_price || hotel?.price || (hotel?.rooms && hotel.rooms[0]?.price) || 0);
   const formattedPrice = rawPrice > 0 ? rawPrice.toLocaleString('id-ID') : '150.000';
-
-  const getRating = () => {
-    return Number(hotel?.rating || hotel?.average_rating || 0).toFixed(1);
-  };
 
   const cityName = (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) || "Bandung";
   const verifiedStar = hotel.star_rating ? Number(hotel.star_rating) : null;
@@ -96,7 +102,6 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
         isHorizontal ? "flex-col sm:flex-row" : "flex-col h-full"
       }`}
     >
-      {/* Container Gambar: dibuat w-full h-48 md:h-52 agar tinggi dan tidak gepeng */}
       <div
         className={`relative shrink-0 overflow-hidden bg-[#F2EFE9] ${
           isHorizontal
@@ -130,9 +135,9 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical", customUrl })
           <span className="material-symbols-outlined text-[#D97706] text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             star
           </span>
-            <span className="font-label-sm text-[10px] font-bold text-[#1C251D]">
-              {verifiedStar ? verifiedStar : 'Belum Terverifikasi'}
-            </span>
+          <span className="font-label-sm text-[10px] font-bold text-[#1C251D]">
+            {verifiedStar ? verifiedStar : 'Belum Terverifikasi'}
+          </span>
         </div>
       </div>
 
