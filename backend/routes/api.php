@@ -1,28 +1,27 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
-use App\Http\Controllers\Api\V1\BookingController;
-use App\Http\Controllers\Api\V1\RoomTypeController;
-use App\Http\Controllers\Api\V1\DashboardController;
-use App\Http\Controllers\Api\V1\RoomController;
-use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\ReviewController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SuperAdminDashboardController;
-use App\Http\Controllers\WarningController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\SuperAdminUserController;
-use App\Http\Controllers\FileStorageController;
-use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\QRCodeController;
-use App\Http\Controllers\PartnerApplicationController;
+use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RoomTypeController;
+use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\AppealController;
+use App\Http\Controllers\FileStorageController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PartnerApplicationController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdminUserController;
+use App\Http\Controllers\WarningController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,7 +41,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show'])->whereNumber('id');
-    
+
     // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
@@ -99,10 +98,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
-            
+
             // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
-            
+
             // Reviews
             Route::get('/hotels/{id}/eligible-bookings', [ReviewController::class, 'eligibleBookings']);
             Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
@@ -125,14 +124,15 @@ Route::prefix('v1')->group(function () {
     });
 });
 
-
-
 // ==========================================
 // 3. ADMIN HOTEL ROUTES
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     Route::get('/appeals', [AppealController::class, 'indexAdmin']);
     Route::post('/appeals', [AppealController::class, 'storeAdmin']);
+    Route::get('/warnings', [WarningController::class, 'index']);
+    Route::get('/warnings/{id}', [WarningController::class, 'show']);
+    Route::patch('/warnings/{id}/read', [WarningController::class, 'markAsRead']);
 });
 Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
@@ -140,7 +140,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::get('/dashboard-stats', function () {
         return response()->json([
             'success' => true,
-            'message' => 'Selamat datang di Dashboard Admin Hotel'
+            'message' => 'Selamat datang di Dashboard Admin Hotel',
         ]);
     });
     Route::get('/hotel/dashboard', [DashboardController::class, 'index']);
@@ -152,7 +152,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::get('/hotels', [HotelController::class, 'myHotels']);
     Route::put('/hotels/{id}', [HotelController::class, 'update']);
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
-    
+
     // PERBAIKAN: Support route delete photo dengan 1 parameter (id photo) maupun 2 parameter (id hotel & photo)
     Route::delete('/hotels/photos/{photoId}', [HotelController::class, 'deletePhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
@@ -172,10 +172,10 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy']);
 
     // --- Booking Admin ---
-    Route::get('/bookings', [BookingController::class, 'index']); 
+    Route::get('/bookings', [BookingController::class, 'index']);
     Route::post('/bookings/manual', [BookingController::class, 'storeManual']);
-    Route::get('/bookings/{id}', [BookingController::class, 'show']); 
-    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
+    Route::get('/bookings/{id}', [BookingController::class, 'show']);
+    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
     Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
     Route::post('/bookings/{id}/extend', [BookingController::class, 'extendBooking']);
 });

@@ -43,6 +43,7 @@ import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
 import AdminProfile from "./pages/admin-hotel/Profile";
 import SuspendedPage from "./pages/admin-hotel/SuspendedPage";
+import AdminWarnings from "./pages/admin-hotel/Warnings";
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
@@ -176,6 +177,7 @@ function App() {
               <Route path="/admin/bookings" element={<BookingList />} />
               <Route path="/admin/transactions" element={<TransactionHistory />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
+              <Route path="/admin/warnings" element={<AdminWarnings />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
             </Route>
