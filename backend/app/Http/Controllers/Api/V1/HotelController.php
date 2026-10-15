@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\City;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
-use App\Models\City;
 use App\Services\FileStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +23,7 @@ class HotelController extends Controller
             ->where('status', 'active');
 
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
 
         $hotels = $query->get();
@@ -31,7 +31,7 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Daftar hotel berhasil dimuat',
-            'data'    => $hotels,
+            'data' => $hotels,
         ], 200);
     }
 
@@ -41,21 +41,21 @@ class HotelController extends Controller
     public function show($id): JsonResponse
     {
         $hotel = Hotel::with([
-            'city', 
-            'photos', 
-            'facilities', 
-            'roomTypes.photos', 
-            'roomTypes.facilities'
+            'city',
+            'photos',
+            'facilities',
+            'roomTypes.photos',
+            'roomTypes.facilities',
         ])->find($id);
 
-        if (!$hotel) {
+        if (! $hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found'], 404);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Detail hotel berhasil dimuat',
-            'data'    => $hotel,
+            'data' => $hotel,
         ], 200);
     }
 
@@ -65,10 +65,10 @@ class HotelController extends Controller
     public function showProfile(Request $request): JsonResponse
     {
         $user = $request->user();
-        
-        $hotel = $user->hotel ?? Hotel::first();
 
-        if (!$hotel) {
+        $hotel = $user->hotel ?? $user->hotels()->first();
+
+        if (! $hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
@@ -77,7 +77,7 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil hotel berhasil dimuat',
-            'data'    => $hotel,
+            'data' => $hotel,
         ], 200);
     }
 
@@ -87,17 +87,17 @@ class HotelController extends Controller
     public function myHotels(Request $request): JsonResponse
     {
         $user = $request->user();
-        
-        $hotel = $user->hotel ?? Hotel::first();
 
-        if (!$hotel) {
+        $hotel = $user->hotel ?? $user->hotels()->first();
+
+        if (! $hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Data hotel berhasil diambil',
-            'data'    => [$hotel->load(['city', 'facilities', 'photos', 'admin'])]
+            'data' => [$hotel->load(['city', 'facilities', 'photos', 'admin'])],
         ], 200);
     }
 
@@ -108,35 +108,35 @@ class HotelController extends Controller
     {
         $user = $request->user();
 
-        if ($id) {
-            $userHotels = [$user->hotel->id ?? null] + ($user->hotels->pluck('id')->toArray() ?? []);
-            if (!in_array($id, array_filter($userHotels))) {
-                $hotel = Hotel::first();
-            } else {
-                $hotel = Hotel::find($id);
-            }
-        } else {
-            $hotel = $user->hotel ?? Hotel::first();
+        $ownedHotelIds = array_map('intval', array_filter(array_merge(
+            [$user->hotel?->id],
+            $user->hotels->pluck('id')->all()
+        )));
+
+        if ($id && ! in_array((int) $id, $ownedHotelIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak berhak mengakses hotel ini.'], 403);
         }
 
-        if (!$hotel) {
+        $hotel = $id ? Hotel::find($id) : ($user->hotel ?? $user->hotels()->first());
+
+        if (! $hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
         }
 
         $admin = $hotel->admin ?? $user;
 
         $request->validate([
-            'name'         => 'sometimes|string|max:255',
-            'description'  => 'nullable|string',
-            'address'      => 'sometimes|string',
-            'policies'     => 'nullable|string|max:5000',
-            'phone'        => 'nullable|string|max:30',
-            'email'        => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
-            'city'         => 'nullable|string|max:255',
-            'city_id'      => 'nullable|exists:cities,id',
-            'banner'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'facilities'   => 'nullable|array',
-            'facilities.*' => 'exists:facilities,id',
+            'name' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'address' => 'sometimes|string',
+            'policies' => 'nullable|string|max:5000',
+            'phone' => 'nullable|string|max:30',
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
+            'city' => 'nullable|string|max:255',
+            'city_id' => 'nullable|exists:cities,id',
+            'banner' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'facilities' => 'nullable|array',
+            'facilities.*' => [Rule::exists('facilities', 'id')->where(fn ($q) => $q->where('hotel_id', $hotel->id)->orWhereNull('hotel_id'))],
         ]);
 
         if ($request->hasFile('banner')) {
@@ -154,16 +154,16 @@ class HotelController extends Controller
         } elseif ($request->filled('city')) {
             $cityName = trim($request->city);
             $cleanName = trim(preg_replace('/^(kota|kabupaten)\s+/i', '', $cityName));
-            
+
             $city = City::whereRaw('LOWER(city) = ?', [strtolower($cityName)])
                 ->orWhereRaw('LOWER(city) = ?', [strtolower($cleanName)])
                 ->orWhere('city', 'like', "%{$cleanName}%")
                 ->first();
 
-            if (!$city) {
+            if (! $city) {
                 $city = City::create([
                     'province' => 'Jawa Barat',
-                    'city'     => $cityName,
+                    'city' => $cityName,
                 ]);
             }
 
@@ -176,10 +176,10 @@ class HotelController extends Controller
             if ($request->has('phone')) {
                 $adminData['phone'] = $request->phone;
             }
-            if ($request->has('email') && !empty($request->email)) {
+            if ($request->has('email') && ! empty($request->email)) {
                 $adminData['email'] = $request->email;
             }
-            if (!empty($adminData)) {
+            if (! empty($adminData)) {
                 $admin->update($adminData);
             }
         }
@@ -187,7 +187,7 @@ class HotelController extends Controller
         if ($request->has('facilities')) {
             $facilities = $request->input('facilities');
             if (is_array($facilities)) {
-                $hotel->facilities()->sync(array_filter($facilities, fn($v) => is_numeric($v)));
+                $hotel->facilities()->sync(array_filter($facilities, fn ($v) => is_numeric($v)));
             } else {
                 $hotel->facilities()->sync([]);
             }
@@ -196,7 +196,7 @@ class HotelController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil hotel berhasil diperbarui',
-            'data'    => $hotel->fresh(['city', 'facilities', 'photos', 'admin']),
+            'data' => $hotel->fresh(['city', 'facilities', 'photos', 'admin']),
         ], 200);
     }
 
@@ -205,10 +205,20 @@ class HotelController extends Controller
      */
     public function uploadPhoto(Request $request, $id): JsonResponse
     {
+        $user = $request->user();
+        $ownedHotelIds = array_map('intval', array_filter(array_merge(
+            [$user->hotel?->id],
+            $user->hotels->pluck('id')->all()
+        )));
+
+        if (! in_array((int) $id, $ownedHotelIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak berhak mengakses hotel ini.'], 403);
+        }
+
         $hotel = Hotel::findOrFail($id);
 
         $request->validate([
-            'photo'        => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
             'is_thumbnail' => 'boolean',
         ]);
 
@@ -219,14 +229,14 @@ class HotelController extends Controller
         }
 
         $hotelPhoto = $hotel->photos()->create([
-            'photo'        => $url,
+            'photo' => $url,
             'is_thumbnail' => $request->is_thumbnail ?? false,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Foto hotel berhasil diunggah',
-            'data'    => $hotelPhoto,
+            'data' => $hotelPhoto,
         ], 201);
     }
 
@@ -236,18 +246,36 @@ class HotelController extends Controller
     public function deletePhoto(Request $request, $param1, $param2 = null): JsonResponse
     {
         $photoId = $param2 !== null ? $param2 : $param1;
-        $photo = HotelPhoto::find($photoId);
+        $photo = HotelPhoto::with('hotel')->find($photoId);
 
-        if ($photo) {
-            if ($photo->photo) {
-                app(\App\Services\FileStorageService::class)->deleteFile($photo->photo);
-            }
-            $photo->delete();
+        if (! $photo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto hotel tidak ditemukan',
+            ], 404);
         }
+
+        $user = $request->user();
+        $ownedHotelIds = array_map('intval', array_filter(array_merge(
+            [$user->hotel?->id],
+            $user->hotels->pluck('id')->all()
+        )));
+
+        if (! in_array((int) $photo->hotel_id, $ownedHotelIds, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak berhak menghapus foto ini.',
+            ], 403);
+        }
+
+        if ($photo->photo) {
+            app(FileStorageService::class)->deleteFile($photo->photo);
+        }
+        $photo->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Foto hotel berhasil dihapus'
+            'message' => 'Foto hotel berhasil dihapus',
         ], 200);
     }
 }

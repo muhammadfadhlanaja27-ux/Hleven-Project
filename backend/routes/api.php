@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BedTypeController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\FacilityController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
-use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\AppealController;
 use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\NotificationController;
@@ -60,30 +60,30 @@ Route::prefix('v1')->group(function () {
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
-        // --- Profil Hotel Management ---
-        Route::get('hotel/profile', [HotelController::class, 'showProfile']);
-        Route::post('hotel/profile', [HotelController::class, 'update']);
+        // --- Admin Hotel Management (legacy prefix, tetap dipakai frontend) ---
+        Route::middleware(['role:admin_hotel', 'hotel_suspended'])->group(function () {
+            // Profil Hotel Management
+            Route::get('hotel/profile', [HotelController::class, 'showProfile']);
+            Route::post('hotel/profile', [HotelController::class, 'update']);
 
-        // --- Resource Kamar & Tipe Kamar ---
-        Route::apiResource('hotel/rooms', RoomController::class);
-        Route::apiResource('hotel/room-types', RoomTypeController::class);
+            // Resource Kamar & Tipe Kamar
+            Route::apiResource('hotel/rooms', RoomController::class);
+            Route::apiResource('hotel/room-types', RoomTypeController::class);
 
-        // --- Booking Management (Pelanggan) ---
-        Route::get('hotel/bookings', [BookingController::class, 'index']);
-        Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
-        Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
+            // Booking Management (Pelanggan)
+            Route::get('hotel/bookings', [BookingController::class, 'index']);
+            Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
+            Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 
-        // --- Laporan & Staf ---
-        Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
-        Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
-        Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
-        Route::get('hotel/staffs', [StaffController::class, 'index']);
-        Route::post('hotel/staffs', [StaffController::class, 'store']);
-        Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
+            // Laporan
+            Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
+            Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
+            Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
 
-        // --- Ulasan ---
-        Route::get('hotel/reviews', [ReviewController::class, 'index']);
-        Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
+            // Ulasan
+            Route::get('hotel/reviews', [ReviewController::class, 'index']);
+            Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
+        });
 
         // --- Fasilitas (Admin/Super Admin) ---
         Route::middleware('role:super_admin,admin_hotel')->group(function () {
@@ -120,7 +120,6 @@ Route::prefix('v1')->group(function () {
 
         // --- Partner Application (User) ---
         Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
-        Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
     });
 });
 
@@ -170,6 +169,8 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::post('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'store']);
     Route::put('/room-types/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy']);
+    // CRUD Bed Types (admin hotel)
+    Route::apiResource('bed-types', BedTypeController::class);
 
     // --- Booking Admin ---
     Route::get('/bookings', [BookingController::class, 'index']);
