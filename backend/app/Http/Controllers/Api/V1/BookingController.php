@@ -284,8 +284,6 @@ class BookingController extends Controller
 
             $booking->update(['status' => $newStatus]);
 
-            // Saat admin menandai booking selesai (checked out), ajukan user menulis ulasan.
-            // Ulasan hanya boleh ditulis setelah checkout (lihat ReviewController::eligibleBookings).
             if ($newStatus === 'checked_out' && $booking->user_id && ! $booking->review()->exists()) {
                 Notification::create([
                     'user_id' => $booking->user_id,
@@ -460,6 +458,7 @@ class BookingController extends Controller
                         $dateStr = $date->format('Y-m-d');
                         $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
                             ->where('date', $dateStr)
+                            ->lockForUpdate()
                             ->first();
 
                         if ($avail) {
@@ -564,9 +563,9 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'hotel_id' => 'required|integer',
-            'room_type_id' => 'required|integer',
-            'check_in' => 'required|date',
+            'hotel_id' => 'required|integer|exists:hotels,id',
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'qty' => 'required|integer|min:1',
             'adults' => 'nullable|integer|min:1',
@@ -596,57 +595,52 @@ class BookingController extends Controller
         $specialNotes = $request->special_requests ?? $request->special_request ?? null;
         $idempotencyKey = $request->header('Idempotency-Key') ?: $request->input('idempotency_key');
 
-        $queryRoomType = RoomType::where('id', $request->room_type_id)
-            ->where('hotel_id', $request->hotel_id);
-
-        if (Schema::hasColumn('room_types', 'is_active')) {
-            $queryRoomType->where('is_active', true);
-        }
-
-        $queryRoomType->whereHas('hotel', function ($query) {
-            $query->where('status', 'active');
-        });
-
-        $roomType = $queryRoomType->first();
-
-        if (! $roomType) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.',
-            ], 422);
-        }
-
-        $capacityAdult = max(1, (int) ($roomType->capacity_adult ?? 2));
-        $maxAdultAllowed = $capacityAdult * $qty;
-
-        if ($adults > $maxAdultAllowed) {
-            $minQtyNeeded = (int) ceil($adults / $capacityAdult);
-            $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $request->check_in, $request->check_out, $adults);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
-                'suggestions' => $suggestions,
-            ], 422);
-        }
-
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
         $checkInStr = $checkIn->toDateString();
         $checkOutStr = $checkOut->toDateString();
-
         $totalNight = max(1, $checkIn->diffInDays($checkOut));
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
         DB::beginTransaction();
         try {
-            // Kunci baris tipe kamar untuk men-serialisasi booking bersamaan pada tipe ini,
-            // sehingga cek stok di bawah tidak bisa lolos dua kali (race condition / double booking).
-            $roomType = RoomType::where('id', $roomType->id)->lockForUpdate()->first();
+            // Ambil roomType dengan pessimistic locking agar thread-safe
+            $queryRoomType = RoomType::where('id', $request->room_type_id)
+                ->where('hotel_id', $request->hotel_id)
+                ->lockForUpdate();
+
+            if (Schema::hasColumn('room_types', 'is_active')) {
+                $queryRoomType->where('is_active', true);
+            }
+
+            $queryRoomType->whereHas('hotel', function ($query) {
+                $query->where('status', 'active');
+            });
+
+            $roomType = $queryRoomType->first();
+
             if (! $roomType) {
                 DB::rollBack();
 
-                return response()->json(['status' => 'error', 'message' => 'Tipe kamar tidak ditemukan.'], 422);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.',
+                ], 422);
+            }
+
+            $capacityAdult = max(1, (int) ($roomType->capacity_adult ?? 2));
+            $maxAdultAllowed = $capacityAdult * $qty;
+
+            if ($adults > $maxAdultAllowed) {
+                DB::rollBack();
+                $minQtyNeeded = (int) ceil($adults / $capacityAdult);
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
+                    'suggestions' => $suggestions,
+                ], 422);
             }
 
             $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));

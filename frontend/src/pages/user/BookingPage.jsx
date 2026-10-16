@@ -40,12 +40,20 @@ const BookingPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Synchronous submission lock
+  const isSubmittingRef = useRef(false);
+
+  // Form State: Pemesan Utama
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
+  // Form State: Opsi Pemesanan & Tamu Menginap
+  const [bookingFor, setBookingFor] = useState("me"); // 'me' | 'someone_else'
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
 
-  const [phone, setPhone] = useState('');
-  const [bookingFor, setBookingFor] = useState('me');
   const [specialRequests, setSpecialRequests] = useState("");
   const [checkInDate, setCheckInDate] = useState(init.checkInStr);
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutStr);
@@ -62,7 +70,7 @@ const BookingPage = () => {
 
   const pollRef = useRef(null);
   const wasGuestRef = useRef(false);
-  const submittingRef = useRef(false);
+  const submitLockRef = useRef(false);
   const idempotencyKeyRef = useRef(null);
 
   const minRequiredRooms = useMemo(() => {
@@ -82,6 +90,7 @@ const BookingPage = () => {
     }
   }, [minRequiredRooms, maxAvailableStock, roomQty]);
 
+  // Autofill data pemesan jika user sedang login
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -109,7 +118,7 @@ const BookingPage = () => {
 
       try {
         const TTL_2MENIT = 2 * 60 * 1000;
-        const { data: responseData, fromCache } = await cachedGet(
+        const { data: responseData } = await cachedGet(
           `/hotels/${hotelId}`,
           {},
           false,
@@ -195,7 +204,7 @@ const BookingPage = () => {
 
   const roomPrice = Number(room?.price || room?.weekday_price || 3500000);
   const subtotalPrice = roomPrice * nightsCount * roomQty;
-  const taxAndFees = Math.round(subtotalPrice * 0.05);
+  const taxAndFees = Math.round(subtotalPrice * 0.21);
   const totalPrice = subtotalPrice + taxAndFees;
 
   const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
@@ -208,11 +217,15 @@ const BookingPage = () => {
       roomQty,
       fullName,
       email,
+      isForOtherGuest: bookingFor === "someone_else",
+      guestName: bookingFor === "someone_else" ? guestName : fullName,
       methodName,
       totalPrice,
       wasGuest: wasGuestRef.current,
     });
   };
+
+  const releaseSubmitLock = () => { submitLockRef.current = false; setSubmitting(false); };
 
   const startPolling = (pid, oid, bookingId) => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -221,6 +234,7 @@ const BookingPage = () => {
       attempts += 1;
       if (attempts > 40) {
         clearInterval(pollRef.current);
+        releaseSubmitLock();
         toast("Pembayaran belum terkonfirmasi. Cek Transaction History → Sync.", { icon: "ℹ️" });
         return;
       }
@@ -231,12 +245,13 @@ const BookingPage = () => {
         const bs = res.data?.data?.booking_status;
         if (ps === "success" || bs === "paid" || bs === "confirmed") {
           clearInterval(pollRef.current);
+          releaseSubmitLock();
           showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
           toast.success("Pembayaran terkonfirmasi!");
         }
       } catch {}
     }, 3000);
-    setTimeout(() => { if (pollRef.current) clearInterval(pollRef.current); }, 120000);
+    setTimeout(() => { if (pollRef.current) { clearInterval(pollRef.current); releaseSubmitLock(); } }, 120000);
   };
 
   const handleDownloadETicket = async (bookingId, bookingCode) => {
@@ -271,6 +286,7 @@ const BookingPage = () => {
     startPolling(pid, oid, bookingId);
     window.snap.pay(token, {
       onSuccess: async () => {
+        releaseSubmitLock();
         try { await api.post(`/payments/${pid}/sync`); } catch {}
         try {
           const res = await api.get(`/payments/${pid}/status`);
@@ -283,6 +299,7 @@ const BookingPage = () => {
       },
       onError: () => {
         if (pollRef.current) clearInterval(pollRef.current);
+        releaseSubmitLock();
         toast.error("Pembayaran gagal");
       },
       onClose: () => {
@@ -293,8 +310,18 @@ const BookingPage = () => {
 
   const handleOpenPaymentModal = (e) => {
     e.preventDefault();
+
+    if (isSubmittingRef.current || submitting) return;
+
+    // Validasi Pemesan Utama
     if (!fullName || !email || !phone) {
-      toast.error("Harap lengkapi Data Tamu (Nama, Email, dan No. Telepon).");
+      toast.error("Harap lengkapi Data Pemesan (Nama, Email, dan No. Telepon).");
+      return;
+    }
+
+    // Validasi Tamu Menginap jika pesan untuk orang lain
+    if (bookingFor === "someone_else" && (!guestName || !guestEmail || !guestPhone)) {
+      toast.error("Harap lengkapi Data Tamu Menginap (Nama, Email, dan No. Telepon).");
       return;
     }
 
@@ -311,7 +338,7 @@ const BookingPage = () => {
       return;
     }
 
-    wasGuestRef.current = !localStorage.getItem('token');
+    wasGuestRef.current = !localStorage.getItem("token");
     if (wasGuestRef.current) {
       setConfirmData({ targetHotelId, targetRoomTypeId });
     } else {
@@ -320,16 +347,21 @@ const BookingPage = () => {
   };
 
   const confirmBooking = async () => {
+    if (isSubmittingRef.current || submitting) return;
     const { targetHotelId, targetRoomTypeId } = confirmData || {};
     if (!targetHotelId || !targetRoomTypeId) return;
+    if (submitLockRef.current) return;
     setConfirmData(null);
     doBooking(targetHotelId, targetRoomTypeId);
   };
 
   const doBooking = async (targetHotelId, targetRoomTypeId) => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setSubmitting(true);
+
+    const isForOtherGuest = bookingFor === "someone_else";
+
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current =
         typeof crypto !== "undefined" && crypto.randomUUID
@@ -344,39 +376,39 @@ const BookingPage = () => {
       qty: Number(roomQty),
       adults: Number(adults),
       children: Number(children),
-      guest_name: fullName,
-      guest_email: email,
-      guest_phone: phone,
+
+      // Data Pemesan Utama
+      booker_name: fullName,
+      booker_email: email,
+      booker_phone: phone,
+
+      // Data Tamu Menginap
+      is_for_other_guest: isForOtherGuest,
+      guest_name: isForOtherGuest ? guestName : fullName,
+      guest_email: isForOtherGuest ? guestEmail : email,
+      guest_phone: isForOtherGuest ? guestPhone : phone,
+
       special_request: specialRequests,
       special_requests: specialRequests,
       idempotency_key: idempotencyKeyRef.current,
     };
 
     try {
-      let res;
-      try {
-        res = await api.post("/bookings", payload);
-      } catch (firstErr) {
-        if (firstErr.response?.status === 405) {
-          res = await api.post("/user/bookings", payload);
-        } else {
-          throw firstErr;
+      const res = await api.post("/bookings", payload);
+
+      if (res.data && res.data.data) {
+        const createdBooking = res.data.data.booking || res.data.data;
+        const bookingCode = createdBooking.booking_code || createdBooking.order_id || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`;
+        const bookingId = createdBooking.id || null;
+        const pid = createdBooking.payment?.id || createdBooking.payment_id;
+        setOrderId(bookingCode);
+        if (pid) setPaymentId(pid);
+
+        if (res.data.data.token && !localStorage.getItem("token")) {
+          localStorage.setItem("token", res.data.data.token);
         }
-      }
 
-        if (res.data && res.data.data) {
-            const createdBooking = res.data.data.booking || res.data.data;
-            const bookingCode = createdBooking.booking_code || createdBooking.order_id || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`;
-            const bookingId = createdBooking.id || null;
-            const pid = createdBooking.payment?.id || createdBooking.payment_id;
-            setOrderId(bookingCode);
-            if (pid) setPaymentId(pid);
-            idempotencyKeyRef.current = null;
-
-            // Save auto-generated token only for true guests (never clobber existing session)
-            if (res.data.data.token && !localStorage.getItem('token')) {
-                localStorage.setItem('token', res.data.data.token);
-            }
+        idempotencyKeyRef.current = null;
 
         let token = null;
         if (pid) {
@@ -395,6 +427,7 @@ const BookingPage = () => {
           return;
         }
 
+        snapOpened = true;
         payWithSnap(token, pid, bookingCode, bookingId);
       }
     } catch (err) {
@@ -416,12 +449,10 @@ const BookingPage = () => {
         toast.error(errorMessage);
       }
     } finally {
-      submittingRef.current = false;
       setSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
-
-
 
   if (loading) {
     return (
@@ -472,71 +503,150 @@ const BookingPage = () => {
             <section className="bg-white rounded-2xl p-6 border border-[#DCCFC0]/50 shadow-sm">
               <h2 className="font-headline-md text-xl font-bold text-[#778873] mb-6 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#A1BC98]">person</span>
-                Data Tamu &amp; Jumlah Kamar
+                Data Pemesan &amp; Tamu
               </h2>
 
-              <form onSubmit={handleOpenPaymentModal} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={handleOpenPaymentModal} className="space-y-5">
+                {/* DATA PEMESAN UTAMA */}
+                <div className="space-y-4">
+                  <p className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider">
+                    Data Kontak Pemesan
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="fullName">
+                        Nama Pemesan *
+                      </label>
+                      <input
+                        id="fullName"
+                        type="text"
+                        placeholder="Nama lengkap pemesan"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="email">
+                        Alamat Email *
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        placeholder="nama@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="fullName">
-                      Nama Lengkap *
+                    <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
+                      Nomor Telepon Pemesan *
                     </label>
                     <input
-                      id="fullName"
-                      type="text"
-                      placeholder="Sesuai KTP / Paspor"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      id="phone"
+                      type="tel"
+                      placeholder="+62 8xx xxxx xxxx"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       required
                       className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
                     />
                   </div>
-
-                  <div>
-                    <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="email">
-                      Alamat Email *
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      placeholder="Untuk konfirmasi pemesanan"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
-                    />
-                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
-                    Nomor Telepon *
-                  </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    placeholder="+62 8xx xxxx xxxx"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                    className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <span className="block font-label-md text-xs font-semibold text-[#444842] mb-2">Is this for you or someone else?</span>
-                  <div className="flex items-center space-x-4">
-                    <label className="inline-flex items-center">
-                      <input type="radio" name="bookingFor" value="me" checked={bookingFor === 'me'} onChange={(e) => setBookingFor(e.target.value)} className="form-radio text-[#778873]" />
-                      <span className="ml-2">For me</span>
+                {/* PILIHAN PEMESANAN UNTUK SIAPA */}
+                <div className="pt-2 border-t border-[#DCCFC0]/40">
+                  <span className="block font-label-md text-xs font-semibold text-[#444842] mb-3">
+                    Apakah reservasi ini untuk Anda sendiri atau orang lain?
+                  </span>
+                  <div className="flex items-center space-x-6">
+                    <label className="inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="bookingFor"
+                        value="me"
+                        checked={bookingFor === "me"}
+                        onChange={(e) => setBookingFor(e.target.value)}
+                        className="w-4 h-4 accent-[#778873] cursor-pointer"
+                      />
+                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Untuk Saya Sendiri</span>
                     </label>
-                    <label className="inline-flex items-center">
-                      <input type="radio" name="bookingFor" value="someone_else" checked={bookingFor === 'someone_else'} onChange={(e) => setBookingFor(e.target.value)} className="form-radio text-[#778873]" />
-                      <span className="ml-2">For someone else</span>
+                    <label className="inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="bookingFor"
+                        value="someone_else"
+                        checked={bookingFor === "someone_else"}
+                        onChange={(e) => setBookingFor(e.target.value)}
+                        className="w-4 h-4 accent-[#778873] cursor-pointer"
+                      />
+                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Pesan untuk Orang Lain</span>
                     </label>
                   </div>
                 </div>
 
+                {/* INPUT DATA TAMU MENGINAP */}
+                {bookingFor === "someone_else" && (
+                  <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 space-y-4 animate-in fade-in duration-200">
+                    <p className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider">
+                      Data Tamu Menginap (Sesuai KTP / Paspor)
+                    </p>
+
+                    <div>
+                      <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestName">
+                        Nama Lengkap Tamu *
+                      </label>
+                      <input
+                        id="guestName"
+                        type="text"
+                        placeholder="Nama tamu yang akan check-in"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        required={bookingFor === "someone_else"}
+                        className="w-full bg-white border border-[#DCCFC0] rounded-xl px-4 py-2.5 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestEmail">
+                          Email Tamu *
+                        </label>
+                        <input
+                          id="guestEmail"
+                          type="email"
+                          placeholder="email.tamu@domain.com"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
+                          required={bookingFor === "someone_else"}
+                          className="w-full bg-white border border-[#DCCFC0] rounded-xl px-4 py-2.5 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestPhone">
+                          Nomor Telepon Tamu *
+                        </label>
+                        <input
+                          id="guestPhone"
+                          type="tel"
+                          placeholder="08xxxxxxxxxx"
+                          value={guestPhone}
+                          onChange={(e) => setGuestPhone(e.target.value)}
+                          required={bookingFor === "someone_else"}
+                          className="w-full bg-white border border-[#DCCFC0] rounded-xl px-4 py-2.5 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* JUMLAH KAMAR */}
                 <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 flex items-center justify-between">
                   <div>
                     <span className="block font-label-md text-sm font-bold text-[#2D332C]">
@@ -598,6 +708,7 @@ const BookingPage = () => {
             </section>
           </div>
 
+          {/* SIDEBAR RINCIAN PEMESANAN */}
           <div className="lg:col-span-5 relative">
             <div className="sticky top-24 bg-[#e8e2d9] rounded-2xl p-6 flex flex-col gap-5 border border-[#DCCFC0]/60 shadow-md shadow-[#778873]/5">
               <h3 className="font-headline-md text-xl font-bold text-[#778873]">
@@ -627,6 +738,22 @@ const BookingPage = () => {
                   <span className="font-label-sm text-xs text-[#444842] mt-1 flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">group</span>
                     {adults} Dewasa, {children} Anak ({roomQty} Kamar)
+                  </span>
+                </div>
+              </div>
+
+              {/* PEMISAHAN NAMA PEMESAN & TAMU */}
+              <div className="bg-white/60 p-3 rounded-xl border border-[#DCCFC0]/50 space-y-1.5 font-body-md text-xs text-[#444842]">
+                <div className="flex justify-between items-center">
+                  <span>Pemesan:</span>
+                  <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
+                    {fullName || "Guest"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Tamu Menginap:</span>
+                  <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
+                    {bookingFor === "someone_else" ? (guestName || "-") : (fullName || "Sama dengan pemesan")}
                   </span>
                 </div>
               </div>
@@ -669,7 +796,7 @@ const BookingPage = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-[#778873]">
-                  <span>Pajak &amp; Pelayanan (5%)</span>
+                  <span>Pajak &amp; Pelayanan (21%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
               </div>
@@ -702,31 +829,44 @@ const BookingPage = () => {
         </div>
       </main>
 
+      {/* MODAL KONFIRMASI DATA GUEST CHECKOUT */}
       {confirmData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 animate-in zoom-in-95 duration-200">
             <div className="p-6 space-y-4 text-left font-body-md text-sm text-[#2D332C]">
-              <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">Cek Data Tamu</h3>
+              <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">Konfirmasi Data Pemesan</h3>
+              
               <div className="bg-[#faf3ea] rounded-xl p-4 space-y-2.5 border border-[#DCCFC0]/40">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">Nama:</span>
+                  <span className="text-xs text-[#444842]">Nama Pemesan:</span>
                   <span className="font-semibold">{fullName}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">Email:</span>
+                  <span className="text-xs text-[#444842]">Email Pemesan:</span>
                   <span className="font-semibold">{email}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">No. HP:</span>
+                  <span className="text-xs text-[#444842]">No. HP Pemesan:</span>
                   <span className="font-semibold">{phone}</span>
                 </div>
+                {bookingFor === "someone_else" && (
+                  <>
+                    <hr className="border-t border-[#DCCFC0]/60 my-1" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-[#444842]">Tamu Menginap:</span>
+                      <span className="font-semibold">{guestName}</span>
+                    </div>
+                  </>
+                )}
               </div>
+
               <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
                 <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">warning</span>
                 <p className="font-body-md text-xs text-[#1e1b16] leading-snug">
-                  Pastikan <span className="font-bold">No. HP dan Email sudah benar</span> — E-Tiket hanya dikirim ke email tersebut.
+                  Pastikan <span className="font-bold">Email Pemesan sudah benar</span> — E-Tiket reservasi akan dikirimkan ke email tersebut.
                 </p>
               </div>
+
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -738,9 +878,10 @@ const BookingPage = () => {
                 <button
                   type="button"
                   onClick={confirmBooking}
-                  className="flex-1 py-3.5 rounded-xl font-label-md text-sm font-semibold bg-[#778873] text-white hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
+                  disabled={submitting}
+                  className="flex-1 py-3.5 rounded-xl font-label-md text-sm font-semibold bg-[#778873] text-white hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  Sudah Benar, Lanjut Bayar
+                  {submitting ? "Memproses..." : "Sudah Benar, Lanjut Bayar"}
                 </button>
               </div>
             </div>
@@ -748,6 +889,7 @@ const BookingPage = () => {
         </div>
       )}
 
+      {/* MODAL SUKSES RESERVASI */}
       {successModalData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 text-center animate-in zoom-in-95 duration-200">
@@ -771,9 +913,15 @@ const BookingPage = () => {
                   <span className="font-semibold text-right">{successModalData.roomName} ({successModalData.roomQty} kamar)</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">Tamu Utama:</span>
+                  <span className="text-xs text-[#444842]">Pemesan:</span>
                   <span className="font-semibold">{successModalData.fullName}</span>
                 </div>
+                {successModalData.isForOtherGuest && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-[#444842]">Tamu Menginap:</span>
+                    <span className="font-semibold">{successModalData.guestName}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-[#444842]">Pembayaran:</span>
                   <span className="font-semibold">{successModalData.methodName}</span>
@@ -784,14 +932,16 @@ const BookingPage = () => {
                   <span className="font-bold text-lg text-[#778873]">Rp {successModalData.totalPrice.toLocaleString("id-ID")}</span>
                 </div>
               </div>
+
               {successModalData.wasGuest && (
-              <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
-                <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">mail</span>
-                <p className="font-body-md text-xs text-[#1e1b16] leading-snug text-left">
-                  Pesanan selesai! E-Tiket dikirim ke <span className="font-bold">{successModalData.email}</span> — cek Inbox/Spam.
-                </p>
-              </div>
+                <div className="p-3 rounded-xl bg-[#ffde5c]/20 border border-[#ffde5c] flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[#8a6d00] text-[20px] mt-0.5 flex-shrink-0">mail</span>
+                  <p className="font-body-md text-xs text-[#1e1b16] leading-snug text-left">
+                    Pesanan selesai! E-Tiket dikirim ke <span className="font-bold">{successModalData.email}</span> — cek Inbox/Spam.
+                  </p>
+                </div>
               )}
+
               {successModalData.wasGuest ? (
                 <>
                   {successModalData.bookingId && (
@@ -832,6 +982,7 @@ const BookingPage = () => {
         </div>
       )}
 
+      {/* MODAL REKOMENDASI KAMAR ALTERNATIF */}
       {suggestionData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left">

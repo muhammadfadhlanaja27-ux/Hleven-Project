@@ -259,7 +259,7 @@ const WarningManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E0D8] font-hanken text-[13.5px]">
-                  {paginatedWarnings.length > 0 ? (
+                    {paginatedWarnings.length > 0 ? (
                     paginatedWarnings.map((row) => {
                       const st = (row.status || "unread").toLowerCase();
                       const isClosed = st === "closed" || st === "resolved";
