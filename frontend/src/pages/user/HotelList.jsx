@@ -19,13 +19,20 @@ const HotelList = () => {
   const today = useMemo(() => new Date(), []);
   const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
 
-  const [searchTerm, setSearchTerm] = useState(init.searchTerm);
-  const [adults, setAdults] = useState(init.adults);
-  const [children, setChildren] = useState(init.children);
-  const [checkInDate, setCheckInDate] = useState(init.checkInDate);
-  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
+  const [searchTerm, setSearchTerm] = useState(init.searchTerm || "");
+  const [adults, setAdults] = useState(init.adults || 2);
+  const [children, setChildren] = useState(init.children || 0);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate || today);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate || null);
 
-  // Sync state searchTerm kalau URL searchParams berubah dari Landing Page / Navbar
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedStars, setSelectedStars] = useState([]);
+  const [selectedFacilities, setSelectedFacilities] = useState([]);
+  const [sortBy, setSortBy] = useState("recommendation");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Sync state kata kunci pencarian saat URL searchParams berubah
   useEffect(() => {
     const queryFromUrl = searchParams.get("search") || "";
     setSearchTerm(queryFromUrl);
@@ -35,16 +42,10 @@ const HotelList = () => {
     saveSearchState({ search: searchTerm, checkIn: checkInDate, checkOut: checkOutDate, adults, children });
   }, [searchTerm, checkInDate, checkOutDate, adults, children]);
 
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [selectedStars, setSelectedStars] = useState([]);
-  const [selectedFacilities, setSelectedFacilities] = useState([]);
-  const [sortBy, setSortBy] = useState("recommendation");
-  const [currentPage, setCurrentPage] = useState(1);
-
+  // Reset ke halaman 1 setiap kali filter atau kata kunci berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy, checkInDate, checkOutDate, adults, children]);
 
   useEffect(() => {
     const fetchHotels = async () => {
@@ -133,18 +134,17 @@ const HotelList = () => {
   const selectedHotelId = searchParams.get("selected") || searchParams.get("highlight") || searchParams.get("hotelId") || searchParams.get("id") || "";
 
   const filteredHotels = useMemo(() => {
-    // 1. Jika diklik spesifik berdasarkan ID
+    // 1. Jika URL mengandung parameter ID spesifik
     if (selectedHotelId) {
       const target = hotels.find((hotel) => String(hotel.id) === String(selectedHotelId));
-      return target ? [target] : [];
+      if (target) return [target];
     }
 
-    // 2. Filter gabungan kata kunci search + filter sidebar
     const query = searchTerm.trim().toLowerCase();
 
     return hotels
       .filter((hotel) => {
-        // Match Search Query
+        // Pencarian Kata Kunci (Nama, Kota, Alamat)
         if (query) {
           const matchName = hotel.name?.toLowerCase().includes(query);
           const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
@@ -153,25 +153,43 @@ const HotelList = () => {
           if (!matchName && !matchCity && !matchAddress) return false;
         }
 
-        // Match Harga
-        const price = Number(hotel.starting_price || hotel.price || 0);
+        // Filter Rentang Harga
+        const price = Number(hotel.starting_price || hotel.price || (hotel.rooms && hotel.rooms[0]?.price) || 0);
         if (minPrice && price < Number(minPrice)) return false;
         if (maxPrice && price > Number(maxPrice)) return false;
 
-        // Match Rating Bintang
+        // Filter Bintang Hotel
         if (selectedStars.length > 0) {
-          const hotelRatingInt = Math.floor(Number(hotel.rating || hotel.average_rating || 0));
-          if (hotelRatingInt > 0 && !selectedStars.includes(hotelRatingInt)) return false;
+          const starVal = Number(hotel.star_rating || hotel.stars || hotel.rating || hotel.average_rating || 0);
+          const starInt = Math.floor(starVal);
+          const starRound = Math.round(starVal);
+          if (!selectedStars.includes(starInt) && !selectedStars.includes(starRound)) return false;
         }
 
-        // Match Fasilitas
+        // Filter Fasilitas Populer (Dengan Keyword Matching yang Fleksibel)
         if (selectedFacilities.length > 0) {
           const hotelFacs = (hotel.facilities || []).map((f) =>
             (typeof f === "object" ? f.name : String(f)).toLowerCase()
           );
-          const matchesAll = selectedFacilities.every((fac) =>
-            hotelFacs.some((hf) => hf.includes(fac.toLowerCase()))
-          );
+
+          const matchesAll = selectedFacilities.every((fac) => {
+            const facLower = fac.toLowerCase();
+
+            // Variasi kata kunci dari opsi pilihan di UI ke penamaan backend
+            let keywords = [facLower];
+            if (facLower.includes("wifi") || facLower.includes("wi-fi")) {
+              keywords = ["wifi", "wi-fi", "internet"];
+            } else if (facLower.includes("kolam") || facLower.includes("pool")) {
+              keywords = ["kolam", "pool", "swimming"];
+            } else if (facLower.includes("restoran") || facLower.includes("restaurant")) {
+              keywords = ["restoran", "restaurant", "dining", "bar"];
+            }
+
+            return keywords.some((kw) =>
+              hotelFacs.some((hf) => hf.includes(kw))
+            );
+          });
+
           if (!matchesAll) return false;
         }
 
@@ -364,7 +382,7 @@ const HotelList = () => {
                 Fasilitas Populer
               </h4>
               <div className="flex flex-col gap-2.5">
-                {["WiFi Gratis", "Kolam Renang", "Spa & Wellness", "Restoran"].map((fac) => (
+                {["WiFi Gratis", "Kolam Renang", "Restoran"].map((fac) => (
                   <label key={fac} className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
