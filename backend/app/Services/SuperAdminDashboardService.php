@@ -194,6 +194,7 @@ class SuperAdminDashboardService
             $sortBy = 'platform_commission';
         }
         $sortDir = strtolower($sortDir) === 'asc' ? 'asc' : 'desc';
+        $rate = (float) config('hleven.commission_rate', 0.05);
 
         $query = Payment::where('payment_status', 'success')
             ->when($startDate, fn ($q) => $q->whereDate('paid_at', '>=', $startDate))
@@ -208,8 +209,8 @@ class SuperAdminDashboardService
                 'hotels.admin_id',
                 DB::raw('SUM(payments.gross_amount) as hotel_revenue'),
                 DB::raw('COUNT(payments.id) as transactions_count'),
-                DB::raw('SUM(payments.gross_amount) * 0.05 as platform_commission'),
-                DB::raw('SUM(payments.gross_amount) * 0.95 as hotel_net')
+                DB::raw('SUM(payments.gross_amount) * '.$rate.' as platform_commission'),
+                DB::raw('SUM(payments.gross_amount) * '.(1 - $rate).' as hotel_net')
             )
             ->groupBy('hotels.id', 'hotels.name', 'hotels.city_id', 'hotels.admin_id');
 
@@ -259,7 +260,7 @@ class SuperAdminDashboardService
             ->join('bookings', 'payments.booking_id', '=', 'bookings.id')
             ->join('hotels', 'bookings.hotel_id', '=', 'hotels.id')
             ->when($search, fn ($q) => $q->where('hotels.name', 'like', "%{$search}%"))
-            ->select('hotels.id', 'hotels.name', DB::raw('SUM(payments.gross_amount) * 0.05 as platform_commission'))
+            ->select('hotels.id', 'hotels.name', DB::raw('SUM(payments.gross_amount) * '.$rate.' as platform_commission'))
             ->groupBy('hotels.id', 'hotels.name')
             ->orderByDesc('platform_commission')
             ->limit(5)
@@ -274,8 +275,9 @@ class SuperAdminDashboardService
         return [
             'summary' => [
                 'total_hotel_revenue' => (float) $totalRevenue,
-                'total_platform_commission' => (float) $totalRevenue * 0.05,
+                'total_platform_commission' => (float) $totalRevenue * $rate,
                 'total_hotels' => (int) $totalHotels,
+                'commission_rate' => $rate,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
             ],

@@ -24,6 +24,7 @@ export default function Payouts() {
   const [balance, setBalance] = useState(null);
   const [bank, setBank] = useState(null);
   const [payouts, setPayouts] = useState([]);
+  const [limits, setLimits] = useState(null);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
 
@@ -35,6 +36,7 @@ export default function Payouts() {
       setBalance(data.balance || null);
       setBank(data.bank || null);
       setPayouts(data.payouts || []);
+      setLimits(data.limits || null);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memuat data pencairan.");
     } finally {
@@ -46,10 +48,19 @@ export default function Payouts() {
     fetchData();
   }, []);
 
+  const minPayout = limits?.min_payout || 0;
+  const commissionRate = limits?.commission_rate ?? 0.05;
+  const commissionPct = Math.round(commissionRate * 100);
+  const netPct = 100 - commissionPct;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!amount || Number(amount) <= 0) {
       toast.error("Masukkan nominal pencairan yang valid.");
+      return;
+    }
+    if (minPayout > 0 && Number(amount) < minPayout) {
+      toast.error(`Minimal pencairan ${rupiah(minPayout)}.`);
       return;
     }
     setSubmitting(true);
@@ -91,7 +102,7 @@ export default function Payouts() {
           Saldo &amp; Pencairan
         </h1>
         <p className="text-sm text-[#6B6E6A] mt-1">
-          Pendapatan bersih hotel setelah dipotong komisi platform 5%.
+          Pendapatan bersih hotel setelah dipotong komisi platform {commissionPct}%.
         </p>
       </div>
 
@@ -99,9 +110,9 @@ export default function Payouts() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Saldo Tersedia", value: balance?.available_balance, highlight: true },
-          { label: "Pendapatan Bersih (95%)", value: balance?.net_revenue },
+          { label: `Pendapatan Bersih (${netPct}%)`, value: balance?.net_revenue },
           { label: "Sudah Dicairkan", value: balance?.total_paid_out },
-          { label: "Komisi Platform (5%)", value: balance?.platform_commission },
+          { label: `Komisi Platform (${commissionPct}%)`, value: balance?.platform_commission },
         ].map((c) => (
           <div
             key={c.label}
@@ -143,14 +154,17 @@ export default function Payouts() {
               </label>
               <input
                 type="number"
-                min="1"
+                min={minPayout || 1}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={submitting || !bankReady}
                 placeholder="0"
                 className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 disabled:bg-gray-50"
               />
-              {balance && (
+              {minPayout > 0 && (
+                <span className="text-[11px] text-[#6B6E6A]">Minimal {rupiah(minPayout)}.</span>
+              )}
+              {balance && balance.available_balance >= minPayout && (
                 <button
                   type="button"
                   onClick={() => setAmount(String(Math.floor(balance.available_balance)))}

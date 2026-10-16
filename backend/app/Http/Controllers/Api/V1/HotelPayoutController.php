@@ -46,6 +46,12 @@ class HotelPayoutController extends Controller
                     'bank_account_name' => $hotel->bank_account_name,
                 ],
                 'payouts' => $payouts,
+                'limits' => [
+                    'min_payout' => (float) config('hleven.min_payout', 0),
+                    'commission_rate' => (float) config('hleven.commission_rate', 0.05),
+                    'auto_approve' => (bool) config('hleven.auto_approve_payout', false),
+                    'auto_approve_daily_limit' => (float) config('hleven.auto_approve_daily_limit', 0),
+                ],
             ],
         ], 200);
     }
@@ -92,8 +98,9 @@ class HotelPayoutController extends Controller
         }
 
         $balance = $this->payoutService->getBalance($hotel);
+        $commissionRate = (float) config('hleven.commission_rate', 0.05);
 
-        $pdf = Pdf::loadView('pdf.hotel-invoice', compact('payout', 'hotel', 'balance'));
+        $pdf = Pdf::loadView('pdf.hotel-invoice', compact('payout', 'hotel', 'balance', 'commissionRate'));
 
         return $pdf->download("Invoice-Pencairan-{$payout->id}.pdf");
     }
