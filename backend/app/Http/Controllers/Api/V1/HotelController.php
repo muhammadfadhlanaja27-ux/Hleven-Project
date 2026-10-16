@@ -130,6 +130,9 @@ class HotelController extends Controller
             'description' => 'nullable|string',
             'address' => 'sometimes|string',
             'policies' => 'nullable|string|max:5000',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:30',
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
             'city' => 'nullable|string|max:255',
@@ -146,7 +149,10 @@ class HotelController extends Controller
             $hotel->banner = app(FileStorageService::class)->uploadFile($request->file('banner'), 'hotels/banners');
         }
 
-        $hotel->update($request->only(['name', 'description', 'address', 'policies']));
+        $hotel->update($request->only([
+            'name', 'description', 'address', 'policies',
+            'bank_name', 'bank_account_number', 'bank_account_name',
+        ]));
 
         if ($request->filled('city_id')) {
             $hotel->city_id = $request->city_id;

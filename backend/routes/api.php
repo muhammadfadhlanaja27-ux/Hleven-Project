@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
+use App\Http\Controllers\Api\V1\HotelPayoutController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdminPayoutController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\WarningController;
 use Illuminate\Support\Facades\Route;
@@ -179,6 +181,11 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
     Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
     Route::post('/bookings/{id}/extend', [BookingController::class, 'extendBooking']);
+
+    // --- Pencairan Dana (Payout) ---
+    Route::get('/payouts', [HotelPayoutController::class, 'index']);
+    Route::post('/payouts', [HotelPayoutController::class, 'store']);
+    Route::get('/payouts/{id}/invoice', [HotelPayoutController::class, 'invoice']);
 });
 
 // ==========================================
@@ -218,6 +225,11 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/', [PartnerApplicationController::class, 'index']);
         Route::patch('/{id}/approve', [PartnerApplicationController::class, 'approve']);
         Route::patch('/{id}/reject', [PartnerApplicationController::class, 'reject']);
+    });
+
+    Route::prefix('payouts')->group(function () {
+        Route::get('/', [SuperAdminPayoutController::class, 'index']);
+        Route::patch('/{id}/status', [SuperAdminPayoutController::class, 'updateStatus']);
     });
 
     Route::prefix('warnings')->group(function () {

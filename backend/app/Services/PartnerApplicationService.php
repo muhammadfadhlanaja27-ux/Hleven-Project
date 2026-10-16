@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
+use App\Models\City;
+use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\PartnerApplication;
 use App\Models\User;
-use App\Models\ActivityLog;
-use App\Models\Hotel;
-use App\Models\City;
-use App\Models\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -58,18 +58,18 @@ class PartnerApplicationService
             }
 
             $city = null;
-            if (!empty($application->city)) {
+            if (! empty($application->city)) {
                 $city = City::whereRaw('LOWER(city) = ?', [strtolower($application->city)])->first();
-                if (!$city) {
+                if (! $city) {
                     $city = City::create([
                         'city' => $application->city,
                         'province' => $application->province ?: 'Provinsi belum diisi',
                     ]);
                 }
             }
-            if (!$city) {
+            if (! $city) {
                 $city = City::first();
-                if (!$city) {
+                if (! $city) {
                     $city = City::create([
                         'city' => $application->city ?: 'Kota Belum Ditentukan',
                         'province' => $application->province ?: 'Provinsi Belum Ditentukan',
@@ -86,11 +86,11 @@ class PartnerApplicationService
             ]);
             $fullAddress = implode(', ', $addressParts) ?: 'Alamat belum diisi';
 
-            $slugBase = Str::slug($application->hotel_name ?: 'hotel-' . $application->id);
-            $slug = $slugBase . '-' . $hotelAdmin->id;
+            $slugBase = Str::slug($application->hotel_name ?: 'hotel-'.$application->id);
+            $slug = $slugBase.'-'.$hotelAdmin->id;
             $counter = 1;
             while (Hotel::where('slug', $slug)->exists()) {
-                $slug = $slugBase . '-' . $hotelAdmin->id . '-' . $counter;
+                $slug = $slugBase.'-'.$hotelAdmin->id.'-'.$counter;
                 $counter++;
             }
 
@@ -101,7 +101,7 @@ class PartnerApplicationService
                 'city_id' => $city->id,
                 'name' => $application->hotel_name,
                 'slug' => $slug,
-                'description' => $application->hotel_description ?: 'Deskripsi hotel untuk ' . $application->hotel_name,
+                'description' => $application->hotel_description ?: 'Deskripsi hotel untuk '.$application->hotel_name,
                 'address' => $fullAddress,
                 'latitude' => $application->latitude ?: null,
                 'longitude' => $application->longitude ?: null,
@@ -112,13 +112,16 @@ class PartnerApplicationService
                 'star_verified_by' => $finalStar ? $admin->id : null,
                 'star_verified_at' => $finalStar ? now() : null,
                 'star_verified_reason' => $finalStar ? $starReason : null,
+                'bank_name' => $application->bank_name,
+                'bank_account_number' => $application->bank_account_number,
+                'bank_account_name' => $application->bank_account_name,
             ]);
 
             ActivityLog::create([
                 'user_id' => $admin->id,
                 'activity' => 'Approve Partner',
                 'description' => "Super Admin menyetujui partner {$application->hotel_name} (App No: {$application->application_number}).",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
 
             if ($applicant && $hotelAdmin->id === $applicant->id) {
@@ -161,7 +164,7 @@ class PartnerApplicationService
                 'user_id' => $admin->id,
                 'activity' => 'Reject Partner',
                 'description' => "Super Admin menolak partner {$application->hotel_name}. Alasan: {$reason}",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
     }

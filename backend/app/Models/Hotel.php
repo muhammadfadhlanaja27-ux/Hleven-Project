@@ -15,6 +15,7 @@ class Hotel extends Model
         'average_rating', 'total_review', 'latitude', 'longitude', 'status',
         'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
         'policies',
+        'bank_name', 'bank_account_number', 'bank_account_name',
     ];
 
     protected $casts = [
@@ -111,5 +112,10 @@ class Hotel extends Model
     public function appeals()
     {
         return $this->hasMany(Appeal::class, 'hotel_id');
+    }
+
+    public function payouts()
+    {
+        return $this->hasMany(Payout::class, 'hotel_id');
     }
 }
