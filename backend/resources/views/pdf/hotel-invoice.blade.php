@@ -62,11 +62,11 @@
             <td class="right value">Rp {{ number_format($balance['gross_revenue'], 0, ',', '.') }}</td>
         </tr>
         <tr>
-            <td class="label">Komisi Platform (5%)</td>
+            <td class="label">Komisi Platform ({{ round($commissionRate * 100) }}%)</td>
             <td class="right value" style="color: #b45309;">- Rp {{ number_format($balance['platform_commission'], 0, ',', '.') }}</td>
         </tr>
         <tr>
-            <td class="label">Pendapatan Bersih Hotel (95%)</td>
+            <td class="label">Pendapatan Bersih Hotel ({{ 100 - round($commissionRate * 100) }}%)</td>
             <td class="right value">Rp {{ number_format($balance['net_revenue'], 0, ',', '.') }}</td>
         </tr>
         <tr>

@@ -220,6 +220,59 @@ class PayoutTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_min_payout_enforced(): void
+    {
+        $hotel = $this->makeHotel('Hotel A', 'a@x.com');
+        $this->makeBooking($hotel, 1000000, 'paid', 'success');
+
+        config(['hleven.min_payout' => 50000]);
+
+        $this->expectException(RuntimeException::class);
+        app(PayoutService::class)->requestPayout($hotel, $hotel->admin, 10000);
+    }
+
+    public function test_commission_rate_from_config(): void
+    {
+        $hotel = $this->makeHotel('Hotel A', 'a@x.com');
+        $this->makeBooking($hotel, 1000000, 'paid', 'success');
+
+        config(['hleven.commission_rate' => 0.10]);
+
+        $balance = app(PayoutService::class)->getBalance($hotel);
+
+        $this->assertEquals(100000.0, $balance['platform_commission']);
+        $this->assertEquals(900000.0, $balance['net_revenue']);
+        $this->assertEquals(900000.0, $balance['available_balance']);
+    }
+
+    public function test_auto_approve_creates_approved_payout(): void
+    {
+        $hotel = $this->makeHotel('Hotel A', 'a@x.com');
+        $this->makeBooking($hotel, 1000000, 'paid', 'success');
+
+        config(['hleven.auto_approve_payout' => true, 'hleven.auto_approve_daily_limit' => 5000000]);
+
+        $payout = app(PayoutService::class)->requestPayout($hotel, $hotel->admin, 100000);
+
+        $this->assertEquals('approved', $payout->status);
+    }
+
+    public function test_auto_approve_exceeding_daily_limit_falls_back_to_pending(): void
+    {
+        $hotel = $this->makeHotel('Hotel A', 'a@x.com');
+        $this->makeBooking($hotel, 1000000, 'paid', 'success');
+
+        config(['hleven.auto_approve_payout' => true, 'hleven.auto_approve_daily_limit' => 120000]);
+
+        $service = app(PayoutService::class);
+
+        $first = $service->requestPayout($hotel, $hotel->admin, 80000);
+        $this->assertEquals('approved', $first->status);
+
+        $second = $service->requestPayout($hotel, $hotel->admin, 50000);
+        $this->assertEquals('pending', $second->status);
+    }
+
     private function makeHotel(string $name, string $email): Hotel
     {
         $city = City::first() ?? City::create(['province' => 'DKI', 'city' => 'Jakarta']);
