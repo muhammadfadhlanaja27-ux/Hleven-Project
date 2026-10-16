@@ -8,6 +8,7 @@ export default function AppealManagement() {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [selectedAppeal, setSelectedAppeal] = useState(null);
   const [adminNote, setAdminNote] = useState("");
   const [isDeciding, setIsDeciding] = useState(false);
@@ -21,8 +22,9 @@ export default function AppealManagement() {
       const data = res.data?.data;
       setAppeals(Array.isArray(data?.data) ? data.data : []);
       setTotalPages(data?.last_page || 1);
+      setTotalItems(data?.total || 0);
     } catch (e) {
-      toast.error("Gagal memuat banding");
+      toast.error("Gagal memuat data banding.");
       setAppeals([]);
     } finally {
       setLoading(false);
@@ -61,33 +63,47 @@ export default function AppealManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-['Hanken_Grotesk',sans-serif]">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl font-semibold text-[#2D312C]">Manajemen Aju Banding</h2>
-          <p className="text-sm text-[#6B6E6A] mt-1">Review permohonan banding dari hotel yang diblokir.</p>
+          <p className="text-sm text-[#6B6E6A] mt-1">
+            Review dan putuskan permohonan banding atas surat peringatan maupun pemulihan akun suspend hotel.
+          </p>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-          className="px-4 py-2 border border-[#E5E1DA] rounded-xl text-sm bg-white font-medium"
-        >
-          <option value="">Semua Status</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Disetujui</option>
-          <option value="rejected">Ditolak</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 border border-[#E5E1DA] rounded-xl text-sm bg-white font-medium focus:outline-none focus:border-[#506147]"
+          >
+            <option value="">Semua Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Disetujui</option>
+            <option value="rejected">Ditolak</option>
+          </select>
+          <button
+            onClick={fetchAppeals}
+            className="px-3 py-2 border border-[#E5E1DA] rounded-xl bg-white text-[#434842] hover:bg-[#F9F6F1] text-xs font-semibold"
+            title="Refresh Data"
+          >
+            <span className="material-symbols-outlined text-[18px]">refresh</span>
+          </button>
+        </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-2xl border border-[#E5E1DA] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA] text-xs uppercase tracking-wider text-[#6B6E6A]">
                 <th className="p-4">Hotel</th>
+                <th className="p-4">Tipe Banding</th>
                 <th className="p-4">Pemohon</th>
                 <th className="p-4">Alasan</th>
                 <th className="p-4">Tanggal</th>
@@ -98,76 +114,150 @@ export default function AppealManagement() {
             <tbody className="divide-y divide-[#E5E1DA]">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-[#6B6E6A]">Memuat...</td>
+                  <td colSpan="7" className="p-8 text-center text-[#6B6E6A]">Memuat data banding...</td>
                 </tr>
               ) : appeals.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-[#6B6E6A]">Tidak ada data banding.</td>
+                  <td colSpan="7" className="p-8 text-center text-[#6B6E6A]">Tidak ada data permohonan banding.</td>
                 </tr>
               ) : (
-                appeals.map((a) => (
-                  <tr key={a.id} className="hover:bg-[#fcf9f5]">
-                    <td className="p-4 font-semibold text-[#2D312C]">{a.hotel?.name || "-"}</td>
-                    <td className="p-4 text-xs text-[#6B6E6A]">{a.requester?.name || a.requester?.email || "-"}</td>
-                    <td className="p-4 text-xs max-w-xs truncate">{a.reason}</td>
-                    <td className="p-4 text-xs whitespace-nowrap text-[#6B6E6A]">
-                      {a.created_at ? new Date(a.created_at).toLocaleDateString("id-ID") : "-"}
-                    </td>
-                    <td className="p-4">{badge(a.status)}</td>
-                    <td className="p-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          setSelectedAppeal(a);
-                          setAdminNote(a.admin_note || "");
-                        }}
-                        className="px-3 py-1.5 border border-[#506147] text-[#506147] hover:bg-[#506147] hover:text-white rounded-lg text-xs font-semibold"
-                      >
-                        {a.status === "pending" ? "Proses" : "Detail"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                appeals.map((a) => {
+                  const isWarningAppeal = !!a.warning_id;
+                  return (
+                    <tr key={a.id} className="hover:bg-[#fcf9f5] transition-colors">
+                      <td className="p-4 font-semibold text-[#2D312C]">{a.hotel?.name || "-"}</td>
+                      <td className="p-4">
+                        {isWarningAppeal ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                              <span className="material-symbols-outlined text-[13px]">warning</span>
+                              <span>Peringatan #{String(a.warning_id).padStart(4, "0")}</span>
+                            </span>
+                            {a.warning?.title && (
+                              <p className="text-[11px] text-[#6B6E6A] truncate max-w-[180px]">{a.warning.title}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-900 border border-red-200">
+                            <span className="material-symbols-outlined text-[13px]">lock_reset</span>
+                            <span>Pemulihan Akun</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-xs text-[#6B6E6A]">{a.requester?.name || a.requester?.email || "-"}</td>
+                      <td className="p-4 text-xs max-w-xs truncate">{a.reason}</td>
+                      <td className="p-4 text-xs whitespace-nowrap text-[#6B6E6A]">
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString("id-ID") : "-"}
+                      </td>
+                      <td className="p-4">{badge(a.status)}</td>
+                      <td className="p-4 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            setSelectedAppeal(a);
+                            setAdminNote(a.admin_note || "");
+                          }}
+                          className="px-3.5 py-1.5 border border-[#506147] text-[#506147] hover:bg-[#506147] hover:text-white rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          {a.status === "pending" ? "Proses" : "Detail"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <div className="bg-[#F9F6F1] border-t border-[#E5E1DA] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#6B6E6A]">
+          <span>
+            Menampilkan {totalItems > 0 ? (page - 1) * 10 + 1 : 0} hingga {Math.min(page * 10, totalItems)} dari {totalItems} banding
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page === 1}
+              className="px-3 py-1 border border-[#E5E1DA] rounded-md bg-white hover:bg-[#F2EBE1] disabled:opacity-40 font-medium text-[#434842]"
+            >
+              Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
+              <button
+                key={pNum}
+                onClick={() => setPage(pNum)}
+                className={`px-3 py-1 border rounded-md font-medium transition-colors ${
+                  page === pNum
+                    ? "bg-[#506147] text-white border-[#506147]"
+                    : "bg-white border-[#E5E1DA] text-[#434842] hover:bg-[#F2EBE1]"
+                }`}
+              >
+                {pNum}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              disabled={page === totalPages || totalPages === 0}
+              className="px-3 py-1 border border-[#E5E1DA] rounded-md bg-white hover:bg-[#F2EBE1] disabled:opacity-40 font-medium text-[#434842]"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
+      {/* Modal Detail / Keputusan */}
       {selectedAppeal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl p-6 space-y-4">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-['Newsreader',serif] text-xl font-bold text-[#2D312C]">
-                  Banding: {selectedAppeal.hotel?.name}
+                  {selectedAppeal.warning_id
+                    ? `Banding Peringatan #${String(selectedAppeal.warning_id).padStart(4, "0")}`
+                    : `Banding Pemulihan Akun`}
                 </h3>
-                <p className="text-xs text-[#6B6E6A]">Diajukan oleh {selectedAppeal.requester?.name || selectedAppeal.requester?.email}</p>
+                <p className="text-xs text-[#6B6E6A]">
+                  Hotel: <span className="font-semibold text-[#2D312C]">{selectedAppeal.hotel?.name}</span> • Pemohon: {selectedAppeal.requester?.name || selectedAppeal.requester?.email}
+                </p>
               </div>
               {badge(selectedAppeal.status)}
             </div>
 
-            <div className="p-4 bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] space-y-2 text-xs">
-              <span className="font-semibold text-[#6B6E6A] block">Alasan Banding:</span>
+            {/* Target Surat Peringatan jika banding warning */}
+            {selectedAppeal.warning && (
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl text-xs space-y-1">
+                <p className="font-bold text-amber-900">Surat Peringatan yang Dibantah:</p>
+                <p className="font-semibold text-[#2D312C]">{selectedAppeal.warning.title}</p>
+                <p className="text-[#6B6E6A] whitespace-pre-wrap">{selectedAppeal.warning.message}</p>
+              </div>
+            )}
+
+            {/* Alasan Banding dari Mitra */}
+            <div className="p-4 bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] space-y-1.5 text-xs">
+              <span className="font-semibold text-[#6B6E6A] block">Alasan &amp; Argumen Mitra Hotel:</span>
               <p className="text-[#2D312C] whitespace-pre-wrap leading-relaxed">{selectedAppeal.reason}</p>
             </div>
 
             {selectedAppeal.status === "pending" ? (
               <div className="space-y-3">
-                <label className="block text-xs font-semibold text-[#6B6E6A]">Catatan Keputusan (Opsional):</label>
+                <label className="block text-xs font-semibold text-[#6B6E6A]">
+                  Catatan Keputusan Super Admin (Opsional):
+                </label>
                 <textarea
                   value={adminNote}
                   onChange={(e) => setAdminNote(e.target.value)}
                   rows={3}
                   maxLength={1000}
-                  placeholder="Berikan alasan persetujuan atau penolakan..."
+                  placeholder="Berikan pertimbangan atau catatan atas persetujuan/penolakan ini..."
                   className="w-full p-3 border border-[#E5E1DA] rounded-xl text-xs focus:outline-none focus:border-[#506147]"
                 />
-                <div className="flex justify-end gap-3 pt-2">
+                <div className="flex justify-end gap-2 pt-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setSelectedAppeal(null)}
                     disabled={isDeciding}
-                    className="px-4 py-2 border border-[#E5E1DA] rounded-xl text-xs font-semibold text-[#6B6E6A]"
+                    className="px-4 py-2 border border-[#E5E1DA] rounded-xl text-xs font-semibold text-[#6B6E6A] hover:bg-[#F2EBE1]"
                   >
                     Batal
                   </button>
@@ -175,7 +265,7 @@ export default function AppealManagement() {
                     type="button"
                     onClick={() => handleDecision("rejected")}
                     disabled={isDeciding}
-                    className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50"
+                    className="px-4 py-2 bg-[#ba1a1a] text-white rounded-xl text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 shadow-sm"
                   >
                     {isDeciding ? "Memproses..." : "Tolak Banding"}
                   </button>
@@ -183,18 +273,26 @@ export default function AppealManagement() {
                     type="button"
                     onClick={() => handleDecision("approved")}
                     disabled={isDeciding}
-                    className="px-5 py-2 bg-[#506147] text-white rounded-xl text-xs font-semibold hover:bg-[#3b4b33] disabled:opacity-50"
+                    className="px-5 py-2 bg-[#506147] text-white rounded-xl text-xs font-semibold hover:bg-[#3b4b33] disabled:opacity-50 shadow-sm"
                   >
-                    {isDeciding ? "Memproses..." : "Setujui & Buka Blokir"}
+                    {isDeciding
+                      ? "Memproses..."
+                      : selectedAppeal.warning_id
+                      ? "Setujui & Batalkan Warning"
+                      : "Setujui & Buka Blokir"}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-2 text-xs">
+              <div className="space-y-3 text-xs pt-1">
                 {selectedAppeal.admin_note && (
-                  <p className="text-[#6B6E6A]">Catatan: <span className="text-[#2D312C]">{selectedAppeal.admin_note}</span></p>
+                  <div className="p-3 bg-white border border-[#E5E1DA] rounded-xl">
+                    <span className="font-semibold text-[#6B6E6A] block mb-0.5">Catatan Super Admin:</span>
+                    <p className="text-[#2D312C]">{selectedAppeal.admin_note}</p>
+                  </div>
                 )}
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-between items-center text-[11px] text-[#6B6E6A]/70">
+                  <span>Diputus pada: {selectedAppeal.decided_at ? new Date(selectedAppeal.decided_at).toLocaleString("id-ID") : "-"}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedAppeal(null)}

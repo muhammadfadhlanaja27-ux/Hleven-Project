@@ -12,7 +12,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'role', 'name', 'email', 'password', 'phone', 'avatar', 'google_id', 'email_verified_at', 'status'
+        'role', 'name', 'email', 'password', 'phone', 'avatar', 'google_id', 'email_verified_at', 'status',
     ];
 
     protected $hidden = [
@@ -36,6 +36,7 @@ class User extends Authenticatable
     {
         $parts = explode(' ', $this->name);
         array_shift($parts);
+
         return implode(' ', $parts);
     }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../../services/api';
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,7 +12,6 @@ import {
   Area,
   CartesianGrid,
 } from 'recharts';
-import api from '../../services/api';
 import { cachedGet, invalidateCache } from '../../services/apiCache';
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
@@ -128,7 +128,9 @@ export default function Dashboard() {
     try {
       const res = await api.get('/admin/warnings');
       const list = res.data?.data || res.data || [];
-      if (Array.isArray(list)) setWarnings(list);
+      if (Array.isArray(list)) {
+        setWarnings(list);
+      }
     } catch (_) {}
   }, []);
 
@@ -345,7 +347,12 @@ export default function Dashboard() {
                   ))}
               </div>
             </div>
-            <Link to="/admin/warnings" className="shrink-0 px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-bold hover:bg-amber-600 transition-colors">Lihat Detail</Link>
+            <Link
+              to="/admin/warnings"
+              className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+            >
+              Lihat Detail &amp; Banding
+            </Link>
           </div>
         )}
 

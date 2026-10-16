@@ -111,6 +111,7 @@ export default function RoomCreate() {
 
   // Shared Room Facilities list
   const [roomFacilities, setRoomFacilities] = useState([]);
+  const [bedTypes, setBedTypes] = useState([]);
   const [rawFiles, setRawFiles] = useState([]);
 
   const ROOM_POLICY_TEMPLATE = `Waktu Check-in & Check-out
@@ -127,11 +128,10 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
     name: "",
     type: "",
     bed: "",
+    bed_type_id: "",
     description: "",
     weekday_price: "",
     weekend_price: "",
-    capacity_adult: "",
-    capacity_child: "",
     stock: "",
     is_refundable: true,
     policies: ROOM_POLICY_TEMPLATE,
@@ -164,6 +164,20 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
     fetchRoomFacilities();
   }, []);
 
+  useEffect(() => {
+    const fetchBedTypes = async () => {
+      try {
+        const { data } = await cachedGet("/admin/bed-types");
+        const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        setBedTypes(list);
+      } catch (err) {
+        console.error("Failed to load bed types:", err);
+        setBedTypes([]);
+      }
+    };
+    fetchBedTypes();
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -172,6 +186,19 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
     }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleBedTypeChange = (e) => {
+    const value = e.target.value;
+    const selected = bedTypes.find((b) => String(b.id) === String(value));
+    setFormData((prev) => ({
+      ...prev,
+      bed_type_id: value,
+      bed: selected ? selected.name : "",
+    }));
+    if (errors.bed_type_id) {
+      setErrors((prev) => ({ ...prev, bed_type_id: "" }));
     }
   };
 
@@ -233,12 +260,8 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
       newErrors.weekend_price = "Weekend price must be greater than 0.";
     }
 
-    if (!formData.capacity_adult || Number(formData.capacity_adult) < 1) {
-      newErrors.capacity_adult = "Adult capacity must be at least 1.";
-    }
-
-    if (formData.capacity_child && Number(formData.capacity_child) < 0) {
-      newErrors.capacity_child = "Child capacity cannot be negative.";
+    if (!formData.bed_type_id) {
+      newErrors.bed_type_id = "Pilih tipe tempat tidur.";
     }
 
     if (!formData.stock || Number(formData.stock) < 1) {
@@ -267,8 +290,7 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);
       payload.append("bed", formData.bed || "");
-      payload.append("capacity_adult", formData.capacity_adult);
-      payload.append("capacity_child", formData.capacity_child || 0);
+      payload.append("bed_type_id", formData.bed_type_id || "");
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
       payload.append("policies", (formData.policies || "").trim());
@@ -413,23 +435,45 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
 
           {/* Bed Type */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="bed" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
-              Bed Type
+            <label htmlFor="bed_type_id" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Bed Type <span className="text-[#ba1a1a]">*</span>
             </label>
             <select
-              id="bed"
-              name="bed"
-              value={formData.bed}
-              onChange={handleChange}
+              id="bed_type_id"
+              name="bed_type_id"
+              value={formData.bed_type_id}
+              onChange={handleBedTypeChange}
               disabled={isSubmitting}
-              className="w-full h-11 px-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all cursor-pointer"
+              className={`w-full h-11 px-4 bg-white border ${
+                errors.bed_type_id ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+              } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all cursor-pointer`}
             >
               <option value="">Pilih Tipe Kasur</option>
-              <option value="1 Single Bed">Single Bed</option>
-              <option value="1 Twin Bed">Twin Bed</option>
-              <option value="1 Queen Bed">Queen Bed</option>
-              <option value="1 King Bed">King Bed</option>
+              {bedTypes.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                  {b.size ? ` — ${b.size}` : ""} ({b.max_adults}D/{b.max_children}A, maks {b.max_total})
+                </option>
+              ))}
             </select>
+            {errors.bed_type_id && (
+              <span className="text-xs text-[#ba1a1a] font-medium">{errors.bed_type_id}</span>
+            )}
+            {bedTypes.length === 0 && (
+              <span className="text-[11px] text-[#6B6E6A]">
+                Belum ada tipe tempat tidur. Tambahkan dulu di menu Bed Types Management.
+              </span>
+            )}
+            {(() => {
+              const selected = bedTypes.find((b) => String(b.id) === String(formData.bed_type_id));
+              if (!selected) return null;
+              return (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[#4A5D43] bg-[#E4EBE0] border border-[#cfe0c6] rounded-lg px-3 py-2">
+                  <span className="material-symbols-outlined text-[16px]">info</span>
+                  Kapasitas: {selected.max_adults} Dewasa, {selected.max_children} Anak (Total {selected.max_total} tamu)
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -509,74 +553,14 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
         <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
           <div className="border-b border-[#E5E1DA] pb-3">
             <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-              3. Room Availability &amp; Capacity
+              3. Room Availability
             </h3>
             <p className="text-xs text-[#6B6E6A] mt-0.5">
-              Kapasitas maksimal tamu dan total jumlah unit fisik kamar.
+              Total jumlah unit fisik kamar. Kapasitas tamu mengikuti tipe tempat tidur yang dipilih.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Adult Capacity */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="capacity_adult" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
-                Capacity (Adults) <span className="text-[#ba1a1a]">*</span>
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
-                  person
-                </span>
-                <input
-                  id="capacity_adult"
-                  type="number"
-                  name="capacity_adult"
-                  min="1"
-                  value={formData.capacity_adult}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                  placeholder="2"
-                  className={`w-full h-11 pl-10 pr-4 bg-white border ${
-                    errors.capacity_adult ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
-                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
-                />
-              </div>
-              {errors.capacity_adult && (
-                <span className="text-xs text-[#ba1a1a] font-medium">
-                  {errors.capacity_adult}
-                </span>
-              )}
-            </div>
-
-            {/* Child Capacity */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="capacity_child" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
-                Capacity (Children)
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
-                  child_care
-                </span>
-                <input
-                  id="capacity_child"
-                  type="number"
-                  name="capacity_child"
-                  min="0"
-                  value={formData.capacity_child}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                  placeholder="0"
-                  className={`w-full h-11 pl-10 pr-4 bg-white border ${
-                    errors.capacity_child ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
-                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
-                />
-              </div>
-              {errors.capacity_child && (
-                <span className="text-xs text-[#ba1a1a] font-medium">
-                  {errors.capacity_child}
-                </span>
-              )}
-            </div>
-
             {/* Stock */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="stock" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">

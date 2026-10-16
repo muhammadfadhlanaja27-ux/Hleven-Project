@@ -16,6 +16,11 @@ import {
 import { cachedGet } from "../../services/apiCache";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
+const escapeHtml = (value) =>
+  String(value ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+
 const formatRp = (value) => {
   if (value === null || value === undefined || isNaN(value)) return "Rp 0";
   return "Rp " + Number(value).toLocaleString("id-ID");
@@ -557,7 +562,7 @@ export default function RevenueReport() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>${fileName}</title>
+          <title>${escapeHtml(fileName)}</title>
           <style>
             body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 25px; color: #2D312C; background: #fff; }
             .header { border-bottom: 2px solid #506147; padding-bottom: 15px; margin-bottom: 20px; }
@@ -577,7 +582,7 @@ export default function RevenueReport() {
         <body>
           <div class="header">
             <h1>H'Leven Heritage Hotel - Revenue Report</h1>
-            <p>Period: ${reportPeriodLabel} | Generated: ${new Date().toLocaleString("id-ID")}</p>
+            <p>Period: ${escapeHtml(reportPeriodLabel)} | Generated: ${new Date().toLocaleString("id-ID")}</p>
           </div>
 
           <div class="grid">
@@ -616,7 +621,7 @@ export default function RevenueReport() {
             <tbody>
               ${sortedDetails.map(r => `
                 <tr>
-                  <td>${r.date}</td>
+                  <td>${escapeHtml(r.date)}</td>
                   <td>${r.total}</td>
                   <td>${r.paid}</td>
                   <td>${r.nights}</td>
@@ -644,8 +649,8 @@ export default function RevenueReport() {
             <tbody>
               ${roomRevenue.map(r => `
                 <tr>
-                  <td>${r.name}</td>
-                  <td>${r.type}</td>
+                  <td>${escapeHtml(r.name)}</td>
+                  <td>${escapeHtml(r.type)}</td>
                   <td>${r.bookings}</td>
                   <td>${r.nights}</td>
                   <td>${formatRp(r.revenue)}</td>

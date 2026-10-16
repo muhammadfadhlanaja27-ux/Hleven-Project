@@ -11,6 +11,7 @@ class Booking extends Model
 
     protected $fillable = [
         'booking_code',
+        'idempotency_key',
         'user_id',
         'hotel_id',
         'check_in',
@@ -113,6 +114,7 @@ class Booking extends Model
         if ($this->bookingRooms->isEmpty()) {
             return true;
         }
+
         return $this->bookingRooms->every(fn ($br) => (bool) ($br->roomType?->is_refundable ?? true));
     }
 

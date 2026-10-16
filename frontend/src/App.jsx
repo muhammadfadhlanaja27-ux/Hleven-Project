@@ -41,9 +41,11 @@ import BookingList from "./pages/admin-hotel/BookingList";
 import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
+import AdminPayouts from "./pages/admin-hotel/Payouts";
 import AdminProfile from "./pages/admin-hotel/Profile";
 import SuspendedPage from "./pages/admin-hotel/SuspendedPage";
 import AdminWarnings from "./pages/admin-hotel/Warnings";
+import BedTypeManager from "./pages/admin-hotel/BedTypeManager";
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
@@ -56,6 +58,7 @@ import AppealManagement from "./pages/super-admin/AppealManagement";
 import ActivityLogs from "./pages/super-admin/ActivityLogs";
 import Reports from "./pages/super-admin/Reports";
 import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
+import PayoutManagement from "./pages/super-admin/PayoutManagement";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
 
 // ---------------------------------------------------------
@@ -174,11 +177,13 @@ function App() {
               <Route path="/admin/facilities" element={<FacilityManager />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
+              <Route path="/admin/bed-types" element={<BedTypeManager />} />
               <Route path="/admin/bookings" element={<BookingList />} />
               <Route path="/admin/transactions" element={<TransactionHistory />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
               <Route path="/admin/warnings" element={<AdminWarnings />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />
+              <Route path="/admin/payouts" element={<AdminPayouts />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
             </Route>
           </Route>
@@ -199,6 +204,7 @@ function App() {
               <Route path="activity-logs" element={<ActivityLogs />} />
               <Route path="reports" element={<Reports />} />
               <Route path="application-revenue" element={<ApplicationRevenue />} />
+              <Route path="payouts" element={<PayoutManagement />} />
             </Route>
           </Route>
 

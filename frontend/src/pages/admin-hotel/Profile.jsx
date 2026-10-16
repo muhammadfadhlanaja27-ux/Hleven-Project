@@ -17,8 +17,6 @@ const INITIAL_PROFILE = {
     phone: "+62 22 1234567",
     address: "Jl. Example No. 123",
     city: "Bandung",
-    province: "West Java",
-    postalCode: "40123",
     description: "Comfortable accommodation with modern facilities.",
     logo: null,
   },
@@ -45,6 +43,14 @@ const asText = (value, fallback = "") => {
   return fallback;
 };
 
+const readStoredPreferences = () => {
+  try {
+    return JSON.parse(localStorage.getItem("adminPreferences") || "null");
+  } catch {
+    return null;
+  }
+};
+
 const normalizeProfile = (value = {}) => {
   const safeValue = value && typeof value === "object" ? value : {};
   const safeHotel = safeValue.hotel && typeof safeValue.hotel === "object" ? safeValue.hotel : {};
@@ -65,15 +71,15 @@ const normalizeProfile = (value = {}) => {
       ...INITIAL_PROFILE.hotel,
       ...safeHotel,
       city: asText(safeHotel.city, INITIAL_PROFILE.hotel.city),
-      province: asText(safeHotel.province, INITIAL_PROFILE.hotel.province),
       name: asText(safeHotel.name, INITIAL_PROFILE.hotel.name),
       description: asText(safeHotel.description, INITIAL_PROFILE.hotel.description),
       address: asText(safeHotel.address, INITIAL_PROFILE.hotel.address),
-      phone: asText(safeHotel.phone, INITIAL_PROFILE.hotel.phone),
-      email: asText(safeHotel.email, INITIAL_PROFILE.hotel.email),
+      phone: asText(safeHotel.admin?.phone || safeHotel.phone, INITIAL_PROFILE.hotel.phone),
+      email: asText(safeHotel.admin?.email || safeHotel.email, INITIAL_PROFILE.hotel.email),
     },
     preferences: {
       ...INITIAL_PROFILE.preferences,
+      ...(readStoredPreferences() || {}),
       ...safePreferences,
     },
   };
@@ -136,6 +142,7 @@ export default function Profile() {
   const [hotelForm, setHotelForm] = useState({ ...(profile?.hotel || INITIAL_PROFILE.hotel) });
   const [hotelErrors, setHotelErrors] = useState({});
   const [savingHotel, setSavingHotel] = useState(false);
+  const [hotelLogoFile, setHotelLogoFile] = useState(null);
 
   // Preferences State
   const [preferencesForm, setPreferencesForm] = useState({ ...(profile?.preferences || INITIAL_PROFILE.preferences) });
@@ -186,7 +193,6 @@ export default function Profile() {
           const h = hotelRes.value.data.data || hotelRes.value.data;
           if (h) {
             const cityText = asText(h.city?.name || h.city?.city || h.city, prev.hotel.city);
-            const provinceText = asText(h.city?.province || h.province, prev.hotel.province);
 
             setProfile((prev) => normalizeProfile({
               ...prev,
@@ -196,9 +202,8 @@ export default function Profile() {
                 description: asText(h.description, prev.hotel.description),
                 address: asText(h.address, prev.hotel.address),
                 city: cityText,
-                province: provinceText,
-                phone: asText(h.phone, prev.hotel.phone),
-                email: asText(h.email, prev.hotel.email),
+                phone: asText(h.admin?.phone || h.phone, prev.hotel.phone),
+                email: asText(h.admin?.email || h.email, prev.hotel.email),
               },
             }));
           }
@@ -262,6 +267,7 @@ export default function Profile() {
         toast.error("Logo image size must be under 5MB.");
         return;
       }
+      setHotelLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setHotelForm((prev) => ({ ...prev, logo: reader.result }));
@@ -269,13 +275,14 @@ export default function Profile() {
           ...prev,
           hotel: { ...prev.hotel, logo: reader.result },
         }));
-        toast.success("Hotel logo updated successfully.");
+        toast.success("Hotel logo siap disimpan. Klik Save untuk mengunggah.");
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveHotelLogo = () => {
+    setHotelLogoFile(null);
     setHotelForm((prev) => ({ ...prev, logo: null }));
     setProfile((prev) => ({
       ...prev,
@@ -385,12 +392,6 @@ export default function Profile() {
     if (!hotelForm.city || hotelForm.city.trim() === "") {
       errs.city = "City is required.";
     }
-    if (!hotelForm.province || hotelForm.province.trim() === "") {
-      errs.province = "Province is required.";
-    }
-    if (!hotelForm.postalCode || hotelForm.postalCode.trim() === "") {
-      errs.postalCode = "Postal code is required.";
-    }
     if (hotelForm.description && hotelForm.description.length > 500) {
       errs.description = "Description cannot exceed 500 characters.";
     }
@@ -405,17 +406,33 @@ export default function Profile() {
     setSavingHotel(true);
 
     try {
-      await api.post("/admin/hotel/profile", {
-        name: hotelForm.name.trim(),
-        description: hotelForm.description?.trim() || "",
-        address: hotelForm.address.trim(),
-        phone: hotelForm.phone.trim(),
+      const payload = new FormData();
+      payload.append("name", hotelForm.name.trim());
+      payload.append("description", hotelForm.description?.trim() || "");
+      payload.append("address", hotelForm.address.trim());
+      payload.append("phone", hotelForm.phone.trim());
+      payload.append("email", hotelForm.email.trim());
+      if (hotelForm.city && hotelForm.city.trim() !== "") {
+        payload.append("city", hotelForm.city.trim());
+      }
+      if (hotelLogoFile) {
+        payload.append("banner", hotelLogoFile);
+      }
+
+      const res = await api.post("/admin/hotel/profile", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
+      const saved = res?.data?.data || {};
 
       setProfile((prev) => normalizeProfile({
         ...prev,
-        hotel: { ...hotelForm },
+        hotel: {
+          ...prev.hotel,
+          ...hotelForm,
+          logo: saved.banner || prev.hotel.logo,
+        },
       }));
+      setHotelLogoFile(null);
       setEditHotel(false);
       toast.success("Hotel information updated successfully.");
     } catch (err) {
@@ -436,14 +453,17 @@ export default function Profile() {
   const handleSavePreferences = (e) => {
     e.preventDefault();
     setSavingPreferences(true);
-    setTimeout(() => {
-      setProfile((prev) => normalizeProfile({
-        ...prev,
-        preferences: { ...preferencesForm },
-      }));
-      setSavingPreferences(false);
-      toast.success("Preferences updated successfully.");
-    }, 500);
+    try {
+      localStorage.setItem("adminPreferences", JSON.stringify(preferencesForm));
+    } catch (err) {
+      console.error(err);
+    }
+    setProfile((prev) => normalizeProfile({
+      ...prev,
+      preferences: { ...preferencesForm },
+    }));
+    setSavingPreferences(false);
+    toast.success("Preferences saved on this device.");
   };
 
   // ─── Change Password Actions ────────────────────────────────────────────────
@@ -941,50 +961,6 @@ export default function Profile() {
                   </p>
                 )}
               </div>
-
-              {/* Province */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
-                  Province <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={hotelForm.province}
-                  onChange={(e) => setHotelForm({ ...hotelForm, province: e.target.value })}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
-                    hotelErrors.province ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
-                  }`}
-                  placeholder="West Java"
-                />
-                {hotelErrors.province && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">error</span>
-                    {hotelErrors.province}
-                  </p>
-                )}
-              </div>
-
-              {/* Postal Code */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
-                  Postal Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={hotelForm.postalCode}
-                  onChange={(e) => setHotelForm({ ...hotelForm, postalCode: e.target.value })}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
-                    hotelErrors.postalCode ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
-                  }`}
-                  placeholder="40123"
-                />
-                {hotelErrors.postalCode && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">error</span>
-                    {hotelErrors.postalCode}
-                  </p>
-                )}
-              </div>
             </div>
 
             {/* Description */}
@@ -1070,12 +1046,8 @@ export default function Profile() {
                 <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.address}</span>
               </div>
               <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
-                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">City / Province</span>
-                <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.city}, {profile.hotel.province}</span>
-              </div>
-              <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
-                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">Postal Code</span>
-                <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.postalCode}</span>
+                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">City</span>
+                <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.city}</span>
               </div>
             </div>
             <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">

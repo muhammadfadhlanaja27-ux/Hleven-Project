@@ -71,6 +71,7 @@ const BookingPage = () => {
   const pollRef = useRef(null);
   const wasGuestRef = useRef(false);
   const submitLockRef = useRef(false);
+  const idempotencyKeyRef = useRef(null);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -361,6 +362,12 @@ const BookingPage = () => {
 
     const isForOtherGuest = bookingFor === "someone_else";
 
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
     const payload = {
       hotel_id: Number(targetHotelId),
       room_type_id: Number(targetRoomTypeId),
@@ -383,6 +390,7 @@ const BookingPage = () => {
 
       special_request: specialRequests,
       special_requests: specialRequests,
+      idempotency_key: idempotencyKeyRef.current,
     };
 
     try {
@@ -399,6 +407,8 @@ const BookingPage = () => {
         if (res.data.data.token && !localStorage.getItem("token")) {
           localStorage.setItem("token", res.data.data.token);
         }
+
+        idempotencyKeyRef.current = null;
 
         let token = null;
         if (pid) {

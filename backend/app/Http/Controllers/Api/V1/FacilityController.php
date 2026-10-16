@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Facility;
-use App\Models\Hotel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,7 +19,7 @@ class FacilityController extends Controller
         // Global facilities yang NULL hanya dipakai untuk data master umum bila memang diperlukan,
         // tetapi untuk kasus per-hotel yang dibutuhkan saat ini kita batasi ke hotel yang login.
         if ($user && in_array($user->role, ['admin_hotel', 'admin'])) {
-            $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
+            $hotel = $user->hotel ?? $user->hotels()->first();
             if ($hotel) {
                 $query->where('hotel_id', $hotel->id);
             }
@@ -30,7 +29,7 @@ class FacilityController extends Controller
         }
 
         // PERBAIKAN: Gunakan LOWER() agar pencarian kategori 'hotel', 'Hotel', maupun 'HOTEL' tetap valid
-        if ($request->has('category') && !empty($request->category)) {
+        if ($request->has('category') && ! empty($request->category)) {
             $cat = strtolower($request->category);
             $query->whereRaw('LOWER(category) = ?', [$cat]);
         }
@@ -40,7 +39,7 @@ class FacilityController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Daftar fasilitas berhasil dimuat',
-            'data'    => $facilities,
+            'data' => $facilities,
         ], 200);
     }
 
@@ -48,26 +47,26 @@ class FacilityController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
-        $hotel = $user ? ($user->hotel ?? $user->hotels()->first() ?? Hotel::first()) : null;
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
 
         $request->validate([
-            'name'        => 'required|string|max:255',
-            'category'    => 'required|string',
-            'icon'        => 'nullable|string|max:100',
+            'name' => 'required|string|max:255',
+            'category' => 'required|string',
+            'icon' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
-            'status'      => 'nullable|in:active,inactive',
+            'status' => 'nullable|in:active,inactive',
         ]);
 
         // Format huruf kapital di awal (contoh: 'hotel' -> 'Hotel')
         $formattedCategory = ucfirst(strtolower($request->category));
 
         $facility = Facility::create([
-            'hotel_id'    => $hotel ? $hotel->id : null,
-            'name'        => $request->name,
-            'category'    => $formattedCategory,
-            'icon'        => $request->icon ?? 'star',
+            'hotel_id' => $hotel ? $hotel->id : null,
+            'name' => $request->name,
+            'category' => $formattedCategory,
+            'icon' => $request->icon ?? 'star',
             'description' => $request->description,
-            'status'      => $request->status ?? 'active',
+            'status' => $request->status ?? 'active',
         ]);
 
         // Jika kategori Hotel, otomatis hubungkan ke hotel_facilities hotel tersebut
@@ -78,7 +77,7 @@ class FacilityController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Fasilitas berhasil ditambahkan',
-            'data'    => $facility,
+            'data' => $facility,
         ], 201);
     }
 
@@ -86,25 +85,22 @@ class FacilityController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
-        $hotel = $user ? ($user->hotel ?? $user->hotels()->first() ?? Hotel::first()) : null;
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
 
         $facility = Facility::when($hotel, function ($q) use ($hotel) {
-            return $q->where(function ($sub) use ($hotel) {
-                $sub->where('hotel_id', $hotel->id)
-                    ->orWhereNull('hotel_id');
-            });
+            return $q->where('hotel_id', $hotel->id);
         })->findOrFail($id);
 
         $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'category'    => 'sometimes|string',
-            'icon'        => 'nullable|string|max:100',
+            'name' => 'sometimes|string|max:255',
+            'category' => 'sometimes|string',
+            'icon' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
-            'status'      => 'nullable|in:active,inactive',
+            'status' => 'nullable|in:active,inactive',
         ]);
 
         $updateData = $request->only(['name', 'icon', 'description', 'status']);
-        
+
         if ($request->has('category')) {
             $updateData['category'] = ucfirst(strtolower($request->category));
         }
@@ -114,7 +110,7 @@ class FacilityController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Fasilitas berhasil diperbarui',
-            'data'    => $facility,
+            'data' => $facility,
         ], 200);
     }
 
@@ -122,13 +118,10 @@ class FacilityController extends Controller
     public function destroy(Request $request, $id): JsonResponse
     {
         $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? $request->user();
-        $hotel = $user ? ($user->hotel ?? $user->hotels()->first() ?? Hotel::first()) : null;
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
 
         $facility = Facility::when($hotel, function ($q) use ($hotel) {
-            return $q->where(function ($sub) use ($hotel) {
-                $sub->where('hotel_id', $hotel->id)
-                    ->orWhereNull('hotel_id');
-            });
+            return $q->where('hotel_id', $hotel->id);
         })->findOrFail($id);
 
         $facility->delete();

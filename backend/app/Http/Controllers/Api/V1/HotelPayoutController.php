@@ -1,0 +1,100 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Models\Payout;
+use App\Services\PayoutService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
+
+class HotelPayoutController extends Controller
+{
+    public function __construct(private PayoutService $payoutService) {}
+
+    private function resolveHotel(Request $request)
+    {
+        $user = $request->user();
+
+        return $user->hotel ?? $user->hotels()->first();
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $hotel = $this->resolveHotel($request);
+
+        if (! $hotel) {
+            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+        }
+
+        $payouts = Payout::with('approver:id,name')
+            ->where('hotel_id', $hotel->id)
+            ->when($request->query('status'), fn ($q, $status) => $q->where('status', $status))
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data pencairan berhasil dimuat',
+            'data' => [
+                'balance' => $this->payoutService->getBalance($hotel),
+                'bank' => [
+                    'bank_name' => $hotel->bank_name,
+                    'bank_account_number' => $hotel->bank_account_number,
+                    'bank_account_name' => $hotel->bank_account_name,
+                ],
+                'payouts' => $payouts,
+            ],
+        ], 200);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $hotel = $this->resolveHotel($request);
+
+        if (! $hotel) {
+            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $payout = $this->payoutService->requestPayout(
+                $hotel,
+                $request->user(),
+                (float) $data['amount'],
+                $data['note'] ?? null
+            );
+        } catch (RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengajuan pencairan berhasil dikirim.',
+            'data' => $payout,
+        ], 201);
+    }
+
+    public function invoice(Request $request, $id)
+    {
+        $hotel = $this->resolveHotel($request);
+
+        $payout = Payout::where('hotel_id', $hotel?->id)->find($id);
+
+        if (! $payout) {
+            return response()->json(['success' => false, 'message' => 'Data pencairan tidak ditemukan.'], 404);
+        }
+
+        $balance = $this->payoutService->getBalance($hotel);
+
+        $pdf = Pdf::loadView('pdf.hotel-invoice', compact('payout', 'hotel', 'balance'));
+
+        return $pdf->download("Invoice-Pencairan-{$payout->id}.pdf");
+    }
+}
