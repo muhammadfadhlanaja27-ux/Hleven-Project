@@ -62,6 +62,8 @@ const BookingPage = () => {
 
   const pollRef = useRef(null);
   const wasGuestRef = useRef(false);
+  const submittingRef = useRef(false);
+  const idempotencyKeyRef = useRef(null);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -325,7 +327,15 @@ const BookingPage = () => {
   };
 
   const doBooking = async (targetHotelId, targetRoomTypeId) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
     const payload = {
       hotel_id: Number(targetHotelId),
       room_type_id: Number(targetRoomTypeId),
@@ -339,6 +349,7 @@ const BookingPage = () => {
       guest_phone: phone,
       special_request: specialRequests,
       special_requests: specialRequests,
+      idempotency_key: idempotencyKeyRef.current,
     };
 
     try {
@@ -360,6 +371,7 @@ const BookingPage = () => {
             const pid = createdBooking.payment?.id || createdBooking.payment_id;
             setOrderId(bookingCode);
             if (pid) setPaymentId(pid);
+            idempotencyKeyRef.current = null;
 
             // Save auto-generated token only for true guests (never clobber existing session)
             if (res.data.data.token && !localStorage.getItem('token')) {
@@ -404,6 +416,7 @@ const BookingPage = () => {
         toast.error(errorMessage);
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

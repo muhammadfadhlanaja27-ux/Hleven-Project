@@ -15,6 +15,7 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -580,6 +581,7 @@ class BookingController extends Controller
             'guests.*.name' => 'required_with:guests|string|max:255',
             'guests.*.phone' => 'nullable|string|max:30',
             'guests.*.identity_number' => 'nullable|string|max:50',
+            'idempotency_key' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -592,6 +594,7 @@ class BookingController extends Controller
         $qty = (int) $request->qty;
         $adults = (int) ($request->adults ?? 1);
         $specialNotes = $request->special_requests ?? $request->special_request ?? null;
+        $idempotencyKey = $request->header('Idempotency-Key') ?: $request->input('idempotency_key');
 
         $queryRoomType = RoomType::where('id', $request->room_type_id)
             ->where('hotel_id', $request->hotel_id);
@@ -635,43 +638,20 @@ class BookingController extends Controller
         $totalNight = max(1, $checkIn->diffInDays($checkOut));
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
-        $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
-
-        $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
-            ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
-                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
-                    ->where('check_in', '<', $checkOutStr)
-                    ->where('check_out', '>', $checkInStr);
-            })
-            ->sum('qty');
-
-        $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
-
-        if ($remainingStockDirect < $qty) {
-            $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
-                'suggestions' => $suggestions,
-            ], 422);
-        }
-
-        $subtotal = 0;
-        $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
-        $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
-
-        foreach ($period as $date) {
-            $subtotal += ($date->isWeekend())
-                ? ($weekendPrice * $qty)
-                : ($weekdayPrice * $qty);
-        }
-        $tax = (int) round($subtotal * 0.05);
-        $grandTotal = $subtotal + $tax;
-
         DB::beginTransaction();
         try {
-            $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
+            // Kunci baris tipe kamar untuk men-serialisasi booking bersamaan pada tipe ini,
+            // sehingga cek stok di bawah tidak bisa lolos dua kali (race condition / double booking).
+            $roomType = RoomType::where('id', $roomType->id)->lockForUpdate()->first();
+            if (! $roomType) {
+                DB::rollBack();
+
+                return response()->json(['status' => 'error', 'message' => 'Tipe kamar tidak ditemukan.'], 422);
+            }
+
+            $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
+
+            // Resolve user (guest checkout) sebelum dedup agar kuncinya user_id.
             $user = $request->user();
             $token = null;
 
@@ -679,24 +659,100 @@ class BookingController extends Controller
                 $user = User::where('email', $request->guest_email)->first();
 
                 if (! $user) {
-                    $user = User::create([
-                        'name' => $request->guest_name,
-                        'email' => $request->guest_email,
-                        'phone' => $request->guest_phone,
-                        'password' => Hash::make(Str::random(16)),
-                        'role' => 'user',
-                    ]);
+                    try {
+                        $user = User::create([
+                            'name' => $request->guest_name,
+                            'email' => $request->guest_email,
+                            'phone' => $request->guest_phone,
+                            'password' => Hash::make(Str::random(16)),
+                            'role' => 'user',
+                        ]);
 
-                    // Token hanya diterbitkan untuk akun guest yang benar-benar baru dibuat.
-                    // Akun yang sudah ada tidak boleh diberi token tanpa verifikasi kredensial.
-                    $token = $user->createToken('guest_token')->plainTextToken;
+                        // Token hanya diterbitkan untuk akun guest yang benar-benar baru dibuat.
+                        // Akun yang sudah ada tidak boleh diberi token tanpa verifikasi kredensial.
+                        $token = $user->createToken('guest_token')->plainTextToken;
+                    } catch (QueryException $e) {
+                        // Email baru saja dibuat oleh request paralel (retry bersamaan).
+                        $user = User::where('email', $request->guest_email)->first();
+                        if (! $user) {
+                            throw $e;
+                        }
+                    }
                 }
             }
 
             $userId = $user->id;
 
+            // Idempotency key persisten: retry dengan key yang sama mengembalikan booking yang sama.
+            if ($idempotencyKey) {
+                $existing = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->first();
+                if ($existing) {
+                    DB::commit();
+
+                    return $this->duplicateBookingResponse($existing);
+                }
+            }
+
+            // Dedup natural-key: retry setelah error jaringan dengan payload identik
+            // dalam window pembayaran (15 menit) tidak membuat booking baru.
+            $existing = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
+                ->where('user_id', $userId)
+                ->where('check_in', $checkInStr)
+                ->where('check_out', $checkOutStr)
+                ->whereIn('status', ['unpaid', 'pending'])
+                ->where('created_at', '>=', Carbon::now()->subMinutes(15))
+                ->whereHas('bookingRooms', function ($q) use ($roomType, $qty) {
+                    $q->where('room_type_id', $roomType->id)->where('qty', $qty);
+                })
+                ->latest()
+                ->first();
+
+            if ($existing) {
+                DB::commit();
+
+                return $this->duplicateBookingResponse($existing);
+            }
+
+            $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
+                ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                    $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
+                        ->where('check_in', '<', $checkOutStr)
+                        ->where('check_out', '>', $checkInStr);
+                })
+                ->sum('qty');
+
+            $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
+
+            if ($remainingStockDirect < $qty) {
+                DB::rollBack();
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                    'suggestions' => $suggestions,
+                ], 422);
+            }
+
+            $subtotal = 0;
+            $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
+            $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
+
+            foreach ($period as $date) {
+                $subtotal += ($date->isWeekend())
+                    ? ($weekendPrice * $qty)
+                    : ($weekdayPrice * $qty);
+            }
+            $tax = (int) round($subtotal * 0.05);
+            $grandTotal = $subtotal + $tax;
+
+            $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
+
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
+                'idempotency_key' => $idempotencyKey,
                 'user_id' => $userId,
                 'hotel_id' => $request->hotel_id,
                 'check_in' => $checkInStr,
@@ -721,6 +777,7 @@ class BookingController extends Controller
                 $dateStr = $date->format('Y-m-d');
                 $avail = RoomAvailability::where('room_type_id', $roomType->id)
                     ->where('date', $dateStr)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($avail) {
@@ -784,6 +841,23 @@ class BookingController extends Controller
                 'message' => 'Gagal membuat booking: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Response untuk booking yang terdeteksi duplikat (idempotency key atau retry identik).
+     */
+    private function duplicateBookingResponse(Booking $booking)
+    {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking sudah dibuat sebelumnya.',
+            'duplicate' => true,
+            'data' => [
+                'booking' => $booking,
+                'payment' => $booking->payment,
+                'token' => null,
+            ],
+        ], 200);
     }
 
     private function getAlternativeRooms($hotelId, $currentRoomTypeId, $checkInStr, $checkOutStr, $adults)

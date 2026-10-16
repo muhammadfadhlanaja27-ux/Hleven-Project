@@ -10,8 +10,8 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
-        'booking_code', 'user_id', 'hotel_id', 'check_in', 'check_out',
-        'total_night', 'children_count', 'subtotal', 'tax', 'grand_total', 'special_request', 'status'
+        'booking_code', 'idempotency_key', 'user_id', 'hotel_id', 'check_in', 'check_out',
+        'total_night', 'children_count', 'subtotal', 'tax', 'grand_total', 'special_request', 'status',
     ];
 
     protected $casts = [
@@ -73,6 +73,7 @@ class Booking extends Model
         if ($this->bookingRooms->isEmpty()) {
             return true;
         }
+
         return $this->bookingRooms->every(fn ($br) => (bool) ($br->roomType?->is_refundable ?? true));
     }
 }
