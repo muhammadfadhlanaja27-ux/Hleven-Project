@@ -75,15 +75,6 @@ const BookingPage = () => {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
-=======
-
-  // Form State: Opsi Pemesanan & Tamu Menginap
-  const [bookingFor, setBookingFor] = useState("me"); // 'me' | 'someone_else'
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
-
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
   const [specialRequests, setSpecialRequests] = useState("");
   const [checkInDate] = useState(init.checkInStr);
   const [checkOutDate] = useState(init.checkOutStr);
@@ -640,7 +631,6 @@ const BookingPage = () => {
                       <span className="ml-2 font-body-md text-sm text-[#2D332C]">Pesan untuk Orang Lain</span>
                     </label>
                   </div>
-                </div>
                 </div>
 
                 {/* INPUT DATA TAMU MENGINAP */}

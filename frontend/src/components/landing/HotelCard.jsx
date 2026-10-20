@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getStorageUrl } from '../../services/imageUrl';
 
 const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   const navigate = useNavigate();
@@ -65,6 +66,15 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   };
 
   const facilities = Array.isArray(hotel.facilities) ? hotel.facilities : [];
+  const cityName =
+    (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) ||
+    hotel.city_name ||
+    "Bandung";
+  const verifiedStar = hotel.star_rating
+    ? Number(hotel.star_rating)
+    : hotel.stars
+      ? Number(hotel.stars)
+      : null;
 
   const handleNavigateDetail = (e) => {
     e.stopPropagation();

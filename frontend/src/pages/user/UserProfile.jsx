@@ -522,7 +522,6 @@ const BookingHistory = () => {
           <div className="lg:col-span-8 flex flex-col gap-8">
             <section className="flex-grow flex flex-col gap-6">
 
-<<<<<<< HEAD
             {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
                 Untuk admin_hotel / super_admin — fitur ini tidak tersedia. */}
             {currentUserRole !== "admin_hotel" &&
@@ -882,42 +881,7 @@ const BookingHistory = () => {
                       <option value="price_high">Harga (Tertinggi)</option>
                     </select>
                   </div>
-=======
-              {/* Filters & Sort Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
-                    Filter:
-                  </span>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
-                  >
-                    <option value="All">Semua Pesanan</option>
-                    <option value="Pending">Menunggu Pembayaran</option>
-                    <option value="Upcoming">Upcoming / Lunas</option>
-                    <option value="Past">Selesai (Checked Out)</option>
-                    <option value="Cancelled">Dibatalkan / Refund</option>
-                  </select>
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
                 </div>
-
-                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                  <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
-                    Urutkan:
-                  </span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873]"
-                  >
-                    <option value="newest">Tanggal (Terbaru)</option>
-                    <option value="oldest">Tanggal (Terlama)</option>
-                    <option value="price_high">Harga (Tertinggi)</option>
-                  </select>
-                </div>
-              </div>
 
               {/* Bookings List */}
               <div className="flex flex-col gap-6">
@@ -1123,6 +1087,8 @@ const BookingHistory = () => {
                   })
                 )}
               </div>
+              </div>
+            )}
             </section>
           </div>
         </div>
@@ -1163,12 +1129,6 @@ const BookingHistory = () => {
                   className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
                 />
               </div>
-<<<<<<< HEAD
-            )}
-            {isPaid && isRefundable && (
-              <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
-                Pembatalan dalam 1x24 jam sejak pembayaran berhasil akan disetujui otomatis dan status booking menjadi refunded. Pengembalian dana diproses terpisah. Setelah 1x24 jam, pengajuan menunggu persetujuan admin.
-=======
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -1187,7 +1147,6 @@ const BookingHistory = () => {
                 >
                   {isSubmittingCancel ? "Memproses..." : isPaid && !isRefundable ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
                 </button>
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
               </div>
             </div>
           </div>
@@ -1342,7 +1301,6 @@ const BookingHistory = () => {
                     </div>
                   </div>
 
-<<<<<<< HEAD
                   <div className="bg-white p-3.5 rounded-xl border border-[#DCCFC0]/40">
                     <p className="font-label-sm text-[11px] text-[#444842] uppercase tracking-widest mb-1 font-semibold">
                       Tamu yang Menginap
@@ -1357,20 +1315,6 @@ const BookingHistory = () => {
                           .join(" · ")}
                       </p>
                     )}
-=======
-                  <div>
-                    <p className="font-label-sm text-xs text-[#444842] uppercase tracking-widest mb-2 font-semibold">
-                      Guest Details
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-[#2D332C] mb-1">
-                      <span className="material-symbols-outlined text-[#778873] text-base">person</span>
-                      <span className="font-semibold">{selectedBooking.guests?.[0]?.name || selectedBooking.guest_name || user?.name || "Tamu"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-[#444842]">
-                      <span className="material-symbols-outlined text-[#778873] text-base">call</span>
-                      <span>{selectedBooking.guests?.[0]?.phone || selectedBooking.guest_phone || user?.phone || "-"}</span>
-                    </div>
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
                   </div>
                 </div>
               </div>
