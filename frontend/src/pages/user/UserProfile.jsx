@@ -33,6 +33,10 @@ const BookingHistory = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
 
+  // Avatar Upload & Error Handling States
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
   // Cancellation & Refund Modal States
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -98,6 +102,11 @@ const BookingHistory = () => {
     return () => clearInterval(notificationInterval);
   }, [navigate, currentUserRole]);
 
+  // Reset error avatar setiap kali data user atau foto berubah
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatar, user?.avatar_url, user?.avatarPreview]);
+
   const fetchApiBookings = async (forceRefresh = false) => {
     setBookingsLoading(true);
     try {
@@ -115,6 +124,59 @@ const BookingHistory = () => {
       setBookings([]);
     } finally {
       setBookingsLoading(false);
+    }
+  };
+
+  // Handler Upload Foto Profil Langsung dari Sidebar
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG, PNG, WEBP).");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 2MB.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      formData.append("_method", "PUT");
+
+      if (user?.first_name) formData.append("first_name", user.first_name);
+      if (user?.email) formData.append("email", user.email);
+
+      const res = await api.post("/user/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const updatedUserData = res.data?.user || res.data?.data;
+      const avatarPath = updatedUserData?.avatar || updatedUserData?.avatar_url;
+
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const newUserData = {
+        ...savedUser,
+        ...updatedUserData,
+        avatar: avatarPath || savedUser.avatar,
+      };
+
+      localStorage.setItem("user", JSON.stringify(newUserData));
+      setUser(newUserData);
+      setAvatarError(false);
+      window.dispatchEvent(new Event("storage"));
+
+      toast.success("Foto profil berhasil diperbarui!");
+    } catch (err) {
+      console.error("Gagal upload avatar:", err);
+      toast.error(err.response?.data?.message || "Gagal mengunggah foto profil.");
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -144,25 +206,49 @@ const BookingHistory = () => {
 
     if (filterStatus !== "All") {
       if (filterStatus === "Upcoming") {
-        result = result.filter((b) => ["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in"].includes(b.status));
+        result = result.filter((b) =>
+          ["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in"].includes(b.status)
+        );
       } else if (filterStatus === "Pending") {
         result = result.filter((b) => ["pending", "unpaid"].includes(b.status));
       } else if (filterStatus === "Past") {
-        result = result.filter((b) => ["Checked Out", "Selesai", "completed", "checked_out"].includes(b.status));
+        result = result.filter((b) =>
+          ["Checked Out", "Selesai", "completed", "checked_out"].includes(b.status)
+        );
       } else if (filterStatus === "Cancelled") {
         result = result.filter((b) =>
-          ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system", "cancelled", "expired", "refund_pending", "refunded"].includes(b.status)
+          [
+            "Cancelled",
+            "Dibatalkan",
+            "cancelled_by_user",
+            "cancelled_by_system",
+            "cancelled",
+            "expired",
+            "refund_pending",
+            "refunded",
+          ].includes(b.status)
         );
       }
     }
 
-    if (sortBy === "newest") {
-      result.reverse();
-    } else if (sortBy === "price_high") {
-      result.sort((a, b) => Number(b.grand_total || b.total_price || 0) - Number(a.grand_total || a.total_price || 0));
-    }
-
-    return result;
+    return result.sort((a, b) => {
+      if (sortBy === "newest") {
+        const dateA = new Date(a.created_at || a.check_in || 0).getTime();
+        const dateB = new Date(b.created_at || b.check_in || 0).getTime();
+        return dateB - dateA;
+      }
+      if (sortBy === "oldest") {
+        const dateA = new Date(a.created_at || a.check_in || 0).getTime();
+        const dateB = new Date(b.created_at || b.check_in || 0).getTime();
+        return dateA - dateB;
+      }
+      if (sortBy === "price_high") {
+        const priceA = Number(a.grand_total || a.total_price || 0);
+        const priceB = Number(b.grand_total || b.total_price || 0);
+        return priceB - priceA;
+      }
+      return 0;
+    });
   }, [bookings, filterStatus, sortBy]);
 
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -264,33 +350,24 @@ const BookingHistory = () => {
     }
   };
 
-  const getInitialUser = () => {
-    try {
-      const saved = localStorage.getItem("user");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  };
-  const initialUser = getInitialUser();
-  const initialRole = initialUser?.role || "user";
+  const initialRole = user?.role || "user";
   const isAdminOrSuperAdmin = initialRole === "admin_hotel" || initialRole === "super_admin";
 
   const getAvatarUrl = () => {
-    const a = initialUser?.avatar || initialUser?.avatar_url || initialUser?.avatarPreview;
+    const a = user?.avatar || user?.avatar_url || user?.avatarPreview;
     if (!a) return null;
     return getStorageUrl(a);
   };
 
   const fullName =
-    initialUser?.name ||
-    `${initialUser?.first_name || ""} ${initialUser?.last_name || ""}`.trim() ||
-    initialUser?.email ||
+    user?.name ||
+    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
+    user?.email ||
     "User H'Leven";
   const initialLetter = (fullName.charAt(0) || "U").toUpperCase();
 
   const accountStatus = (() => {
-    const s = String(initialUser?.status || initialRole || "").toLowerCase();
+    const s = String(user?.status || initialRole || "").toLowerCase();
     if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
     if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
     if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
@@ -326,19 +403,49 @@ const BookingHistory = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
-              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden shadow-md">
-                {userAvatar ? (
+              
+              {/* Foto Profil + Fallback Inisial + Fitur Upload Foto */}
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden shadow-md group">
+                {userAvatar && !avatarError ? (
                   <img
                     src={userAvatar}
                     alt={fullName}
                     className="absolute inset-0 w-full h-full object-cover"
-                    onError={(e) => { e.target.style.display = "none"; }}
+                    onError={() => setAvatarError(true)}
                   />
                 ) : (
-                  <span className="font-headline-xl text-3xl font-bold">
+                  <span className="font-headline-xl text-3xl font-bold text-white z-0">
                     {initialLetter}
                   </span>
                 )}
+
+                {/* Overlay Ikon Kamera saat Hover / Loading saat Upload */}
+                <label
+                  htmlFor="sidebar-avatar-upload"
+                  className={`absolute inset-0 bg-black/40 text-white flex flex-col items-center justify-center cursor-pointer transition-opacity duration-200 z-10 ${
+                    isUploadingAvatar ? "opacity-100 bg-black/60" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  title="Ubah Foto Profil"
+                >
+                  {isUploadingAvatar ? (
+                    <span className="material-symbols-outlined text-2xl animate-spin">
+                      progress_activity
+                    </span>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-2xl">photo_camera</span>
+                      <span className="text-[10px] font-semibold mt-0.5">Ubah</span>
+                    </>
+                  )}
+                </label>
+                <input
+                  id="sidebar-avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  disabled={isUploadingAvatar}
+                  className="hidden"
+                />
               </div>
 
               <h2 className="font-headline-md text-xl font-bold text-[#2D332C] mb-1">
@@ -1110,7 +1217,7 @@ const BookingHistory = () => {
                 Payment Successful
               </h2>
               <p className="font-body-lg text-sm md:text-base opacity-90">
-                Your journey with H'Leven has begun.
+                Your journey with H&apos;Leven has begun.
               </p>
             </div>
 
@@ -1270,7 +1377,7 @@ const BookingHistory = () => {
 
               <div className="pt-4 border-t border-dashed border-[#DCCFC0] text-center">
                 <p className="font-body-md text-xs text-[#444842] italic">
-                  Thank you for choosing H'Leven. We look forward to welcoming you.
+                  Thank you for choosing H&apos;Leven. We look forward to welcoming you.
                 </p>
               </div>
             </div>

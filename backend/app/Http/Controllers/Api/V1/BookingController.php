@@ -19,7 +19,6 @@ use Carbon\CarbonPeriod;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use App\Services\WalletLedgerService;
@@ -155,7 +154,7 @@ class BookingController extends Controller
                     'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
                 ], 422);
             }
-            $subtotal = $quote['subtotal'];
+
             $tax = (int) round($subtotal * 0.05);
             $grandTotal = $subtotal + $tax;
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
@@ -165,6 +164,10 @@ class BookingController extends Controller
                 'booking_code' => $bookingCode,
                 'user_id' => $user->id,
                 'hotel_id' => $hotel->id,
+                'is_for_other_guest' => false,
+                'guest_name' => $request->guest_name,
+                'guest_email' => $request->guest_email,
+                'guest_phone' => $request->guest_phone,
                 'check_in' => $checkInStr,
                 'check_out' => $checkOutStr,
                 'total_night' => max(1, $checkIn->diffInDays($checkOut)),
@@ -235,10 +238,10 @@ class BookingController extends Controller
 
     public function show(Request $request, $id)
     {
-        $booking = $this->findBookingForActor($request, $id, ['user', 'bookingRooms.roomType', 'payment', 'guests']);
+        $booking = Booking::with(['user', 'bookingRooms.roomType', 'payment', 'guests', 'hotel'])->find($id);
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
         return response()->json([
@@ -266,7 +269,7 @@ class BookingController extends Controller
         $booking = Booking::with(['bookingRooms'])->find($id);
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
         }
 
         if ($request->user()->role === 'admin_hotel') {
@@ -629,10 +632,14 @@ class BookingController extends Controller
 
     public function downloadETicket(Request $request, $id)
     {
-        $booking = Booking::with(['hotel', 'bookingRooms.roomType', 'guests', 'user'])
-            ->where('id', $id)
-            ->where('user_id', $request->user()->id)
-            ->first();
+        $user = $request->user();
+        $query = Booking::with(['hotel', 'bookingRooms.roomType', 'guests', 'user'])->where('id', $id);
+
+        if ($user) {
+            $query->where('user_id', $user->id);
+        }
+
+        $booking = $query->first();
 
         if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
@@ -676,9 +683,10 @@ class BookingController extends Controller
             'qty' => 'required|integer|min:1',
             'adults' => 'nullable|integer|min:1',
             'children' => 'nullable|integer|min:0',
-            'guest_name' => 'required|string|max:255',
-            'guest_email' => 'required|email|max:255',
-            'guest_phone' => 'required|string|max:30',
+            'is_for_other_guest' => 'nullable|boolean',
+            'guest_name' => 'required_if:is_for_other_guest,true|nullable|string|max:255',
+            'guest_email' => 'required_if:is_for_other_guest,true|nullable|email|max:255',
+            'guest_phone' => 'required_if:is_for_other_guest,true|nullable|string|max:30',
             'guest_identity' => 'nullable|string|max:50',
             'special_request' => 'nullable|string',
             'special_requests' => 'nullable|string',
@@ -696,10 +704,23 @@ class BookingController extends Controller
             ], 422);
         }
 
+        $user = $request->user();
+        if (! $user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda harus login terlebih dahulu untuk melakukan pemesanan.',
+            ], 401);
+        }
+
         $qty = (int) $request->qty;
         $adults = (int) ($request->adults ?? 1);
         $specialNotes = $request->special_requests ?? $request->special_request ?? null;
-        $idempotencyKey = $request->header('Idempotency-Key') ?: $request->input('idempotency_key');
+        $isForOtherGuest = (bool) $request->is_for_other_guest;
+
+        // Tentukan data tamu berdasarkan opsi 'is_for_other_guest'
+        $guestName = $isForOtherGuest ? $request->guest_name : $user->name;
+        $guestEmail = $isForOtherGuest ? $request->guest_email : $user->email;
+        $guestPhone = $isForOtherGuest ? $request->guest_phone : ($user->phone ?? $request->guest_phone);
 
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
@@ -710,7 +731,6 @@ class BookingController extends Controller
 
         DB::beginTransaction();
         try {
-            // Ambil roomType dengan pessimistic locking agar thread-safe
             $queryRoomType = RoomType::where('id', $request->room_type_id)
                 ->where('hotel_id', $request->hotel_id)
                 ->lockForUpdate();
@@ -751,70 +771,6 @@ class BookingController extends Controller
 
             $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
 
-            // Resolve user (guest checkout) sebelum dedup agar kuncinya user_id.
-            $user = $request->user();
-            $token = null;
-
-            if (! $user) {
-                $user = User::where('email', $request->guest_email)->first();
-
-                if (! $user) {
-                    try {
-                        $user = User::create([
-                            'name' => $request->guest_name,
-                            'email' => $request->guest_email,
-                            'phone' => $request->guest_phone,
-                            'password' => Hash::make(Str::random(16)),
-                            'role' => 'user',
-                        ]);
-
-                        // Token hanya diterbitkan untuk akun guest yang benar-benar baru dibuat.
-                        // Akun yang sudah ada tidak boleh diberi token tanpa verifikasi kredensial.
-                        $token = $user->createToken('guest_token')->plainTextToken;
-                    } catch (QueryException $e) {
-                        // Email baru saja dibuat oleh request paralel (retry bersamaan).
-                        $user = User::where('email', $request->guest_email)->first();
-                        if (! $user) {
-                            throw $e;
-                        }
-                    }
-                }
-            }
-
-            $userId = $user->id;
-
-            // Idempotency key persisten: retry dengan key yang sama mengembalikan booking yang sama.
-            if ($idempotencyKey) {
-                $existing = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
-                    ->where('idempotency_key', $idempotencyKey)
-                    ->first();
-                if ($existing) {
-                    DB::commit();
-
-                    return $this->duplicateBookingResponse($existing);
-                }
-            }
-
-            // Dedup natural-key: retry setelah error jaringan dengan payload identik
-            // dalam window pembayaran (15 menit) tidak membuat booking baru.
-            $existing = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
-                ->where('user_id', $userId)
-                ->whereDate('check_in', $checkInStr)
-                ->whereDate('check_out', $checkOutStr)
-                ->whereIn('status', ['unpaid', 'pending'])
-                ->where('created_at', '>=', Carbon::now()->subMinutes(15))
-                ->whereHas('bookingRooms', function ($q) use ($roomType, $qty) {
-                    $q->where('room_type_id', $roomType->id)->where('qty', $qty);
-                })
-                ->latest()
-                ->first();
-
-            if ($existing) {
-                DB::commit();
-
-                return $this->duplicateBookingResponse($existing);
-            }
-
             $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
                 ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
                     $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
@@ -839,14 +795,8 @@ class BookingController extends Controller
             $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
             $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
 
-            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
-            if (! empty($quote['closed_dates'])) {
-                DB::rollBack();
-
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
-                ], 422);
+            foreach ($period as $date) {
+                $subtotal += ($date->isWeekend() ? $weekendPrice * $qty : $weekdayPrice * $qty);
             }
             $subtotal = $quote['subtotal'];
             $tax = (int) round($subtotal * 0.05);
@@ -856,9 +806,12 @@ class BookingController extends Controller
 
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
-                'idempotency_key' => $idempotencyKey,
-                'user_id' => $userId,
+                'user_id' => $user->id,
                 'hotel_id' => $request->hotel_id,
+                'is_for_other_guest' => $isForOtherGuest,
+                'guest_name' => $guestName,
+                'guest_email' => $guestEmail,
+                'guest_phone' => $guestPhone,
                 'check_in' => $checkInStr,
                 'check_out' => $checkOutStr,
                 'total_night' => $totalNight,
@@ -934,7 +887,6 @@ class BookingController extends Controller
                 'data' => [
                     'booking' => $booking,
                     'payment' => $payment,
-                    'token' => $token,
                 ],
             ], 201);
         } catch (\Exception $e) {
