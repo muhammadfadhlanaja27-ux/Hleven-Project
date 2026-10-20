@@ -14,7 +14,8 @@ class Hotel extends Model
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
         'average_rating', 'total_review', 'latitude', 'longitude', 'status',
         'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
-        'policies', 'logo'
+        'policies', 'logo',
+        'bank_name', 'bank_account_number', 'bank_account_name',
     ];
 
     protected $casts = [
@@ -22,13 +23,14 @@ class Hotel extends Model
         'star_verified_at' => 'datetime',
     ];
 
-    protected $appends = ['starting_price', 'thumbnail', 'phone', 'email'];
+    protected $appends = ['starting_price', 'thumbnail'];
 
     public function getStartingPriceAttribute()
     {
         if ($this->relationLoaded('roomTypes')) {
             return $this->roomTypes->min('weekday_price') ?? 0;
         }
+
         return $this->roomTypes()->min('weekday_price') ?? 0;
     }
 
@@ -36,9 +38,11 @@ class Hotel extends Model
     {
         if ($this->relationLoaded('photos')) {
             $thumbnailPhoto = $this->photos->firstWhere('is_thumbnail', true) ?? $this->photos->first();
+
             return $thumbnailPhoto ? $thumbnailPhoto->photo : null;
         }
         $thumbnailPhoto = $this->photos()->where('is_thumbnail', true)->first() ?? $this->photos()->first();
+
         return $thumbnailPhoto ? $thumbnailPhoto->photo : null;
     }
 
@@ -47,6 +51,7 @@ class Hotel extends Model
         if ($this->relationLoaded('admin')) {
             return $this->admin?->phone;
         }
+
         return $this->admin()->value('phone');
     }
 
@@ -55,6 +60,7 @@ class Hotel extends Model
         if ($this->relationLoaded('admin')) {
             return $this->admin?->email;
         }
+
         return $this->admin()->value('email');
     }
 
@@ -126,5 +132,10 @@ class Hotel extends Model
     public function appeals()
     {
         return $this->hasMany(Appeal::class, 'hotel_id');
+    }
+
+    public function payouts()
+    {
+        return $this->hasMany(Payout::class, 'hotel_id');
     }
 }

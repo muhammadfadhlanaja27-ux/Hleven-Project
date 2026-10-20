@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Review;
-use App\Models\Hotel;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Carbon;
 use App\Models\Booking;
+use App\Models\Hotel;
+use App\Models\Notification;
+use App\Models\Review;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 class ReviewController extends Controller
 {
@@ -20,16 +22,17 @@ class ReviewController extends Controller
     {
         Hotel::where('id', $hotelId)->update([
             'average_rating' => round(Review::where('hotel_id', $hotelId)->avg('rating') ?? 0, 1),
-            'total_review'   => Review::where('hotel_id', $hotelId)->count(),
+            'total_review' => Review::where('hotel_id', $hotelId)->count(),
         ]);
     }
+
     public function publicIndex(Request $request, $hotelId)
     {
         $query = Review::with(['user', 'booking.bookingRooms.roomType', 'booking.guests'])
             ->where('hotel_id', $hotelId);
 
         if ($request->has('search') && $request->search != '') {
-            $query->where('comment', 'like', '%' . $request->search . '%');
+            $query->where('comment', 'like', '%'.$request->search.'%');
         }
         if ($request->has('rating') && $request->rating != 'all') {
             $query->where('rating', $request->rating);
@@ -50,7 +53,7 @@ class ReviewController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $reviews,
-            'stats' => $stats
+            'stats' => $stats,
         ]);
     }
 
@@ -62,7 +65,7 @@ class ReviewController extends Controller
             ->whereDoesntHave('review')
             ->with(['bookingRooms.roomType'])
             ->get();
-            
+
         return response()->json(['status' => 'success', 'data' => $bookings]);
     }
 
@@ -71,7 +74,7 @@ class ReviewController extends Controller
         $validator = Validator::make($request->all(), [
             'booking_id' => 'required|exists:bookings,id',
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string'
+            'comment' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -84,7 +87,7 @@ class ReviewController extends Controller
             ->where('status', 'checked_out')
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking not eligible for review'], 403);
         }
 
@@ -97,24 +100,24 @@ class ReviewController extends Controller
             'hotel_id' => $hotelId,
             'user_id' => $request->user()->id,
             'rating' => $request->rating,
-            'comment' => $request->comment
+            'comment' => $request->comment,
         ]);
 
         $this->syncHotelRatingStats((int) $hotelId);
 
         // Alert Super Admin jika rating turun di bawah 3.0 dengan minimal 5 ulasan
         $hotel = Hotel::find($hotelId);
-        if ($hotel && (float)$hotel->average_rating < 3.0 && (int)$hotel->total_review >= 5) {
-            $superAdminIds = \App\Models\User::where('role', 'super_admin')->pluck('id');
+        if ($hotel && (float) $hotel->average_rating < 3.0 && (int) $hotel->total_review >= 5) {
+            $superAdminIds = User::where('role', 'super_admin')->pluck('id');
             foreach ($superAdminIds as $saId) {
-                $exists = \App\Models\Notification::where('user_id', $saId)
+                $exists = Notification::where('user_id', $saId)
                     ->where('type', 'low_rating_alert')
                     ->where('title', 'like', "%{$hotel->name}%")
                     ->where('is_read', false)
                     ->exists();
 
-                if (!$exists) {
-                    \App\Models\Notification::create([
+                if (! $exists) {
+                    Notification::create([
                         'user_id' => $saId,
                         'title' => "Peringatan Rating Rendah: {$hotel->name}",
                         'message' => "Rating hotel {$hotel->name} saat ini turun menjadi {$hotel->average_rating} dari total {$hotel->total_review} ulasan. Pertimbangkan untuk meninjau atau menerbitkan warning.",
@@ -132,14 +135,14 @@ class ReviewController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first() ?? Hotel::first();
+        $hotel = $user->hotel ?? $user->hotels()->first();
 
-        if (!$hotel) {
+        if (! $hotel) {
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
         $reviews = Review::where('hotel_id', $hotel->id)
-            ->orWhereHas('booking', function($q) use ($hotel) {
+            ->orWhereHas('booking', function ($q) use ($hotel) {
                 $q->where('hotel_id', $hotel->id);
             })
             ->with(['user', 'booking.bookingRooms.roomType'])
@@ -148,7 +151,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => $reviews
+            'data' => $reviews,
         ]);
     }
 
@@ -156,47 +159,35 @@ class ReviewController extends Controller
     public function reply(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'reply' => 'required|string|max:1000'
+            'reply' => 'required|string|max:1000',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $review = Review::find($id);
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
 
-        if (!$review) {
+        if (! $hotel) {
+            return response()->json(['status' => 'error', 'message' => 'Hotel tidak ditemukan'], 404);
+        }
+
+        $review = Review::where('id', $id)->where('hotel_id', $hotel->id)->first();
+
+        if (! $review) {
             return response()->json(['status' => 'error', 'message' => 'Review not found'], 404);
         }
 
         $review->update([
-            'reply'    => $request->reply,
+            'reply' => $request->reply,
             'reply_at' => Carbon::now(),
         ]);
 
         return response()->json([
-            'status'  => 'success',
-            'message' => 'Reply sent successfully',
-            'data'    => $review
-        ]);
-    }
-
-    // Menghapus ulasan (jika mengandung konten tidak pantas)
-    public function destroy($id)
-    {
-        $review = Review::find($id);
-
-        if (!$review) {
-            return response()->json(['status' => 'error', 'message' => 'Review not found'], 404);
-        }
-
-        $review->delete();
-
-        $this->syncHotelRatingStats($review->hotel_id);
-
-        return response()->json([
             'status' => 'success',
-            'message' => 'Review deleted successfully'
+            'message' => 'Reply sent successfully',
+            'data' => $review,
         ]);
     }
 }

@@ -187,6 +187,12 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
                 <span className="bg-[#DCCFC0]/30 text-[#444842] px-2 py-1 rounded text-[10px] font-semibold">{guests} Tamu</span>
               </div>
               <p className="text-sm text-[#1e1b16]">{review.comment}</p>
+              {review.reply && (
+                <div className="mt-4 bg-[#E4EBE0]/50 rounded-xl p-4 border border-[#c4c8be]/40">
+                  <p className="text-xs font-bold text-[#4A5D43] mb-1">Balasan Hotel:</p>
+                  <p className="text-sm text-[#2D312C]">{review.reply}</p>
+                </div>
+              )}
             </div>
           );
         })}

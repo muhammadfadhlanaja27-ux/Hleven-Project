@@ -10,7 +10,9 @@ const navItems = [
   { name: "Appeals (Banding)", to: "/super-admin/appeals", icon: "gavel" },
   { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
   { name: "Reports & Analytics", to: "/super-admin/reports", icon: "monitoring" },
-  { name: "Saldo & Komisi", to: "/super-admin/wallet", icon: "account_balance_wallet" },
+  { name: "App Revenue", to: "/super-admin/application-revenue", icon: "attach_money" },
+  { name: "Pencairan Dana", to: "/super-admin/payouts", icon: "account_balance_wallet" },
+  { name: "Saldo & Komisi", to: "/super-admin/wallet", icon: "payments" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {

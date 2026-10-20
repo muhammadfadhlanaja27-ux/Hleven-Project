@@ -128,14 +128,20 @@ const HotelDetail = () => {
         if (responseData && responseData.data) {
           const apiData = responseData.data;
 
-          const mappedRooms = (apiData.room_types || []).map((rt) => {
+          let liveRooms = [];
+          if (filterCheckIn && filterCheckOut) {
+            const { data: liveResponse } = await cachedGet(`/hotels/${id}/rooms`, {
+              params: { check_in: fmtDateParam(filterCheckIn), check_out: fmtDateParam(filterCheckOut) },
+            });
+            liveRooms = liveResponse?.data || [];
+          }
+const mappedRooms = (apiData.room_types || []).map((rt) => {
             const thumbnailPhoto =
               rt.photos && rt.photos.length > 0
                 ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
                 : null;
             const photoPath = thumbnailPhoto ? thumbnailPhoto.photo || thumbnailPhoto.url : null;
             const roomImage = photoPath ? getStorageUrl(photoPath) : null;
-
             return {
               id: rt.id,
               name: rt.name,
@@ -150,10 +156,10 @@ const HotelDetail = () => {
               capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
               description: rt.description,
               bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
-              breakfast: Boolean(rt.breakfast), // Konversi murni ke boolean
-              smoking_area: Boolean(rt.smoking_area), // Konversi murni ke boolean
+              breakfast: Boolean(rt.breakfast),
+              smoking_area: Boolean(rt.smoking_area),
               is_refundable: rt.is_refundable !== undefined ? Boolean(rt.is_refundable) : true,
-              stock: rt.stock,
+              stock: (liveRooms.find((r) => String(r.id) === String(rt.id)) || {}).available_stock ?? rt.stock,
             };
           });
 
@@ -175,7 +181,7 @@ const HotelDetail = () => {
     };
 
     fetchHotelDetail();
-  }, [id]);
+  }, [id, filterCheckIn, filterCheckOut]);
 
   const [liveRating, setLiveRating] = useState(0);
   useEffect(() => {
@@ -322,7 +328,35 @@ const HotelDetail = () => {
   );
 
   const getFacilityIcon = (fac) => {
+<<<<<<< HEAD
     return resolveFacilityIcon(fac?.name || fac, fac?.icon, "stars");
+=======
+    if (typeof fac === "object" && fac?.icon && fac.icon !== "stars") {
+      return fac.icon;
+    }
+    const name = String(typeof fac === "object" ? fac.name : fac || "").toLowerCase();
+    if (name.includes("wifi") || name.includes("internet")) return "wifi";
+    if (name.includes("kolam") || name.includes("pool") || name.includes("renang")) return "pool";
+    if (name.includes("gym") || name.includes("kebugaran") || name.includes("fitness")) return "fitness_center";
+    if (name.includes("restoran") || name.includes("restaurant") || name.includes("makan")) return "restaurant";
+    if (name.includes("spa") || name.includes("wellness") || name.includes("pijat")) return "spa";
+    if (name.includes("parkir") || name.includes("parking")) return "local_parking";
+    if (name.includes("resepsionis") || name.includes("reception") || name.includes("front desk") || name.includes("concierge")) return "concierge";
+    if (name.includes("lift") || name.includes("elevator")) return "elevator";
+    if (name.includes("laundry") || name.includes("cuci")) return "local_laundry_service";
+    if (name.includes("ac") || name.includes("air cond")) return "ac_unit";
+    if (name.includes("tv") || name.includes("television")) return "tv";
+    if (name.includes("mandi") || name.includes("bath") || name.includes("toilet") || name.includes("shower") || name.includes("water heater") || name.includes("toiletries")) return "bathtub";
+    if (name.includes("balkon") || name.includes("balcony") || name.includes("teras")) return "balcony";
+    if (name.includes("kulkas") || name.includes("fridge") || name.includes("minibar") || name.includes("refrigerator")) return "kitchen";
+    if (name.includes("hair") || name.includes("pengering") || name.includes("dryer")) return "dry";
+    if (name.includes("meja") || name.includes("kerja") || name.includes("desk")) return "desk";
+    if (name.includes("lemari") || name.includes("wardrobe") || name.includes("closet")) return "checkroom";
+    if (name.includes("mineral") || name.includes("drink")) return "water_drop";
+    if (name.includes("hair") || name.includes("dryer") || name.includes("pengering")) return "air";
+    if (name.includes("heater") || name.includes("thermostat") || name.includes("pemanas")) return "thermostat";
+    return "hotel";
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
   };
 
   const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";

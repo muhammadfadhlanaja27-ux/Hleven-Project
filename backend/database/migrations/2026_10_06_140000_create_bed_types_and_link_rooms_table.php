@@ -9,24 +9,32 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('bed_types', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete();
-            $table->string('name', 100);
-            $table->text('description')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->timestamps();
-            $table->softDeletes();
-            $table->index(['hotel_id', 'status']);
-        });
+        if (! Schema::hasTable('bed_types')) {
+            Schema::create('bed_types', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete();
+                $table->string('name', 100);
+                $table->string('size')->nullable();
+                $table->integer('max_adults')->default(1);
+                $table->integer('max_children')->default(0);
+                $table->integer('max_total')->default(1);
+                $table->text('description')->nullable();
+                $table->enum('status', ['active', 'inactive'])->default('active');
+                $table->timestamps();
+                $table->softDeletes();
+                $table->index(['hotel_id', 'status']);
+            });
+        }
 
-        Schema::table('room_types', function (Blueprint $table) {
-            $table->foreignId('bed_type_id')
-                ->nullable()
-                ->after('bed')
-                ->constrained('bed_types')
-                ->nullOnDelete();
-        });
+        if (! Schema::hasColumn('room_types', 'bed_type_id')) {
+            Schema::table('room_types', function (Blueprint $table) {
+                $table->foreignId('bed_type_id')
+                    ->nullable()
+                    ->after('bed')
+                    ->constrained('bed_types')
+                    ->nullOnDelete();
+            });
+        }
 
         $roomBeds = DB::table('room_types')
             ->whereNotNull('bed')

@@ -1,31 +1,32 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BedTypeController;
+use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
-use App\Http\Controllers\Api\V1\BookingController;
-use App\Http\Controllers\Api\V1\RoomTypeController;
-use App\Http\Controllers\Api\V1\BedTypeController;
-use App\Http\Controllers\Api\V1\DashboardController;
-use App\Http\Controllers\Api\V1\RoomController;
-use App\Http\Controllers\Api\V1\StaffController;
-use App\Http\Controllers\Api\V1\ReviewController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SuperAdminDashboardController;
-use App\Http\Controllers\WarningController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\SuperAdminUserController;
-use App\Http\Controllers\FileStorageController;
-use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\QRCodeController;
-use App\Http\Controllers\PartnerApplicationController;
-use App\Http\Controllers\AppealController;
+use App\Http\Controllers\Api\V1\HotelPayoutController;
 use App\Http\Controllers\Api\V1\HotelWalletController;
+use App\Http\Controllers\Api\V1\ReviewController;
+use App\Http\Controllers\Api\V1\RoomCalendarController;
+use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\SuperAdminWalletController;
+use App\Http\Controllers\AppealController;
+use App\Http\Controllers\FileStorageController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PartnerApplicationController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdminPayoutController;
+use App\Http\Controllers\SuperAdminUserController;
+use App\Http\Controllers\WarningController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,10 +46,13 @@ Route::prefix('v1')->group(function () {
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);
     Route::get('/hotels/{id}', [HotelController::class, 'show'])->whereNumber('id');
-    
+
     // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
+
+    // Public booking (guest checkout — auto-creates a session token in controller)
+    Route::post('/bookings', [BookingController::class, 'store']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -61,31 +65,30 @@ Route::prefix('v1')->group(function () {
         Route::put('/user/profile', [ProfileController::class, 'update']);
         Route::put('/user/change-password', [ProfileController::class, 'changePassword']);
 
-        // --- Profil Hotel Management ---
-        Route::get('hotel/profile', [HotelController::class, 'showProfile']);
-        Route::post('hotel/profile', [HotelController::class, 'update']);
+        // --- Admin Hotel Management (legacy prefix, tetap dipakai frontend) ---
+        Route::middleware(['role:admin_hotel', 'hotel_suspended'])->group(function () {
+            // Profil Hotel Management
+            Route::get('hotel/profile', [HotelController::class, 'showProfile']);
+            Route::post('hotel/profile', [HotelController::class, 'update']);
 
-        // --- Resource Kamar & Tipe Kamar ---
-        Route::apiResource('hotel/rooms', RoomController::class);
-        Route::apiResource('hotel/room-types', RoomTypeController::class);
+            // Resource Kamar & Tipe Kamar
+            Route::apiResource('hotel/rooms', RoomController::class);
+            Route::apiResource('hotel/room-types', RoomTypeController::class);
 
-        // --- Booking Management (Pelanggan) ---
-        Route::get('hotel/bookings', [BookingController::class, 'index']);
-        Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
-        Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
+            // Booking Management (Pelanggan)
+            Route::get('hotel/bookings', [BookingController::class, 'index']);
+            Route::get('hotel/bookings/{id}', [BookingController::class, 'show']);
+            Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 
-        // --- Laporan & Staf ---
-        Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
-        Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
-        Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
-        Route::get('hotel/staffs', [StaffController::class, 'index']);
-        Route::post('hotel/staffs', [StaffController::class, 'store']);
-        Route::delete('hotel/staffs/{id}', [StaffController::class, 'destroy']);
+            // Laporan
+            Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
+            Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
+            Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
 
-        // --- Ulasan ---
-        Route::get('hotel/reviews', [ReviewController::class, 'index']);
-        Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
-        Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
+            // Ulasan
+            Route::get('hotel/reviews', [ReviewController::class, 'index']);
+            Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
+        });
 
         // --- Booking & Partner Application User ---
         Route::middleware('role:user')->group(function () {
@@ -93,11 +96,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
-            Route::post('/bookings', [BookingController::class, 'store']);
-            
+
             // Route Pengajuan Partner User
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
-            
+
             // Reviews
             Route::get('/hotels/{id}/eligible-bookings', [ReviewController::class, 'eligibleBookings']);
             Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
@@ -116,11 +118,8 @@ Route::prefix('v1')->group(function () {
 
         // --- Partner Application (User) ---
         Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
-        Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
     });
 });
-
-
 
 // ==========================================
 // 3. ADMIN HOTEL ROUTES
@@ -128,6 +127,9 @@ Route::prefix('v1')->group(function () {
 Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->group(function () {
     Route::get('/appeals', [AppealController::class, 'indexAdmin']);
     Route::post('/appeals', [AppealController::class, 'storeAdmin']);
+    Route::get('/warnings', [WarningController::class, 'index']);
+    Route::get('/warnings/{id}', [WarningController::class, 'show']);
+    Route::patch('/warnings/{id}/read', [WarningController::class, 'markAsRead']);
 });
 Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
@@ -143,7 +145,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::get('/dashboard-stats', function () {
         return response()->json([
             'success' => true,
-            'message' => 'Selamat datang di Dashboard Admin Hotel'
+            'message' => 'Selamat datang di Dashboard Admin Hotel',
         ]);
     });
     Route::get('/hotel/dashboard', [DashboardController::class, 'index']);
@@ -157,7 +159,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::get('/hotels', [HotelController::class, 'myHotels']);
     Route::put('/hotels/{id}', [HotelController::class, 'update']);
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
-    
+
     // PERBAIKAN: Support route delete photo dengan 1 parameter (id photo) maupun 2 parameter (id hotel & photo)
     Route::delete('/hotels/photos/{photoId}', [HotelController::class, 'deletePhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
@@ -173,19 +175,30 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::post('/rooms/{id}', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
 
-    // Read-only room type data is used when creating manual bookings.
+    // --- Kalender Ketersediaan & Harga per Tanggal ---
+    Route::get('/rooms/{id}/calendar', [RoomCalendarController::class, 'show']);
+    Route::put('/rooms/{id}/calendar', [RoomCalendarController::class, 'update']);
+
+    // --- Management Tipe Kamar (RoomTypeController) ---
     Route::get('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'index']);
     Route::post('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'store']);
     Route::put('/room-types/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy']);
+    // CRUD Bed Types (admin hotel)
+    Route::apiResource('bed-types', BedTypeController::class);
 
     // --- Booking Admin ---
-    Route::get('/bookings', [BookingController::class, 'index']); 
+    Route::get('/bookings', [BookingController::class, 'index']);
     Route::post('/bookings/manual', [BookingController::class, 'storeManual']);
-    Route::get('/bookings/{id}', [BookingController::class, 'show']); 
-    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']); 
+    Route::get('/bookings/{id}', [BookingController::class, 'show']);
+    Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
     Route::post('/bookings/{id}/refund-approval', [BookingController::class, 'handleRefundApproval']);
     Route::post('/bookings/{id}/extend', [BookingController::class, 'extendBooking']);
+
+    // --- Pencairan Dana (Payout) ---
+    Route::get('/payouts', [HotelPayoutController::class, 'index']);
+    Route::post('/payouts', [HotelPayoutController::class, 'store']);
+    Route::get('/payouts/{id}/invoice', [HotelPayoutController::class, 'invoice']);
 });
 
 // ==========================================
@@ -201,6 +214,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/payments', [SuperAdminDashboardController::class, 'payments']);
         Route::get('/refunds', [SuperAdminDashboardController::class, 'refunds']);
         Route::get('/revenue', [SuperAdminDashboardController::class, 'revenue']);
+        Route::get('/hotel-commission', [SuperAdminDashboardController::class, 'hotelCommission']);
         Route::get('/charts', [SuperAdminDashboardController::class, 'charts']);
         Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
     });
@@ -224,8 +238,14 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     Route::prefix('partners')->group(function () {
         Route::get('/stats', [SuperAdminDashboardController::class, 'partners']);
         Route::get('/', [PartnerApplicationController::class, 'index']);
+        Route::get('/{id}/documents/{docId}', [PartnerApplicationController::class, 'document']);
         Route::patch('/{id}/approve', [PartnerApplicationController::class, 'approve']);
         Route::patch('/{id}/reject', [PartnerApplicationController::class, 'reject']);
+    });
+
+    Route::prefix('payouts')->group(function () {
+        Route::get('/', [SuperAdminPayoutController::class, 'index']);
+        Route::patch('/{id}/status', [SuperAdminPayoutController::class, 'updateStatus']);
     });
 
     Route::prefix('warnings')->group(function () {

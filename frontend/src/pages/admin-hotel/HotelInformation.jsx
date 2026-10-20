@@ -125,6 +125,9 @@ const initialHotelData = {
   photos: [],
   facilities: [],
   policies: DEFAULT_HOTEL_POLICIES,
+  bank_name: "",
+  bank_account_number: "",
+  bank_account_name: "",
 };
 
 const parseCityName = (cityVal) => {
@@ -261,6 +264,9 @@ export default function HotelInformation() {
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
             facilities: uniqueAssignedFacilities,
             policies: raw.policies || DEFAULT_HOTEL_POLICIES,
+            bank_name: raw.bank_name || "",
+            bank_account_number: raw.bank_account_number || "",
+            bank_account_name: raw.bank_account_name || "",
           };
 
           setHotelData(updatedData);
@@ -437,6 +443,9 @@ export default function HotelInformation() {
         email: formValues.email.trim(),
         policies: (formValues.policies || "").trim(),
         facilities: formFacilityIds,
+        bank_name: (formValues.bank_name || "").trim(),
+        bank_account_number: (formValues.bank_account_number || "").trim(),
+        bank_account_name: (formValues.bank_account_name || "").trim(),
       };
 
       // 1. Simpan profil hotel & sync fasilitas
@@ -1207,6 +1216,64 @@ export default function HotelInformation() {
                 className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed whitespace-pre-wrap"
               />
               <p className="text-[11px] text-[#6B6E6A]">Tampilkan di Hotel Detail setelah fasilitas. Biarkan kosong untuk pakai template default.</p>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+                  Rekening Bank
+                </h3>
+                <p className="text-xs text-[#6B6E6A] mt-0.5">
+                  Rekening tujuan pencairan dana. Wajib diisi sebelum mengajukan pencairan.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="bank_name" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Nama Bank
+                  </label>
+                  <input
+                    id="bank_name"
+                    name="bank_name"
+                    type="text"
+                    value={formValues.bank_name || ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="BCA / Mandiri / BNI"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="bank_account_number" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Nomor Rekening
+                  </label>
+                  <input
+                    id="bank_account_number"
+                    name="bank_account_number"
+                    type="text"
+                    value={formValues.bank_account_number || ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="1234567890"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="bank_account_name" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Nama Pemilik Rekening
+                  </label>
+                  <input
+                    id="bank_account_name"
+                    name="bank_account_name"
+                    type="text"
+                    value={formValues.bank_account_name || ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="Sesuai buku tabungan"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-[#E5E1DA] bg-[#F6F3EF] p-4 rounded-xl flex items-center justify-between gap-4">

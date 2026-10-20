@@ -15,9 +15,10 @@ class BedTypeController extends Controller
         $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
         if (! $hotel) {
             return response()->json([
-                'success' => false,
-                'message' => 'Hotel untuk akun ini tidak ditemukan.',
-            ], 404);
+                'success' => true,
+                'status' => 'success',
+                'data' => [],
+            ]);
         }
 
         $bedTypes = BedType::where('hotel_id', $hotel->id)
@@ -26,6 +27,7 @@ class BedTypeController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => 'success',
             'data' => $bedTypes,
         ]);
     }
@@ -36,6 +38,7 @@ class BedTypeController extends Controller
         if (! $hotel) {
             return response()->json([
                 'success' => false,
+                'status' => 'error',
                 'message' => 'Hotel untuk akun ini tidak ditemukan.',
             ], 404);
         }
@@ -51,19 +54,58 @@ class BedTypeController extends Controller
             ],
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
+            'size' => 'nullable|string|max:100',
+            'max_adults' => 'nullable|integer|min:1',
+            'max_children' => 'nullable|integer|min:0',
+            'max_total' => 'nullable|integer|min:1',
         ]);
+
+        $maxAdults = $validated['max_adults'] ?? 1;
+        $maxChildren = $validated['max_children'] ?? 0;
+        $maxTotal = $validated['max_total'] ?? ($maxAdults + $maxChildren);
 
         $bedType = BedType::create([
             ...$validated,
             'hotel_id' => $hotel->id,
             'status' => $validated['status'] ?? 'active',
+            'max_adults' => $maxAdults,
+            'max_children' => $maxChildren,
+            'max_total' => $maxTotal,
         ]);
 
         return response()->json([
             'success' => true,
+            'status' => 'success',
             'message' => 'Tipe kasur berhasil ditambahkan.',
             'data' => $bedType,
         ], 201);
+    }
+
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
+        if (! $hotel) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Hotel not found.',
+            ], 404);
+        }
+
+        $bed = BedType::where('hotel_id', $hotel->id)->find($id);
+        if (! $bed) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Bed type not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'data' => $bed,
+        ]);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -72,11 +114,20 @@ class BedTypeController extends Controller
         if (! $hotel) {
             return response()->json([
                 'success' => false,
+                'status' => 'error',
                 'message' => 'Hotel untuk akun ini tidak ditemukan.',
             ], 404);
         }
 
-        $bedType = BedType::where('hotel_id', $hotel->id)->findOrFail($id);
+        $bedType = BedType::where('hotel_id', $hotel->id)->find($id);
+        if (! $bedType) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Bed type not found',
+            ], 404);
+        }
+
         $validated = $request->validate([
             'name' => [
                 'sometimes',
@@ -90,12 +141,17 @@ class BedTypeController extends Controller
             ],
             'description' => 'sometimes|nullable|string|max:1000',
             'status' => 'sometimes|in:active,inactive',
+            'size' => 'sometimes|nullable|string|max:100',
+            'max_adults' => 'sometimes|integer|min:1',
+            'max_children' => 'sometimes|integer|min:0',
+            'max_total' => 'sometimes|integer|min:1',
         ]);
 
         $bedType->update($validated);
 
         return response()->json([
             'success' => true,
+            'status' => 'success',
             'message' => 'Tipe kasur berhasil diperbarui.',
             'data' => $bedType->fresh(),
         ]);
@@ -107,14 +163,24 @@ class BedTypeController extends Controller
         if (! $hotel) {
             return response()->json([
                 'success' => false,
+                'status' => 'error',
                 'message' => 'Hotel untuk akun ini tidak ditemukan.',
             ], 404);
         }
 
-        $bedType = BedType::where('hotel_id', $hotel->id)->findOrFail($id);
+        $bedType = BedType::where('hotel_id', $hotel->id)->find($id);
+        if (! $bedType) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Bed type not found',
+            ], 404);
+        }
+
         if ($bedType->roomTypes()->exists()) {
             return response()->json([
                 'success' => false,
+                'status' => 'error',
                 'message' => 'Tipe kasur masih digunakan kamar. Nonaktifkan tipe kasur ini agar tidak dapat dipilih untuk kamar baru.',
             ], 422);
         }
@@ -123,6 +189,7 @@ class BedTypeController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => 'success',
             'message' => 'Tipe kasur berhasil dihapus.',
         ]);
     }

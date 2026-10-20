@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../../services/api';
 import {
   ResponsiveContainer,
   BarChart,
@@ -125,13 +126,10 @@ export default function Dashboard() {
 
   const fetchWarnings = useCallback(async () => {
     try {
-      const res = await cachedGet('/notifications', {}, true);
+      const res = await api.get('/admin/warnings');
       const list = res.data?.data || res.data || [];
       if (Array.isArray(list)) {
-        const warningList = list.filter(
-          (n) => n.type === 'warning' || (n.title || '').toLowerCase().includes('peringatan')
-        );
-        setWarnings(warningList);
+        setWarnings(list);
       }
     } catch (_) {}
   }, []);
@@ -325,7 +323,7 @@ export default function Dashboard() {
         ); return null; })()}
 
         {/* ─── ACTIVE COMPLIANCE WARNING BANNER ────────────────────────────── */}
-        {warnings.some((w) => !w.is_read) && (
+        {warnings.some((w) => (w.status || '').toLowerCase() === 'unread') && (
           <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
             <div className="flex items-start gap-3.5">
               <span className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -339,7 +337,7 @@ export default function Dashboard() {
                   </span>
                 </h4>
                 {warnings
-                  .filter((w) => !w.is_read)
+                  .filter((w) => (w.status || '').toLowerCase() === 'unread')
                   .slice(0, 1)
                   .map((w) => (
                     <div key={w.id} className="mt-1">
@@ -349,6 +347,12 @@ export default function Dashboard() {
                   ))}
               </div>
             </div>
+            <Link
+              to="/admin/warnings"
+              className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+            >
+              Lihat Detail &amp; Banding
+            </Link>
           </div>
         )}
 

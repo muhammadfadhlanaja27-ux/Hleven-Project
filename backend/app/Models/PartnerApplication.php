@@ -17,11 +17,9 @@ class PartnerApplication extends Model
         'owner_phone',
         'owner_id_number',
         'hotel_name',
-        'hotel_type',
         'hotel_description',
         'hotel_phone',
         'hotel_email',
-        'room_count',
         'email',
         'phone',
         'address',
@@ -42,7 +40,6 @@ class PartnerApplication extends Model
     ];
 
     protected $casts = [
-        'room_count' => 'integer',
         'requested_star_rating' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

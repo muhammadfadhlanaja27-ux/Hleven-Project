@@ -57,8 +57,10 @@ export const invalidateCache = (pattern) => {
     cacheStore.clear();
     return;
   }
+  const base = pattern.split('?')[0].replace(/\/+$/, '');
   for (const key of cacheStore.keys()) {
-    if (key.includes(pattern)) {
+    const keyBase = key.split('?')[0].replace(/\/+$/, '');
+    if (keyBase === base || keyBase.startsWith(`${base}/`)) {
       cacheStore.delete(key);
     }
   }

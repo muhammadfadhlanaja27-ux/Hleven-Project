@@ -77,7 +77,41 @@ const FACILITY_ICON_MAP = {
 };
 
 const getFacilityIcon = (fac) => {
+<<<<<<< HEAD
   return resolveFacilityIcon(fac?.name || fac, fac?.icon, "bed");
+=======
+  if (typeof fac === "object" && fac?.icon && fac.icon !== "stars") return fac.icon;
+  const name = String(typeof fac === "object" ? fac.name : fac || "").trim();
+  if (FACILITY_ICON_MAP[name]) return FACILITY_ICON_MAP[name];
+  const lower = name.toLowerCase();
+  if (lower.includes("ac") || lower.includes("air condition")) return "ac_unit";
+  if (lower.includes("tv") || lower.includes("televisi") || lower.includes("television")) return "tv";
+  if (lower.includes("mandi") || lower.includes("bath") || lower.includes("toilet") || lower.includes("kloset") || lower.includes("wash") || lower.includes("washtafel")) return "bathtub";
+  if (lower.includes("bathtub") || lower.includes("bak")) return "bathtub";
+  if (lower.includes("balkon") || lower.includes("teras") || lower.includes("balcony")) return "balcony";
+  if (lower.includes("kulkas") || lower.includes("fridge") || lower.includes("minibar") || lower.includes("refrigerator")) return "kitchen";
+  if (lower.includes("meja") || lower.includes("kerja") || lower.includes("desk")) return "desk";
+  if (lower.includes("lemari") || lower.includes("wardrobe") || lower.includes("closet")) return "checkroom";
+  if (lower.includes("air mineral") || lower.includes("mineral water") || lower.includes("drink") || lower.includes("water heater")) return "water_drop";
+  if (lower.includes("shower")) return "shower";
+  if (lower.includes("wifi") || lower.includes("internet")) return "wifi";
+  if (lower.includes("kolam") || lower.includes("pool") || lower.includes("renang")) return "pool";
+  if (lower.includes("parkir") || lower.includes("parking")) return "local_parking";
+  if (lower.includes("restoran") || lower.includes("makan") || lower.includes("restaurant")) return "restaurant";
+  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("kebugaran")) return "fitness_center";
+  if (lower.includes("spa") || lower.includes("massage") || lower.includes("wellness")) return "hot_tub";
+  if (lower.includes("resepsionis") || lower.includes("reception") || lower.includes("front desk")) return "concierge";
+  if (lower.includes("lift") || lower.includes("elevator")) return "elevator";
+  if (lower.includes("laundry") || lower.includes("cuci")) return "local_laundry_service";
+  if (lower.includes("brankas") || lower.includes("safety box") || lower.includes("safe") || lower.includes("lock")) return "lock";
+  if (lower.includes("coffee") || lower.includes("kopi") || lower.includes("tea") || lower.includes("teh")) return "local_cafe";
+  if (lower.includes("bar") || lower.includes("lounge")) return "local_bar";
+  if (lower.includes("room service")) return "room_service";
+  if (lower.includes("bed") || lower.includes("tidur")) return "bed";
+  if (lower.includes("hair") || lower.includes("dryer") || lower.includes("pengering")) return "air";
+  if (lower.includes("heater") || lower.includes("thermostat") || lower.includes("pemanas")) return "thermostat";
+  return "hotel";
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
 };
 
 const RoomDetail = () => {
@@ -183,27 +217,36 @@ const RoomDetail = () => {
             const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
             const facilities = matchedRoomType.facilities || [];
-            const policies = matchedRoomType.policies || "";
-            const mappedRoom = {
-              id: matchedRoomType.id,
-              name: matchedRoomType.name,
-              price: matchedRoomType.weekday_price,
-              weekday_price: matchedRoomType.weekday_price,
-              weekend_price: matchedRoomType.weekend_price,
-              thumbnail: roomImage,
-              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
-              capacity_adult: matchedRoomType.capacity_adult,
-              capacity_child: matchedRoomType.capacity_child,
-              description: matchedRoomType.description,
-              bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
-              breakfast: matchedRoomType.breakfast,
-              smoking_area: matchedRoomType.smoking_area,
-              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
-              stock: matchedRoomType.stock,
-              policies,
-              facilities,
-              photos: matchedRoomType.photos || []
-            };
+const policies = matchedRoomType.policies || "";
+let liveRooms = [];
+if (checkInDate && checkOutDate) {
+  const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
+  const { data: liveResponse } = await cachedGet(`/hotels/${targetHotelId}/rooms`, {
+    params: { check_in: fmtDateParam(checkInDate), check_out: fmtDateParam(checkOutDate) },
+  });
+  liveRooms = liveResponse?.data || [];
+}
+const liveStock = (liveRooms.find(r=>Number(r.id)===Number(matchedRoomType.id))||{}).available_stock;
+const mappedRoom = {
+  id: matchedRoomType.id,
+  name: matchedRoomType.name,
+  price: matchedRoomType.weekday_price,
+  weekday_price: matchedRoomType.weekday_price,
+  weekend_price: matchedRoomType.weekend_price,
+  thumbnail: roomImage,
+  capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+  capacity_adult: matchedRoomType.capacity_adult,
+  capacity_child: matchedRoomType.capacity_child,
+  description: matchedRoomType.description,
+  bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
+  breakfast: matchedRoomType.breakfast,
+  smoking_area: matchedRoomType.smoking_area,
+  is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
+  stock: liveStock ?? matchedRoomType.stock,
+  policies,
+  facilities,
+  photos: matchedRoomType.photos || [],
+};
 
             setHotel(apiHotel);
             setRoom(mappedRoom);
@@ -228,7 +271,7 @@ const RoomDetail = () => {
     };
 
     fetchDetail();
-  }, [hotelId, roomId]);
+  }, [hotelId, roomId, checkInDate, checkOutDate]);
 
   // Price & Nights Calculation
   const nightsCount = useMemo(() => {

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\BookingRoom;
 use App\Models\BedType;
+use App\Models\BookingRoom;
 use App\Models\Hotel;
+use App\Models\RoomAvailability;
 use App\Models\RoomType;
+use App\Services\FileStorageService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Services\FileStorageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -19,15 +20,30 @@ use Illuminate\Validation\Rule;
 class RoomController extends Controller
 {
     /**
+     * Cari kamar yang benar-benar milik hotel admin yang login (cegah IDOR lintas hotel).
+     */
+    private function findRoomForUser(Request $request, $id, array $with = []): ?RoomType
+    {
+        $user = $request->user();
+        $hotel = $user ? ($user->hotel ?? $user->hotels()->first()) : null;
+
+        if (! $hotel) {
+            return null;
+        }
+
+        return RoomType::with($with)->where('hotel_id', $hotel->id)->find($id);
+    }
+
+    /**
      * Display a listing of the resource (Dukungan pencarian dinamis stok untuk User).
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        $hotelId = $request->query('hotel_id');
+        $hotelId = $request->query('hotel_id') ?? $request->route('id');
         if (! $hotelId) {
-            $hotel = $user?->hotel ?? Hotel::first();
+            $hotel = $user?->hotel ?? $user?->hotels()->first();
             $hotelId = $hotel?->id;
         }
 
@@ -58,8 +74,17 @@ class RoomController extends Controller
                 ->groupBy('room_type_id')
                 ->pluck('total_booked', 'room_type_id');
 
-            $rooms->each(function ($room) use ($bookedQuantities) {
-                $room->available_stock = max(0, $room->stock - ($bookedQuantities[$room->id] ?? 0));
+            $closedTypeIds = RoomAvailability::whereIn('room_type_id', $roomTypeIds)
+                ->where('is_closed', true)
+                ->where('date', '>=', $checkIn)
+                ->where('date', '<', $checkOut)
+                ->pluck('room_type_id')
+                ->unique();
+
+            $rooms->each(function ($room) use ($bookedQuantities, $closedTypeIds) {
+                $room->available_stock = $closedTypeIds->contains($room->id)
+                    ? 0
+                    : max(0, $room->stock - ($bookedQuantities[$room->id] ?? 0));
             });
         } else {
             $rooms->each(function ($room) {
@@ -80,7 +105,7 @@ class RoomController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel ?? Hotel::first();
+        $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
             return response()->json([
@@ -96,49 +121,49 @@ class RoomController extends Controller
             'bed_type_id'    => [
                 'nullable',
                 'integer',
-                Rule::exists('bed_types', 'id')
-                    ->where('hotel_id', $hotel->id)
-                    ->where('status', 'active'),
+                Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id)->whereNull('deleted_at'),
             ],
             'description'    => 'nullable|string',
             'weekday_price'  => 'required|numeric|min:0',
             'weekend_price'  => 'required|numeric|min:0',
             'stock'          => 'required|integer|min:0',
-            'capacity_adult' => 'required|integer|min:1',
+            'capacity_adult' => 'nullable|integer|min:1',
             'capacity_child' => 'nullable|integer|min:0',
-            'breakfast'      => 'nullable|boolean',
-            'smoking_area'   => 'nullable|boolean',
-            'is_refundable'  => 'nullable|boolean',
-            'facilities'     => 'nullable|array',
-            'facilities.*'   => 'exists:facilities,id',
-            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'photos'         => 'nullable|array',
-            'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            'breakfast' => 'nullable|boolean',
+            'smoking_area' => 'nullable|boolean',
+            'is_refundable' => 'nullable|boolean',
+            'facilities' => 'nullable|array',
+            'facilities.*' => [Rule::exists('facilities', 'id')->where(fn ($q) => $q->where('hotel_id', $hotel->id)->orWhereNull('hotel_id'))],
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'photos' => 'nullable|array',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $bedType = $request->filled('bed_type_id')
-            ? BedType::where('hotel_id', $hotel->id)->findOrFail($request->integer('bed_type_id'))
+            ? BedType::where('hotel_id', $hotel->id)->find($request->integer('bed_type_id'))
             : null;
+
+        [$capacityAdult, $capacityChild] = $this->resolveCapacities($request);
 
         $room = RoomType::create([
             'hotel_id'       => $hotel->id,
+            'bed_type_id'    => $bedType?->id,
             'name'           => $request->name,
             'type'           => $request->type ?? 'Standard',
             'bed'            => $bedType?->name ?? $request->bed,
-            'bed_type_id'    => $bedType?->id,
             'description'    => $request->description,
             'weekday_price'  => $request->weekday_price,
             'weekend_price'  => $request->weekend_price,
             'stock'          => $request->stock,
-            'capacity_adult' => $request->capacity_adult,
-            'capacity_child' => $request->input('capacity_child', 0),
+            'capacity_adult' => $capacityAdult,
+            'capacity_child' => $capacityChild,
             'breakfast'      => $request->boolean('breakfast', false),
             'smoking_area'   => $request->boolean('smoking_area', false),
             'is_refundable'  => $request->boolean('is_refundable', true),
@@ -157,7 +182,7 @@ class RoomController extends Controller
         if ($request->hasFile('image')) {
             $url = app(FileStorageService::class)->uploadFile($request->file('image'), 'rooms');
             $room->photos()->create([
-                'photo'        => $url,
+                'photo' => $url,
                 'is_thumbnail' => true,
             ]);
         }
@@ -166,7 +191,7 @@ class RoomController extends Controller
             foreach ($request->file('photos') as $index => $photo) {
                 $url = app(FileStorageService::class)->uploadFile($photo, 'rooms');
                 $room->photos()->create([
-                    'photo'        => $url,
+                    'photo' => $url,
                     'is_thumbnail' => $index === 0 && ! $room->photos()->exists(),
                 ]);
             }
@@ -182,9 +207,9 @@ class RoomController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
-        $room = RoomType::with(['photos', 'facilities', 'hotel', 'bedType'])->find($id);
+        $room = $this->findRoomForUser($request, $id, ['photos', 'facilities', 'hotel', 'bedType']);
 
         if (! $room) {
             return response()->json([
@@ -205,7 +230,7 @@ class RoomController extends Controller
      */
     public function update(Request $request, $id): JsonResponse
     {
-        $room = RoomType::find($id);
+        $room = $this->findRoomForUser($request, $id);
 
         if (! $room) {
             return response()->json([
@@ -230,18 +255,18 @@ class RoomController extends Controller
             'bed_type_id'    => [
                 'nullable',
                 'integer',
-                Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id),
+                Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id)->whereNull('deleted_at'),
             ],
             'description'    => 'nullable|string',
             'weekday_price'  => 'sometimes|required|numeric|min:0',
             'weekend_price'  => 'sometimes|required|numeric|min:0',
             'stock'          => 'sometimes|required|integer|min:0',
-            'capacity_adult' => 'sometimes|required|integer|min:1',
-            'capacity_child' => 'sometimes|integer|min:0',
+            'capacity_adult' => 'nullable|integer|min:1',
+            'capacity_child' => 'nullable|integer|min:0',
             'breakfast'      => 'boolean',
             'smoking_area'   => 'boolean',
             'facilities'     => 'nullable|array',
-            'facilities.*'   => 'exists:facilities,id',
+            'facilities.*'   => [Rule::exists('facilities', 'id')->where(fn ($q) => $q->where('hotel_id', $room->hotel_id)->orWhereNull('hotel_id'))],
             'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'photos'         => 'nullable|array',
             'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
@@ -250,13 +275,13 @@ class RoomController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $updateData = $request->only([
             'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
-            'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
+            'stock', 'breakfast', 'smoking_area',
         ]);
         if ($request->exists('bed_type_id')) {
             $bedType = $request->filled('bed_type_id')
@@ -264,6 +289,9 @@ class RoomController extends Controller
                 : null;
             $updateData['bed_type_id'] = $bedType?->id;
             $updateData['bed'] = $bedType?->name ?? $request->input('bed');
+            [$updateData['capacity_adult'], $updateData['capacity_child']] = $this->resolveCapacities($request);
+        } elseif ($request->has('capacity_adult') || $request->has('capacity_child')) {
+            [$updateData['capacity_adult'], $updateData['capacity_child']] = $this->resolveCapacities($request);
         }
 
         if ($request->has('is_refundable')) {
@@ -278,7 +306,7 @@ class RoomController extends Controller
                 $facilities = [];
             }
             if (is_array($facilities)) {
-                $room->facilities()->sync(array_filter($facilities, fn($v) => is_numeric($v)));
+                $room->facilities()->sync(array_filter($facilities, fn ($v) => is_numeric($v)));
             }
         }
 
@@ -286,7 +314,7 @@ class RoomController extends Controller
         if ($request->hasFile('image')) {
             $url = app(FileStorageService::class)->uploadFile($request->file('image'), 'rooms');
             $room->photos()->create([
-                'photo'        => $url,
+                'photo' => $url,
                 'is_thumbnail' => $room->photos()->count() === 0,
             ]);
         }
@@ -297,7 +325,7 @@ class RoomController extends Controller
             foreach ($request->file('photos') as $index => $photo) {
                 $url = app(FileStorageService::class)->uploadFile($photo, 'rooms');
                 $room->photos()->create([
-                    'photo'        => $url,
+                    'photo' => $url,
                     'is_thumbnail' => ! $hasExistingPhotos && $index === 0,
                 ]);
             }
@@ -313,10 +341,10 @@ class RoomController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         try {
-            $room = RoomType::find($id);
+            $room = $this->findRoomForUser($request, $id);
 
             if (! $room) {
                 return response()->json([
@@ -350,5 +378,23 @@ class RoomController extends Controller
                 'message' => 'Terjadi kesalahan: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Tentukan kapasitas dewasa/anak. Bila bed_type_id dipilih, ambil dari BedType.
+     */
+    private function resolveCapacities(Request $request): array
+    {
+        if ($request->filled('bed_type_id')) {
+            $bed = BedType::find($request->input('bed_type_id'));
+            if ($bed) {
+                return [(int) $bed->max_adults, (int) $bed->max_children];
+            }
+        }
+
+        return [
+            max(1, (int) $request->input('capacity_adult', 2)),
+            max(0, (int) $request->input('capacity_child', 0)),
+        ];
     }
 }

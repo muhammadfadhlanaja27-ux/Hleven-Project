@@ -38,8 +38,8 @@ Backend assets (CSS/JS for Laravel's own `resources/`) are built by a **separate
 
 ## Gotchas
 
-- **Frontend `api.js` hardcodes `baseURL: 'http://localhost:8000/api/v1'`** and does **not** read `VITE_API_URL` from `.env`. Changing `frontend/.env` will not redirect API calls.
-- **Backend `.env` currently points to a hosted Supabase PostgreSQL** (`DB_CONNECTION=pgsql`), but `phpunit.xml` overrides to `:memory:` SQLite for tests. Tests are isolated from the real DB; `php artisan migrate` needs the configured PG connection.
+- **Frontend `api.js` reads `import.meta.env.VITE_API_URL`** (fallback `http://localhost:8000/api/v1`). `frontend/.env` sets it, so changing that file redirects API calls.
+- **Backend `.env` currently points to a local MySQL database** (`DB_CONNECTION=mysql`, host `127.0.0.1`, database `db_hotel`); `phpunit.xml` overrides to `:memory:` SQLite for tests. Tests are isolated from the real DB; `php artisan migrate` needs the configured MySQL connection. (Supabase is still used for **file storage**, not the DB.)
 - Backend `.npmrc` has `ignore-scripts=true` — `npm install` there skips postinstall scripts.
 - `backend/.gitignore` ignores `.env`, `vendor`, `node_modules`, `public/build`, `storage/framework`, etc. The frontend `dist/` is **not** gitignored (it is committed).
 - No CI workflows, pre-commit hooks, or eslint/prettier configs exist. `composer test` is the only automated check.

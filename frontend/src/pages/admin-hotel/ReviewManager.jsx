@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 // Helper to render star icons
 const renderStars = (rating) => {
@@ -51,8 +50,6 @@ export default function ReviewManager() {
 
   // Modal States
   const [viewingReview, setViewingReview] = useState(null);
-  const [confirmDeleteReview, setConfirmDeleteReview] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchReviews();
@@ -117,34 +114,6 @@ export default function ReviewManager() {
       toast.error("Gagal mengirim balasan.");
     } finally {
       setIsSendingReply(false);
-    }
-  };
-
-  // Delete Review — buka dialog konfirmasi
-  const handleDeleteReview = (reviewId) => {
-    setConfirmDeleteReview(reviewId);
-  };
-
-  // Eksekusi hapus setelah konfirmasi
-  const performDeleteReview = async () => {
-    if (!confirmDeleteReview) return;
-    setIsDeleting(true);
-    try {
-      const reviewId = confirmDeleteReview;
-      await api.delete(`/hotel/reviews/${reviewId}`);
-      toast.success("Ulasan berhasil dihapus.");
-      invalidateCache("/hotel/reviews");
-      invalidateCache("/admin/hotel/dashboard");
-      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
-      if (viewingReview && viewingReview.id === reviewId) {
-        setViewingReview(null);
-      }
-      setConfirmDeleteReview(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Gagal menghapus ulasan.");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -505,12 +474,6 @@ export default function ReviewManager() {
                       >
                         View Detail
                       </button>
-                      <button
-                        onClick={() => handleDeleteReview(review.id)}
-                        className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors border border-red-200"
-                      >
-                        Delete
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -653,18 +616,8 @@ export default function ReviewManager() {
 
 
       {/* ========================================================================= */}
-      {/* CONFIRM DELETE DIALOG                                                     */}
+      {/* REVIEW DETAIL MODAL (viewingReview part already ends before this)      */}
       {/* ========================================================================= */}
-      <ConfirmDialog
-        open={!!confirmDeleteReview}
-        type="danger"
-        title="Hapus Ulasan"
-        message="Hapus ulasan ini? Tindakan ini tidak dapat dibatalkan."
-        confirmText="Ya, Hapus"
-        processing={isDeleting}
-        onConfirm={performDeleteReview}
-        onCancel={() => setConfirmDeleteReview(null)}
-      />
     </div>
   );
 }

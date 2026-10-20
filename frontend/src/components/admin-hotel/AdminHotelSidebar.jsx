@@ -89,7 +89,25 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 bed
               </span>
-              <span>CRUD Tipe Kamar</span>
+              <span>Room Management</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/admin/calendar"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/calendar')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                calendar_month
+              </span>
+              <span>Kalender &amp; Harga</span>
+            </Link>
+          </li>
             </Link>
           </li>
 
@@ -106,6 +124,22 @@ export default function AdminHotelSidebar() {
                 calendar_today
               </span>
               <span>Bookings Management</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/admin/bed-types"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/bed-types')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                king_bed
+              </span>
+              <span>Bed Types Management</span>
             </Link>
           </li>
 
@@ -141,6 +175,22 @@ export default function AdminHotelSidebar() {
 
           <li>
             <Link
+              to="/admin/warnings"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/warnings')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                warning
+              </span>
+              <span>Peringatan</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
               to="/admin/reviews"
               className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
                 isActive('/admin/reviews')
@@ -152,6 +202,22 @@ export default function AdminHotelSidebar() {
                 star
               </span>
               <span>Reviews Management</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/admin/payouts"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/payouts')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                account_balance_wallet
+              </span>
+              <span>Saldo &amp; Pencairan</span>
             </Link>
           </li>
 

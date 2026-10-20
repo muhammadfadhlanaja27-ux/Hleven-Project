@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('guests', function (Blueprint $table) {
-            $table->string('email')->nullable()->after('phone');
+        Schema::table('warnings', function (Blueprint $table) {
+            $table->timestamp('read_at')->nullable()->after('status');
         });
     }
 
     public function down(): void
     {
-        Schema::table('guests', function (Blueprint $table) {
-            $table->dropColumn('email');
+        Schema::table('warnings', function (Blueprint $table) {
+            $table->dropColumn('read_at');
         });
     }
 };

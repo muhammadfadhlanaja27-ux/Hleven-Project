@@ -1,258 +1,334 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-
-const initialForm = { name: "", description: "", status: "active" };
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 
 export default function BedTypeManager() {
   const [bedTypes, setBedTypes] = useState([]);
-  const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingBedType, setEditingBedType] = useState(null);
-  const [deletingBedType, setDeletingBedType] = useState(null);
-  const [form, setForm] = useState(initialForm);
+  const [loading, setLoading] = useState(true);
+  const [modalMode, setModalMode] = useState(null); // add | edit | delete
+  const [selectedBed, setSelectedBed] = useState(null);
+  const [formValues, setFormValues] = useState({
+    name: "",
+    size: "",
+    max_adults: 1,
+    max_children: 0,
+    max_total: 1,
+    description: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const loadBedTypes = async () => {
-    setIsLoading(true);
+  const fetchBedTypes = async (force = false) => {
+    setLoading(true);
     try {
-      const response = await api.get("/admin/bed-types");
-      const data = response.data?.data;
-      if (!Array.isArray(data)) {
-        throw new Error("Format daftar tipe kasur dari server tidak valid.");
-      }
-      setBedTypes(data);
-    } catch (error) {
-      console.error("Gagal memuat tipe kasur:", error);
-      toast.error(error.response?.data?.message || "Gagal memuat daftar tipe kasur.");
+      const { data } = await cachedGet("/admin/bed-types", {}, force);
+      const list = Array.isArray(data?.data) ? data.data : [];
+      setBedTypes(list);
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal memuat tipe tempat tidur.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadBedTypes();
+    fetchBedTypes();
   }, []);
 
-  const filteredBedTypes = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return bedTypes.filter((bedType) =>
-      [bedType.name, bedType.description]
-        .filter(Boolean)
-        .some((value) => value.toLocaleLowerCase().includes(query))
-    );
-  }, [bedTypes, search]);
-
-  const openCreate = () => {
-    setEditingBedType(null);
-    setForm(initialForm);
-    setIsFormOpen(true);
+  const handleOpenAdd = () => {
+    setFormValues({ name: "", size: "", max_adults: 1, max_children: 0, max_total: 1, description: "" });
+    setErrors({});
+    setSelectedBed(null);
+    setModalMode("add");
   };
 
-  const openEdit = (bedType) => {
-    setEditingBedType(bedType);
-    setForm({
-      name: bedType.name || "",
-      description: bedType.description || "",
-      status: bedType.status || "active",
+  const handleOpenEdit = (bed) => {
+    setFormValues({
+      name: bed.name || "",
+      size: bed.size || "",
+      max_adults: bed.max_adults ?? 1,
+      max_children: bed.max_children ?? 0,
+      max_total: bed.max_total ?? 1,
+      description: bed.description || "",
     });
-    setIsFormOpen(true);
+    setSelectedBed(bed);
+    setErrors({});
+    setModalMode("edit");
   };
 
-  const closeForm = () => {
-    setEditingBedType(null);
-    setForm(initialForm);
-    setIsFormOpen(false);
+  const handleOpenDelete = (bed) => {
+    setSelectedBed(bed);
+    setModalMode("delete");
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setIsSaving(true);
+  const closeModal = () => {
+    setModalMode(null);
+    setSelectedBed(null);
+    setErrors({});
+    setSubmitting(false);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormValues((prev) => ({ 
+      ...prev, 
+      [name]: (name.includes('max_') && name !== 'description') ? (parseInt(value, 10) || 0) : value 
+    }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validate = () => {
+    const err = {};
+    if (!formValues.name.trim()) err.name = "Nama diperlukan.";
+    if (formValues.max_adults < 1) err.max_adults = "Minimal 1 dewasa.";
+    if (formValues.max_total < 1) err.max_total = "Minimal 1 total.";
+    if (formValues.max_adults > formValues.max_total) err.max_total = "Total harus >= Dewasa.";
+    return err;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const err = validate();
+    if (Object.keys(err).length) return setErrors(err);
+    setSubmitting(true);
     try {
-      if (editingBedType) {
-        await api.put(`/admin/bed-types/${editingBedType.id}`, form);
-        toast.success("Tipe kasur berhasil diperbarui.");
-      } else {
-        await api.post("/admin/bed-types", form);
-        toast.success("Tipe kasur berhasil ditambahkan.");
+      if (modalMode === "add") {
+        await api.post("/admin/bed-types", formValues);
+        toast.success("Tipe tempat tidur ditambahkan.");
+      } else if (modalMode === "edit" && selectedBed) {
+        await api.put(`/admin/bed-types/${selectedBed.id}`, formValues);
+        toast.success("Tipe tempat tidur diperbarui.");
+      } else if (modalMode === "delete" && selectedBed) {
+        await api.delete(`/admin/bed-types/${selectedBed.id}`);
+        toast.success("Tipe tempat tidur dihapus.");
       }
-      closeForm();
-      await loadBedTypes();
-    } catch (error) {
-      console.error("Gagal menyimpan tipe kasur:", error);
-      const message =
-        error.response?.data?.message ||
-        Object.values(error.response?.data?.errors || {})[0]?.[0] ||
-        "Gagal menyimpan tipe kasur.";
-      toast.error(message);
+      invalidateCache("/admin/bed-types");
+      await fetchBedTypes(true);
+      closeModal();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.message || "Operasi gagal.");
     } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deletingBedType) return;
-    setIsSaving(true);
-    try {
-      await api.delete(`/admin/bed-types/${deletingBedType.id}`);
-      setBedTypes((current) =>
-        current.filter((bedType) => bedType.id !== deletingBedType.id)
-      );
-      setDeletingBedType(null);
-      toast.success("Tipe kasur berhasil dihapus.");
-    } catch (error) {
-      console.error("Gagal menghapus tipe kasur:", error);
-      toast.error(error.response?.data?.message || "Gagal menghapus tipe kasur.");
-    } finally {
-      setIsSaving(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="font-['Newsreader',serif] text-3xl font-semibold text-[#2D312C]">
-            CRUD Kasur
-          </h1>
-          <p className="text-sm text-[#6B6E6A] mt-1">
-            Kelola pilihan tipe kasur untuk kamar hotel Anda.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#506147] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#3b4b33]"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          Tambah Tipe Kasur
-        </button>
-      </div>
-
-      <div className="rounded-xl border border-[#E5E1DA] bg-white p-4 sm:p-6 shadow-sm">
-        <div className="relative mb-5">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873]">
-            search
-          </span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cari nama atau deskripsi kasur..."
-            aria-label="Cari tipe kasur"
-            className="h-11 w-full rounded-lg border border-[#E5E0D8] pl-10 pr-4 text-sm focus:border-[#506147] focus:outline-none focus:ring-2 focus:ring-[#506147]/20"
-          />
+    <div className="p-8 bg-[#F8F9F8] min-h-screen">
+      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-[#E8EAE8] overflow-hidden">
+        <div className="p-6 border-b border-[#E8EAE8] flex justify-between items-center bg-white">
+          <div>
+            <h2 className="text-2xl font-semibold text-[#2D312C] font-['Newsreader',serif]">Manajemen Tempat Tidur</h2>
+            <p className="text-sm text-[#6B6E6A] mt-1">Atur konfigurasi kapasitas kasur untuk hotel Anda</p>
+          </div>
+          <button 
+            onClick={handleOpenAdd} 
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#506147] text-white rounded-full font-medium hover:bg-[#3D4B36] transition-all shadow-sm active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            Tambah Tipe
+          </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-left">
-            <thead>
-              <tr className="border-b border-[#E5E1DA] text-xs uppercase tracking-wide text-[#6B6E6A]">
-                <th className="px-3 py-3">Nama Tipe Kasur</th>
-                <th className="px-3 py-3">Deskripsi</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E5E1DA] text-sm">
-              {isLoading ? (
-                <tr><td colSpan="4" className="px-3 py-10 text-center text-[#6B6E6A]">Memuat tipe kasur...</td></tr>
-              ) : filteredBedTypes.length === 0 ? (
-                <tr><td colSpan="4" className="px-3 py-10 text-center text-[#6B6E6A]">Tidak ada tipe kasur yang cocok.</td></tr>
-              ) : filteredBedTypes.map((bedType) => (
-                <tr key={bedType.id} className="hover:bg-[#F8F6F2]">
-                  <td className="px-3 py-4 font-semibold text-[#2D312C]">{bedType.name}</td>
-                  <td className="px-3 py-4 text-[#6B6E6A]">{bedType.description || "—"}</td>
-                  <td className="px-3 py-4">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${bedType.status === "active" ? "bg-[#E4EBE0] text-[#4A5D43]" : "bg-[#F2EBE1] text-[#6B6E6A]"}`}>
-                      {bedType.status === "active" ? "Aktif" : "Nonaktif"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4">
-                    <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => openEdit(bedType)} className="rounded-lg border border-[#D8D5CD] px-3 py-1.5 text-xs font-semibold text-[#506147] hover:bg-[#E4EBE0]">
-                        Edit
-                      </button>
-                      <button type="button" onClick={() => setDeletingBedType(bedType)} className="rounded-lg border border-[#E5C7C1] px-3 py-1.5 text-xs font-semibold text-[#BA1A1A] hover:bg-[#FFF0EE]">
-                        Hapus
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
-                  {editingBedType ? "Edit Tipe Kasur" : "Tambah Tipe Kasur"}
-                </h2>
-                <p className="mt-1 text-xs text-[#6B6E6A]">Data ini hanya berlaku untuk hotel Anda.</p>
-              </div>
-              <button type="button" onClick={closeForm} aria-label="Tutup" className="text-2xl text-[#6B6E6A]">×</button>
+        <div className="p-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="w-10 h-10 border-4 border-[#506147]/20 border-t-[#506147] rounded-full animate-spin"></div>
+              <p className="text-[#6B6E6A] font-medium">Memuat data...</p>
             </div>
+          ) : bedTypes.length === 0 ? (
+            <div className="text-center py-20 bg-[#FBFBFA] rounded-xl border-2 border-dashed border-[#E8EAE8]">
+              <span className="material-symbols-outlined text-[48px] text-[#A6A9A6]">bed</span>
+              <p className="text-[#6B6E6A] mt-4 font-medium">Belum ada tipe tempat tidur</p>
+              <button onClick={handleOpenAdd} className="text-[#506147] underline mt-1 text-sm font-semibold">Mulai tambahkan sekarang</button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[#E8EAE8]">
+              <table className="min-w-full divide-y divide-[#E8EAE8]">
+                <thead className="bg-[#FBFBFA]">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Informasi Kasur</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Dewasa</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Anak</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Total Tamu</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-[#E8EAE8]">
+                  {bedTypes.map((b) => (
+                    <tr key={b.id} className="hover:bg-[#F8F9F8] transition-colors group">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-[#2D312C] font-semibold">{b.name}</span>
+                          <span className="text-[#6B6E6A] text-xs italic">{b.size || "Ukuran tidak diset"}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="px-2.5 py-1 bg-[#506147]/10 text-[#506147] rounded-md text-sm font-bold">{b.max_adults}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="px-2.5 py-1 bg-[#D48C45]/10 text-[#D48C45] rounded-md text-sm font-bold">{b.max_children}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="px-3 py-1 bg-[#2D312C] text-white rounded-md text-sm font-bold">{b.max_total}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => handleOpenEdit(b)} 
+                            className="p-2 text-[#506147] hover:bg-[#506147]/10 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <button 
+                            onClick={() => handleOpenDelete(b)} 
+                            className="p-2 text-[#BA1A1A] hover:bg-[#BA1A1A]/10 rounded-lg transition-colors"
+                            title="Hapus"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#434842]">Nama tipe kasur *</span>
-              <input
-                required
-                maxLength={100}
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Contoh: 1 King Bed"
-                className="h-11 w-full rounded-lg border border-[#E5E0D8] px-3 text-sm focus:border-[#506147] focus:outline-none"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#434842]">Deskripsi</span>
-              <textarea
-                rows={3}
-                maxLength={1000}
-                value={form.description}
-                onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                placeholder="Opsional"
-                className="w-full rounded-lg border border-[#E5E0D8] p-3 text-sm focus:border-[#506147] focus:outline-none"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#434842]">Status</span>
-              <select
-                value={form.status}
-                onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-                className="h-11 w-full rounded-lg border border-[#E5E0D8] px-3 text-sm focus:border-[#506147] focus:outline-none"
-              >
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-              </select>
-            </label>
-            <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={closeForm} disabled={isSaving} className="rounded-lg border border-[#D8D5CD] px-4 py-2 text-sm font-semibold text-[#506147]">Batal</button>
-              <button type="submit" disabled={isSaving} className="rounded-lg bg-[#506147] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                {isSaving ? "Menyimpan..." : "Simpan"}
+      {/* Modal Form */}
+      {(modalMode === "add" || modalMode === "edit") && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in slide-in-from-bottom-4 zoom-in-95">
+            <div className="p-6 border-b border-[#E8EAE8] flex justify-between items-center bg-[#FBFBFA]">
+              <h3 className="text-xl font-bold text-[#2D312C] font-['Newsreader',serif]">
+                {modalMode === "add" ? "Tambah Tipe Kasur" : "Perbarui Tipe Kasur"}
+              </h3>
+              <button onClick={closeModal} className="text-[#6B6E6A] hover:text-[#2D312C] transition-colors">
+                <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-          </form>
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Nama Tipe Kasur *</label>
+                <input 
+                  name="name" 
+                  value={formValues.name} 
+                  onChange={handleChange} 
+                  placeholder="Contoh: King Bed, Double Twin"
+                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.name ? 'border-[#BA1A1A] bg-[#BA1A1A]/5' : 'border-[#E8EAE8] focus:border-[#506147]'} outline-none transition-all`}
+                />
+                {errors.name && <p className="text-[11px] text-[#BA1A1A] font-semibold">{errors.name}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Dimensi / Ukuran</label>
+                <input 
+                  name="size" 
+                  value={formValues.size} 
+                  onChange={handleChange} 
+                  placeholder="Contoh: 180 x 200 cm"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8EAE8] focus:border-[#506147] outline-none transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Dewasa</label>
+                  <input 
+                    type="number" 
+                    name="max_adults" 
+                    value={formValues.max_adults} 
+                    onChange={handleChange} 
+                    className={`w-full px-4 py-2.5 rounded-xl border ${errors.max_adults ? 'border-[#BA1A1A]' : 'border-[#E8EAE8]'} text-center font-bold`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Anak</label>
+                  <input 
+                    type="number" 
+                    name="max_children" 
+                    value={formValues.max_children} 
+                    onChange={handleChange} 
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#E8EAE8] text-center font-bold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Total</label>
+                  <input 
+                    type="number" 
+                    name="max_total" 
+                    value={formValues.max_total} 
+                    onChange={handleChange} 
+                    className={`w-full px-4 py-2.5 rounded-xl border ${errors.max_total ? 'border-[#BA1A1A]' : 'border-[#E8EAE8]'} text-center font-bold`}
+                  />
+                </div>
+              </div>
+              {errors.max_total && <p className="text-[11px] text-[#BA1A1A] font-semibold text-center">{errors.max_total}</p>}
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Keterangan Tambahan</label>
+                <textarea 
+                  name="description" 
+                  value={formValues.description} 
+                  onChange={handleChange} 
+                  placeholder="Opsional..."
+                  rows="3"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8EAE8] focus:border-[#506147] outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={closeModal} 
+                  className="flex-1 px-4 py-3 border border-[#E8EAE8] text-[#2D312C] rounded-xl font-bold hover:bg-[#FBFBFA] transition-all"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="flex-1 px-4 py-3 bg-[#506147] text-white rounded-xl font-bold hover:bg-[#3D4B36] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {submitting ? "Memproses..." : modalMode === "add" ? "Simpan Tipe" : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      {deletingBedType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">Hapus Tipe Kasur?</h2>
-            <p className="text-sm text-[#6B6E6A]">
-              Tipe <strong>{deletingBedType.name}</strong> akan dihapus dan tidak bisa dipilih untuk kamar baru. Tipe yang sedang dipakai kamar harus dinonaktifkan, bukan dihapus.
+      {/* Modal Konfirmasi Hapus */}
+      {modalMode === "delete" && selectedBed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center animate-in zoom-in-95 slide-in-from-bottom-2">
+            <div className="w-20 h-20 bg-[#BA1A1A]/10 text-[#BA1A1A] rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[40px]">warning</span>
+            </div>
+            <h3 className="text-xl font-bold text-[#2D312C] mb-2 font-['Newsreader',serif]">Hapus Tipe Kasur?</h3>
+            <p className="text-[#6B6E6A] text-sm mb-8">
+              Apakah Anda yakin ingin menghapus <span className="font-bold text-[#2D312C]">"{selectedBed.name}"</span>? Tindakan ini tidak dapat dibatalkan.
             </p>
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setDeletingBedType(null)} disabled={isSaving} className="rounded-lg border border-[#D8D5CD] px-4 py-2 text-sm font-semibold text-[#506147]">Batal</button>
-              <button type="button" onClick={handleDelete} disabled={isSaving} className="rounded-lg bg-[#BA1A1A] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-                {isSaving ? "Menghapus..." : "Hapus"}
+            <div className="flex gap-3">
+              <button 
+                onClick={closeModal} 
+                className="flex-1 px-4 py-3 border border-[#E8EAE8] text-[#2D312C] rounded-xl font-bold hover:bg-[#FBFBFA]"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleSubmit} 
+                disabled={submitting}
+                className="flex-1 px-4 py-3 bg-[#BA1A1A] text-white rounded-xl font-bold hover:bg-[#93000A] transition-all shadow-md active:scale-95"
+              >
+                {submitting ? "..." : "Ya, Hapus"}
               </button>
             </div>
           </div>

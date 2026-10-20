@@ -148,7 +148,85 @@ class BedTypeTest extends TestCase
         $this->assertSame(4, BedType::where('hotel_id', $hotel->id)->count());
     }
 
-    private function createHotelAdmin(string $email): array
+    public function test_room_derives_capacity_from_selected_bed_type(): void
+    {
+        [$user, $hotel] = $this->createHotelAdmin('admin@example.com', 'test-hotel');
+
+        $bed = BedType::create([
+            'hotel_id' => $hotel->id,
+            'name' => 'King Bed',
+            'max_adults' => 2,
+            'max_children' => 1,
+            'max_total' => 3,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user, 'sanctum');
+
+        $response = $this->postJson('/api/v1/admin/rooms', [
+            'name' => 'Deluxe Room',
+            'type' => 'Deluxe',
+            'bed_type_id' => $bed->id,
+            'weekday_price' => 500000,
+            'weekend_price' => 650000,
+            'stock' => 5,
+        ]);
+
+        $response->assertStatus(201);
+
+        $room = RoomType::where('name', 'Deluxe Room')->firstOrFail();
+        $this->assertSame($bed->id, $room->bed_type_id);
+        $this->assertSame(2, $room->capacity_adult);
+        $this->assertSame(1, $room->capacity_child);
+    }
+
+    public function test_admin_cannot_access_another_hotels_bed_type(): void
+    {
+        [$userA] = $this->createHotelAdmin('admin-a@example.com', 'hotel-a');
+        [, $hotelB] = $this->createHotelAdmin('admin-b@example.com', 'hotel-b');
+
+        $bedB = BedType::create([
+            'hotel_id' => $hotelB->id,
+            'name' => 'Queen Bed',
+            'max_adults' => 2,
+            'max_children' => 0,
+            'max_total' => 2,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($userA, 'sanctum');
+
+        $this->getJson('/api/v1/admin/bed-types/'.$bedB->id)->assertStatus(404);
+        $this->deleteJson('/api/v1/admin/bed-types/'.$bedB->id)->assertStatus(404);
+    }
+
+    public function test_room_cannot_reference_another_hotels_bed_type(): void
+    {
+        [$userA] = $this->createHotelAdmin('admin-a@example.com', 'hotel-a');
+        [, $hotelB] = $this->createHotelAdmin('admin-b@example.com', 'hotel-b');
+
+        $bedB = BedType::create([
+            'hotel_id' => $hotelB->id,
+            'name' => 'Queen Bed',
+            'max_adults' => 2,
+            'max_children' => 0,
+            'max_total' => 2,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($userA, 'sanctum');
+
+        $this->postJson('/api/v1/admin/rooms', [
+            'name' => 'Deluxe Room',
+            'type' => 'Deluxe',
+            'bed_type_id' => $bedB->id,
+            'weekday_price' => 500000,
+            'weekend_price' => 650000,
+            'stock' => 5,
+        ])->assertStatus(422);
+    }
+
+    private function createHotelAdmin(string $email, ?string $slug = null): array
     {
         $admin = User::create([
             'name' => 'Hotel Admin',
@@ -163,11 +241,13 @@ class BedTypeTest extends TestCase
             'city' => 'Bandung',
         ]);
 
+        $slug = $slug ?? ('hotel-'.strstr($email, '@', true));
+
         $hotel = Hotel::create([
             'admin_id' => $admin->id,
             'city_id' => $city->id,
-            'name' => 'Hotel '.strstr($email, '@', true),
-            'slug' => 'hotel-'.strstr($email, '@', true),
+            'name' => 'Hotel '.$slug,
+            'slug' => $slug,
             'description' => 'Hotel test',
             'address' => 'Jl. Test 123',
             'status' => 'active',

@@ -136,15 +136,12 @@ const normalizeRoom = (r) => {
         ? "Deluxe"
         : "Standard"
     ),
-    bed: r.bed || "",
-    bed_type_id: r.bed_type_id || r.bed_type?.id || "",
-    bed_type: r.bed_type || null,
+    bed: r.bedType?.name || r.bed || "",
+    bed_type_id: r.bed_type_id || (r.bedType?.id ?? ""),
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
     weekend_price: Number(r.weekend_price || 0),
     capacity: Number(r.capacity_adult || r.capacity || 2),
-    capacity_adult: Number(r.capacity_adult || 2),
-    capacity_child: Number(r.capacity_child || 0),
     stock: Number(r.stock || 0),
     occupied: Number(r.occupied || 0),
     is_refundable: r.is_refundable !== undefined ? Boolean(r.is_refundable) : true,
@@ -162,7 +159,7 @@ export default function RoomList() {
   const [rooms, setRooms] = useState([]);
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [bedTypes, setBedTypes] = useState([]);
-  const [facilitySearch, setFacilitySearch] = useState("");
+  const [bedTypes, setBedTypes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -197,7 +194,11 @@ export default function RoomList() {
       const [roomsRes, facilitiesRes, bedTypesRes] = await Promise.allSettled([
         api.get("/admin/rooms"),
         cachedGet("/facilities"),
+<<<<<<< HEAD
         api.get("/admin/bed-types"),
+=======
+        cachedGet("/admin/bed-types"),
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
       ]);
 
       if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {
@@ -217,11 +218,13 @@ export default function RoomList() {
         setRoomFacilities(filtered);
       }
       if (bedTypesRes.status === "fulfilled") {
-        const rawBedTypes = bedTypesRes.value?.data?.data ?? [];
-        setBedTypes(Array.isArray(rawBedTypes) ? rawBedTypes : []);
-      } else {
-        console.error("Failed to load bed types:", bedTypesRes.reason);
-        toast.error("Gagal memuat tipe kasur untuk kamar.");
+        const payload = bedTypesRes.value?.data ?? bedTypesRes.value ?? [];
+        const rawBeds = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+        setBedTypes(Array.isArray(rawBeds) ? rawBeds : []);
       }
     } catch (err) {
       console.error(err);
@@ -291,12 +294,10 @@ export default function RoomList() {
       name: room.name,
       type: room.type || "Standard",
       bed: room.bed || "",
-      bed_type_id: room.bed_type_id || room.bed_type?.id || "",
+      bed_type_id: room.bed_type_id || "",
       description: room.description || "",
       weekday_price: room.weekday_price,
       weekend_price: room.weekend_price,
-      capacity_adult: room.capacity_adult || room.capacity || 2,
-      capacity_child: room.capacity_child || 0,
       stock: room.stock,
       occupied: room.occupied || 0,
       facilityIds: deduplicateFacilities(room.facilities || [], room.facilityIds || [])
@@ -317,6 +318,19 @@ export default function RoomList() {
     setEditValues((prev) => ({ ...prev, [name]: value }));
     if (editErrors[name]) {
       setEditErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleEditBedTypeChange = (e) => {
+    const value = e.target.value;
+    const selected = bedTypes.find((b) => String(b.id) === String(value));
+    setEditValues((prev) => ({
+      ...prev,
+      bed_type_id: value,
+      bed: selected ? selected.name : "",
+    }));
+    if (editErrors.bed_type_id) {
+      setEditErrors((prev) => ({ ...prev, bed_type_id: "" }));
     }
   };
 
@@ -387,8 +401,8 @@ export default function RoomList() {
       errs.weekday_price = "Weekday price must be greater than 0.";
     if (!editValues.weekend_price || Number(editValues.weekend_price) <= 0)
       errs.weekend_price = "Weekend price must be greater than 0.";
-    if (!editValues.capacity_adult || Number(editValues.capacity_adult) < 1)
-      errs.capacity_adult = "Adult capacity must be at least 1.";
+    if (!editValues.bed_type_id)
+      errs.bed_type_id = "Pilih tipe tempat tidur.";
     if (!editValues.stock || Number(editValues.stock) < 1)
       errs.stock = "Stock must be at least 1.";
 
@@ -418,8 +432,6 @@ export default function RoomList() {
       payload.append("description", editValues.description?.trim() || "");
       payload.append("weekday_price", Number(editValues.weekday_price));
       payload.append("weekend_price", Number(editValues.weekend_price));
-      payload.append("capacity_adult", Number(editValues.capacity_adult));
-      payload.append("capacity_child", Number(editValues.capacity_child || 0));
       payload.append("stock", Number(editValues.stock));
       payload.append("is_refundable", editValues.is_refundable ? "1" : "0");
       payload.append("policies", (editValues.policies || "").trim());
@@ -985,17 +997,34 @@ export default function RoomList() {
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">3. Capacity &amp; Availability</h4>
+                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">3. Availability</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-[#2D312C]">Adult Capacity *</label>
-                    <input type="number" name="capacity_adult" value={editValues.capacity_adult} onChange={handleEditChange} min="1" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
-                    {editErrors.capacity_adult && <span className="text-xs text-[#ba1a1a]">{editErrors.capacity_adult}</span>}
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-[#2D312C]">Child Capacity</label>
-                    <input type="number" name="capacity_child" value={editValues.capacity_child} onChange={handleEditChange} min="0" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <label className="text-xs font-semibold text-[#2D312C]">Bed Type *</label>
+                    <select
+                      name="bed_type_id"
+                      value={editValues.bed_type_id || ""}
+                      onChange={handleEditBedTypeChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Pilih Tipe Kasur</option>
+                      {bedTypes.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                          {b.size ? ` — ${b.size}` : ""} ({b.max_adults}D/{b.max_children}A, maks {b.max_total})
+                        </option>
+                      ))}
+                    </select>
+                    {editErrors.bed_type_id && <span className="text-xs text-[#ba1a1a]">{editErrors.bed_type_id}</span>}
+                    {(() => {
+                      const selected = bedTypes.find((b) => String(b.id) === String(editValues.bed_type_id));
+                      if (!selected) return null;
+                      return (
+                        <span className="text-[11px] text-[#4A5D43] mt-1">
+                          Kapasitas: {selected.max_adults} Dewasa, {selected.max_children} Anak (Total {selected.max_total} tamu)
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex flex-col gap-1">
