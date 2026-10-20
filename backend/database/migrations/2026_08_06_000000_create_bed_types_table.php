@@ -17,7 +17,9 @@ return new class extends Migration
             $table->integer('max_children')->default(0);
             $table->integer('max_total')->default(1);
             $table->text('description')->nullable();
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

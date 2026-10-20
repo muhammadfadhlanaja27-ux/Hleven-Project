@@ -4,6 +4,12 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  matchesFacilitySearch,
+  resolveFacilityIcon as getFacilityIcon,
+} from "../../utils/facilities";
 
 const normalizeImageUrl = (value) => getStorageUrl(value);
 
@@ -130,7 +136,7 @@ const normalizeRoom = (r) => {
         ? "Deluxe"
         : "Standard"
     ),
-     bed: r.bedType?.name || r.bed || "",
+    bed: r.bedType?.name || r.bed || "",
     bed_type_id: r.bed_type_id || (r.bedType?.id ?? ""),
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
@@ -187,7 +193,7 @@ export default function RoomList() {
       const [roomsRes, facilitiesRes, bedTypesRes] = await Promise.allSettled([
         api.get("/admin/rooms"),
         cachedGet("/facilities"),
-        cachedGet("/admin/bed-types"),
+        api.get("/admin/bed-types"),
       ]);
 
       if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {
@@ -224,9 +230,10 @@ export default function RoomList() {
   };
 
   const getFacilitiesForRoom = (facilityIds = []) => {
-    return facilityIds
-      .map((id) => roomFacilities.find((f) => f.id === id))
+    const facilities = facilityIds
+      .map((id) => roomFacilities.find((facility) => Number(facility.id) === Number(id)))
       .filter(Boolean);
+    return deduplicateFacilities(facilities, facilityIds);
   };
 
   const filteredRooms = rooms.filter((room) => {
@@ -275,6 +282,7 @@ export default function RoomList() {
 
   const handleOpenEdit = (room) => {
     setEditingRoom(room);
+    setFacilitySearch("");
     setEditNewPhotoFiles([]);
     setDeletedPhotoIds([]);
     setEditValues({
@@ -287,7 +295,8 @@ export default function RoomList() {
       weekend_price: room.weekend_price,
       stock: room.stock,
       occupied: room.occupied || 0,
-      facilityIds: room.facilityIds || [],
+      facilityIds: deduplicateFacilities(room.facilities || [], room.facilityIds || [])
+        .map((facility) => facility.id),
       photos: room.photos || [],
       is_refundable: room.is_refundable !== undefined ? Boolean(room.is_refundable) : true,
       policies: room.policies || "",
@@ -656,10 +665,10 @@ export default function RoomList() {
 
                       <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">{room.type}</td>
                       <td className="p-4 text-[#6B6E6A] font-medium whitespace-nowrap">
-                        {room.bed ? (
+                        {(room.bed_type?.name || room.bed) ? (
                           <span className="inline-flex items-center gap-1">
                             <span className="material-symbols-outlined text-[16px] text-[#506147]">bed</span>
-                            {room.bed}
+                            {room.bed_type?.name || room.bed}
                           </span>
                         ) : (
                           <span className="text-xs text-[#6B6E6A]">—</span>
@@ -884,8 +893,8 @@ export default function RoomList() {
                 <div className="flex flex-wrap gap-2">
                   {getFacilitiesForRoom(viewingRoom.facilityIds).map((fac) => (
                     <span key={fac.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0ede9] rounded-lg text-xs font-semibold text-[#2D312C] border border-[#E5E1DA]">
-                      <span className="material-symbols-outlined text-[16px] text-[#506147]">{resolveFacilityIcon(fac.name)}</span>
-                      {fac.name}
+                      <span className="material-symbols-outlined text-[16px] text-[#506147]">{getFacilityIcon(fac.name, fac.icon, "bed")}</span>
+                      {getFacilityDisplayName(fac)}
                     </span>
                   ))}
                   {getFacilitiesForRoom(viewingRoom.facilityIds).length === 0 && (
@@ -946,13 +955,15 @@ export default function RoomList() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-[#2D312C]">Bed Type</label>
-                    <select name="bed" value={editValues.bed} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white">
-                      <option value="">Pilih Tipe Kasur</option>
-                      <option value="1 Single Bed">Single Bed</option>
-                      <option value="1 Twin Bed">Twin Bed</option>
-                      <option value="1 Queen Bed">Queen Bed</option>
-                      <option value="1 King Bed">King Bed</option>
+                    <label className="text-xs font-semibold text-[#2D312C]">Tipe Kasur</label>
+                    <select name="bed_type_id" value={editValues.bed_type_id || ""} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white">
+                      <option value="">Pilih tipe kasur</option>
+                      {bedTypes.filter((bedType) =>
+                        bedType.status === "active" ||
+                        Number(bedType.id) === Number(editValues.bed_type_id)
+                      ).map((bedType) => (
+                        <option key={bedType.id} value={bedType.id}>{bedType.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1091,21 +1102,44 @@ export default function RoomList() {
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">5. Room Facilities</h4>
+                <div>
+                  <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">5. Fasilitas Kamar</h4>
+                  <p className="text-[11px] text-[#6B6E6A] mt-1">
+                    Pilihan ini hanya berlaku untuk kamar; fasilitas hotel diatur terpisah.
+                  </p>
+                </div>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873] text-[20px]">
+                    search
+                  </span>
+                  <input
+                    type="search"
+                    value={facilitySearch}
+                    onChange={(event) => setFacilitySearch(event.target.value)}
+                    placeholder="Cari fasilitas kamar..."
+                    aria-label="Cari fasilitas kamar"
+                    className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
+                  />
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-[#E5E1DA] rounded-xl bg-[#fcf9f5]">
-                  {roomFacilities.length === 0 && (
-                    <div className="col-span-full py-4 text-center text-xs text-[#6B6E6A]">Memuat daftar fasilitas kamar...</div>
-                  )}
-                  {roomFacilities.map((fac) => {
+                  {deduplicateFacilities(roomFacilities, editValues.facilityIds)
+                    .filter((fac) => matchesFacilitySearch(fac, facilitySearch))
+                    .map((fac) => {
                     const isChecked = (editValues.facilityIds || []).includes(fac.id);
                     return (
                       <label key={fac.id} className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${isChecked ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]" : "border-[#E5E1DA] bg-white text-[#2D312C]"}`}>
                         <input type="checkbox" checked={isChecked} onChange={() => handleEditFacilityToggle(fac.id)} className="accent-[#506147]" />
-                        <span className="material-symbols-outlined text-[16px] text-[#506147]">{resolveFacilityIcon(fac.name)}</span>
-                        <span className="truncate">{fac.name}</span>
+                        <span className="material-symbols-outlined text-[16px] text-[#506147]">{getFacilityIcon(fac.name, fac.icon, "bed")}</span>
+                        <span className="truncate">{getFacilityDisplayName(fac)}</span>
                       </label>
                     );
-                  })}
+                    })}
+                  {deduplicateFacilities(roomFacilities, editValues.facilityIds)
+                    .filter((fac) => matchesFacilitySearch(fac, facilitySearch)).length === 0 && (
+                    <p className="col-span-full py-4 text-center text-xs text-[#6B6E6A]">
+                      Fasilitas tidak ditemukan.
+                    </p>
+                  )}
                 </div>
               </div>
 

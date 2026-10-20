@@ -14,7 +14,7 @@ class Hotel extends Model
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
         'average_rating', 'total_review', 'latitude', 'longitude', 'status',
         'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
-        'policies',
+        'policies', 'logo',
         'bank_name', 'bank_account_number', 'bank_account_name',
     ];
 
@@ -89,6 +89,11 @@ class Hotel extends Model
         return $this->belongsToMany(Facility::class, 'hotel_facilities', 'hotel_id', 'facility_id');
     }
 
+    public function bedTypes()
+    {
+        return $this->hasMany(BedType::class);
+    }
+
     public function roomTypes()
     {
         return $this->hasMany(RoomType::class, 'hotel_id');
@@ -97,6 +102,21 @@ class Hotel extends Model
     public function bookings()
     {
         return $this->hasMany(Booking::class, 'hotel_id');
+    }
+
+    public function payoutDestinations()
+    {
+        return $this->hasMany(HotelPayoutDestination::class);
+    }
+
+    public function withdrawals()
+    {
+        return $this->hasMany(HotelWithdrawal::class);
+    }
+
+    public function walletLedgerEntries()
+    {
+        return $this->hasMany(WalletLedgerEntry::class);
     }
 
     public function reviews()

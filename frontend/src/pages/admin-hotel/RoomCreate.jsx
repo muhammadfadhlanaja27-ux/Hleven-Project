@@ -3,6 +3,12 @@ import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  matchesFacilitySearch,
+  resolveFacilityIcon as getFacilityIcon,
+} from "../../utils/facilities";
 
 const FACILITY_ICON_MAP = {
   "AC": "ac_unit",
@@ -144,8 +150,12 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
 
   useEffect(() => {
     const fetchRoomFacilities = async () => {
-      try {
-        const { data: responseData } = await cachedGet("/facilities");
+      const [facilityResult, bedTypeResult] = await Promise.allSettled([
+        cachedGet("/facilities"),
+        api.get("/admin/bed-types"),
+      ]);
+      if (facilityResult.status === "fulfilled") {
+        const responseData = facilityResult.value.data;
         const payload = responseData ?? [];
         const allFacilities = Array.isArray(payload)
           ? payload
@@ -155,11 +165,20 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
         const filtered = Array.isArray(allFacilities)
           ? allFacilities.filter((f) => f.category === "Room" || f.category === "Bathroom")
           : [];
-        setRoomFacilities(filtered);
-      } catch (err) {
-        console.error("Failed to load room facilities:", err);
+        setRoomFacilities(deduplicateFacilities(filtered));
+      } else {
+        console.error("Failed to load room facilities:", facilityResult.reason);
         setRoomFacilities([]);
       }
+      if (bedTypeResult.status === "fulfilled") {
+        const bedTypeData = bedTypeResult.value.data?.data ?? [];
+        setBedTypes(Array.isArray(bedTypeData) ? bedTypeData : []);
+      } else {
+        console.error("Failed to load bed types:", bedTypeResult.reason);
+        toast.error("Gagal memuat daftar tipe kasur.");
+      }
+      setIsLoadingFacilities(false);
+      setIsLoadingBedTypes(false);
     };
     fetchRoomFacilities();
   }, []);
@@ -291,6 +310,8 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
       payload.append("weekend_price", formData.weekend_price);
       payload.append("bed", formData.bed || "");
       payload.append("bed_type_id", formData.bed_type_id || "");
+      payload.append("bed_type_id", formData.bed_type_id || "");
+      payload.append("stock", formData.stock);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
       payload.append("policies", (formData.policies || "").trim());
@@ -697,20 +718,38 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
         <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
           <div className="border-b border-[#E5E1DA] pb-3">
             <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-              4. Room Facilities &amp; Amenities
+              4. Fasilitas Kamar
             </h3>
             <p className="text-xs text-[#6B6E6A] mt-0.5">
-              Pilih fasilitas yang tersedia di kamar dari katalog Room Facilities.
+              Fasilitas pada bagian ini hanya untuk kamar dan kamar mandi; fasilitas hotel dikelola terpisah di Hotel Information.
             </p>
+          </div>
+
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873] text-[20px]">
+              search
+            </span>
+            <input
+              type="search"
+              value={facilitySearch}
+              onChange={(event) => setFacilitySearch(event.target.value)}
+              placeholder="Cari fasilitas kamar..."
+              aria-label="Cari fasilitas kamar"
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
+            />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
             {roomFacilities.length === 0 && (
               <div className="col-span-full py-8 text-center text-xs text-[#6B6E6A]">
-                Memuat daftar fasilitas kamar...
+                {isLoadingFacilities
+                  ? "Memuat daftar fasilitas kamar..."
+                  : "Belum ada fasilitas kamar di katalog."}
               </div>
             )}
-            {roomFacilities.map((fac) => {
+            {roomFacilities
+              .filter((fac) => matchesFacilitySearch(fac, facilitySearch))
+              .map((fac) => {
               const isChecked = formData.facilityIds.includes(fac.id);
               const isInactive = fac.status === "inactive";
 
@@ -731,9 +770,9 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
                     className="accent-[#506147]"
                   />
                   <span className="material-symbols-outlined text-[18px] text-[#506147]">
-                    {resolveFacilityIcon(fac.name)}
+                    {getFacilityIcon(fac.name, fac.icon, "bed")}
                   </span>
-                  <span className="truncate">{fac.name}</span>
+                  <span className="truncate">{getFacilityDisplayName(fac)}</span>
                   {fac.category && (
                     <span className="text-[9px] text-[#757870] ml-auto px-1.5 py-0.5 bg-[#E5E1DA] rounded-full">
                       {fac.category === "Room" ? "Room" : "Bath"}
@@ -746,7 +785,12 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
                   )}
                 </label>
               );
-            })}
+              })}
+            {roomFacilities.filter((fac) => matchesFacilitySearch(fac, facilitySearch)).length === 0 && !isLoadingFacilities && (
+              <p className="col-span-full py-5 text-center text-xs text-[#6B6E6A]">
+                Fasilitas tidak ditemukan.
+              </p>
+            )}
           </div>
         </div>
 

@@ -6,111 +6,191 @@ use App\Http\Controllers\Controller;
 use App\Models\BedType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class BedTypeController extends Controller
 {
-    /** List bed types for current hotel */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first();
+        $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
         if (! $hotel) {
-            return response()->json(['status' => 'success', 'data' => []]);
+            return response()->json([
+                'success' => true,
+                'status' => 'success',
+                'data' => [],
+            ]);
         }
-        $bedTypes = BedType::where('hotel_id', $hotel->id)->get();
 
-        return response()->json(['status' => 'success', 'data' => $bedTypes]);
+        $bedTypes = BedType::where('hotel_id', $hotel->id)
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'data' => $bedTypes,
+        ]);
     }
 
-    /** Create bed type */
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first();
+        $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
         if (! $hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Hotel untuk akun ini tidak ditemukan.',
+            ], 404);
         }
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('bed_types', 'name')
+                    ->where('hotel_id', $hotel->id)
+                    ->whereNull('deleted_at'),
+            ],
+            'description' => 'nullable|string|max:1000',
+            'status' => 'nullable|in:active,inactive',
             'size' => 'nullable|string|max:100',
-            'max_adults' => 'required|integer|min:1',
-            'max_children' => 'required|integer|min:0',
-            'max_total' => 'required|integer|min:1',
-            'description' => 'nullable|string',
+            'max_adults' => 'nullable|integer|min:1',
+            'max_children' => 'nullable|integer|min:0',
+            'max_total' => 'nullable|integer|min:1',
         ]);
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
-        $bed = BedType::create(array_merge(
-            $request->only(['name', 'size', 'max_adults', 'max_children', 'max_total', 'description']),
-            ['hotel_id' => $hotel->id]
-        ));
 
-        return response()->json(['status' => 'success', 'data' => $bed], 201);
+        $maxAdults = $validated['max_adults'] ?? 1;
+        $maxChildren = $validated['max_children'] ?? 0;
+        $maxTotal = $validated['max_total'] ?? ($maxAdults + $maxChildren);
+
+        $bedType = BedType::create([
+            ...$validated,
+            'hotel_id' => $hotel->id,
+            'status' => $validated['status'] ?? 'active',
+            'max_adults' => $maxAdults,
+            'max_children' => $maxChildren,
+            'max_total' => $maxTotal,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Tipe kasur berhasil ditambahkan.',
+            'data' => $bedType,
+        ], 201);
     }
 
-    /** Show */
-    public function show(Request $request, $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first();
+        $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
         if (! $hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Hotel not found.',
+            ], 404);
         }
 
         $bed = BedType::where('hotel_id', $hotel->id)->find($id);
         if (! $bed) {
-            return response()->json(['status' => 'error', 'message' => 'Bed type not found'], 404);
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Bed type not found',
+            ], 404);
         }
 
-        return response()->json(['status' => 'success', 'data' => $bed]);
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'data' => $bed,
+        ]);
     }
 
-    /** Update */
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first();
+        $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
         if (! $hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Hotel untuk akun ini tidak ditemukan.',
+            ], 404);
         }
 
-        $bed = BedType::where('hotel_id', $hotel->id)->find($id);
-        if (! $bed) {
-            return response()->json(['status' => 'error', 'message' => 'Bed type not found'], 404);
+        $bedType = BedType::where('hotel_id', $hotel->id)->find($id);
+        if (! $bedType) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Bed type not found',
+            ], 404);
         }
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'size' => 'nullable|string|max:100',
+
+        $validated = $request->validate([
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('bed_types', 'name')
+                    ->where('hotel_id', $hotel->id)
+                    ->whereNull('deleted_at')
+                    ->ignore($bedType->id),
+            ],
+            'description' => 'sometimes|nullable|string|max:1000',
+            'status' => 'sometimes|in:active,inactive',
+            'size' => 'sometimes|nullable|string|max:100',
             'max_adults' => 'sometimes|integer|min:1',
             'max_children' => 'sometimes|integer|min:0',
             'max_total' => 'sometimes|integer|min:1',
-            'description' => 'nullable|string',
         ]);
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
-        $bed->update($request->only(['name', 'size', 'max_adults', 'max_children', 'max_total', 'description']));
 
-        return response()->json(['status' => 'success', 'data' => $bed]);
+        $bedType->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Tipe kasur berhasil diperbarui.',
+            'data' => $bedType->fresh(),
+        ]);
     }
 
-    /** Delete */
-    public function destroy(Request $request, $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
-        $hotel = $user->hotel ?? $user->hotels()->first();
+        $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
         if (! $hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Hotel untuk akun ini tidak ditemukan.',
+            ], 404);
         }
 
-        $bed = BedType::where('hotel_id', $hotel->id)->find($id);
-        if (! $bed) {
-            return response()->json(['status' => 'error', 'message' => 'Bed type not found'], 404);
+        $bedType = BedType::where('hotel_id', $hotel->id)->find($id);
+        if (! $bedType) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Bed type not found',
+            ], 404);
         }
-        $bed->delete();
 
-        return response()->json(['status' => 'success', 'message' => 'Deleted']);
+        if ($bedType->roomTypes()->exists()) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Tipe kasur masih digunakan kamar. Nonaktifkan tipe kasur ini agar tidak dapat dipilih untuk kamar baru.',
+            ], 422);
+        }
+
+        $bedType->delete();
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Tipe kasur berhasil dihapus.',
+        ]);
     }
 }

@@ -6,6 +6,7 @@ import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
 import GuestSelector from "../../components/common/GuestSelector";
 import { getInitialSearchValues, saveSearchState, fmtDateStr } from "../../services/searchStorage";
+import { deduplicateFacilities, resolveFacilityIcon } from "../../utils/facilities";
 
 const FACILITY_ICON_MAP = {
   "AC": "ac_unit",
@@ -76,37 +77,7 @@ const FACILITY_ICON_MAP = {
 };
 
 const getFacilityIcon = (fac) => {
-  if (typeof fac === "object" && fac?.icon && fac.icon !== "stars") return fac.icon;
-  const name = String(typeof fac === "object" ? fac.name : fac || "").trim();
-  if (FACILITY_ICON_MAP[name]) return FACILITY_ICON_MAP[name];
-  const lower = name.toLowerCase();
-  if (lower.includes("ac") || lower.includes("air condition")) return "ac_unit";
-  if (lower.includes("tv") || lower.includes("televisi") || lower.includes("television")) return "tv";
-  if (lower.includes("mandi") || lower.includes("bath") || lower.includes("toilet") || lower.includes("kloset") || lower.includes("wash") || lower.includes("washtafel")) return "bathtub";
-  if (lower.includes("bathtub") || lower.includes("bak")) return "bathtub";
-  if (lower.includes("balkon") || lower.includes("teras") || lower.includes("balcony")) return "balcony";
-  if (lower.includes("kulkas") || lower.includes("fridge") || lower.includes("minibar") || lower.includes("refrigerator")) return "kitchen";
-  if (lower.includes("meja") || lower.includes("kerja") || lower.includes("desk")) return "desk";
-  if (lower.includes("lemari") || lower.includes("wardrobe") || lower.includes("closet")) return "checkroom";
-  if (lower.includes("air mineral") || lower.includes("mineral water") || lower.includes("drink") || lower.includes("water heater")) return "water_drop";
-  if (lower.includes("shower")) return "shower";
-  if (lower.includes("wifi") || lower.includes("internet")) return "wifi";
-  if (lower.includes("kolam") || lower.includes("pool") || lower.includes("renang")) return "pool";
-  if (lower.includes("parkir") || lower.includes("parking")) return "local_parking";
-  if (lower.includes("restoran") || lower.includes("makan") || lower.includes("restaurant")) return "restaurant";
-  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("kebugaran")) return "fitness_center";
-  if (lower.includes("spa") || lower.includes("massage") || lower.includes("wellness")) return "hot_tub";
-  if (lower.includes("resepsionis") || lower.includes("reception") || lower.includes("front desk")) return "concierge";
-  if (lower.includes("lift") || lower.includes("elevator")) return "elevator";
-  if (lower.includes("laundry") || lower.includes("cuci")) return "local_laundry_service";
-  if (lower.includes("brankas") || lower.includes("safety box") || lower.includes("safe") || lower.includes("lock")) return "lock";
-  if (lower.includes("coffee") || lower.includes("kopi") || lower.includes("tea") || lower.includes("teh")) return "local_cafe";
-  if (lower.includes("bar") || lower.includes("lounge")) return "local_bar";
-  if (lower.includes("room service")) return "room_service";
-  if (lower.includes("bed") || lower.includes("tidur")) return "bed";
-  if (lower.includes("hair") || lower.includes("dryer") || lower.includes("pengering")) return "air";
-  if (lower.includes("heater") || lower.includes("thermostat") || lower.includes("pemanas")) return "thermostat";
-  return "hotel";
+  return resolveFacilityIcon(fac?.name || fac, fac?.icon, "bed");
 };
 
 const RoomDetail = () => {
@@ -482,7 +453,7 @@ const mappedRoom = {
               </h2>
               {Array.isArray(room?.facilities) && room.facilities.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                  {room.facilities.map((fac, idx) => {
+                  {deduplicateFacilities(room.facilities, room.facilities.map((fac) => fac.id)).map((fac, idx) => {
                     const facName = typeof fac === "object" ? fac.name : String(fac);
                     const facDesc = typeof fac === "object" ? (fac.description || "") : "";
                     const iconName = getFacilityIcon(fac);

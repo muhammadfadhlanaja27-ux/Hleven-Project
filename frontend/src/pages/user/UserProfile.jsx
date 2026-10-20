@@ -83,8 +83,24 @@ const BookingHistory = () => {
       }
     }
 
-    fetchApiBookings();
-  }, []);
+    fetchUserBookings();
+
+    // Hanya fetch status pendaftaran mitra jika user adalah user biasa (bukan admin)
+    // Admin hotel/super admin SUDAH menjadi bagian dari operasional hotel,
+    // sehingga tidak perlu (dan tidak bisa) mendaftar sebagai mitra lagi.
+    if (
+      currentUserRole !== "admin_hotel" &&
+      currentUserRole !== "super_admin"
+    ) {
+      fetchPartnerStatus();
+    } else {
+      setPartnerApplication(null);
+    }
+
+    fetchNotifications();
+    const notificationInterval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(notificationInterval);
+  }, [navigate, currentUserRole]);
 
   // Reset error avatar setiap kali data user atau foto berubah
   useEffect(() => {
@@ -506,6 +522,367 @@ const BookingHistory = () => {
           <div className="lg:col-span-8 flex flex-col gap-8">
             <section className="flex-grow flex flex-col gap-6">
 
+<<<<<<< HEAD
+            {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
+                Untuk admin_hotel / super_admin — fitur ini tidak tersedia. */}
+            {currentUserRole !== "admin_hotel" &&
+              currentUserRole !== "super_admin" &&
+              activeTab === "partner" && (
+                <ApplicationStatus
+                  application={partnerApplication}
+                  loading={partnerLoading}
+                  onFixRevision={handleFixRevision}
+                  approvalNotification={notifications.find(n => n.type === "partner_approved")}
+                />
+              )}
+            
+{activeTab === "notifications" && (
+                <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
+                  <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[#778873] text-2xl">
+                        notifications
+                      </span>
+                      <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
+                        Notifikasi
+                      </h3>
+                    </div>
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllAsRead}
+                        className="text-xs font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
+                      >
+                        Tandai semua dibaca
+                      </button>
+                    )}
+                  </div>
+
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <span className="material-symbols-outlined animate-spin text-[#778873] text-2xl">
+                        progress_activity
+                      </span>
+                      <span className="ml-3 text-sm text-[#444842]">Memuat notifikasi...</span>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <span className="material-symbols-outlined text-5xl text-[#747871] mb-3">
+                        notifications_off
+                      </span>
+                      <p className="text-[#444842] text-sm font-medium">
+                        Belum ada notifikasi.
+                      </p>
+                      <p className="text-[#747871] text-xs mt-1">
+                        Notifikasi tentang pengajuan mitra, penerimaan, dan informasi lainnya akan muncul di sini.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            notif.is_read
+                              ? "bg-[#faf3ea] border-[#DCCFC0]/40"
+                              : "bg-[#e8e2d9]/40 border-[#778873]/30"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">
+                              {notif.type === "partner_approved"
+                                ? "check_circle"
+                                : notif.type === "review_request"
+                                ? "rate_review"
+                                : notif.type === "purchase"
+                                ? "payments"
+                                : notif.type === "refund"
+                                ? "currency_exchange"
+                                : notif.type === "suspend"
+                                ? "block"
+                                : "notifications"}
+                            </span>
+                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+                              if (notif.type === "review_request") {
+                                setActiveTab("history");
+                                fetchUserBookings();
+                              }
+                            }}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-label-md text-sm font-bold text-[#2D332C]">
+                                  {notif.title}
+                                </h4>
+                                {!notif.is_read && (
+                                  <span className="w-2 h-2 rounded-full bg-[#ba1a1a] shrink-0"></span>
+                                )}
+                              </div>
+                              <p className="font-body-md text-xs text-[#444842] leading-relaxed whitespace-pre-wrap">
+                                {notif.message}
+                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-[10px] text-[#747871]">
+                                  {notif.created_at
+                                    ? new Date(notif.created_at).toLocaleString("id-ID", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "Baru saja"}
+                                </span>
+                                {!notif.is_read && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkAsRead(notif.id)}
+                                    className="text-[10px] font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
+                                  >
+                                    Tandai dibaca
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {activeTab === "personal" && (
+                <>
+                {/* Personal Information Section */}
+                <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
+                  <div className="flex items-center gap-3 mb-6 border-b border-[#DCCFC0]/30 pb-4">
+                    <span className="material-symbols-outlined text-[#778873] text-2xl">
+                      person_outline
+                    </span>
+                    <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
+                      Informasi Pribadi
+                    </h3>
+                  </div>
+
+                  <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="flex flex-col gap-2">
+                      <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="firstName">
+                        Nama Depan *
+                      </label>
+                      <input
+                        id="firstName"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="lastName">
+                        Nama Belakang
+                      </label>
+                      <input
+                        id="lastName"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                      <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="email">
+                        Alamat Email *
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                      <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="phone">
+                        Nomor Telepon / WhatsApp
+                      </label>
+                      <input
+                        id="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+62 8xx xxxx xxxx"
+                        className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-2 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="bg-[#778873] text-white font-label-md text-sm font-semibold px-8 py-3 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        {loading ? "Menyimpan Perubahan..." : "Simpan Informasi"}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+
+                <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
+                  <div className="flex items-center gap-3 mb-6 border-b border-[#DCCFC0]/30 pb-4">
+                    <span className="material-symbols-outlined text-[#778873] text-2xl">
+                      lock_outline
+                    </span>
+                    <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
+                      Keamanan &amp; Kata Sandi
+                    </h3>
+                  </div>
+
+                  <form onSubmit={handleChangePassword} className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-2">
+                      <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="currentPassword">
+                        Kata Sandi Saat Ini
+                      </label>
+                      <input
+                        id="currentPassword"
+                        type="password"
+                        placeholder="••••••••"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                        className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors max-w-md"
+                      />
+                    </div>
+
+                    <div className="w-full bg-[#DCCFC0]/40 h-px my-1"></div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                      <div className="flex flex-col gap-2">
+                        <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="newPassword">
+                          Kata Sandi Baru
+                        </label>
+                        <input
+                          id="newPassword"
+                          type="password"
+                          placeholder="Kata Sandi Baru"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          required
+                          className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="confirmPassword">
+                          Konfirmasi Kata Sandi Baru
+                        </label>
+                        <input
+                          id="confirmPassword"
+                          type="password"
+                          placeholder="Konfirmasi Kata Sandi"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          className="bg-[#faf3ea] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#2D332C] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={pwdLoading}
+                        className="bg-[#2D332C] text-white font-label-md text-sm font-semibold px-8 py-3 rounded-xl hover:bg-[#1e1b16] transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        {pwdLoading ? "Memproses..." : "Perbarui Kata Sandi"}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              </>
+            )}
+
+            {activeTab === "history" && (
+              <div className="flex flex-col gap-6">
+                {/* Banner: ajakan menulis ulasan untuk booking selesai yang belum diulas */}
+                {bookings.filter(
+                  (b) => b.status === "checked_out" && !b.review
+                ).length > 0 && (
+                  <div className="bg-[#A0522D]/10 border border-[#A0522D]/30 rounded-2xl p-5 shadow-xs">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="material-symbols-outlined text-[#A0522D] text-2xl">
+                        rate_review
+                      </span>
+                      <h3 className="font-headline-md text-base font-bold text-[#A0522D]">
+                        Penginapan selesai — bagikan ulasan Anda!
+                      </h3>
+                    </div>
+                    <div className="space-y-2">
+                      {bookings
+                        .filter((b) => b.status === "checked_out" && !b.review)
+                        .slice(0, 3)
+                        .map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white rounded-xl border border-[#DCCFC0]/40 px-4 py-3"
+                          >
+                            <div className="text-sm">
+                              <span className="font-semibold text-[#1e1b16]">
+                                {b.hotel?.name || "Hotel"}
+                              </span>
+                              <span className="text-[#747871] text-xs ml-2">
+                                {b.booking_code} • Check-out {b.check_out}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/hotels/${b.hotel_id}`)}
+                              className="px-4 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors cursor-pointer shrink-0"
+                            >
+                              Tulis Ulasan
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
+                      Filter:
+                    </span>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
+                    >
+                      <option value="All">Semua Pesanan</option>
+                      <option value="Pending">Menunggu Pembayaran</option>
+                      <option value="Upcoming">Upcoming / Lunas</option>
+                      <option value="Past">Selesai (Checked Out)</option>
+                      <option value="Cancelled">Dibatalkan / Expired</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <span className="font-body-md text-xs font-semibold text-[#444842] uppercase tracking-wider">
+                      Urutkan:
+                    </span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873]"
+                    >
+                      <option value="newest">Tanggal (Terbaru)</option>
+                      <option value="oldest">Tanggal (Terlama)</option>
+                      <option value="price_high">Harga (Tertinggi)</option>
+                    </select>
+                  </div>
+=======
               {/* Filters & Sort Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#e8e2d9] p-4 rounded-2xl border border-[#DCCFC0]/30 shadow-xs">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -523,6 +900,7 @@ const BookingHistory = () => {
                     <option value="Past">Selesai (Checked Out)</option>
                     <option value="Cancelled">Dibatalkan / Refund</option>
                   </select>
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -785,6 +1163,12 @@ const BookingHistory = () => {
                   className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
                 />
               </div>
+<<<<<<< HEAD
+            )}
+            {isPaid && isRefundable && (
+              <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
+                Pembatalan dalam 1x24 jam sejak pembayaran berhasil akan disetujui otomatis dan status booking menjadi refunded. Pengembalian dana diproses terpisah. Setelah 1x24 jam, pengajuan menunggu persetujuan admin.
+=======
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -803,6 +1187,7 @@ const BookingHistory = () => {
                 >
                   {isSubmittingCancel ? "Memproses..." : isPaid && !isRefundable ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
                 </button>
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
               </div>
             </div>
           </div>
@@ -957,6 +1342,22 @@ const BookingHistory = () => {
                     </div>
                   </div>
 
+<<<<<<< HEAD
+                  <div className="bg-white p-3.5 rounded-xl border border-[#DCCFC0]/40">
+                    <p className="font-label-sm text-[11px] text-[#444842] uppercase tracking-widest mb-1 font-semibold">
+                      Tamu yang Menginap
+                    </p>
+                    <p className="font-label-md text-xs text-[#2D332C] font-bold">
+                      {selectedBooking.guests?.[0]?.name || "—"}
+                    </p>
+                    {(selectedBooking.guests?.[0]?.phone || selectedBooking.guests?.[0]?.email) && (
+                      <p className="font-body-md text-xs text-[#444842] mt-1">
+                        {[selectedBooking.guests?.[0]?.phone, selectedBooking.guests?.[0]?.email]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+=======
                   <div>
                     <p className="font-label-sm text-xs text-[#444842] uppercase tracking-widest mb-2 font-semibold">
                       Guest Details
@@ -969,6 +1370,7 @@ const BookingHistory = () => {
                       <span className="material-symbols-outlined text-[#778873] text-base">call</span>
                       <span>{selectedBooking.guests?.[0]?.phone || selectedBooking.guest_phone || user?.phone || "-"}</span>
                     </div>
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
                   </div>
                 </div>
               </div>

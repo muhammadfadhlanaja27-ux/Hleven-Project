@@ -35,12 +35,12 @@ import MitraRegistrationSuccess from "./pages/mitra/MitraRegistrationSuccess";
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
 import Dashboard from "./pages/admin-hotel/Dashboard";
 import HotelInformation from "./pages/admin-hotel/HotelInformation";
-import FacilityManager from "./pages/admin-hotel/FacilityManager";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
 import RoomCalendar from "./pages/admin-hotel/RoomCalendar";
 import BookingList from "./pages/admin-hotel/BookingList";
 import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
+import Wallet from "./pages/admin-hotel/Wallet";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
 import AdminPayouts from "./pages/admin-hotel/Payouts";
@@ -62,6 +62,7 @@ import Reports from "./pages/super-admin/Reports";
 import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
 import PayoutManagement from "./pages/super-admin/PayoutManagement";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
+import WalletOverview from "./pages/super-admin/WalletOverview";
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
@@ -200,13 +201,15 @@ function App() {
             <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/hotel" element={<HotelInformation />} />
-              <Route path="/admin/facilities" element={<FacilityManager />} />
+              <Route path="/admin/facilities" element={<Navigate to="/admin/hotel" replace />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
               <Route path="/admin/calendar" element={<RoomCalendar />} />
               <Route path="/admin/bed-types" element={<BedTypeManager />} />
+              <Route path="/admin/beds" element={<Navigate to="/admin/bed-types" replace />} />
               <Route path="/admin/bookings" element={<BookingList />} />
               <Route path="/admin/transactions" element={<TransactionHistory />} />
+              <Route path="/admin/wallet" element={<Wallet />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
               <Route path="/admin/warnings" element={<AdminWarnings />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />
@@ -230,6 +233,7 @@ function App() {
               <Route path="reports" element={<Reports />} />
               <Route path="application-revenue" element={<ApplicationRevenue />} />
               <Route path="payouts" element={<PayoutManagement />} />
+              <Route path="wallet" element={<WalletOverview />} />
             </Route>
           </Route>
 

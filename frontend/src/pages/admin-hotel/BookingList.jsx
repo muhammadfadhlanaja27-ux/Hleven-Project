@@ -184,7 +184,6 @@ export default function BookingList() {
     .map((facility) => typeof facility === "string" ? facility : facility.name || facility.title)
     .filter(Boolean);
   const [extendingBooking, setExtendingBooking] = useState(null);
-  const [extensionType, setExtensionType] = useState("hours");
   const [extensionDuration, setExtensionDuration] = useState(1);
   const [extensionNotes, setExtensionNotes] = useState("");
   const AUTO_CHECKOUT_KEY = "hleven_bookings_auto_checkout";
@@ -226,7 +225,7 @@ export default function BookingList() {
     setIsProcessing(true);
     try {
       const res = await api.post(`/admin/bookings/${extendingBooking.id}/extend`, {
-        type: extensionType,
+        type: "days",
         duration: Number(extensionDuration),
         notes: extensionNotes || undefined,
       });
@@ -819,7 +818,10 @@ export default function BookingList() {
             {/* Sort Field */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setCurrentPage(1);
+              }}
               className="px-3 py-2 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-xs font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer"
             >
               <option value="bookingDate">Sort: Booking Date</option>
@@ -831,7 +833,10 @@ export default function BookingList() {
 
             {/* Sort Order Toggle */}
             <button
-              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              onClick={() => {
+                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                setCurrentPage(1);
+              }}
               className="p-2 border border-[#E5E0D8] bg-[#fcf9f5] rounded-lg text-[#2D312C] hover:bg-[#f0ede9] transition-colors"
               title={sortOrder === "asc" ? "Ascending" : "Descending"}
             >
@@ -1159,7 +1164,6 @@ export default function BookingList() {
                   <button
                     onClick={() => {
                       setExtendingBooking(viewingBooking);
-                      setExtensionType("hours");
                       setExtensionDuration(1);
                       setExtensionNotes("");
                     }}
@@ -1743,8 +1747,7 @@ export default function BookingList() {
       {extendingBooking && (() => {
         const basePrice = Number(extendingBooking.room?.weekdayPrice || extendingBooking.room?.price || extendingBooking.roomPriceSum || 350000);
         const qty = extendingBooking.bookingRooms?.reduce((s, br) => s + (br.qty || 1), 0) || 1;
-        const hourlyRate = Math.round(basePrice / 24);
-        const sub = extensionType === "hours" ? hourlyRate * Number(extensionDuration || 0) * qty : basePrice * Number(extensionDuration || 0) * qty;
+        const sub = basePrice * Number(extensionDuration || 0) * qty;
         const tax = Math.round(sub * 0.05);
         const total = sub + tax;
         return (
@@ -1756,30 +1759,26 @@ export default function BookingList() {
                 </div>
                 <div>
                   <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Extend Stay — {extendingBooking.bookingCode}</h3>
-                  <p className="text-xs text-[#6B6E6A] mt-1">Tambah durasi menginap. Per jam = harga/malam ÷ 24. Per hari = penuh.</p>
+                  <p className="text-xs text-[#6B6E6A] mt-1">Tambah durasi menginap per hari. Biaya dihitung berdasarkan harga per malam.</p>
                 </div>
               </div>
               <div className="p-4 bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] space-y-3 text-xs">
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setExtensionType("hours")} className={`flex-1 py-2 rounded-lg font-bold ${extensionType === "hours" ? "bg-[#506147] text-white" : "bg-white border border-[#E5E1DA]"}`}>Per Jam</button>
-                  <button type="button" onClick={() => setExtensionType("days")} className={`flex-1 py-2 rounded-lg font-bold ${extensionType === "days" ? "bg-[#506147] text-white" : "bg-white border border-[#E5E1DA]"}`}>Per Hari</button>
-                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="font-semibold text-[#2D312C]">Durasi ({extensionType === "hours" ? "jam" : "hari"})</label>
+                    <label className="font-semibold text-[#2D312C]">Durasi (hari)</label>
                     <input type="number" min={1} value={extensionDuration} onChange={(e) => setExtensionDuration(Math.max(1, Number(e.target.value) || 1))} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" />
                   </div>
                   <div>
                     <label className="font-semibold text-[#2D312C]">Catatan (opsional)</label>
-                    <input type="text" placeholder="Late check-out 15:00" value={extensionNotes} onChange={(e) => setExtensionNotes(e.target.value)} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" maxLength={255} />
+                    <input type="text" placeholder="Catatan perpanjangan" value={extensionNotes} onChange={(e) => setExtensionNotes(e.target.value)} className="mt-1 w-full border border-[#E5E1DA] rounded-lg px-3 py-2 bg-white" maxLength={255} />
                   </div>
                 </div>
                 <div className="bg-white rounded-lg border border-[#E5E1DA] p-3 space-y-1.5">
-                  <div className="flex justify-between"><span className="text-[#6B6E6A]">{extensionType === "hours" ? `Rp ${hourlyRate.toLocaleString("id-ID")}/jam × ${extensionDuration} jam × ${qty} kamar` : `Rp ${basePrice.toLocaleString("id-ID")}/malam × ${extensionDuration} hari × ${qty} kamar`}</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
+                  <div className="flex justify-between"><span className="text-[#6B6E6A]">Rp {basePrice.toLocaleString("id-ID")}/malam × {extensionDuration} hari × {qty} kamar</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
                   <div className="flex justify-between text-[#6B6E6A]"><span>Pajak 5%</span><span>{fmtRupiah(tax)}</span></div>
                   <div className="flex justify-between font-bold text-[#506147] text-sm pt-1 border-t border-[#E5E1DA]"><span>Total Tambahan</span><span>{fmtRupiah(total)}</span></div>
                 </div>
-                <p className="text-[11px] text-[#6B6E6A]">{extensionType === "hours" ? "Jam: tanggal check-out tidak berubah, dicatat di special_request. Tagihan bertambah." : "Hari: check-out mundur, total_night + stok hari tambahan dipotong."}</p>
+                <p className="text-[11px] text-[#6B6E6A]">Tanggal check-out akan mundur sesuai durasi. Stok kamar untuk hari tambahan akan dipotong.</p>
               </div>
               <div className="pt-3 border-t border-[#E5E1DA] flex justify-end gap-2">
                 <button type="button" onClick={() => setExtendingBooking(null)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold">Batal</button>

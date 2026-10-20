@@ -91,18 +91,21 @@ class MidtransService
             $payment = $booking->payment;
 
             if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
-                $payment->update([
-                    'payment_status' => 'success',
-                    'paid_at' => now(),
-                    'payment_method' => $paymentType ?? $payment->payment_method,
-                    'transaction_id' => $trxId ?? $payment->transaction_id,
-                ]);
-                $booking->update(['status' => 'paid']);
+                if ($payment->payment_status !== 'success') {
+                    $payment->update([
+                        'payment_status' => 'success',
+                        'paid_at' => now(),
+                        'payment_method' => $paymentType ?? $payment->payment_method,
+                        'transaction_id' => $trxId ?? $payment->transaction_id,
+                    ]);
+                    $booking->update(['status' => 'paid']);
 
-                app(QRCodeService::class)->generateTicket($booking);
+                    app(QRCodeService::class)->generateTicket($booking);
+                    app(NotificationService::class)->notifyBookingPaid($booking);
+                }
 
+                app(WalletLedgerService::class)->recordPayment($booking);
                 $this->sendConfirmationEmail($booking);
-
                 $activity = 'Payment Success';
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                 $status = $transactionStatus === 'expire' ? 'expired' : 'cancelled';
@@ -162,6 +165,7 @@ class MidtransService
                     $booking->update(['status' => 'paid']);
 
                     app(QRCodeService::class)->generateTicket($booking);
+                    app(NotificationService::class)->notifyBookingPaid($booking);
 
                     $this->sendConfirmationEmail($booking);
 
@@ -169,6 +173,8 @@ class MidtransService
                 } elseif ($paymentType && $payment->payment_method !== $paymentType) {
                     $payment->update(['payment_method' => $paymentType, 'transaction_id' => $trxId ?? $payment->transaction_id]);
                 }
+
+                app(WalletLedgerService::class)->recordPayment($booking);
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                 $status = $transactionStatus === 'expire' ? 'expired' : 'cancelled';
 

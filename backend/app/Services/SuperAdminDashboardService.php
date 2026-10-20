@@ -8,6 +8,7 @@ use App\Models\Hotel;
 use App\Models\PartnerApplication;
 use App\Models\Payment;
 use App\Models\Refund;
+use App\Models\Notification;
 use App\Models\RoomType;
 use App\Models\User;
 use Carbon\Carbon;
@@ -294,14 +295,29 @@ class SuperAdminDashboardService
 
     public function updateHotelStatus(Hotel $hotel, string $status): void
     {
-        $old = $hotel->status;
-        $hotel->update(['status' => $status]);
-        ActivityLog::create([
-            'user_id' => auth()->id() ?? $hotel->admin_id,
-            'activity' => 'Update Hotel Status',
-            'description' => "Hotel {$hotel->name} status {$old} -> {$status}",
-            'ip_address' => request()->ip(),
-        ]);
+        DB::transaction(function () use ($hotel, $status) {
+            $old = $hotel->status;
+            $hotel->update(['status' => $status]);
+            if ($old !== $status && $hotel->admin_id) {
+                $isBlocked = in_array($status, ['blocked', 'suspended'], true);
+                Notification::create([
+                    'user_id' => $hotel->admin_id,
+                    'title' => $isBlocked ? 'Hotel Ditangguhkan' : 'Status Hotel Diperbarui',
+                    'message' => $isBlocked
+                        ? "Hotel {$hotel->name} telah ditangguhkan oleh Super Admin."
+                        : "Status hotel {$hotel->name} telah diubah menjadi {$status}.",
+                    'type' => $isBlocked ? 'suspend' : 'system',
+                    'is_read' => false,
+                ]);
+            }
+            ActivityLog::create([
+                'user_id' => auth()->id() ?? $hotel->admin_id,
+                'activity' => 'Update Hotel Status',
+                'description' => "Hotel {$hotel->name} status {$old} -> {$status}",
+                'ip_address' => request()->ip(),
+            ]);
+        });
+
         Cache::forget('super_admin_summary');
     }
 

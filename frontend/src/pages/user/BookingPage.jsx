@@ -75,7 +75,15 @@ const BookingPage = () => {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+=======
 
+  // Form State: Opsi Pemesanan & Tamu Menginap
+  const [bookingFor, setBookingFor] = useState("me"); // 'me' | 'someone_else'
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+
+>>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
   const [specialRequests, setSpecialRequests] = useState("");
   const [checkInDate] = useState(init.checkInStr);
   const [checkOutDate] = useState(init.checkOutStr);
@@ -121,6 +129,11 @@ const BookingPage = () => {
     if (savedUser) {
       try {
         const u = JSON.parse(savedUser);
+        setBookerContact({
+          name: u.name || "",
+          email: u.email || "",
+          phone: u.phone || "",
+        });
         if (u.name) setFullName(u.name);
         if (u.email) setEmail(u.email);
         if (u.phone) setPhone(u.phone);
@@ -129,6 +142,20 @@ const BookingPage = () => {
       }
     }
   }, []);
+
+  const handleBookingForSomeoneElseChange = (checked) => {
+    setBookingForSomeoneElse(checked);
+    if (checked) {
+      setFullName("");
+      setEmail("");
+      setPhone("");
+      return;
+    }
+
+    setFullName(bookerContact.name);
+    setEmail(bookerContact.email);
+    setPhone(bookerContact.phone);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -613,6 +640,7 @@ const BookingPage = () => {
                       <span className="ml-2 font-body-md text-sm text-[#2D332C]">Pesan untuk Orang Lain</span>
                     </label>
                   </div>
+                </div>
                 </div>
 
                 {/* INPUT DATA TAMU MENGINAP */}
