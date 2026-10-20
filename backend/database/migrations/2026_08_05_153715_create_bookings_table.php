@@ -9,21 +9,30 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('bookings', function (Blueprint $table) {
-            $table->id();//[cite: 1]
-            $table->string('booking_code')->unique(); // Kode booking unik[cite: 1]
-            $table->foreignId('user_id')->constrained('users')->onDelete('restrict'); // Pemilik booking[cite: 1]
-            $table->foreignId('hotel_id')->constrained('hotels')->onDelete('restrict'); // Hotel yang dipesan[cite: 1]
-            $table->date('check_in'); // Tanggal check-in[cite: 1]
-            $table->date('check_out'); // Tanggal check-out[cite: 1]
-            $table->integer('total_night'); // Total malam[cite: 1]
-            $table->decimal('subtotal', 15, 2); // Total harga kamar[cite: 1]
-            $table->decimal('tax', 15, 2); // Pajak[cite: 1]
-            $table->decimal('grand_total', 15, 2); // Total pembayaran[cite: 1]
-            $table->text('special_request')->nullable(); // Permintaan khusus[cite: 1]
+            $table->id();
+            $table->string('booking_code')->unique();
+            
+            // user_id dibuat nullable agar mendukung Guest Checkout (pemesanan tanpa login)
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete(); 
+            $table->foreignId('hotel_id')->constrained('hotels')->onDelete('restrict');
+            
+            // Kolom pendukung pemesanan untuk orang lain & guest checkout
+            $table->boolean('is_for_other_guest')->default(false);
+            $table->string('guest_name')->nullable();
+            $table->string('guest_email')->nullable();
+            $table->string('guest_phone')->nullable();
+
+            $table->date('check_in');
+            $table->date('check_out');
+            $table->integer('total_night');
+            $table->decimal('subtotal', 15, 2);
+            $table->decimal('tax', 15, 2);
+            $table->decimal('grand_total', 15, 2);
+            $table->text('special_request')->nullable();
             $table->enum('status', [
                 'pending', 'unpaid', 'paid', 'checked_in', 'checked_out', 'cancelled', 'expired', 'refunded'
-            ])->default('pending'); // Status booking[cite: 1]
-            $table->timestamps();//[cite: 1]
+            ])->default('pending');
+            $table->timestamps();
         });
     }
 

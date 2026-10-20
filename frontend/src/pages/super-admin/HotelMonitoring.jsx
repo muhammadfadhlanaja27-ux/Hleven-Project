@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const HotelMonitoring = () => {
   const initialKey = getCacheKey("/super-admin/hotels", { search: "", status: "" });
@@ -22,6 +23,14 @@ const HotelMonitoring = () => {
   // State untuk Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  const [pendingToggle, setPendingToggle] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [starRating, setStarRating] = useState("");
+  const [starReason, setStarReason] = useState("");
+  const [savingStar, setSavingStar] = useState(false);
 
   const fetchHotels = async (forceRefresh = false) => {
     const key = getCacheKey("/super-admin/hotels", { search, status: statusFilter });
@@ -68,18 +77,16 @@ const HotelMonitoring = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [search, statusFilter]);
 
-  const handleToggleStatus = async (id, currentStatus) => {
+  const handleToggleStatus = (id, currentStatus) => {
     const lowerStatus = currentStatus ? currentStatus.toLowerCase() : "";
     const newStatus = lowerStatus === "active" ? "inactive" : "active";
+    setPendingToggle({ id, newStatus });
+  };
 
-    if (
-      !window.confirm(
-        `Yakin ingin mengubah status hotel ini menjadi ${newStatus.toUpperCase()}?`
-      )
-    ) {
-      return;
-    }
-
+  const performToggleStatus = async () => {
+    if (!pendingToggle) return;
+    const { id, newStatus } = pendingToggle;
+    setIsToggling(true);
     try {
       await api.patch(`/super-admin/hotels/${id}/status`, {
         status: newStatus,
@@ -90,17 +97,61 @@ const HotelMonitoring = () => {
       if (selectedHotel && selectedHotel.id === id) {
         setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
       }
+      setPendingToggle(null);
       fetchHotels(true);
     } catch (err) {
       toast.error(
         err.response?.data?.message || "Gagal memperbarui status hotel."
       );
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleDeleteHotel = (id, name) => {
+    setPendingDelete({ id, name });
+  };
+
+  const performDeleteHotel = async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/super-admin/hotels/${id}`);
+      invalidateCache("/super-admin/hotels");
+      invalidateCache("/super-admin/dashboard");
+      toast.success("Hotel berhasil dihapus!");
+      if (selectedHotel && selectedHotel.id === id) {
+        setModalOpen(false);
+        setSelectedHotel(null);
+      }
+      setPendingDelete(null);
+      fetchHotels(true);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Gagal menghapus hotel."
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleOpenDetail = (hotel) => {
     setSelectedHotel(hotel);
+    setStarRating(hotel.star_rating ? String(hotel.star_rating) : "");
+    setStarReason(hotel.star_verified_reason || "");
     setModalOpen(true);
+  };
+  const handleSaveStar = async () => {
+    if (!selectedHotel) return;
+    setSavingStar(true);
+    try {
+      await api.patch(`/super-admin/hotels/${selectedHotel.id}/star`, { star_rating: starRating ? Number(starRating) : null, star_verified_reason: starReason || null });
+      invalidateCache("/super-admin/hotels");
+      toast.success("Bintang hotel diperbarui");
+      fetchHotels(true);
+      setSelectedHotel((p) => ({ ...p, star_rating: starRating ? Number(starRating) : null, star_verified_reason: starReason || null }));
+    } catch (e) { toast.error(e.response?.data?.message || "Gagal simpan bintang"); } finally { setSavingStar(false); }
   };
 
   // Pagination helper
@@ -191,6 +242,7 @@ const HotelMonitoring = () => {
                     <th className="py-4 px-6">Hotel Name &amp; ID</th>
                     <th className="py-4 px-6">Location</th>
                     <th className="py-4 px-6">Admin Contact</th>
+                    <th className="py-4 px-6">Bintang</th>
                     <th className="py-4 px-6">Status</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
@@ -245,12 +297,10 @@ const HotelMonitoring = () => {
                               "-"}
                           </td>
 
-                          {/* Admin Contact */}
                           <td className="py-4 px-6 text-[#434842]">
                             {hotel.admin?.email || hotel.email || "-"}
                           </td>
-
-                          {/* Status */}
+                          <td className="py-4 px-6 text-[#434842] text-center">{hotel.star_rating ? `★ ${hotel.star_rating}` : <span className="text-[#747872] text-xs">-</span>}</td>
                           <td className="py-4 px-6">{statusBadge}</td>
 
                           {/* Actions */}
@@ -274,16 +324,23 @@ const HotelMonitoring = () => {
                             >
                               {isActive ? "Suspend" : "Activate"}
                             </button>
+
+                            <button
+                              onClick={() =>
+                                handleDeleteHotel(hotel.id, hotel.name)
+                              }
+                              className="font-hanken text-[13px] font-medium text-[#ba1a1a] hover:text-[#93000a] border border-[#ffdad6] hover:bg-[#ffdad6]/40 px-3 py-1.5 rounded-lg transition-colors active:scale-95"
+                              title="Hapus Hotel"
+                            >
+                              Hapus
+                            </button>
                           </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td
-                        colSpan="5"
-                        className="py-12 text-center text-[#747872] font-hanken text-[14px]"
-                      >
+                      <td colSpan="6" className="py-12 text-center text-[#747872] font-hanken text-[14px]">
                         Tidak ada data hotel yang sesuai dengan filter.
                       </td>
                     </tr>
@@ -440,7 +497,17 @@ const HotelMonitoring = () => {
               </div>
             )}
 
-            {/* Modal Actions */}
+            <div className="bg-[#F9F6F1] border border-[#E5E0D8] rounded-lg p-4 mb-6">
+              <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-2">Bintang Terverifikasi (Super Admin)</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select value={starRating} onChange={(e) => setStarRating(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-sm">
+                  <option value="">Belum Terverifikasi</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Bintang</option>)}
+                </select>
+                <input value={starReason} onChange={(e) => setStarReason(e.target.value)} placeholder="Alasan koreksi (opsional)" className="flex-1 px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-sm" />
+                <button onClick={handleSaveStar} disabled={savingStar} className="px-4 py-2 bg-[#768875] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{savingStar ? "..." : "Simpan Bintang"}</button>
+              </div>
+              {selectedHotel.star_rating && <p className="text-xs text-[#747872] mt-2">Terverifikasi: ★ {selectedHotel.star_rating} {selectedHotel.star_verified_reason ? `— ${selectedHotel.star_verified_reason}` : ""}</p>}
+            </div>
             <div className="flex justify-end items-center gap-3 pt-4 border-t border-[#E5E0D8]">
               <button
                 type="button"
@@ -448,6 +515,16 @@ const HotelMonitoring = () => {
                 className="px-4 py-2 border border-[#E5E0D8] rounded-lg font-hanken text-[13px] font-semibold text-[#434842] hover:bg-[#F9F6F1] transition-colors"
               >
                 Tutup
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteHotel(selectedHotel.id, selectedHotel.name);
+                }}
+                className="px-4 py-2 border border-[#ffdad6] rounded-lg font-hanken text-[13px] font-semibold text-[#ba1a1a] hover:bg-[#ffdad6]/30 transition-colors"
+              >
+                Hapus Hotel
               </button>
 
               <button
@@ -469,6 +546,29 @@ const HotelMonitoring = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Toggle Status Dialog */}
+      <ConfirmDialog
+        open={!!pendingToggle}
+        title="Ubah Status Hotel"
+        message={`Yakin ingin mengubah status hotel ini menjadi ${(pendingToggle?.newStatus || "").toUpperCase()}?`}
+        confirmText="Ya, Ubah Status"
+        processing={isToggling}
+        onConfirm={performToggleStatus}
+        onCancel={() => setPendingToggle(null)}
+      />
+
+      {/* Confirm Delete Hotel Dialog */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        type="danger"
+        title="Hapus Hotel"
+        message={`Apakah Anda yakin ingin menghapus hotel "${pendingDelete?.name}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Ya, Hapus Hotel"
+        processing={isDeleting}
+        onConfirm={performDeleteHotel}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };

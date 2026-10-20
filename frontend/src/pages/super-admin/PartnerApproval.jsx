@@ -2,15 +2,22 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { getStorageUrl } from "../../services/imageUrl";
 
-const STORAGE_BASE = "http://localhost:8000/storage/";
-
-const getFileUrl = (path) => {
-  if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:") || path.startsWith("blob:")) {
-    return path;
+const openPartnerDocument = async (appId, docId, fallbackUrl) => {
+  try {
+    const res = await api.get(`/super-admin/partners/${appId}/documents/${docId}`, { responseType: "blob" });
+    const mime = res.headers?.["content-type"] || "application/octet-stream";
+    const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (err) {
+    if (fallbackUrl) {
+      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    toast.error(err.response?.data?.message || "Gagal membuka dokumen.");
   }
-  return STORAGE_BASE + String(path).replace(/^\//, "");
 };
 
 const getDocLabel = (type) => {
@@ -55,6 +62,11 @@ const PartnerApproval = () => {
   const [rejectPartnerId, setRejectPartnerId] = useState(null);
   const [rejectLoading, setRejectLoading] = useState(false);
 
+  const [pendingApprove, setPendingApprove] = useState(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveStar, setApproveStar] = useState("");
+  const [approveStarReason, setApproveStarReason] = useState("");
+
   // Fetch partners
   const fetchPartners = async (forceRefresh = false) => {
     const key = getCacheKey("/super-admin/partners");
@@ -86,21 +98,33 @@ const PartnerApproval = () => {
     fetchPartners(false);
   }, []);
 
-  const handleApprove = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menyetujui pengajuan mitra ini?"))
-      return;
+  const handleApprove = (id) => {
+    const p = partners.find((x) => x.id === id);
+    setApproveStar(p?.requested_star_rating ? String(p.requested_star_rating) : "");
+    setApproveStarReason("");
+    setPendingApprove(id);
+  };
 
+  const performApprove = async () => {
+    if (!pendingApprove) return;
+    const id = pendingApprove;
+    const selected = partners.find((x) => x.id === id);
+    const starToSend = approveStar ? Number(approveStar) : (selected?.requested_star_rating || null);
+    setIsApproving(true);
     try {
-      await api.patch(`/super-admin/partners/${id}/approve`);
+      await api.patch(`/super-admin/partners/${id}/approve`, { star_rating: starToSend, star_verified_reason: approveStarReason || null });
       invalidateCache("/super-admin/partners");
       invalidateCache("/super-admin/dashboard");
       toast.success("Pengajuan mitra berhasil disetujui!");
       if (selectedPartner && selectedPartner.id === id) {
         setSelectedPartner((prev) => ({ ...prev, status: "Approved" }));
       }
+      setPendingApprove(null);
       fetchPartners(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal menyetujui pengajuan.");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -315,8 +339,7 @@ const PartnerApproval = () => {
                               {hotelName}
                             </p>
                             <p className="text-xs text-[#747872] mt-0.5">
-                              {row.city || row.address ? `${row.city || row.address} • ` : ""}
-                              {row.rooms_count ? `${row.rooms_count} Rooms` : "Hotel Partner"}
+                              {row.city || row.address ? `${row.city || row.address}` : "Hotel Partner"}
                             </p>
                           </td>
 
@@ -548,12 +571,8 @@ const PartnerApproval = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">
-                        Total Rooms
-                      </p>
-                      <p className="font-medium text-[#191c1b] mt-0.5">
-                        {selectedPartner.rooms_count ?? "24 Rooms"}
-                      </p>
+                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">Bintang (Klaim Mitra)</p>
+                      <p className="font-medium text-[#191c1b] mt-0.5">{selectedPartner.requested_star_rating ? `★ ${selectedPartner.requested_star_rating}` : "Belum Bersertifikat"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-[#747872]">
@@ -581,27 +600,38 @@ const PartnerApproval = () => {
                       const docs = Array.isArray(selectedPartner.documents)
                         ? selectedPartner.documents
                         : [];
-                      const legacyUrl = selectedPartner.document_url || selectedPartner.document || null;
+                      const legacyUrl = selectedPartner.document_url || selectedPartner.document
+                        ? getStorageUrl(selectedPartner.document_url || selectedPartner.document)
+                        : null;
                       const list = [];
                       docs.forEach((d, i) => {
-                        const url = getFileUrl(d.file_path || d.filePath || d.path || d.url);
-                        if (url) list.push({ url, label: getDocLabel(d.document_type || d.type || `Dokumen ${i + 1}`), icon: getDocIcon(d.document_type || d.type) });
+                        const fallback = getStorageUrl(d.file_path || d.filePath || d.path || d.url);
+                        list.push({ id: d.id, fallback, label: getDocLabel(d.document_type || d.type || `Dokumen ${i + 1}`), icon: getDocIcon(d.document_type || d.type) });
                       });
-                      if (!list.length && legacyUrl) {
-                        list.push({ url: getFileUrl(legacyUrl), label: "Dokumen Legalitas Mitra", icon: "description" });
-                      }
 
                       if (!list.length) {
+                        if (!legacyUrl) {
+                          return (
+                            <div className="border border-dashed border-[#E5E0D8] rounded-lg p-6 text-center text-[#747872] text-[13px]">
+                              Tidak ada lampiran dokumen digital untuk pengajuan ini.
+                            </div>
+                          );
+                        }
                         return (
-                          <div className="border border-dashed border-[#E5E0D8] rounded-lg p-6 text-center text-[#747872] text-[13px]">
-                            Tidak ada lampiran dokumen digital untuk pengajuan ini.
+                          <div className="border border-[#E5E0D8] rounded-lg p-3.5 flex items-center gap-3.5 bg-[#F9F6F1]/40">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-[#191c1b] text-[13.5px]">Dokumen Legalitas Mitra</p>
+                              <button onClick={() => window.open(legacyUrl, "_blank", "noopener,noreferrer")} className="text-xs text-[#768875] hover:underline font-medium mt-0.5">
+                                Buka File Dokumen &rarr;
+                              </button>
+                            </div>
                           </div>
                         );
                       }
 
-                      return list.map((item, idx) => (
+                      return list.map((item) => (
                         <div
-                          key={idx}
+                          key={item.id || item.label}
                           className="border border-[#E5E0D8] rounded-lg p-3.5 flex items-center gap-3.5 hover:border-[#768875] transition-colors bg-[#F9F6F1]/40 group"
                         >
                           <div className="w-11 h-11 bg-[#edeeec] rounded-lg flex items-center justify-center text-[#747872] group-hover:text-[#4f604f] transition-colors shrink-0">
@@ -613,26 +643,22 @@ const PartnerApproval = () => {
                             <p className="font-semibold text-[#191c1b] text-[13.5px] truncate">
                               {item.label}
                             </p>
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => openPartnerDocument(selectedPartner.id, item.id, item.fallback)}
                               className="text-xs text-[#768875] hover:underline font-medium mt-0.5 inline-block"
                             >
                               Buka File Dokumen &rarr;
-                            </a>
+                            </button>
                           </div>
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => openPartnerDocument(selectedPartner.id, item.id, item.fallback)}
                             className="text-[#747872] group-hover:text-[#768875] p-1.5"
                             title="Preview / Unduh"
                           >
                             <span className="material-symbols-outlined text-[20px]">
                               visibility
                             </span>
-                          </a>
+                          </button>
                         </div>
                       ));
                     })()}
@@ -726,6 +752,26 @@ const PartnerApproval = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {pendingApprove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => !isApproving && setPendingApprove(null)}></div>
+          <div className="relative bg-white rounded-xl border border-[#E5E0D8] p-6 max-w-md w-full z-10 font-hanken">
+            <h3 className="font-newsreader text-lg font-semibold mb-1">Setujui Mitra + Bintang</h3>
+            {(() => { const p = partners.find((x) => x.id === pendingApprove); return p?.requested_star_rating ? <p className="text-xs text-[#747872] mb-3">Klaim mitra: ★ {p.requested_star_rating} — koreksi di bawah jika perlu.</p> : null; })()}
+            <div className="space-y-3">
+              <select value={approveStar} onChange={(e) => setApproveStar(e.target.value)} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm">
+                <option value="">Belum Terverifikasi</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Bintang</option>)}
+              </select>
+              <textarea value={approveStarReason} onChange={(e) => setApproveStarReason(e.target.value)} placeholder="Alasan koreksi (opsional)" rows={2} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm resize-none" />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setPendingApprove(null)} disabled={isApproving} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-sm">Batal</button>
+              <button onClick={performApprove} disabled={isApproving} className="px-4 py-2 bg-[#4F6F52] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{isApproving ? "..." : "Ya, Setujui"}</button>
+            </div>
           </div>
         </div>
       )}

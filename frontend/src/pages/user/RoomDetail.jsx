@@ -1,24 +1,167 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
+import GuestSelector from "../../components/common/GuestSelector";
+import { getInitialSearchValues, saveSearchState, fmtDateStr } from "../../services/searchStorage";
+import { deduplicateFacilities, resolveFacilityIcon } from "../../utils/facilities";
+
+const FACILITY_ICON_MAP = {
+  "AC": "ac_unit",
+  "Air Conditioning": "ac_unit",
+  "AC Area Umum": "ac_unit",
+  "TV": "tv",
+  "Smart TV": "tv",
+  "Television": "tv",
+  "Kamar mandi pribadi": "bathtub",
+  "Private Bathroom": "bathtub",
+  "Bathtub": "bathtub",
+  "Balkon": "balcony",
+  "Private Balcony": "balcony",
+  "Mini fridge": "kitchen",
+  "Mini Refrigerator": "kitchen",
+  "Kulkas Mini": "kitchen",
+  "Hair dryer": "lotion",
+  "Hair Dryer": "lotion",
+  "Pengering Rambut": "lotion",
+  "Meja kerja": "desk",
+  "Work Desk": "desk",
+  "Lemari": "checkroom",
+  "Wardrobe": "checkroom",
+  "Closet": "checkroom",
+  "Lemari Pakaian": "checkroom",
+  "Air mineral": "water_drop",
+  "Mineral Water": "water_drop",
+  "Air Mineral": "water_drop",
+  "Water Heater": "water_drop",
+  "Shower": "shower",
+  "Toilet": "bathtub",
+  "Washtafel": "bathtub",
+  "Wi-Fi": "wifi",
+  "Wi-Fi Gratis": "wifi",
+  "Internet": "wifi",
+  "Kolam renang": "pool",
+  "Swimming Pool": "pool",
+  "Kolam Renang": "pool",
+  "Parkir": "local_parking",
+  "Parkir Gratis": "local_parking",
+  "Parking": "local_parking",
+  "Restoran": "restaurant",
+  "Restaurant": "restaurant",
+  "Gym": "fitness_center",
+  "Fitness Center": "fitness_center",
+  "Pusat Kebugaran": "fitness_center",
+  "Spa": "hot_tub",
+  "Spa & Massage": "hot_tub",
+  "Spa & Wellness": "hot_tub",
+  "Resepsionis 24 jam": "concierge",
+  "Reception 24h": "concierge",
+  "Front Desk 24h": "concierge",
+  "Lift": "elevator",
+  "Elevator": "elevator",
+  "Laundry": "local_laundry_service",
+  "Laundry Service": "local_laundry_service",
+  "Safety Box": "lock",
+  "Brankas Kamar": "lock",
+  "Coffee Maker": "local_cafe",
+  "Pembuat Teh/Kopi": "local_cafe",
+  "Bar & Lounge": "local_bar",
+  "Room Service": "room_service",
+  "Bed / Room": "bed",
+  "Tempat Tidur": "bed",
+  "Hotel General": "hotel",
+  "Peralatan Mandi Gratis": "bathtub",
+  "Free Toiletries": "bathtub",
+};
+
+const getFacilityIcon = (fac) => {
+  return resolveFacilityIcon(fac?.name || fac, fac?.icon, "bed");
+};
 
 const RoomDetail = () => {
   const { hotelId, roomId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [hotel, setHotel] = useState(null);
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Reservation Form State
-  const todayStr = new Date().toISOString().split("T")[0];
-  const next4Days = new Date(Date.now() + 4 * 86400000).toISOString().split("T")[0];
+  const lightboxContainerRef = useRef(null);
 
-  const [checkInDate, setCheckInDate] = useState(todayStr);
-  const [checkOutDate, setCheckOutDate] = useState(next4Days);
-  const [guestCount, setGuestCount] = useState("2 Tamu Dewasa");
+  useEffect(() => {
+    if (lightboxOpen) {
+      setScale(1);
+      setPanX(0);
+      setPanY(0);
+    }
+  }, [lightboxOpen, lightboxIndex]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+    };
+    if (lightboxOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [lightboxOpen]);
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setScale((s) => Math.min(Math.max(s + delta, 0.5), 3));
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragOffset({ x: panX, y: panY });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    setPanX(dragOffset.x + dx);
+    setPanY(dragOffset.y + dy);
+  };
+
+  const handlePointerUp = () => setIsDragging(false);
+
+  const today = useMemo(() => new Date(), []);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
+  const [adults, setAdults] = useState(init.adults);
+  const [children, setChildren] = useState(init.children);
+
+  useEffect(() => {
+    saveSearchState({ checkIn: checkInDate, checkOut: checkOutDate, adults, children });
+  }, [checkInDate, checkOutDate, adults, children]);
+
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setCheckInDate(start);
+    setCheckOutDate(end);
+  };
+
+  const handleGuestChange = ({ adults: a, children: c }) => {
+    setAdults(a);
+    setChildren(c);
+  };
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
@@ -37,26 +180,39 @@ const RoomDetail = () => {
               ? (matchedRoomType.photos.find(p => p.is_thumbnail) || matchedRoomType.photos[0]) 
               : null;
             const photoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
-            const roomImage = photoPath 
-              ? (photoPath.startsWith('http') ? photoPath : `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`)
-              : null;
+            const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
-            const mappedRoom = {
-              id: matchedRoomType.id,
-              name: matchedRoomType.name,
-              price: matchedRoomType.weekday_price,
-              weekday_price: matchedRoomType.weekday_price,
-              weekend_price: matchedRoomType.weekend_price,
-              thumbnail: roomImage,
-              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
-              description: matchedRoomType.description,
-              bed: matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed",
-              breakfast: matchedRoomType.breakfast,
-              smoking_area: matchedRoomType.smoking_area,
-              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
-              stock: matchedRoomType.stock,
-              photos: matchedRoomType.photos || []
-            };
+            const facilities = matchedRoomType.facilities || [];
+const policies = matchedRoomType.policies || "";
+let liveRooms = [];
+if (checkInDate && checkOutDate) {
+  const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
+  const { data: liveResponse } = await cachedGet(`/hotels/${targetHotelId}/rooms`, {
+    params: { check_in: fmtDateParam(checkInDate), check_out: fmtDateParam(checkOutDate) },
+  });
+  liveRooms = liveResponse?.data || [];
+}
+const liveStock = (liveRooms.find(r=>Number(r.id)===Number(matchedRoomType.id))||{}).available_stock;
+const mappedRoom = {
+  id: matchedRoomType.id,
+  name: matchedRoomType.name,
+  price: matchedRoomType.weekday_price,
+  weekday_price: matchedRoomType.weekday_price,
+  weekend_price: matchedRoomType.weekend_price,
+  thumbnail: roomImage,
+  capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+  capacity_adult: matchedRoomType.capacity_adult,
+  capacity_child: matchedRoomType.capacity_child,
+  description: matchedRoomType.description,
+  bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
+  breakfast: matchedRoomType.breakfast,
+  smoking_area: matchedRoomType.smoking_area,
+  is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
+  stock: liveStock ?? matchedRoomType.stock,
+  policies,
+  facilities,
+  photos: matchedRoomType.photos || [],
+};
 
             setHotel(apiHotel);
             setRoom(mappedRoom);
@@ -81,31 +237,26 @@ const RoomDetail = () => {
     };
 
     fetchDetail();
-  }, [hotelId, roomId]);
+  }, [hotelId, roomId, checkInDate, checkOutDate]);
 
   // Price & Nights Calculation
   const nightsCount = useMemo(() => {
     if (!checkInDate || !checkOutDate) return 1;
-    const start = new Date(checkInDate);
-    const end = new Date(checkOutDate);
-    const diffTime = end - start;
+    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
 
   const roomPrice = Number(room?.price || room?.weekday_price || 3200000);
   const subtotalPrice = roomPrice * nightsCount;
-  const taxAndFees = Math.round(subtotalPrice * 0.21);
+  const taxAndFees = Math.round(subtotalPrice * 0.05);
   const totalPrice = subtotalPrice + taxAndFees;
-
-  const [imgErrors, setImgErrors] = useState({});
 
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
     let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url : photoItem;
     if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
+    return getStorageUrl(path);
   };
 
   const roomPhotoUrls = (room?.photos || []).map(getImageUrl).filter(Boolean);
@@ -116,12 +267,32 @@ const RoomDetail = () => {
   if (photosList.length === 0 && thumbFallback) {
     photosList = [thumbFallback];
   }
+  if (photosList.length === 0) {
+    photosList = ["data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300' fill='%23ccc'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Ctext x='200' y='160' font-family='sans-serif' font-size='18' fill='%23666' text-anchor='middle'%3ENo Photo Available%3C/text%3E%3C/svg%3E"];
+  }
+
+  // Format Date for URL navigation
+  const formatDateForUrl = (dateObj) => {
+    if (!dateObj) return "";
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const handleReserve = (e) => {
     e.preventDefault();
     const hId = hotel?.id || hotelId || 1;
     const rId = room?.id || roomId || 101;
-    navigate(`/booking/${hId}/${rId}?checkIn=${checkInDate}&checkOut=${checkOutDate}`);
+    const checkInStr = formatDateForUrl(checkInDate);
+    const checkOutStr = formatDateForUrl(checkOutDate);
+    const qs = new URLSearchParams({
+      checkIn: checkInStr,
+      checkOut: checkOutStr,
+      adults: String(adults),
+      children: String(children),
+    }).toString();
+    navigate(`/booking/${hId}/${rId}?${qs}`);
   };
 
   if (loading) {
@@ -205,84 +376,48 @@ const RoomDetail = () => {
         {/* Hero Photo Mosaic Gallery */}
         {photosList.length > 0 ? (
           <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
-            {/* Main Hero Photo (Left 2 cols x 2 rows) */}
-            <div className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
-              {!imgErrors[0] ? (
-                <img
-                  src={photosList[0]}
-                  alt="Main Bedroom View"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                  onClick={() => setShowPhotoModal(true)}
-                  onError={() => setImgErrors((p) => ({ ...p, 0: true }))}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#778873] text-7xl opacity-50">no_photography</span>
-                </div>
-              )}
+            <div
+              className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
+              onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
+            >
+              <img src={photosList[0]} alt="Main Bedroom View" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
 
-            {/* Sub Photo 1 */}
-            <div className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
-              {(photosList[1] || photosList[0]) && !imgErrors[1] ? (
-                <img
-                  src={photosList[1] || photosList[0]}
-                  alt="Room Detail 1"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                  onClick={() => setShowPhotoModal(true)}
-                  onError={() => setImgErrors((p) => ({ ...p, 1: true }))}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
-                </div>
-              )}
-            </div>
-
-            {/* Sub Photo 2 */}
-            <div className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0]">
-              {(photosList[2] || photosList[0]) && !imgErrors[2] ? (
-                <img
-                  src={photosList[2] || photosList[0]}
-                  alt="Room Detail 2"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                  onClick={() => setShowPhotoModal(true)}
-                  onError={() => setImgErrors((p) => ({ ...p, 2: true }))}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
-                </div>
-              )}
-            </div>
-
-            {/* Sub Photo 3 with Gallery Overlay */}
-            <div className="hidden md:block md:col-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer">
-              {(photosList[3] || photosList[0]) && !imgErrors[3] ? (
-                <img
-                  src={photosList[3] || photosList[0]}
-                  alt="Room Detail 3"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
-                  onError={() => setImgErrors((p) => ({ ...p, 3: true }))}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#778873] text-5xl opacity-50">no_photography</span>
-                </div>
-              )}
+            {photosList[1] && (
               <div
-                onClick={() => setShowPhotoModal(true)}
-                className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors group-hover:bg-black/40"
+                className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
+                onClick={() => { setLightboxIndex(1); setLightboxOpen(true); }}
               >
-                <button
-                  type="button"
-                  className="bg-[#FDF6ED] text-[#778873] px-6 py-3 rounded-full font-label-md text-sm font-semibold flex items-center gap-2 shadow-md hover:bg-white transition-all transform hover:-translate-y-0.5"
-                >
-                  <span className="material-symbols-outlined text-lg">grid_view</span>
-                  View All {photosList.length} Photos
-                </button>
+                <img src={photosList[1]} alt="Room Detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               </div>
-            </div>
+            )}
+
+            {photosList[2] && (
+              <div
+                className="hidden md:block relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
+                onClick={() => { setLightboxIndex(2); setLightboxOpen(true); }}
+              >
+                <img src={photosList[2]} alt="Room Detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              </div>
+            )}
+
+            {photosList[3] && (
+              <div
+                className="hidden md:block md:col-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
+                onClick={() => { setLightboxIndex(3); setLightboxOpen(true); }}
+              >
+                <img src={photosList[3]} alt="Room Detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90" />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors group-hover:bg-black/40">
+                  <button
+                    type="button"
+                    className="bg-[#FDF6ED] text-[#778873] px-6 py-3 rounded-full font-label-md text-sm font-semibold flex items-center gap-2 shadow-md hover:bg-white transition-all transform hover:-translate-y-0.5"
+                  >
+                    <span className="material-symbols-outlined text-lg">grid_view</span>
+                    View All {photosList.length} Photos
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         ) : (
           <section className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
@@ -300,7 +435,6 @@ const RoomDetail = () => {
           {/* Left Column: Description, Amenities, Policies */}
           <div className="lg:col-span-8 flex flex-col gap-10 pr-0 lg:pr-4">
             
-            {/* About This Room */}
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-4">
                 Tentang Kamar Ini
@@ -313,110 +447,72 @@ const RoomDetail = () => {
 
             <hr className="border-[#DCCFC0]/40" />
 
-            {/* Room Amenities Grid */}
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
                 Fasilitas Kamar
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">pool</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Private Infinity Pool</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Pengaturan suhu air</p>
-                  </div>
+              {Array.isArray(room?.facilities) && room.facilities.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
+                  {deduplicateFacilities(room.facilities, room.facilities.map((fac) => fac.id)).map((fac, idx) => {
+                    const facName = typeof fac === "object" ? fac.name : String(fac);
+                    const facDesc = typeof fac === "object" ? (fac.description || "") : "";
+                    const iconName = getFacilityIcon(fac);
+                    return (
+                      <div key={idx} className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-[#778873] text-2xl">{iconName}</span>
+                        <div>
+                          <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">{facName}</h3>
+                          {facDesc && <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">{facDesc}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">bathtub</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Kamar Mandi Marmer</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Bathub &amp; rain shower</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">coffee_maker</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Mesin Kopi Nespresso</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Kapsul harian gratis</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">room_service</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Layanan Kamar 24/7</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Menu dalam kamar</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">kitchen</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">Mini Bar Premium</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Pilihan minuman &amp; camilan</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-[#778873] text-2xl">wifi</span>
-                  <div>
-                    <h3 className="font-label-md text-sm font-semibold text-[#1e1b16]">WiFi Kecepatan Tinggi</h3>
-                    <p className="font-body-md text-xs text-[#444842]/80 mt-0.5">Akses gratis tanpa batas</p>
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
+                  Belum ada fasilitas khusus yang terdaftar untuk kamar ini.
+                </p>
+              )}
             </section>
 
             <hr className="border-[#DCCFC0]/40" />
 
-            {/* Room Policies */}
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
                 Kebijakan Kamar
               </h2>
-              <ul className="space-y-5">
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">schedule</span>
+              {room?.policies ? (
+                <div className="text-sm text-[#444842] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
+                  {room.policies}
+                </div>
+              ) : (
+                <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Waktu Check-in &amp; Check-out</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Waktu Check-in &amp; Check-out</h4>
+                    <p className="text-xs text-[#444842] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
                   </div>
-                </li>
-
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">smoke_free</span>
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Kebijakan Bebas Asap Rokok</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Kebijakan Bebas Asap Rokok</h4>
+                    <p className="text-xs text-[#444842] mt-1">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
                   </div>
-                </li>
-
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">pets</span>
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Hewan Peliharaan</h4>
-                    <p className="font-body-md text-xs text-[#444842] mt-0.5">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Hewan Peliharaan</h4>
+                    <p className="text-xs text-[#444842] mt-1">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
                   </div>
-                </li>
-
-                <li className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-[#747871] mt-0.5">event_busy</span>
                   <div>
-                    <h4 className="font-label-md text-sm font-semibold text-[#1e1b16]">Pembatalan</h4>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Pembatalan</h4>
                     {room?.is_refundable ? (
-                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                      <p className="text-xs text-[#444842] mt-1">
                         <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.
                       </p>
                     ) : (
-                      <p className="font-body-md text-xs text-[#444842] mt-0.5">
+                      <p className="text-xs text-[#444842] mt-1">
                         <span className="font-bold text-[#ba1a1a]">Tidak dapat dibatalkan:</span> Kamar ini bersifat non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.
                       </p>
                     )}
                   </div>
-                </li>
-              </ul>
+                </div>
+              )}
             </section>
           </div>
 
@@ -456,49 +552,32 @@ const RoomDetail = () => {
                 </div>
               )}
 
-              {/* Dates Input Controls */}
+              {/* Date Range + GuestSelector — mirror LandingPage L228 */}
               <div className="flex flex-col gap-4 mb-6">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors">
-                    <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                      Check-In
-                    </label>
-                    <input
-                      type="date"
-                      value={checkInDate}
-                      onChange={(e) => setCheckInDate(e.target.value)}
-                      className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                    />
+                <div className="w-full group flex items-center gap-3 bg-[#FDF6ED] hover:bg-[#EFECE6] px-4 py-3 rounded-xl border border-[#DCCFC0] focus-within:bg-white focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873]/20 transition-all text-left relative z-40">
+                  <div className="w-10 h-10 rounded-xl bg-[#778873]/10 group-hover:bg-[#778873] text-[#778873] group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
+                    <span className="material-symbols-outlined text-xl">calendar_month</span>
                   </div>
-
-                  <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors">
-                    <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                      Check-Out
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">
+                      Check-in &amp; Check-out
                     </label>
-                    <input
-                      type="date"
-                      value={checkOutDate}
-                      onChange={(e) => setCheckOutDate(e.target.value)}
-                      className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
+                    <DatePicker
+                      selectsRange={true}
+                      startDate={checkInDate}
+                      endDate={checkOutDate}
+                      onChange={handleDateRangeChange}
+                      minDate={today}
+                      monthsShown={2}
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Pilih Tanggal Menginap"
+                      popperClassName="!z-[9999]"
+                      className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate"
                     />
                   </div>
                 </div>
 
-                {/* Guests Select */}
-                <div className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] focus-within:border-[#778873] transition-colors">
-                  <label className="block font-label-sm text-[10px] font-semibold text-[#444842] uppercase tracking-wider mb-1">
-                    Jumlah Tamu
-                  </label>
-                  <select
-                    value={guestCount}
-                    onChange={(e) => setGuestCount(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 text-xs font-semibold text-[#1e1b16] outline-none cursor-pointer"
-                  >
-                    <option value="1 Tamu Dewasa">1 Tamu Dewasa</option>
-                    <option value="2 Tamu Dewasa">2 Tamu Dewasa</option>
-                    <option value="4 Tamu Dewasa">4 Tamu Dewasa</option>
-                  </select>
-                </div>
+                <GuestSelector adults={adults} children={children} rooms={1} onGuestChange={handleGuestChange} />
               </div>
 
               {/* Dynamic Price Breakdown */}
@@ -508,7 +587,7 @@ const RoomDetail = () => {
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Pajak &amp; Biaya Layanan (21%)</span>
+                  <span>Pajak &amp; Biaya Layanan (5%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
                 <hr className="border-[#DCCFC0]/50 my-2" />
@@ -534,35 +613,52 @@ const RoomDetail = () => {
         </div>
       </main>
 
-      {/* Lightbox Modal for All Photos */}
-      {showPhotoModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#fff8f0] rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative text-left">
-            <div className="flex justify-between items-center mb-4 border-b border-[#DCCFC0]/40 pb-3">
-              <h3 className="font-headline-md text-xl font-bold text-[#778873]">
-                Galeri Foto {room?.name || "Kamar"}
-              </h3>
+      {/* Full-screen Lightbox */}
+      {lightboxOpen && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) setLightboxOpen(false); }}>
+          <div
+            ref={lightboxContainerRef}
+            className="relative w-full h-full flex items-center justify-center touch-none select-none"
+            onWheel={handleWheel}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
               <button
-                onClick={() => setShowPhotoModal(false)}
-                className="text-[#1e1b16] hover:text-[#778873] p-1 text-2xl font-bold"
+                className="absolute top-4 right-4 text-white text-3xl z-20 hover:text-gray-300 bg-black/20 p-2 rounded-full transition-colors"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => setLightboxOpen(false)}
               >
                 ✕
               </button>
-            </div>
-            {photosList.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {photosList.map((photo, i) => (
-                  <div key={i} className="h-64 rounded-xl overflow-hidden bg-[#eee7de]">
-                    <img src={photo} alt={`Foto Kamar ${i + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-12 text-center">
-                <span className="material-symbols-outlined text-[#778873] text-6xl mb-3 opacity-60">image_not_supported</span>
-                <p className="font-label-md text-sm font-bold text-[#778873]">Belum ada foto yang diunggah.</p>
-              </div>
+            {photosList.length > 1 && (
+              <>
+                <button
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLightboxIndex((i) => (i - 1 + photosList.length) % photosList.length)}
+                >
+                  ‹
+                </button>
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLightboxIndex((i) => (i + 1) % photosList.length)}
+                >
+                  ›
+                </button>
+              </>
             )}
+            <img
+              src={photosList[lightboxIndex]}
+              alt={`Foto ${lightboxIndex + 1}`}
+              className="max-w-[90vw] max-h-[90vh] object-contain transition-transform duration-200"
+              style={{ transform: `translate(${panX}px, ${panY}px) scale(${scale})` }}
+              draggable={false}
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+              {lightboxIndex + 1} / {photosList.length}
+            </div>
           </div>
         </div>
       )}

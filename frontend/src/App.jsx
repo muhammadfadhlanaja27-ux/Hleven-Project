@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useLocation,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -34,13 +35,19 @@ import MitraRegistrationSuccess from "./pages/mitra/MitraRegistrationSuccess";
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
 import Dashboard from "./pages/admin-hotel/Dashboard";
 import HotelInformation from "./pages/admin-hotel/HotelInformation";
-import FacilityManager from "./pages/admin-hotel/FacilityManager";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
+import RoomCalendar from "./pages/admin-hotel/RoomCalendar";
 import BookingList from "./pages/admin-hotel/BookingList";
+import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
+import Wallet from "./pages/admin-hotel/Wallet";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
+import AdminPayouts from "./pages/admin-hotel/Payouts";
 import AdminProfile from "./pages/admin-hotel/Profile";
+import SuspendedPage from "./pages/admin-hotel/SuspendedPage";
+import AdminWarnings from "./pages/admin-hotel/Warnings";
+import BedTypeManager from "./pages/admin-hotel/BedTypeManager";
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
@@ -49,9 +56,13 @@ import UserManagement from "./pages/super-admin/UserManagement";
 import HotelMonitoring from "./pages/super-admin/HotelMonitoring";
 import PartnerApproval from "./pages/super-admin/PartnerApproval";
 import WarningManagement from "./pages/super-admin/WarningManagement";
+import AppealManagement from "./pages/super-admin/AppealManagement";
 import ActivityLogs from "./pages/super-admin/ActivityLogs";
 import Reports from "./pages/super-admin/Reports";
+import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
+import PayoutManagement from "./pages/super-admin/PayoutManagement";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
+import WalletOverview from "./pages/super-admin/WalletOverview";
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
@@ -67,7 +78,28 @@ const MainLayout = () => (
 );
 
 // ---------------------------------------------------------
-// 2. SATPAM AMAN: Protected Route untuk Admin Hotel (Hanya 1 buah)
+// 2. SATPAM AMAN: Protected Route untuk User Biasa (Wajib Login)
+// ---------------------------------------------------------
+const UserProtectedRoute = () => {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+  const userString = localStorage.getItem("user");
+
+  const isValidToken =
+    token &&
+    token !== "null" &&
+    token !== "undefined" &&
+    token.trim() !== "";
+
+  if (!isValidToken || !userString || userString === "null" || userString === "undefined") {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
+};
+
+// ---------------------------------------------------------
+// 3. SATPAM AMAN: Protected Route untuk Admin Hotel
 // ---------------------------------------------------------
 const AdminHotelProtectedRoute = () => {
   const token = localStorage.getItem("token");
@@ -82,6 +114,14 @@ const AdminHotelProtectedRoute = () => {
     if (user.role !== "admin_hotel" && user.role !== "super_admin") {
       return <Navigate to="/admin/login" replace />;
     }
+    const blocked = user.hotel_status === "blocked" || user.hotel?.status === "blocked";
+    const onSuspended = window.location.pathname.startsWith("/admin/suspended");
+    if (blocked && !onSuspended) {
+      return <Navigate to="/admin/suspended" replace />;
+    }
+    if (!blocked && onSuspended) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
   } catch (e) {
     localStorage.clear();
     return <Navigate to="/admin/login" replace />;
@@ -91,7 +131,7 @@ const AdminHotelProtectedRoute = () => {
 };
 
 // ---------------------------------------------------------
-// 3. SATPAM AMAN: Protected Route untuk Super Admin
+// 4. SATPAM AMAN: Protected Route untuk Super Admin
 // ---------------------------------------------------------
 const SuperAdminProtectedRoute = () => {
   const token = localStorage.getItem("token");
@@ -131,38 +171,49 @@ function App() {
 
           {/* GRUP 1: Rute Publik & User */}
           <Route element={<MainLayout />}>
+            {/* Rute Bebas Publik */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/hotels" element={<HotelList />} />
             <Route path="/hotels/:id" element={<HotelDetail />} />
             <Route path="/hotels/:hotelId/rooms/:roomId" element={<RoomDetail />} />
             <Route path="/rooms/:hotelId/:roomId" element={<RoomDetail />} />
-
-            {/* 🟢 SUDAH DIPERBAIKI: Menggunakan parameter :hotelId dan :roomId */}
-            <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
-
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="/booking-history" element={<BookingHistory />} />
+
+            {/* Rute Khusus User Terautentikasi (WAJIB LOGIN) */}
+            <Route element={<UserProtectedRoute />}>
+              <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/booking-history" element={<BookingHistory />} />
+            </Route>
 
             {/* Mitra Hotel */}
             <Route path="/mitra" element={<MitraLanding />} />
             <Route path="/mitra/sukses" element={<MitraRegistrationSuccess />} />
           </Route>
-          {/* Form Pendaftaran Mitra (layout terpisah: header onboarding) */}
+
+          {/* Form Pendaftaran Mitra */}
           <Route path="/mitra/daftar" element={<MitraRegistration />} />
 
           {/* GRUP 2: Rute Admin Hotel */}
           <Route element={<AdminHotelProtectedRoute />}>
+            <Route path="/admin/suspended" element={<SuspendedPage />} />
             <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/hotel" element={<HotelInformation />} />
-              <Route path="/admin/facilities" element={<FacilityManager />} />
+              <Route path="/admin/facilities" element={<Navigate to="/admin/hotel" replace />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
+              <Route path="/admin/calendar" element={<RoomCalendar />} />
+              <Route path="/admin/bed-types" element={<BedTypeManager />} />
+              <Route path="/admin/beds" element={<Navigate to="/admin/bed-types" replace />} />
               <Route path="/admin/bookings" element={<BookingList />} />
+              <Route path="/admin/transactions" element={<TransactionHistory />} />
+              <Route path="/admin/wallet" element={<Wallet />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
+              <Route path="/admin/warnings" element={<AdminWarnings />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />
+              <Route path="/admin/payouts" element={<AdminPayouts />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
             </Route>
           </Route>
@@ -170,17 +221,19 @@ function App() {
           {/* GRUP 3: Rute Khusus Super Admin */}
           <Route element={<SuperAdminProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
-              {/* Tambahkan baris di bawah ini agar otomatis redirect ke dashboard */}
               <Route index element={<Navigate to="dashboard" replace />} />
-
               <Route path="dashboard" element={<SuperAdminDashboard />} />
               <Route path="profile" element={<SuperAdminProfile />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="hotels" element={<HotelMonitoring />} />
               <Route path="partners" element={<PartnerApproval />} />
               <Route path="warnings" element={<WarningManagement />} />
+              <Route path="appeals" element={<AppealManagement />} />
               <Route path="activity-logs" element={<ActivityLogs />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="application-revenue" element={<ApplicationRevenue />} />
+              <Route path="payouts" element={<PayoutManagement />} />
+              <Route path="wallet" element={<WalletOverview />} />
             </Route>
           </Route>
 

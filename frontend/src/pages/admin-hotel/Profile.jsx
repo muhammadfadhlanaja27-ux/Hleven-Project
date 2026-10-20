@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { getStorageUrl } from "../../services/imageUrl";
 
 // ─── Initial Fallback Data ───────────────────────────────────────────────────
 const INITIAL_PROFILE = {
@@ -16,8 +17,6 @@ const INITIAL_PROFILE = {
     phone: "+62 22 1234567",
     address: "Jl. Example No. 123",
     city: "Bandung",
-    province: "West Java",
-    postalCode: "40123",
     description: "Comfortable accommodation with modern facilities.",
     logo: null,
   },
@@ -32,12 +31,67 @@ const INITIAL_PROFILE = {
   },
 };
 
+const asText = (value, fallback = "") => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "object") {
+    if (typeof value.name === "string") return value.name;
+    if (typeof value.city === "string") return value.city;
+    if (typeof value.province === "string") return value.province;
+    return fallback;
+  }
+  return fallback;
+};
+
+const readStoredPreferences = () => {
+  try {
+    return JSON.parse(localStorage.getItem("adminPreferences") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const normalizeProfile = (value = {}) => {
+  const safeValue = value && typeof value === "object" ? value : {};
+  const safeHotel = safeValue.hotel && typeof safeValue.hotel === "object" ? safeValue.hotel : {};
+  const safePreferences = safeValue.preferences && typeof safeValue.preferences === "object" ? safeValue.preferences : {};
+
+  return {
+    ...INITIAL_PROFILE,
+    ...safeValue,
+    name: safeValue.name || "Admin Hotel",
+    email: safeValue.email || "admin@example.com",
+    phone: safeValue.phone || "",
+    role:
+      safeValue.role === "admin_hotel"
+        ? "Hotel Administrator"
+        : safeValue.role || "Hotel Administrator",
+    avatar: safeValue.avatar || null,
+    hotel: {
+      ...INITIAL_PROFILE.hotel,
+      ...safeHotel,
+      city: asText(safeHotel.city, INITIAL_PROFILE.hotel.city),
+      name: asText(safeHotel.name, INITIAL_PROFILE.hotel.name),
+      description: asText(safeHotel.description, INITIAL_PROFILE.hotel.description),
+      address: asText(safeHotel.address, INITIAL_PROFILE.hotel.address),
+      phone: asText(safeHotel.phone, INITIAL_PROFILE.hotel.phone),
+      email: asText(safeHotel.email, INITIAL_PROFILE.hotel.email),
+      logo: safeHotel.logo || null,
+    },
+    preferences: {
+      ...INITIAL_PROFILE.preferences,
+      ...(readStoredPreferences() || {}),
+      ...safePreferences,
+    },
+  };
+};
+
 const getInitialUser = () => {
   try {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const u = JSON.parse(userStr);
-      return {
+      return normalizeProfile({
         ...INITIAL_PROFILE,
         name: u.name || "Admin Hotel",
         email: u.email || "admin@example.com",
@@ -47,12 +101,12 @@ const getInitialUser = () => {
             ? "Hotel Administrator"
             : u.role || "Hotel Administrator",
         avatar: u.avatar || null,
-      };
+      });
     }
   } catch (e) {
     console.error(e);
   }
-  return INITIAL_PROFILE;
+  return normalizeProfile(INITIAL_PROFILE);
 };
 
 // ─── Password Strength Evaluator ──────────────────────────────────────────────
@@ -72,26 +126,27 @@ const evaluatePasswordStrength = (pwd) => {
 
 export default function Profile() {
   // ─── Local State ────────────────────────────────────────────────────────────
-  const [profile, setProfile] = useState(getInitialUser);
+  const [profile, setProfile] = useState(() => normalizeProfile(getInitialUser()));
 
   // Account Edit State
   const [editAccount, setEditAccount] = useState(false);
   const [accountForm, setAccountForm] = useState({
-    name: profile.name,
-    email: profile.email,
-    phone: profile.phone,
+    name: profile?.name || "",
+    email: profile?.email || "",
+    phone: profile?.phone || "",
   });
   const [accountErrors, setAccountErrors] = useState({});
   const [savingAccount, setSavingAccount] = useState(false);
 
   // Hotel Edit State
   const [editHotel, setEditHotel] = useState(false);
-  const [hotelForm, setHotelForm] = useState({ ...profile.hotel });
+  const [hotelForm, setHotelForm] = useState({ ...(profile?.hotel || INITIAL_PROFILE.hotel) });
   const [hotelErrors, setHotelErrors] = useState({});
   const [savingHotel, setSavingHotel] = useState(false);
+  const [savingHotelLogo, setSavingHotelLogo] = useState(false);
 
   // Preferences State
-  const [preferencesForm, setPreferencesForm] = useState({ ...profile.preferences });
+  const [preferencesForm, setPreferencesForm] = useState({ ...(profile?.preferences || INITIAL_PROFILE.preferences) });
   const [savingPreferences, setSavingPreferences] = useState(false);
 
   // Password Modal State
@@ -130,7 +185,7 @@ export default function Profile() {
               name: u.name || prev.name,
               email: u.email || prev.email,
               phone: u.phone || prev.phone,
-              avatar: u.avatar_url || (u.avatar ? `http://localhost:8000/storage/${u.avatar}` : prev.avatar),
+              avatar: u.avatar_url || (u.avatar ? getStorageUrl(u.avatar) : prev.avatar),
             }));
           }
         }
@@ -138,15 +193,21 @@ export default function Profile() {
         if (hotelRes.status === "fulfilled" && hotelRes.value.data) {
           const h = hotelRes.value.data.data || hotelRes.value.data;
           if (h) {
-            setProfile((prev) => ({
+            const cityText = asText(h.city?.name || h.city?.city || h.city, INITIAL_PROFILE.hotel.city);
+            const provinceText = asText(h.city?.province || h.province, INITIAL_PROFILE.hotel.province);
+
+            setProfile((prev) => normalizeProfile({
               ...prev,
               hotel: {
                 ...prev.hotel,
-                name: h.name || prev.hotel.name,
-                description: h.description || prev.hotel.description,
-                address: h.address || prev.hotel.address,
-                city: h.city?.name || h.city || prev.hotel.city,
-                phone: h.phone || prev.hotel.phone,
+                name: asText(h.name, prev.hotel.name),
+                description: asText(h.description, prev.hotel.description),
+                address: asText(h.address, prev.hotel.address),
+                city: cityText,
+                province: provinceText,
+                phone: asText(h.phone, prev.hotel.phone),
+                email: asText(h.email, prev.hotel.email),
+                logo: h.logo ? getStorageUrl(h.logo) : null,
               },
             }));
           }
@@ -162,12 +223,12 @@ export default function Profile() {
   // Keep form states in sync when profile updates
   useEffect(() => {
     setAccountForm({
-      name: profile.name,
-      email: profile.email,
-      phone: profile.phone,
+      name: profile?.name || "",
+      email: profile?.email || "",
+      phone: profile?.phone || "",
     });
-    setHotelForm({ ...profile.hotel });
-    setPreferencesForm({ ...profile.preferences });
+    setHotelForm({ ...(profile?.hotel || INITIAL_PROFILE.hotel) });
+    setPreferencesForm({ ...(profile?.preferences || INITIAL_PROFILE.preferences) });
   }, [profile]);
 
   // ─── Image Handlers ─────────────────────────────────────────────────────────
@@ -180,17 +241,18 @@ export default function Profile() {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProfile((prev) => ({ ...prev, avatar: reader.result }));
+        setProfile((prev) => normalizeProfile({ ...prev, avatar: reader.result }));
       };
       reader.readAsDataURL(file);
 
       try {
         const formData = new FormData();
         formData.append("avatar", file);
-        const nameParts = profile.name.trim().split(" ");
+        const safeName = String(profile?.name || "").trim();
+        const nameParts = safeName ? safeName.split(/\s+/) : ["Admin"];
         formData.append("first_name", nameParts[0]);
         formData.append("last_name", nameParts.slice(1).join(" ") || "");
-        formData.append("email", profile.email);
+        formData.append("email", profile?.email || "");
         await api.put("/user/profile", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
@@ -202,33 +264,58 @@ export default function Profile() {
     }
   };
 
-  const handleHotelLogoChange = (e) => {
+  const handleHotelLogoChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Logo image size must be under 5MB.");
-        return;
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo image size must be under 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setSavingHotelLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+      const response = await api.post("/admin/hotel/profile/logo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const logo = response.data?.data?.logo;
+      if (!logo) {
+        throw new Error("Server did not return the uploaded hotel logo.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setHotelForm((prev) => ({ ...prev, logo: reader.result }));
-        setProfile((prev) => ({
-          ...prev,
-          hotel: { ...prev.hotel, logo: reader.result },
-        }));
-        toast.success("Hotel logo updated successfully.");
-      };
-      reader.readAsDataURL(file);
+      const logoUrl = getStorageUrl(logo);
+      setHotelForm((prev) => ({ ...prev, logo: logoUrl }));
+      setProfile((prev) => normalizeProfile({
+        ...prev,
+        hotel: { ...prev.hotel, logo: logoUrl },
+      }));
+      toast.success("Hotel logo updated successfully.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Gagal mengunggah logo hotel.");
+    } finally {
+      setSavingHotelLogo(false);
+      e.target.value = "";
     }
   };
 
-  const handleRemoveHotelLogo = () => {
-    setHotelForm((prev) => ({ ...prev, logo: null }));
-    setProfile((prev) => ({
-      ...prev,
-      hotel: { ...prev.hotel, logo: null },
-    }));
-    toast.success("Hotel logo removed.");
+  const handleRemoveHotelLogo = async () => {
+    setSavingHotelLogo(true);
+    try {
+      await api.delete("/admin/hotel/profile/logo");
+      setHotelForm((prev) => ({ ...prev, logo: null }));
+      setProfile((prev) => normalizeProfile({
+        ...prev,
+        hotel: { ...prev.hotel, logo: null },
+      }));
+      toast.success("Hotel logo removed.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Gagal menghapus logo hotel.");
+    } finally {
+      setSavingHotelLogo(false);
+    }
   };
 
   // ─── Account Information Actions ────────────────────────────────────────────
@@ -265,8 +352,8 @@ export default function Profile() {
       const res = await api.put("/user/profile", {
         first_name,
         last_name,
-        email: accountForm.email.trim(),
-        phone: accountForm.phone.trim(),
+        email: (accountForm.email || "").trim(),
+        phone: (accountForm.phone || "").trim(),
       });
 
       const updatedUser =
@@ -285,11 +372,11 @@ export default function Profile() {
         console.error(err);
       }
 
-      setProfile((prev) => ({
+      setProfile((prev) => normalizeProfile({
         ...prev,
-        name: accountForm.name.trim(),
-        email: accountForm.email.trim(),
-        phone: accountForm.phone.trim(),
+        name: (accountForm.name || "").trim(),
+        email: (accountForm.email || "").trim(),
+        phone: (accountForm.phone || "").trim(),
       }));
 
       setEditAccount(false);
@@ -332,12 +419,6 @@ export default function Profile() {
     if (!hotelForm.city || hotelForm.city.trim() === "") {
       errs.city = "City is required.";
     }
-    if (!hotelForm.province || hotelForm.province.trim() === "") {
-      errs.province = "Province is required.";
-    }
-    if (!hotelForm.postalCode || hotelForm.postalCode.trim() === "") {
-      errs.postalCode = "Postal code is required.";
-    }
     if (hotelForm.description && hotelForm.description.length > 500) {
       errs.description = "Description cannot exceed 500 characters.";
     }
@@ -352,17 +433,33 @@ export default function Profile() {
     setSavingHotel(true);
 
     try {
-      await api.post("/admin/hotel/profile", {
-        name: hotelForm.name.trim(),
-        description: hotelForm.description?.trim() || "",
-        address: hotelForm.address.trim(),
-        phone: hotelForm.phone.trim(),
-      });
+      const payload = new FormData();
+      payload.append("name", hotelForm.name.trim());
+      payload.append("description", hotelForm.description?.trim() || "");
+      payload.append("address", hotelForm.address.trim());
+      payload.append("phone", hotelForm.phone.trim());
+      payload.append("email", hotelForm.email.trim());
+      if (hotelForm.city && hotelForm.city.trim() !== "") {
+        payload.append("city", hotelForm.city.trim());
+      }
+      if (hotelLogoFile) {
+        payload.append("banner", hotelLogoFile);
+      }
 
-      setProfile((prev) => ({
+      const res = await api.post("/admin/hotel/profile", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const saved = res?.data?.data || {};
+
+      setProfile((prev) => normalizeProfile({
         ...prev,
-        hotel: { ...hotelForm },
+        hotel: {
+          ...prev.hotel,
+          ...hotelForm,
+          logo: saved.banner || prev.hotel.logo,
+        },
       }));
+      setHotelLogoFile(null);
       setEditHotel(false);
       toast.success("Hotel information updated successfully.");
     } catch (err) {
@@ -383,14 +480,17 @@ export default function Profile() {
   const handleSavePreferences = (e) => {
     e.preventDefault();
     setSavingPreferences(true);
-    setTimeout(() => {
-      setProfile((prev) => ({
-        ...prev,
-        preferences: { ...preferencesForm },
-      }));
-      setSavingPreferences(false);
-      toast.success("Preferences updated successfully.");
-    }, 500);
+    try {
+      localStorage.setItem("adminPreferences", JSON.stringify(preferencesForm));
+    } catch (err) {
+      console.error(err);
+    }
+    setProfile((prev) => normalizeProfile({
+      ...prev,
+      preferences: { ...preferencesForm },
+    }));
+    setSavingPreferences(false);
+    toast.success("Preferences saved on this device.");
   };
 
   // ─── Change Password Actions ────────────────────────────────────────────────
@@ -484,8 +584,9 @@ export default function Profile() {
               />
             ) : (
               <span className="font-['Newsreader',serif] text-4xl">
-                {profile.name
+                {(profile?.name || "Admin")
                   .split(" ")
+                  .filter(Boolean)
                   .map((n) => n[0])
                   .join("")
                   .slice(0, 2)}
@@ -514,7 +615,7 @@ export default function Profile() {
           <p className="text-sm text-[#6B6E6A] mt-1">{profile.email}</p>
           <div className="flex items-center justify-center md:justify-start gap-1.5 text-xs text-[#506147] font-medium mt-3">
             <span className="material-symbols-outlined text-[16px]">location_on</span>
-            <span>{profile.hotel.name} &bull; {profile.hotel.city}</span>
+            <span>{profile?.hotel?.name || "Grand H'Leven Hotel"} &bull; {asText(profile?.hotel?.city, "Bandung")}</span>
           </div>
         </div>
 
@@ -738,7 +839,7 @@ export default function Profile() {
             <div className="w-16 h-16 rounded-xl border border-[#E5E1DA] bg-white overflow-hidden shadow-sm flex items-center justify-center text-[#506147] shrink-0">
               {hotelForm.logo || profile.hotel.logo ? (
                 <img
-                  src={hotelForm.logo || profile.hotel.logo}
+                  src={getStorageUrl(hotelForm.logo || profile.hotel.logo)}
                   alt="Hotel Logo"
                   className="w-full h-full object-contain p-1"
                 />
@@ -757,15 +858,17 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => hotelLogoInputRef.current?.click()}
+              disabled={savingHotelLogo}
               className="px-4 py-2 text-xs font-semibold bg-[#506147] hover:bg-[#3b4b33] text-white rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">upload</span>
-              {hotelForm.logo || profile.hotel.logo ? "Change Logo" : "Upload Hotel Logo"}
+              {savingHotelLogo ? "Saving..." : hotelForm.logo || profile.hotel.logo ? "Change Logo" : "Upload Hotel Logo"}
             </button>
             {(hotelForm.logo || profile.hotel.logo) && (
               <button
                 type="button"
                 onClick={handleRemoveHotelLogo}
+                disabled={savingHotelLogo}
                 className="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200 flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -887,50 +990,6 @@ export default function Profile() {
                   </p>
                 )}
               </div>
-
-              {/* Province */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
-                  Province <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={hotelForm.province}
-                  onChange={(e) => setHotelForm({ ...hotelForm, province: e.target.value })}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
-                    hotelErrors.province ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
-                  }`}
-                  placeholder="West Java"
-                />
-                {hotelErrors.province && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">error</span>
-                    {hotelErrors.province}
-                  </p>
-                )}
-              </div>
-
-              {/* Postal Code */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
-                  Postal Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={hotelForm.postalCode}
-                  onChange={(e) => setHotelForm({ ...hotelForm, postalCode: e.target.value })}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
-                    hotelErrors.postalCode ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
-                  }`}
-                  placeholder="40123"
-                />
-                {hotelErrors.postalCode && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">error</span>
-                    {hotelErrors.postalCode}
-                  </p>
-                )}
-              </div>
             </div>
 
             {/* Description */}
@@ -1016,12 +1075,8 @@ export default function Profile() {
                 <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.address}</span>
               </div>
               <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
-                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">City / Province</span>
-                <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.city}, {profile.hotel.province}</span>
-              </div>
-              <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
-                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">Postal Code</span>
-                <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.postalCode}</span>
+                <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">City</span>
+                <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.hotel.city}</span>
               </div>
             </div>
             <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">

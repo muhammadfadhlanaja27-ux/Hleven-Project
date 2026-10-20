@@ -105,7 +105,7 @@ class ReportService
         return [
             'total_users' => $query->count(),
             'verified_users' => (clone $query)->whereNotNull('email_verified_at')->count(), // Future dev[cite: 1]
-            'new_users' => (clone $query)->whereMonth('created_at', now()->month)->count(),
+            'new_users' => (clone $query)->whereYear('created_at', now()->year)->whereMonth('created_at', now()->month)->count(),
         ];
     }
 

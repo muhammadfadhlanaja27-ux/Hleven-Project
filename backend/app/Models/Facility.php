@@ -10,9 +10,12 @@ class Facility extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public $timestamps = false;
+    protected $fillable = ['hotel_id', 'name', 'category', 'icon', 'description', 'status'];
 
-    protected $fillable = ['name', 'category'];
+    public function hotel()
+    {
+        return $this->belongsTo(Hotel::class, 'hotel_id');
+    }
 
     public function hotels()
     {

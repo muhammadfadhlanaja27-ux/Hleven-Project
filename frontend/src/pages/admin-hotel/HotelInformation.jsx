@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  matchesFacilitySearch,
+  resolveFacilityIcon as getFacilityIcon,
+} from "../../utils/facilities";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const FACILITY_ICON_MAP = {
   "Wi-Fi": "wifi",
@@ -88,7 +95,18 @@ const resolveFacilityIcon = (facilityName, fallback = "hotel") => {
   return partial ? FACILITY_ICON_MAP[partial] : fallback;
 };
 
+const normalizeImageUrl = (value) => getStorageUrl(value);
+
 const initialPhotos = [];
+
+const DEFAULT_HOTEL_POLICIES = `Waktu Check-in & Check-out
+Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
+Kebijakan Bebas Asap Rokok
+Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+Hewan Peliharaan
+Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
+Pembatalan
+Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.`;
 
 const initialHotelData = {
   name: "Grand H'Leven Hotel",
@@ -105,9 +123,13 @@ const initialHotelData = {
   yearBuilt: "2020",
   website: "www.hleven.com",
   photos: [],
+  facilities: [],
+  policies: DEFAULT_HOTEL_POLICIES,
+  bank_name: "",
+  bank_account_number: "",
+  bank_account_name: "",
 };
 
-// Helper untuk mengekstrak nama kota dari string atau objek { id, province, city }
 const parseCityName = (cityVal) => {
   if (!cityVal) return "Bandung";
   if (typeof cityVal === "object") {
@@ -123,13 +145,15 @@ export default function HotelInformation() {
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState(initialHotelData);
   const [formPhotos, setFormPhotos] = useState(initialPhotos);
+  const [deletedPhotoIds, setDeletedPhotoIds] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
 
-  const [allHotelFacilities, setAllHotelFacilities] = useState([]);
-  const [assignedFacilityIds, setAssignedFacilityIds] = useState([]);
+  // Fasilitas Master & Terpilih
+  const [masterFacilities, setMasterFacilities] = useState([]);
   const [formFacilityIds, setFormFacilityIds] = useState([]);
+  const [facilitySearch, setFacilitySearch] = useState("");
 
   const fileInputRef = useRef(null);
 
@@ -137,26 +161,35 @@ export default function HotelInformation() {
     fetchHotelInfo();
   }, []);
 
-  const fetchHotelInfo = async () => {
+  const fetchHotelInfo = async (forceRefresh = false) => {
     setLoading(true);
     try {
+      if (forceRefresh) {
+        invalidateCache("/admin/hotel/profile");
+        invalidateCache("/facilities?category=Hotel");
+      }
+
       const [profileRes, reviewsRes, facilitiesRes] = await Promise.allSettled([
         api.get("/admin/hotel/profile"),
         api.get("/hotel/reviews"),
-        cachedGet("/facilities?category=Hotel"),
+        cachedGet("/facilities?category=Hotel", {}, forceRefresh),
       ]);
 
-      let allFacilitiesList = [];
+      // 1. Ambil daftar Fasilitas Master dari FacilityController
+      let masterList = [];
       if (facilitiesRes.status === "fulfilled" && facilitiesRes.value?.data) {
         const fRes = facilitiesRes.value.data;
-        allFacilitiesList = Array.isArray(fRes)
+        masterList = Array.isArray(fRes)
           ? fRes
           : Array.isArray(fRes?.data)
           ? fRes.data
           : [];
       }
-      setAllHotelFacilities(allFacilitiesList);
-
+      // Filter fasilitas khusus kategori Hotel (Case-insensitive)
+      const hotelCatMaster = masterList.filter(
+        (f) => !f.category || f.category.toLowerCase() === "hotel"
+      );
+      // 2. Rating & Ulasan
       let reviewsData = [];
       if (reviewsRes.status === "fulfilled" && reviewsRes.value?.data) {
         reviewsData =
@@ -172,15 +205,14 @@ export default function HotelInformation() {
           ? (sumRating / totalReviewsCount).toFixed(1)
           : "0.0";
 
+      // 3. Profil Hotel
       if (profileRes.status === "fulfilled" && profileRes.value?.data) {
         const raw = profileRes.value.data.data || profileRes.value.data;
         if (raw) {
           setHotelId(raw.id);
           const mappedPhotos = (raw.photos || []).map((p, idx) => {
             const imgPath = p.image_path || p.url || p.photo || "";
-            const fullUrl = imgPath.startsWith("http")
-              ? imgPath
-              : `http://localhost:8000/storage/${imgPath}`;
+            const fullUrl = normalizeImageUrl(imgPath);
             return {
               id: p.id || `photo-${idx}`,
               name: imgPath ? imgPath.split("/").pop() : `Photo_${idx + 1}.jpg`,
@@ -204,10 +236,12 @@ export default function HotelInformation() {
               : String(raw.total_review || 0);
 
           const cityName = parseCityName(raw.city);
-
           const assignedFacilities = Array.isArray(raw.facilities) ? raw.facilities : [];
           const assignedIds = assignedFacilities.map((f) => f.id);
-          setAssignedFacilityIds(assignedIds);
+          const uniqueHotelFacilities = deduplicateFacilities(hotelCatMaster, assignedIds);
+          const uniqueAssignedFacilities = deduplicateFacilities(assignedFacilities, assignedIds);
+          const uniqueAssignedIds = uniqueAssignedFacilities.map((facility) => facility.id);
+          setMasterFacilities(uniqueHotelFacilities);
 
           const updatedData = {
             name: raw.name || "Grand H'Leven Hotel",
@@ -216,8 +250,8 @@ export default function HotelInformation() {
               "Hotel nyaman dengan fasilitas lengkap untuk kebutuhan perjalanan bisnis maupun liburan.",
             address: raw.address || "Jl. Example No. 123",
             city: cityName,
-            phone: raw.phone || "+62 812 3456 7890",
-            email: raw.email || "contact@hleven.com",
+            phone: raw.phone || raw.admin?.phone || "+62 812 3456 7890",
+            email: raw.email || raw.admin?.email || "contact@hleven.com",
             rating: currentRating,
             totalReviews: currentTotalReviews,
             location:
@@ -228,12 +262,18 @@ export default function HotelInformation() {
             yearBuilt: "2020",
             website: "www.hleven.com",
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
-            facilities: assignedFacilities,
+            facilities: uniqueAssignedFacilities,
+            policies: raw.policies || DEFAULT_HOTEL_POLICIES,
+            bank_name: raw.bank_name || "",
+            bank_account_number: raw.bank_account_number || "",
+            bank_account_name: raw.bank_account_name || "",
           };
 
           setHotelData(updatedData);
           setFormValues(updatedData);
           setFormPhotos(updatedData.photos);
+          setFormFacilityIds(uniqueAssignedIds);
+          setDeletedPhotoIds([]);
         }
       }
     } catch (err) {
@@ -243,34 +283,40 @@ export default function HotelInformation() {
     }
   };
 
-  // Toggle ke mode edit
   const handleStartEdit = () => {
-    setFormValues(hotelData);
+    setFormValues({ ...hotelData });
     setFormPhotos(hotelData.photos || initialPhotos);
-    setFormFacilityIds([...assignedFacilityIds]);
+    setFormFacilityIds((hotelData.facilities || []).map((f) => f.id));
+    setFacilitySearch("");
+    setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(true);
   };
 
-  // Batal edit
   const handleCancel = () => {
-    setFormValues(hotelData);
+    setFormValues({ ...hotelData });
     setFormPhotos(hotelData.photos || initialPhotos);
-    setFormFacilityIds([...assignedFacilityIds]);
+    setFormFacilityIds((hotelData.facilities || []).map((f) => f.id));
+    setFacilitySearch("");
+    setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(false);
   };
 
-  // Change handler input teks
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormValues((prev) => ({ ...prev, [name]: value }));
+    setFormValues((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "city" && (!prev.location || prev.location === `${prev.city}, Indonesia`)) {
+        next.location = `${value}, Indonesia`;
+      }
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  // Toggle checkbox fasilitas hotel
   const handleFacilityToggle = (facilityId) => {
     setFormFacilityIds((prev) => {
       const isSelected = prev.includes(facilityId);
@@ -280,11 +326,11 @@ export default function HotelInformation() {
     });
   };
 
-  // Manajemen Foto Local State
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    const hasExistingPrimary = formPhotos.some((photo) => photo.isPrimary);
     const newUploadedPhotos = files.map((file, index) => {
       const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
       const todayStr = new Date().toLocaleDateString("en-GB", {
@@ -299,12 +345,22 @@ export default function HotelInformation() {
         url: URL.createObjectURL(file),
         size: `${sizeInMB} MB`,
         uploadedAt: todayStr,
-        isPrimary: formPhotos.length === 0 && index === 0,
+        isPrimary: !hasExistingPrimary && index === 0,
         file,
       };
     });
 
-    setFormPhotos((prev) => [...prev, ...newUploadedPhotos]);
+    setFormPhotos((prev) => {
+      const nextPhotos = [...prev, ...newUploadedPhotos];
+      if (!prev.some((photo) => photo.isPrimary) && nextPhotos.length > 0) {
+        return nextPhotos.map((photo, idx) => ({
+          ...photo,
+          isPrimary: idx >= prev.length ? idx === prev.length : photo.isPrimary,
+        }));
+      }
+      return nextPhotos;
+    });
+
     toast.success(`${files.length} foto berhasil diunggah!`);
   };
 
@@ -326,29 +382,29 @@ export default function HotelInformation() {
       }
       return filtered;
     });
+
+    if (!String(photoId).startsWith("photo-new-")) {
+      setDeletedPhotoIds((prev) => [...prev, photoId]);
+    }
+
     toast.success("Foto berhasil dihapus dari galeri.");
   };
 
-  // Validasi Form Frontend
   const validateForm = () => {
     const newErrors = {};
 
     if (!formValues.name.trim()) {
       newErrors.name = "Hotel name is required.";
     }
-
     if (!formValues.description.trim()) {
       newErrors.description = "Description is required.";
     }
-
     if (!formValues.address.trim()) {
       newErrors.address = "Address is required.";
     }
-
     if (!formValues.city.trim()) {
       newErrors.city = "City is required.";
     }
-
     if (!formValues.phone.trim()) {
       newErrors.phone = "Contact phone is required.";
     }
@@ -367,7 +423,6 @@ export default function HotelInformation() {
     return newErrors;
   };
 
-  // Submit Handler
   const handleSave = async (e) => {
     e.preventDefault();
 
@@ -383,13 +438,57 @@ export default function HotelInformation() {
         name: formValues.name.trim(),
         description: formValues.description.trim(),
         address: formValues.address.trim(),
+        city: formValues.city.trim(),
         phone: formValues.phone.trim(),
+        email: formValues.email.trim(),
+        policies: (formValues.policies || "").trim(),
         facilities: formFacilityIds,
+        bank_name: (formValues.bank_name || "").trim(),
+        bank_account_number: (formValues.bank_account_number || "").trim(),
+        bank_account_name: (formValues.bank_account_name || "").trim(),
       };
 
+      // 1. Simpan profil hotel & sync fasilitas
       await api.post("/admin/hotel/profile", payload);
 
+      // Sinkronisasi data admin ke localStorage jika email atau phone berubah
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          parsed.email = formValues.email.trim();
+          parsed.phone = formValues.phone.trim();
+          localStorage.setItem("user", JSON.stringify(parsed));
+          window.dispatchEvent(new Event("userUpdated"));
+        }
+      } catch (e) {
+        // Abaikan jika localStorage tidak dapat diakses
+      }
+
       const newPhotos = formPhotos.filter((p) => p.file);
+      const currentPrimary = hotelData.photos?.find((photo) => photo.isPrimary) || hotelData.photos?.[0];
+      const shouldReplacePrimary = newPhotos.some((photo) => photo.isPrimary);
+
+      if (shouldReplacePrimary && currentPrimary?.id && !String(currentPrimary.id).startsWith("photo-new-")) {
+        const uniqueDeleteIds = [...new Set([...deletedPhotoIds, currentPrimary.id])];
+        for (const photoId of uniqueDeleteIds) {
+          try {
+            await api.delete(`/admin/hotels/photos/${photoId}`);
+          } catch (err) {
+            console.error(`Gagal menghapus foto ID ${photoId}:`, err);
+          }
+        }
+      } else {
+        for (const photoId of deletedPhotoIds) {
+          try {
+            await api.delete(`/admin/hotels/photos/${photoId}`);
+          } catch (err) {
+            console.error(`Gagal menghapus foto ID ${photoId}:`, err);
+          }
+        }
+      }
+
+      // 3. Unggah foto baru
       for (const photo of newPhotos) {
         const formData = new FormData();
         formData.append("photo", photo.file);
@@ -399,21 +498,14 @@ export default function HotelInformation() {
         });
       }
 
+      // 4. Invalidate Cache & Refresh data fresh
       invalidateCache("/facilities?category=Hotel");
       invalidateCache("/admin/hotel/profile");
+      invalidateCache("/hotels");
+      await fetchHotelInfo(true);
 
-      const updatedAssigned = allHotelFacilities.filter((f) =>
-        formFacilityIds.includes(f.id)
-      );
-      setAssignedFacilityIds([...formFacilityIds]);
-
-      setHotelData({
-        ...formValues,
-        photos: formPhotos,
-        facilities: updatedAssigned,
-      });
       setIsEditing(false);
-      toast.success("Hotel information and photos updated successfully.");
+      toast.success("Hotel information updated successfully.");
     } catch (err) {
       console.error("Failed to update hotel profile:", err);
       const msg =
@@ -662,7 +754,7 @@ export default function HotelInformation() {
                 </div>
               </div>
 
-              {/* Simulated Map Container */}
+              {/* Map Container */}
               <div className="md:w-2/3 min-h-[220px] bg-[#dcdad6] relative flex items-center justify-center p-6 text-center select-none overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-[#F2EBE1]/80 via-transparent to-transparent z-10 pointer-events-none" />
                 <div className="relative z-20 flex flex-col items-center gap-2 bg-white/85 backdrop-blur-sm p-5 rounded-xl border border-[#E5E1DA] shadow-sm max-w-sm">
@@ -680,6 +772,17 @@ export default function HotelInformation() {
             </div>
           </div>
 
+          {/* VIEW MODE: HOTEL POLICIES */}
+          <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-2 border-b border-[#E5E1DA] pb-4">
+              <span className="material-symbols-outlined text-[#506147] text-[22px]">policy</span>
+              <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Kebijakan Hotel</h3>
+            </div>
+            <div className="text-sm text-[#444840] leading-relaxed whitespace-pre-wrap bg-[#fcf9f5] p-4 rounded-xl border border-[#E5E1DA]">
+              {hotelData.policies || DEFAULT_HOTEL_POLICIES}
+            </div>
+          </div>
+
           {/* VIEW MODE: HOTEL FACILITIES */}
           <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#E5E1DA] pb-4">
@@ -688,8 +791,8 @@ export default function HotelInformation() {
                   Hotel Facilities
                 </h3>
                 <p className="text-xs text-[#6B6E6A] mt-0.5">
-                  Daftar fasilitas umum yang tersedia di area hotel (
-                  {assignedFacilityIds.length || 0} fasilitas aktif).
+                  Daftar fasilitas umum yang aktif di hotel Anda (
+                  {hotelData.facilities?.length || 0} fasilitas).
                 </p>
               </div>
               <button
@@ -712,12 +815,12 @@ export default function HotelInformation() {
                   >
                     <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center border border-[#d1dccc]">
                       <span className="material-symbols-outlined text-[26px]">
-                        {resolveFacilityIcon(fac.name, "hotel")}
+                        {getFacilityIcon(fac.name, fac.icon, "hotel")}
                       </span>
                     </div>
                     <div className="text-center">
                       <p className="text-xs font-semibold text-[#2D312C] leading-tight">
-                        {fac.name}
+                        {getFacilityDisplayName(fac)}
                       </p>
                     </div>
                   </div>
@@ -730,11 +833,10 @@ export default function HotelInformation() {
                 </span>
                 <div>
                   <p className="font-semibold text-[#2D312C] text-base">
-                    Belum ada fasilitas hotel yang terdaftar.
+                    Belum ada fasilitas hotel yang dipilih.
                   </p>
                   <p className="text-xs text-[#6B6E6A] mt-1">
-                    Klik <strong>Edit Hotel</strong> untuk mulai menambahkan
-                    fasilitas umum hotel (Wi-Fi, Kolam Renang, Restoran, dll).
+                    Klik <strong>Edit Hotel</strong> untuk mencentang fasilitas hotel yang tersedia.
                   </p>
                 </div>
                 <button
@@ -770,7 +872,6 @@ export default function HotelInformation() {
               </button>
             </div>
 
-            {/* Gallery Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {(hotelData.photos || initialPhotos).map((photo) => (
                 <div
@@ -1023,21 +1124,41 @@ export default function HotelInformation() {
               )}
             </div>
 
-            {/* EDIT MODE: HOTEL FACILITIES CHECKBOX */}
+            {/* Hotel facilities are selected from the existing catalog. */}
             <div className="pt-4 border-t border-[#E5E1DA] space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
-                  Hotel Facilities
-                </label>
-                <p className="text-[11px] text-[#6B6E6A]">
-                  Pilih fasilitas umum yang tersedia di hotel Anda (Wi-Fi, Kolam
-                  Renang, Restoran, dll).
-                </p>
+              <div className="flex justify-between items-start">
+                <div>
+                  <label className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Hotel Facilities
+                  </label>
+                  <p className="text-[11px] text-[#6B6E6A] mt-0.5">
+                    Centang fasilitas yang tersedia di hotel Anda dari daftar yang sudah tersedia.
+                  </p>
+                </div>
+                <span className="text-xs font-semibold px-3 py-1 bg-[#506147]/10 text-[#506147] rounded-full">
+                  {formFacilityIds.length} Dipilih dari {masterFacilities.length} Fasilitas
+                </span>
               </div>
 
-              {allHotelFacilities.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
-                  {allHotelFacilities.map((fac) => {
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873] text-[20px]">
+                  search
+                </span>
+                <input
+                  type="search"
+                  value={facilitySearch}
+                  onChange={(event) => setFacilitySearch(event.target.value)}
+                  placeholder="Cari fasilitas hotel..."
+                  aria-label="Cari fasilitas hotel"
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
+                />
+              </div>
+
+              {masterFacilities.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
+                  {masterFacilities
+                    .filter((fac) => matchesFacilitySearch(fac, facilitySearch))
+                    .map((fac) => {
                     const isChecked = formFacilityIds.includes(fac.id);
                     return (
                       <label
@@ -1056,26 +1177,103 @@ export default function HotelInformation() {
                           className="accent-[#506147] shrink-0"
                         />
                         <span className="material-symbols-outlined text-[18px] text-[#506147] shrink-0">
-                          {resolveFacilityIcon(fac.name, "hotel")}
+                          {getFacilityIcon(fac.name, fac.icon, "hotel")}
                         </span>
-                        <span className="truncate">{fac.name}</span>
+                        <span className="truncate">{getFacilityDisplayName(fac)}</span>
                       </label>
                     );
-                  })}
+                    })}
+                  {masterFacilities.filter((fac) => matchesFacilitySearch(fac, facilitySearch)).length === 0 && (
+                    <p className="col-span-full py-5 text-center text-xs text-[#6B6E6A]">
+                      Fasilitas tidak ditemukan.
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl border border-dashed border-[#E5E1DA] bg-[#fcf9f5]/50 text-center">
-                  <p className="text-xs text-[#6B6E6A]">
-                    Memuat daftar fasilitas hotel...
+                <div className="p-6 rounded-xl border border-dashed border-[#E5E1DA] bg-[#fcf9f5]/50 text-center space-y-2">
+                  <p className="text-xs font-semibold text-[#2D312C]">
+                    Belum ada pilihan fasilitas hotel pada katalog.
+                  </p>
+                  <p className="text-[11px] text-[#6B6E6A]">
+                    Pilihan fasilitas hotel akan tersedia setelah katalog fasilitas diisi.
                   </p>
                 </div>
               )}
-              <p className="text-[11px] text-[#6B6E6A]">
-                <span className="font-semibold text-[#506147]">
-                  {formFacilityIds.length}
-                </span>{" "}
-                fasilitas dipilih dari total {allHotelFacilities.length} opsi.
-              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="policies" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                Kebijakan Hotel
+              </label>
+              <textarea
+                id="policies"
+                name="policies"
+                rows={8}
+                value={formValues.policies || ""}
+                onChange={handleChange}
+                disabled={isSaving}
+                placeholder={DEFAULT_HOTEL_POLICIES}
+                className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed whitespace-pre-wrap"
+              />
+              <p className="text-[11px] text-[#6B6E6A]">Tampilkan di Hotel Detail setelah fasilitas. Biarkan kosong untuk pakai template default.</p>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+                  Rekening Bank
+                </h3>
+                <p className="text-xs text-[#6B6E6A] mt-0.5">
+                  Rekening tujuan pencairan dana. Wajib diisi sebelum mengajukan pencairan.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="bank_name" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Nama Bank
+                  </label>
+                  <input
+                    id="bank_name"
+                    name="bank_name"
+                    type="text"
+                    value={formValues.bank_name || ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="BCA / Mandiri / BNI"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="bank_account_number" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Nomor Rekening
+                  </label>
+                  <input
+                    id="bank_account_number"
+                    name="bank_account_number"
+                    type="text"
+                    value={formValues.bank_account_number || ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="1234567890"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="bank_account_name" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+                    Nama Pemilik Rekening
+                  </label>
+                  <input
+                    id="bank_account_name"
+                    name="bank_account_name"
+                    type="text"
+                    value={formValues.bank_account_name || ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="Sesuai buku tabungan"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-[#E5E1DA] bg-[#F6F3EF] p-4 rounded-xl flex items-center justify-between gap-4">

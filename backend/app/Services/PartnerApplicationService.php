@@ -2,21 +2,21 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
+use App\Models\City;
+use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\PartnerApplication;
 use App\Models\User;
-use App\Models\ActivityLog;
-use App\Models\Hotel;
-use App\Models\City;
-use App\Models\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class PartnerApplicationService
 {
-    public function approveApplication(PartnerApplication $application, User $admin): void
+    public function approveApplication(PartnerApplication $application, User $admin, ?int $starOverride = null, ?string $starReason = null): void
     {
-        DB::transaction(function () use ($application, $admin) {
+        DB::transaction(function () use ($application, $admin, $starOverride, $starReason) {
             $application->update(['status' => 'approved']);
 
             $adminEmail = $application->hotel_email;
@@ -58,18 +58,18 @@ class PartnerApplicationService
             }
 
             $city = null;
-            if (!empty($application->city)) {
+            if (! empty($application->city)) {
                 $city = City::whereRaw('LOWER(city) = ?', [strtolower($application->city)])->first();
-                if (!$city) {
+                if (! $city) {
                     $city = City::create([
                         'city' => $application->city,
                         'province' => $application->province ?: 'Provinsi belum diisi',
                     ]);
                 }
             }
-            if (!$city) {
+            if (! $city) {
                 $city = City::first();
-                if (!$city) {
+                if (! $city) {
                     $city = City::create([
                         'city' => $application->city ?: 'Kota Belum Ditentukan',
                         'province' => $application->province ?: 'Provinsi Belum Ditentukan',
@@ -86,49 +86,69 @@ class PartnerApplicationService
             ]);
             $fullAddress = implode(', ', $addressParts) ?: 'Alamat belum diisi';
 
-            $slugBase = Str::slug($application->hotel_name ?: 'hotel-' . $application->id);
-            $slug = $slugBase . '-' . $hotelAdmin->id;
+            $slugBase = Str::slug($application->hotel_name ?: 'hotel-'.$application->id);
+            $slug = $slugBase.'-'.$hotelAdmin->id;
             $counter = 1;
             while (Hotel::where('slug', $slug)->exists()) {
-                $slug = $slugBase . '-' . $hotelAdmin->id . '-' . $counter;
+                $slug = $slugBase.'-'.$hotelAdmin->id.'-'.$counter;
                 $counter++;
             }
+
+            $finalStar = $starOverride ?? $application->requested_star_rating;
 
             Hotel::create([
                 'admin_id' => $hotelAdmin->id,
                 'city_id' => $city->id,
                 'name' => $application->hotel_name,
                 'slug' => $slug,
-                'description' => $application->hotel_description ?: 'Deskripsi hotel untuk ' . $application->hotel_name,
+                'description' => $application->hotel_description ?: 'Deskripsi hotel untuk '.$application->hotel_name,
                 'address' => $fullAddress,
                 'latitude' => $application->latitude ?: null,
                 'longitude' => $application->longitude ?: null,
                 'status' => 'active',
                 'average_rating' => 0,
                 'total_review' => 0,
+                'star_rating' => $finalStar,
+                'star_verified_by' => $finalStar ? $admin->id : null,
+                'star_verified_at' => $finalStar ? now() : null,
+                'star_verified_reason' => $finalStar ? $starReason : null,
+                'bank_name' => $application->bank_name,
+                'bank_account_number' => $application->bank_account_number,
+                'bank_account_name' => $application->bank_account_name,
             ]);
 
             ActivityLog::create([
                 'user_id' => $admin->id,
                 'activity' => 'Approve Partner',
                 'description' => "Super Admin menyetujui partner {$application->hotel_name} (App No: {$application->application_number}).",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
 
             if ($applicant && $hotelAdmin->id === $applicant->id) {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun Anda telah diupgrade menjadi admin hotel. Silakan login dengan email Anda.";
+                $message = "Selamat! Pengajuan mitra hotel \"{$application->hotel_name}\" berhasil disetujui.\n\nAkun Anda telah diupgrade menjadi Admin Hotel.\n\n📧 Email Login: {$adminEmail}\n\nSilakan login menggunakan email di atas untuk mengakses Dashboard Admin Hotel.";
             } elseif ($generatedPassword) {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat. Email: {$adminEmail}. Password: {$generatedPassword}. Silakan login dan segera ubah kata sandi Anda.";
+                $message = "Selamat! Pengajuan mitra hotel \"{$application->hotel_name}\" berhasil disetujui.\n\nAkun Admin Hotel telah dibuat untuk Anda. Berikut kredensial login:\n\n📧 Email: {$adminEmail}\n🔑 Password: {$generatedPassword}\n\n⚠️ Segera ubah kata sandi Anda setelah login pertama.";
             } else {
-                $message = "Pengajuan mitra hotel {$application->hotel_name} berhasil disetujui. Akun admin hotel telah dibuat.";
+                $message = "Selamat! Pengajuan mitra hotel \"{$application->hotel_name}\" berhasil disetujui.\n\nAkun Admin Hotel telah dibuat dengan:\n\n📧 Email: {$adminEmail}\n\nSilakan login menggunakan email di atas.";
             }
 
-            Notification::create([
-                'user_id' => $hotelAdmin->id,
-                'title' => 'Pengajuan Mitra Berhasil',
-                'message' => $message,
-                'type' => 'partner_approved',
-            ]);
+            if ($applicant) {
+                Notification::create([
+                    'user_id' => $applicant->id,
+                    'title' => 'Pengajuan Mitra Disetujui',
+                    'message' => $message,
+                    'type' => 'partner_approved',
+                ]);
+            }
+
+            if ($hotelAdmin->id !== ($applicant->id ?? null)) {
+                Notification::create([
+                    'user_id' => $hotelAdmin->id,
+                    'title' => 'Pengajuan Mitra Disetujui',
+                    'message' => $message,
+                    'type' => 'partner_approved',
+                ]);
+            }
         });
     }
 
@@ -144,7 +164,7 @@ class PartnerApplicationService
                 'user_id' => $admin->id,
                 'activity' => 'Reject Partner',
                 'description' => "Super Admin menolak partner {$application->hotel_name}. Alasan: {$reason}",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
     }

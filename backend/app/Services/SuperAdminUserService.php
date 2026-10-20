@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\City;
 use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -84,7 +85,21 @@ class SuperAdminUserService
     public function updateUserStatus(User $user, string $status, User $superAdmin): void
     {
         DB::transaction(function () use ($user, $status, $superAdmin) {
+            $oldStatus = $user->status;
             $user->update(['status' => $status]);
+
+            if ($oldStatus !== $status) {
+                $isBlocked = in_array($status, ['blocked', 'suspended'], true);
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => $isBlocked ? 'Akun Ditangguhkan' : 'Status Akun Diperbarui',
+                    'message' => $isBlocked
+                        ? 'Akun Anda telah ditangguhkan oleh Super Admin.'
+                        : "Status akun Anda telah diubah menjadi {$status}.",
+                    'type' => $isBlocked ? 'suspend' : 'system',
+                    'is_read' => false,
+                ]);
+            }
 
             ActivityLog::create([
                 'user_id' => $superAdmin->id,
@@ -139,9 +154,15 @@ class SuperAdminUserService
         DB::transaction(function () use ($user, $superAdmin) {
             $email = $user->email;
 
-            if ($user->role === 'admin_hotel' && $user->hotel) {
-                $user->hotel->delete();
+            if ($user->role === 'admin_hotel') {
+                $hotels = Hotel::withTrashed()->where('admin_id', $user->id)->get();
+                foreach ($hotels as $hotel) {
+                    $this->cleanupHotelData($hotel);
+                    $hotel->forceDelete();
+                }
             }
+
+            $this->cleanupUserData($user);
 
             $user->delete();
 
@@ -152,5 +173,51 @@ class SuperAdminUserService
                 'ip_address' => request()->ip(),
             ]);
         });
+    }
+
+    /**
+     * Membersihkan data hotel sebelum dihapus (untuk melewati constraint restrict)
+     */
+    private function cleanupHotelData(Hotel $hotel): void
+    {
+        // Bookings memiliki restrict, harus dihapus manual
+        $hotel->bookings()->each(function ($booking) {
+            $booking->bookingRooms()->delete();
+            $booking->guests()->delete();
+            $booking->payment()->delete();
+            $booking->eTicket()->delete();
+            $booking->review()->delete();
+            $booking->statusHistories()->delete();
+            $booking->refund()->delete();
+            $booking->delete();
+        });
+
+        // RoomTypes memiliki cascade delete di level DB, tapi amankan relasi lain
+        $hotel->roomTypes()->each(function ($type) {
+            $type->availabilities()->delete();
+            $type->priceHistories()->delete();
+            $type->photos()->delete();
+            $type->delete();
+        });
+
+        $hotel->photos()->delete();
+        $hotel->facilities()->detach();
+    }
+
+    /**
+     * Membersihkan data user sebelum dihapus
+     */
+    private function cleanupUserData(User $user): void
+    {
+        // Hapus bookings di mana user adalah customer
+        $user->bookings()->each(function ($booking) {
+            $booking->bookingRooms()->delete();
+            $booking->guests()->delete();
+            $booking->payment()->delete();
+            $booking->delete();
+        });
+
+        $user->reviews()->delete();
+        $user->notifications()->delete();
     }
 }

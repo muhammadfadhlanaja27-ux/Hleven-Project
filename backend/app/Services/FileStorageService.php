@@ -11,23 +11,44 @@ use Illuminate\Support\Facades\DB;
 
 class FileStorageService
 {
-    /**
-     * Mengunggah file ke direktori tertentu dan mengembalikan path[cite: 1]
-     */
     public function uploadFile(UploadedFile $file, string $directory): string
     {
-        // Menyimpan file secara otomatis menggunakan hash name bawaan Laravel
-        $path = $file->store($directory, 'public');
-        return $path;
+        $storedPath = $file->store($directory, 'public');
+
+        return Storage::disk('public')->url($storedPath);
     }
 
-    /**
-     * Menghapus file fisik dari storage[cite: 1]
-     */
-    public function deleteFile(string $path): void
+    protected function normalizeStoragePath(?string $url): ?string
     {
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (!$url) {
+            return null;
+        }
+
+        // Ambil path dari URL (misal: /storage/hotel/1/foto.jpg)
+        $path = parse_url($url, PHP_URL_PATH);
+        
+        // Hapus prefix '/storage/' atau 'storage/'
+        if (str_starts_with($path, '/storage/')) {
+            $path = substr($path, 9);
+        } elseif (str_starts_with($path, 'storage/')) {
+            $path = substr($path, 8);
+        }
+
+        return ltrim($path, '/');
+    }
+
+    public function deleteFile(?string $url): void
+    {
+        if (!$url) return;
+
+        try {
+            $path = $this->normalizeStoragePath($url);
+
+            if ($path && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        } catch (\Throwable $e) {
+            return;
         }
     }
 
@@ -35,7 +56,6 @@ class FileStorageService
     {
         $path = $this->uploadFile($file, "hotel/{$hotelId}");
 
-        // Jika menjadi thumbnail, reset thumbnail foto lain terlebih dahulu
         if ($isThumbnail) {
             HotelPhoto::where('hotel_id', $hotelId)->update(['is_thumbnail' => false]);
         }
@@ -80,7 +100,6 @@ class FileStorageService
 
     public function updateAvatar(User $user, UploadedFile $file): void
     {
-        // Hapus avatar lama jika ada
         if ($user->avatar) {
             $this->deleteFile($user->avatar);
         }

@@ -10,15 +10,26 @@ class RoomType extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $attributes = [
+        'breakfast' => false,
+        'smoking_area' => false,
+        'is_refundable' => true,
+        'is_active' => true,
+    ];
+
     protected $fillable = [
-        'hotel_id', 'name', 'description', 'weekday_price', 'weekend_price',
-        'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
-        'is_refundable'
+        'hotel_id', 'bed_type_id', 'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
+        'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area', 'is_refundable', 'policies',
     ];
 
     public function hotel()
     {
         return $this->belongsTo(Hotel::class, 'hotel_id');
+    }
+
+    public function bedType()
+    {
+        return $this->belongsTo(BedType::class, 'bed_type_id');
     }
 
     public function photos()

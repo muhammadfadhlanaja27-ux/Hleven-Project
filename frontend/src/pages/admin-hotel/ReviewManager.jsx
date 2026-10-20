@@ -117,24 +117,6 @@ export default function ReviewManager() {
     }
   };
 
-  // Delete Review
-  const handleDeleteReview = async (reviewId) => {
-    if (!window.confirm("Hapus ulasan ini? Tindakan ini tidak dapat dibatalkan.")) return;
-    try {
-      await api.delete(`/hotel/reviews/${reviewId}`);
-      toast.success("Ulasan berhasil dihapus.");
-      invalidateCache("/hotel/reviews");
-      invalidateCache("/admin/hotel/dashboard");
-      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
-      if (viewingReview && viewingReview.id === reviewId) {
-        setViewingReview(null);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Gagal menghapus ulasan.");
-    }
-  };
-
   // DYNAMIC CALCULATIONS
   const totalReviews = reviews.length;
   const unreadCount = reviews.filter((r) => !readIds.has(r.id)).length;
@@ -492,12 +474,6 @@ export default function ReviewManager() {
                       >
                         View Detail
                       </button>
-                      <button
-                        onClick={() => handleDeleteReview(review.id)}
-                        className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors border border-red-200"
-                      >
-                        Delete
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -639,6 +615,9 @@ export default function ReviewManager() {
       )}
 
 
+      {/* ========================================================================= */}
+      {/* REVIEW DETAIL MODAL (viewingReview part already ends before this)      */}
+      {/* ========================================================================= */}
     </div>
   );
 }

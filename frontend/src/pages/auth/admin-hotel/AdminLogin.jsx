@@ -91,14 +91,6 @@ export default function AdminLogin() {
           ))}
         </div>
 
-        {/* Top left mini badge */}
-        <div className="relative z-10">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white text-xs font-semibold tracking-wider uppercase">
-            <span className="w-2 h-2 rounded-full bg-[#d4e8d2]" />
-            Hotel Management Portal
-          </span>
-        </div>
-
         {/* Hero Headline Content */}
         <div className="relative z-10 max-w-lg my-auto">
           <h1 className="font-['Newsreader',serif] text-5xl lg:text-6xl text-white mb-6 leading-[1.15] font-semibold tracking-tight">

@@ -16,6 +16,11 @@ import {
 import { cachedGet } from "../../services/apiCache";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
+const escapeHtml = (value) =>
+  String(value ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+
 const formatRp = (value) => {
   if (value === null || value === undefined || isNaN(value)) return "Rp 0";
   return "Rp " + Number(value).toLocaleString("id-ID");
@@ -29,7 +34,7 @@ const formatRpShort = (value) => {
 };
 
 // ─── Date Helpers ─────────────────────────────────────────────────────────────
-const getPeriodRange = (period) => {
+const getPeriodRange = (period, customStart, customEnd, customMonth) => {
   const now = new Date();
   const d = new Date(now);
   switch (period) {
@@ -62,6 +67,25 @@ const getPeriodRange = (period) => {
       const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
       const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
       return { start, end };
+    }
+    case "custom": {
+      if (customMonth) {
+        const [y, m] = customMonth.split("-").map(Number);
+        const start = new Date(y, m - 1, 1, 0, 0, 0);
+        const end = new Date(y, m, 0, 23, 59, 59);
+        return { start, end };
+      }
+      if (customStart && customEnd) {
+        const s = new Date(customStart + "T00:00:00");
+        const e = new Date(customEnd + "T23:59:59");
+        return { start: s, end: e };
+      }
+      if (customStart) {
+        const s = new Date(customStart + "T00:00:00");
+        const e = new Date(customStart + "T23:59:59");
+        return { start: s, end: e };
+      }
+      return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
     }
     case "all": {
       return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31, 23, 59, 59) };
@@ -200,6 +224,9 @@ const Skeleton = ({ className }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RevenueReport() {
   const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [customMonth, setCustomMonth] = useState("");
   const [chartPeriod, setChartPeriod] = useState("daily");
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -233,31 +260,39 @@ export default function RevenueReport() {
 
       if (data && data.status === "success") {
         const mapped = (data.data || []).map((b) => {
-          const roomType = b.booking_rooms?.[0]?.room_type || {};
+          const roomType = b.booking_rooms?.[0]?.room_type || b.bookingRooms?.[0]?.roomType || {};
 
           let statusLabel = "Pending";
-          if (b.status === "confirmed") statusLabel = "Confirmed";
-          else if (b.status === "checked_in") statusLabel = "Checked In";
-          else if (b.status === "completed") statusLabel = "Checked Out";
-          else if (b.status === "cancelled") statusLabel = "Cancelled";
+          const st = (b.status || "").toLowerCase();
+          if (st === "confirmed") statusLabel = "Confirmed";
+          else if (st === "checked_in") statusLabel = "Checked In";
+          else if (st === "checked_out" || st === "completed") statusLabel = "Checked Out";
+          else if (st === "cancelled") statusLabel = "Cancelled";
+          else if (st === "expired") statusLabel = "Expired";
+          else if (st === "refunded") statusLabel = "Refunded";
+          else if (st === "refund_pending") statusLabel = "Refund Pending";
+          else if (st === "paid" || st === "success") statusLabel = "Paid";
 
           let paymentStatusLabel = "Unpaid";
-          if (b.payment?.payment_status === "success") paymentStatusLabel = "Paid";
-          else if (b.payment?.payment_status === "pending") paymentStatusLabel = "Pending";
-          else if (b.payment?.payment_status === "refunded") paymentStatusLabel = "Refunded";
+          const paySt = (b.payment?.payment_status || b.payment_status || "").toLowerCase();
+          if (paySt === "success" || st === "paid" || st === "checked_in" || st === "checked_out") paymentStatusLabel = "Paid";
+          else if (paySt === "pending" || paySt === "unpaid") paymentStatusLabel = "Pending";
+          else if (paySt === "refunded" || st === "refunded") paymentStatusLabel = "Refunded";
 
-          const checkInDate = b.check_in ? b.check_in.slice(0, 10) : (b.created_at ? b.created_at.slice(0, 10) : "");
+          const bookingDate = b.created_at ? b.created_at.slice(0, 10) : "";
+          const checkInDate = b.check_in ? b.check_in.slice(0, 10) : (bookingDate);
           const roomNameStr = roomType.name || "Standard Room";
-          const roomTypeStr = roomType.name || "Standard";
+          const roomTypeStr = roomType.type || roomType.name || "Standard";
+          const grand = Number(b.grand_total ?? b.total_amount ?? 0);
 
           return {
             id: b.id,
             bookingCode: b.booking_code || `BK-${b.id}`,
-            bookingDate: b.created_at ? b.created_at.slice(0, 10) : "",
+            bookingDate: bookingDate,
             checkIn: checkInDate,
             checkOut: b.check_out ? b.check_out.slice(0, 10) : "",
-            guestName: b.user ? b.user.name : "Guest",
-            guestPhone: b.user ? b.user.phone : "—",
+            guestName: b.user ? b.user.name : (b.guest_name || "Guest"),
+            guestPhone: b.user ? b.user.phone : (b.guest_phone || "—"),
             room: {
               name: roomNameStr,
               type: roomTypeStr,
@@ -265,14 +300,14 @@ export default function RevenueReport() {
               weekendPrice: Number(roomType.weekend_price) || 0,
             },
             guests: b.guests_count || 1,
-            nights: b.nights_count || 1,
-            totalAmount: Number(b.total_amount) || 0,
+            nights: Number(b.total_night ?? b.nights_count ?? 1),
+            totalAmount: grand,
             bookingStatus: statusLabel,
             paymentStatus: paymentStatusLabel,
-            weekdayNights: b.weekday_nights || 1,
-            weekendNights: b.weekend_nights || 0,
-            discount: Number(b.discount_amount) || 0,
-            roomPriceSum: Number(b.total_amount) || 0,
+            weekdayNights: Number(b.weekday_nights ?? 0) || 0,
+            weekendNights: Number(b.weekend_nights ?? 0) || 0,
+            discount: Number(b.discount_amount ?? 0) || 0,
+            roomPriceSum: grand,
             additionalCharges: 0,
           };
         });
@@ -294,16 +329,16 @@ export default function RevenueReport() {
 
   // ─── Filtered Data ─────────────────────────────────────────────────────────
   const allBookings = bookings;
-  const range = getPeriodRange(selectedPeriod);
+  const range = getPeriodRange(selectedPeriod, customStart, customEnd, customMonth);
   const prevRange = getPreviousPeriodRange(selectedPeriod);
 
   const filteredBookings = useMemo(
-    () => (selectedPeriod === "all" ? allBookings : allBookings.filter((b) => isInRange(b.checkIn, range))),
-    [allBookings, selectedPeriod]
+    () => (selectedPeriod === "all" ? allBookings : allBookings.filter((b) => isInRange(b.bookingDate, range))),
+    [allBookings, selectedPeriod, customStart, customEnd, customMonth]
   );
 
   const prevBookings = useMemo(
-    () => allBookings.filter((b) => isInRange(b.checkIn, prevRange)),
+    () => allBookings.filter((b) => isInRange(b.bookingDate, prevRange)),
     [allBookings, selectedPeriod]
   );
 
@@ -460,10 +495,184 @@ export default function RevenueReport() {
     return list;
   }, [stats, roomRevenue, roomTypeRevenue, growthPct]);
 
-  // ─── Export Handler ────────────────────────────────────────────────────────
+  // ─── Export Handler (Functional PDF, Excel, CSV) ──────────────────────────
   const handleExport = (type) => {
     setExportOpen(false);
-    toast.success(`Report exported as ${type}.`);
+
+    const reportPeriodLabel = periodLabels[selectedPeriod] || selectedPeriod;
+    const fileName = `HLeven_Hotel_Revenue_Report_${selectedPeriod}_${new Date().toISOString().slice(0, 10)}`;
+
+    if (type === "Excel" || type === "CSV") {
+      let csvContent = "\uFEFF"; // UTF-8 BOM for Excel compatibility
+
+      // 1. Report Header
+      csvContent += `H'LEVEN HERITAGE HOTEL - REVENUE REPORT\n`;
+      csvContent += `Period,${reportPeriodLabel}\n`;
+      csvContent += `Generated At,${new Date().toLocaleString("id-ID")}\n\n`;
+
+      // 2. Summary KPI Metrics
+      csvContent += `SUMMARY METRICS\n`;
+      csvContent += `Metric,Value\n`;
+      csvContent += `Total Revenue,${stats.totalRevenue}\n`;
+      csvContent += `Paid Revenue,${stats.paidRevenue}\n`;
+      csvContent += `Pending Revenue,${stats.pendingRevenue}\n`;
+      csvContent += `Total Bookings,${stats.totalBookings}\n`;
+      csvContent += `Paid Bookings,${stats.paidCount}\n`;
+      csvContent += `Pending Bookings,${stats.pendingCount}\n`;
+      csvContent += `Avg Booking Value,${stats.avgBookingValue}\n`;
+      csvContent += `Gross Revenue,${stats.grossRevenue}\n`;
+      csvContent += `Total Discount,${stats.totalDiscount}\n`;
+      csvContent += `Refunded Revenue,${stats.refundedRevenue}\n`;
+      csvContent += `Net Revenue,${stats.netRevenue}\n\n`;
+
+      // 3. Revenue Details Table
+      csvContent += `REVENUE DETAILS\n`;
+      csvContent += `Date,Total Bookings,Paid Bookings,Nights,Gross Revenue,Discount,Refund,Net Revenue\n`;
+      sortedDetails.forEach((row) => {
+        csvContent += `"${row.date}",${row.total},${row.paid},${row.nights},${row.gross},${row.discount},${row.refund},${row.net}\n`;
+      });
+      csvContent += `\n`;
+
+      // 4. Revenue by Room
+      csvContent += `REVENUE BY ROOM\n`;
+      csvContent += `Room Name,Room Type,Bookings,Nights,Revenue,Percentage\n`;
+      roomRevenue.forEach((r) => {
+        csvContent += `"${r.name}","${r.type}",${r.bookings},${r.nights},${r.revenue},${r.pct}%\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${fileName}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Laporan ${type} berhasil diunduh!`);
+    } else if (type === "PDF") {
+      const printWin = window.open("", "_blank");
+      if (!printWin) {
+        toast.error("Pop-up diblokir oleh browser. Izinkan pop-up untuk mencetak PDF.");
+        return;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${escapeHtml(fileName)}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 25px; color: #2D312C; background: #fff; }
+            .header { border-bottom: 2px solid #506147; padding-bottom: 15px; margin-bottom: 20px; }
+            .header h1 { margin: 0; color: #506147; font-size: 24px; }
+            .header p { margin: 5px 0 0; color: #6B6E6A; font-size: 13px; }
+            .grid { display: flex; gap: 15px; margin-bottom: 20px; }
+            .card { flex: 1; border: 1px solid #E5E1DA; padding: 12px; border-radius: 8px; background: #F9F6F1; }
+            .card-title { font-size: 10px; color: #6B6E6A; text-transform: uppercase; font-weight: bold; }
+            .card-value { font-size: 18px; color: #2D312C; font-weight: bold; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+            th { background: #506147; color: white; text-align: left; padding: 8px; }
+            td { border-bottom: 1px solid #E5E1DA; padding: 8px; }
+            tr:nth-child(even) { background: #fcf9f5; }
+            .section-title { font-size: 16px; color: #506147; font-weight: bold; margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid #E5E1DA; padding-bottom: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>H'Leven Heritage Hotel - Revenue Report</h1>
+            <p>Period: ${escapeHtml(reportPeriodLabel)} | Generated: ${new Date().toLocaleString("id-ID")}</p>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">Total Revenue</div>
+              <div class="card-value">${formatRp(stats.totalRevenue)}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Paid Revenue</div>
+              <div class="card-value">${formatRp(stats.paidRevenue)}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Total Bookings</div>
+              <div class="card-value">${stats.totalBookings} (${stats.paidCount} paid)</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Net Revenue</div>
+              <div class="card-value">${formatRp(stats.netRevenue)}</div>
+            </div>
+          </div>
+
+          <div class="section-title">Revenue Details</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Bookings</th>
+                <th>Paid</th>
+                <th>Nights</th>
+                <th>Gross Revenue</th>
+                <th>Discount</th>
+                <th>Refund</th>
+                <th>Net Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedDetails.map(r => `
+                <tr>
+                  <td>${escapeHtml(r.date)}</td>
+                  <td>${r.total}</td>
+                  <td>${r.paid}</td>
+                  <td>${r.nights}</td>
+                  <td>${formatRp(r.gross)}</td>
+                  <td>${formatRp(r.discount)}</td>
+                  <td>${formatRp(r.refund)}</td>
+                  <td><strong>${formatRp(r.net)}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="section-title">Revenue by Room</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Room Name</th>
+                <th>Type</th>
+                <th>Bookings</th>
+                <th>Nights</th>
+                <th>Revenue</th>
+                <th>Contribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${roomRevenue.map(r => `
+                <tr>
+                  <td>${escapeHtml(r.name)}</td>
+                  <td>${escapeHtml(r.type)}</td>
+                  <td>${r.bookings}</td>
+                  <td>${r.nights}</td>
+                  <td>${formatRp(r.revenue)}</td>
+                  <td>${r.pct}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      printWin.document.write(html);
+      printWin.document.close();
+      toast.success("Membuka dialog cetak PDF...");
+    }
   };
 
   // ─── Period Labels ─────────────────────────────────────────────────────────
@@ -474,6 +683,7 @@ export default function RevenueReport() {
     thisMonth: "This Month",
     lastMonth: "Last Month",
     thisYear: "This Year",
+    custom: "Custom",
   };
 
   const ROOM_TYPE_COLORS = { Deluxe: "#506147", Suite: "#ad6042", Standard: "#6B6E6A" };
@@ -534,6 +744,25 @@ export default function RevenueReport() {
               </button>
             ))}
           </div>
+          {selectedPeriod === "custom" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-[#6B6E6A]">Daily range:</span>
+              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+              <span className="text-xs text-[#6B6E6A]">s/d</span>
+              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+              <span className="text-xs font-semibold text-[#6B6E6A] ml-2">Monthly:</span>
+              <input type="month" value={customMonth} onChange={(e) => setCustomMonth(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
+              {(customStart || customEnd || customMonth) && (
+                <button
+                  type="button"
+                  onClick={() => { setCustomStart(""); setCustomEnd(""); setCustomMonth(""); }}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#6B6E6A] hover:text-[#2D312C] border border-[#E5E1DA] rounded-lg bg-white"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Export Button */}
           <div className="relative" ref={exportRef}>

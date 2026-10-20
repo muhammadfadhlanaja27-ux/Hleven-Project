@@ -66,12 +66,19 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
+        $hotelStatus = null;
+        if ($user->role === 'admin_hotel') {
+            $hotelStatus = $user->hotel?->status ?? $user->hotels()->first()?->status;
+        }
+
+        $userArr = $user->toArray();
+        if ($hotelStatus) $userArr['hotel_status'] = $hotelStatus;
 
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil',
             'data' => [
-                'user' => $user,
+                'user' => $userArr,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ]
@@ -110,10 +117,10 @@ class AuthController extends Controller
 
         // Handle upload avatar jika ada
         if ($request->hasFile('avatar')) {
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
+            if ($user->avatar) {
+                app(\App\Services\FileStorageService::class)->deleteFile($user->avatar);
             }
-            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar'] = app(\App\Services\FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
         }
 
         $user->update($data);

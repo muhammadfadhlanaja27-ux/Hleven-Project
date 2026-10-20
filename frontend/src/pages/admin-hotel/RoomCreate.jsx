@@ -2,7 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet } from "../../services/apiCache";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  matchesFacilitySearch,
+  resolveFacilityIcon as getFacilityIcon,
+} from "../../utils/facilities";
 
 const FACILITY_ICON_MAP = {
   "AC": "ac_unit",
@@ -111,18 +117,30 @@ export default function RoomCreate() {
 
   // Shared Room Facilities list
   const [roomFacilities, setRoomFacilities] = useState([]);
+  const [bedTypes, setBedTypes] = useState([]);
   const [rawFiles, setRawFiles] = useState([]);
+
+  const ROOM_POLICY_TEMPLATE = `Waktu Check-in & Check-out
+Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
+Kebijakan Bebas Asap Rokok
+Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+Hewan Peliharaan
+Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
+Pembatalan
+Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.`;
 
   // Form State
   const [formData, setFormData] = useState({
     name: "",
     type: "",
+    bed: "",
+    bed_type_id: "",
     description: "",
     weekday_price: "",
     weekend_price: "",
-    capacity: "",
     stock: "",
     is_refundable: true,
+    policies: ROOM_POLICY_TEMPLATE,
     facilityIds: [],
     photos: [],
   });
@@ -132,21 +150,51 @@ export default function RoomCreate() {
 
   useEffect(() => {
     const fetchRoomFacilities = async () => {
-      try {
-        const { data: resData } = await cachedGet("/facilities");
-        const allFacilities = resData?.success
-          ? resData.data
-          : Array.isArray(resData) ? resData : [];
-        const filtered = allFacilities.filter(
-          (f) => f.category === "Room" || f.category === "Bathroom"
-        );
-        setRoomFacilities(Array.isArray(filtered) ? filtered : []);
-      } catch (err) {
-        console.error("Failed to load room facilities:", err);
+      const [facilityResult, bedTypeResult] = await Promise.allSettled([
+        cachedGet("/facilities"),
+        api.get("/admin/bed-types"),
+      ]);
+      if (facilityResult.status === "fulfilled") {
+        const responseData = facilityResult.value.data;
+        const payload = responseData ?? [];
+        const allFacilities = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+        const filtered = Array.isArray(allFacilities)
+          ? allFacilities.filter((f) => f.category === "Room" || f.category === "Bathroom")
+          : [];
+        setRoomFacilities(deduplicateFacilities(filtered));
+      } else {
+        console.error("Failed to load room facilities:", facilityResult.reason);
         setRoomFacilities([]);
       }
+      if (bedTypeResult.status === "fulfilled") {
+        const bedTypeData = bedTypeResult.value.data?.data ?? [];
+        setBedTypes(Array.isArray(bedTypeData) ? bedTypeData : []);
+      } else {
+        console.error("Failed to load bed types:", bedTypeResult.reason);
+        toast.error("Gagal memuat daftar tipe kasur.");
+      }
+      setIsLoadingFacilities(false);
+      setIsLoadingBedTypes(false);
     };
     fetchRoomFacilities();
+  }, []);
+
+  useEffect(() => {
+    const fetchBedTypes = async () => {
+      try {
+        const { data } = await cachedGet("/admin/bed-types");
+        const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        setBedTypes(list);
+      } catch (err) {
+        console.error("Failed to load bed types:", err);
+        setBedTypes([]);
+      }
+    };
+    fetchBedTypes();
   }, []);
 
   const handleChange = (e) => {
@@ -157,6 +205,19 @@ export default function RoomCreate() {
     }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleBedTypeChange = (e) => {
+    const value = e.target.value;
+    const selected = bedTypes.find((b) => String(b.id) === String(value));
+    setFormData((prev) => ({
+      ...prev,
+      bed_type_id: value,
+      bed: selected ? selected.name : "",
+    }));
+    if (errors.bed_type_id) {
+      setErrors((prev) => ({ ...prev, bed_type_id: "" }));
     }
   };
 
@@ -218,8 +279,8 @@ export default function RoomCreate() {
       newErrors.weekend_price = "Weekend price must be greater than 0.";
     }
 
-    if (!formData.capacity || Number(formData.capacity) < 1) {
-      newErrors.capacity = "Capacity must be at least 1 guest.";
+    if (!formData.bed_type_id) {
+      newErrors.bed_type_id = "Pilih tipe tempat tidur.";
     }
 
     if (!formData.stock || Number(formData.stock) < 1) {
@@ -243,13 +304,17 @@ export default function RoomCreate() {
     try {
       const payload = new FormData();
       payload.append("name", formData.name.trim());
+      payload.append("type", formData.type || "Standard");
       payload.append("description", formData.description.trim());
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);
-      payload.append("adult_capacity", formData.capacity);
-      payload.append("child_capacity", 0);
+      payload.append("bed", formData.bed || "");
+      payload.append("bed_type_id", formData.bed_type_id || "");
+      payload.append("bed_type_id", formData.bed_type_id || "");
+      payload.append("stock", formData.stock);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
+      payload.append("policies", (formData.policies || "").trim());
 
       (formData.facilityIds || []).forEach((fId, idx) => {
         payload.append(`facilities[${idx}]`, fId);
@@ -259,11 +324,12 @@ export default function RoomCreate() {
         payload.append("photos[]", file);
       });
 
-      await api.post("/hotel/room-types", payload, {
+      await api.post("/admin/rooms", payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       toast.success("Room created successfully.");
+      invalidateCache("/hotels");
       navigate("/admin/rooms");
     } catch (error) {
       console.error("Failed to create room:", error);
@@ -387,6 +453,49 @@ export default function RoomCreate() {
               className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed"
             />
           </div>
+
+          {/* Bed Type */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="bed_type_id" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Bed Type <span className="text-[#ba1a1a]">*</span>
+            </label>
+            <select
+              id="bed_type_id"
+              name="bed_type_id"
+              value={formData.bed_type_id}
+              onChange={handleBedTypeChange}
+              disabled={isSubmitting}
+              className={`w-full h-11 px-4 bg-white border ${
+                errors.bed_type_id ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+              } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all cursor-pointer`}
+            >
+              <option value="">Pilih Tipe Kasur</option>
+              {bedTypes.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                  {b.size ? ` — ${b.size}` : ""} ({b.max_adults}D/{b.max_children}A, maks {b.max_total})
+                </option>
+              ))}
+            </select>
+            {errors.bed_type_id && (
+              <span className="text-xs text-[#ba1a1a] font-medium">{errors.bed_type_id}</span>
+            )}
+            {bedTypes.length === 0 && (
+              <span className="text-[11px] text-[#6B6E6A]">
+                Belum ada tipe tempat tidur. Tambahkan dulu di menu Bed Types Management.
+              </span>
+            )}
+            {(() => {
+              const selected = bedTypes.find((b) => String(b.id) === String(formData.bed_type_id));
+              if (!selected) return null;
+              return (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[#4A5D43] bg-[#E4EBE0] border border-[#cfe0c6] rounded-lg px-3 py-2">
+                  <span className="material-symbols-outlined text-[16px]">info</span>
+                  Kapasitas: {selected.max_adults} Dewasa, {selected.max_children} Anak (Total {selected.max_total} tamu)
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         {/* SECTION 2: ROOM PRICING */}
@@ -465,44 +574,14 @@ export default function RoomCreate() {
         <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
           <div className="border-b border-[#E5E1DA] pb-3">
             <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-              3. Room Availability &amp; Capacity
+              3. Room Availability
             </h3>
             <p className="text-xs text-[#6B6E6A] mt-0.5">
-              Kapasitas maksimal tamu dan total jumlah unit fisik kamar.
+              Total jumlah unit fisik kamar. Kapasitas tamu mengikuti tipe tempat tidur yang dipilih.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Capacity */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="capacity" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
-                Capacity (Guests) <span className="text-[#ba1a1a]">*</span>
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">
-                  person
-                </span>
-                <input
-                  id="capacity"
-                  type="number"
-                  name="capacity"
-                  min="1"
-                  value={formData.capacity}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                  placeholder="2"
-                  className={`w-full h-11 pl-10 pr-4 bg-white border ${
-                    errors.capacity ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
-                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
-                />
-              </div>
-              {errors.capacity && (
-                <span className="text-xs text-[#ba1a1a] font-medium">
-                  {errors.capacity}
-                </span>
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Stock */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="stock" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
@@ -609,6 +688,24 @@ export default function RoomCreate() {
             </div>
           </div>
 
+          {/* Kebijakan Kamar (Policies Textarea) */}
+          <div className="pt-2 flex flex-col gap-1.5">
+            <label htmlFor="policies" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Kebijakan Kamar
+            </label>
+            <textarea
+              id="policies"
+              name="policies"
+              rows={6}
+              value={formData.policies}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              placeholder="Kebijakan khusus kamar ini..."
+              className="w-full p-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed whitespace-pre-wrap"
+            />
+            <p className="text-[11px] text-[#6B6E6A]">Sudah terisi template standar. Anda bisa mengubah aturan khusus kamar ini.</p>
+          </div>
+
           <div className="bg-[#F6F3EF] p-4 rounded-xl text-xs text-[#6B6E6A] border border-[#E5E1DA]">
             <p className="font-semibold text-[#2D312C]">Informasi Stok Tersedia (Available Stock)</p>
             <p className="mt-0.5">
@@ -621,20 +718,38 @@ export default function RoomCreate() {
         <div className="space-y-6 pt-4 border-t border-[#E5E1DA]">
           <div className="border-b border-[#E5E1DA] pb-3">
             <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-              4. Room Facilities &amp; Amenities
+              4. Fasilitas Kamar
             </h3>
             <p className="text-xs text-[#6B6E6A] mt-0.5">
-              Pilih fasilitas yang tersedia di kamar dari katalog Room Facilities.
+              Fasilitas pada bagian ini hanya untuk kamar dan kamar mandi; fasilitas hotel dikelola terpisah di Hotel Information.
             </p>
+          </div>
+
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873] text-[20px]">
+              search
+            </span>
+            <input
+              type="search"
+              value={facilitySearch}
+              onChange={(event) => setFacilitySearch(event.target.value)}
+              placeholder="Cari fasilitas kamar..."
+              aria-label="Cari fasilitas kamar"
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
+            />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
             {roomFacilities.length === 0 && (
               <div className="col-span-full py-8 text-center text-xs text-[#6B6E6A]">
-                Memuat daftar fasilitas kamar...
+                {isLoadingFacilities
+                  ? "Memuat daftar fasilitas kamar..."
+                  : "Belum ada fasilitas kamar di katalog."}
               </div>
             )}
-            {roomFacilities.map((fac) => {
+            {roomFacilities
+              .filter((fac) => matchesFacilitySearch(fac, facilitySearch))
+              .map((fac) => {
               const isChecked = formData.facilityIds.includes(fac.id);
               const isInactive = fac.status === "inactive";
 
@@ -655,9 +770,9 @@ export default function RoomCreate() {
                     className="accent-[#506147]"
                   />
                   <span className="material-symbols-outlined text-[18px] text-[#506147]">
-                    {resolveFacilityIcon(fac.name)}
+                    {getFacilityIcon(fac.name, fac.icon, "bed")}
                   </span>
-                  <span className="truncate">{fac.name}</span>
+                  <span className="truncate">{getFacilityDisplayName(fac)}</span>
                   {fac.category && (
                     <span className="text-[9px] text-[#757870] ml-auto px-1.5 py-0.5 bg-[#E5E1DA] rounded-full">
                       {fac.category === "Room" ? "Room" : "Bath"}
@@ -670,7 +785,12 @@ export default function RoomCreate() {
                   )}
                 </label>
               );
-            })}
+              })}
+            {roomFacilities.filter((fac) => matchesFacilitySearch(fac, facilitySearch)).length === 0 && !isLoadingFacilities && (
+              <p className="col-span-full py-5 text-center text-xs text-[#6B6E6A]">
+                Fasilitas tidak ditemukan.
+              </p>
+            )}
           </div>
         </div>
 

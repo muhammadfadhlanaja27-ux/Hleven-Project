@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Warning;
 use App\Models\Hotel;
+use App\Models\Warning;
 use App\Services\WarningService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class WarningController extends Controller
 {
@@ -31,8 +31,8 @@ class WarningController extends Controller
                     'current_page' => $warnings->currentPage(),
                     'last_page' => $warnings->lastPage(),
                     'per_page' => $warnings->perPage(),
-                    'total' => $warnings->total()
-                ]
+                    'total' => $warnings->total(),
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -45,27 +45,27 @@ class WarningController extends Controller
     public function show(Request $request, $id): JsonResponse
     {
         try {
-            $warning = Warning::with('hotel')->findOrFail($id);
+            $warning = Warning::with(['hotel', 'appeals'])->findOrFail($id);
             $user = $request->user();
 
             // Admin Hotel hanya bisa melihat warning milik hotelnya[cite: 1]
             if ($user->role === 'admin_hotel') {
                 $isOwner = Hotel::where('id', $warning->hotel_id)
-                                ->where('admin_id', $user->id)
-                                ->exists();
-                if (!$isOwner) {
+                    ->where('admin_id', $user->id)
+                    ->exists();
+                if (! $isOwner) {
                     return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
                 }
             }
 
             return response()->json([
                 'success' => true,
-                'data' => $warning
+                'data' => $warning,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Data tidak ditemukan.'
+                'message' => 'Data tidak ditemukan.',
             ], 404);
         }
     }
@@ -83,21 +83,41 @@ class WarningController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Warning berhasil dibuat.'
+                'message' => 'Warning berhasil dibuat.',
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal membuat warning.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function markAsRead(Request $request, $id): JsonResponse
+    {
+        try {
+            $warning = Warning::findOrFail($id);
+            if ($request->user()->role === 'admin_hotel') {
+                $isOwner = Hotel::where('id', $warning->hotel_id)
+                    ->where('admin_id', $request->user()->id)
+                    ->exists();
+                if (! $isOwner) {
+                    return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
+                }
+            }
+            $warning = $this->warningService->markAsRead($warning);
+
+            return response()->json(['success' => true, 'message' => 'Warning ditandai dibaca.', 'data' => $warning], 200);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
         }
     }
 
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $request->validate([
-            'status' => 'required|in:pending,resolved' // Menggunakan pending / resolved sesuai Endpoint Summary[cite: 1]
+            'status' => 'required|in:unread,read,closed,pending,resolved',
         ]);
 
         try {
@@ -106,12 +126,12 @@ class WarningController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Status warning berhasil diperbarui.'
+                'message' => 'Status warning berhasil diperbarui.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memperbarui status warning.'
+                'message' => 'Gagal memperbarui status warning.',
             ], 500);
         }
     }
@@ -124,12 +144,12 @@ class WarningController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Warning berhasil dihapus.'
+                'message' => 'Warning berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus warning.'
+                'message' => 'Gagal menghapus warning.',
             ], 500);
         }
     }

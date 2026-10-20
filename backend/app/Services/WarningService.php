@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Warning;
-use App\Models\Hotel;
 use App\Models\ActivityLog;
+use App\Models\Hotel;
 use App\Models\Notification;
+use App\Models\Warning;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Builder;
 
 class WarningService
 {
@@ -16,7 +15,7 @@ class WarningService
      */
     public function getWarnings($user, array $filters)
     {
-        $query = Warning::with('hotel');
+        $query = Warning::with(['hotel', 'appeals']);
 
         // Jika yang login adalah Admin Hotel, filter berdasarkan hotel miliknya[cite: 1]
         if ($user->role === 'admin_hotel') {
@@ -46,28 +45,53 @@ class WarningService
                 'super_admin_id' => $superAdmin->id,
                 'title' => $data['title'],
                 'message' => $data['message'],
-                'status' => 'pending' // Status awal adalah pending[cite: 1]
+                'status' => 'unread',
             ]);
 
-            // Kirim notifikasi ke Admin Hotel[cite: 1]
             Notification::create([
                 'user_id' => $hotel->admin_id,
-                'title' => 'Peringatan Baru: ' . $warning->title,
+                'title' => 'Peringatan Baru: '.$warning->title,
                 'message' => $warning->message,
                 'type' => 'warning',
-                'is_read' => false
+                'is_read' => false,
             ]);
 
-            // Catat log aktivitas[cite: 1]
             ActivityLog::create([
                 'user_id' => $superAdmin->id,
                 'activity' => 'Create Warning',
                 'description' => "Super Admin memberikan warning kepada hotel {$hotel->name}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
 
-            return $warning;
+            $activeWarnings = Warning::where('hotel_id', $hotel->id)->whereIn('status', ['unread', 'read'])->count();
+            if ($activeWarnings >= 2 && $hotel->status !== 'blocked') {
+                $hotel->update(['status' => 'blocked']);
+                Notification::create([
+                    'user_id' => $hotel->admin_id,
+                    'title' => 'Hotel Diblokir Otomatis',
+                    'message' => "Hotel {$hotel->name} otomatis diblokir karena telah menerima {$activeWarnings} peringatan.",
+                    'type' => 'warning',
+                    'is_read' => false,
+                ]);
+                ActivityLog::create([
+                    'user_id' => $superAdmin->id,
+                    'activity' => 'Auto Suspend Hotel',
+                    'description' => "Hotel {$hotel->name} otomatis diblokir setelah {$activeWarnings} peringatan.",
+                    'ip_address' => request()->ip(),
+                ]);
+            }
+
+            return $warning->fresh();
         });
+    }
+
+    public function markAsRead(Warning $warning): Warning
+    {
+        if ($warning->status === 'unread') {
+            $warning->update(['status' => 'read', 'read_at' => now()]);
+        }
+
+        return $warning->fresh();
     }
 
     /**
@@ -75,6 +99,7 @@ class WarningService
      */
     public function updateStatus(Warning $warning, string $status, $superAdmin): void
     {
+        $status = ['pending' => 'unread', 'resolved' => 'closed'][$status] ?? $status;
         DB::transaction(function () use ($warning, $status, $superAdmin) {
             $warning->update(['status' => $status]);
 
@@ -82,7 +107,7 @@ class WarningService
                 'user_id' => $superAdmin->id,
                 'activity' => 'Update Warning Status',
                 'description' => "Super Admin mengubah status warning ID {$warning->id} menjadi {$status}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
     }
@@ -100,7 +125,7 @@ class WarningService
                 'user_id' => $superAdmin->id,
                 'activity' => 'Delete Warning',
                 'description' => "Super Admin menghapus warning ID {$warningId}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
     }

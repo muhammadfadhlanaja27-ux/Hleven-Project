@@ -40,7 +40,7 @@ const STATUS_MESSAGES = {
   },
 };
 
-const ApplicationStatus = ({ application, loading, onFixRevision }) => {
+const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotification }) => {
   const navigate = useNavigate();
   if (loading) {
     return (
@@ -143,6 +143,24 @@ const ApplicationStatus = ({ application, loading, onFixRevision }) => {
         </div>
       </div>
 
+      {status === "approved" && approvalNotification?.message && (
+        <div className="rounded-2xl border border-[#778873]/30 bg-[#e8f0e4]/50 p-5 md:p-6 mb-5">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-[26px] shrink-0 mt-0.5 text-[#3b4b39]">
+              key
+            </span>
+            <div className="flex-1">
+              <h5 className="font-label-md text-sm font-bold text-[#3b4b39] uppercase tracking-wider mb-3">
+                Informasi Akses Admin Hotel
+              </h5>
+              <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">
+                {approvalNotification.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(status === "needs_revision" || status === "rejected") &&
         (application.rejection_reason || application.revision_notes || application.reason) && (
           <div className="bg-white rounded-2xl border border-[#ba1a1a]/30 p-5 md:p-6 mb-5">
@@ -165,21 +183,13 @@ const ApplicationStatus = ({ application, loading, onFixRevision }) => {
         )}
 
       {application.hotel_name && (
-        <div className="bg-[#faf3ea]/70 rounded-2xl border border-[#DCCFC0]/40 p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-[#faf3ea]/70 rounded-2xl border border-[#DCCFC0]/40 p-5 mb-6">
           <div>
             <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-0.5">
               Nama Hotel
             </span>
             <span className="font-body-md text-sm font-semibold text-[#1c1c19]">{application.hotel_name}</span>
           </div>
-          {application.hotel_type && (
-            <div>
-              <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-0.5">
-                Tipe Hotel
-              </span>
-              <span className="font-body-md text-sm text-[#1c1c19]">{application.hotel_type}</span>
-            </div>
-          )}
         </div>
       )}
 

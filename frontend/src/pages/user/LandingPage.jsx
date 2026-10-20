@@ -1,35 +1,68 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import HotelCard from "../../components/landing/HotelCard";
+import Pagination from "../../components/common/Pagination";
+import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
+import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
+const ITEMS_PER_PAGE = 9;
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const today = useMemo(() => new Date(), []);
+  const tomorrow = useMemo(() => new Date(Date.now() + 86400000), []);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search Bar States
-  const [searchTerm, setSearchTerm] = useState("");
-  const [checkInDate, setCheckInDate] = useState("");
-  const [checkOutDate, setCheckOutDate] = useState("");
-  const [guestOption, setGuestOption] = useState("2 Dewasa, 1 Kamar");
+  const [searchTerm, setSearchTerm] = useState(init.searchTerm);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
+  const [adults, setAdults] = useState(init.adults);
+  const [children, setChildren] = useState(init.children);
+  const [rooms, setRooms] = useState(init.rooms);
 
-  // Sidebar Filter States
+  useEffect(() => {
+    saveSearchState({ search: searchTerm, checkIn: checkInDate, checkOut: checkOutDate, adults, children, rooms });
+  }, [searchTerm, checkInDate, checkOutDate, adults, children, rooms]);
+
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [pendingAdults, setPendingAdults] = useState(2);
+
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedFacilities, setSelectedFacilities] = useState([]);
 
-  // Sorting & Pagination States
   const [sortBy, setSortBy] = useState("recommendation");
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch Hotels (Cached)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, checkInDate, checkOutDate, adults, children, rooms, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        const { data: responseData, fromCache } = await cachedGet("/hotels");
+        const params = new URLSearchParams();
+
+        if (searchTerm.trim()) params.append("search", searchTerm.trim());
+        if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
+        if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
+        if (adults) params.append("adults", adults);
+        if (children) params.append("children", children);
+        if (rooms) params.append("rooms", rooms);
+
+        const url = `/hotels${params.toString() ? `?${params.toString()}` : ""}`;
+        const { data: responseData, fromCache } = await cachedGet(url);
+
         if (responseData && (responseData.data || Array.isArray(responseData))) {
           const apiHotels = responseData.data || responseData;
           setHotels(apiHotels);
@@ -50,21 +83,24 @@ const LandingPage = () => {
     fetchHotels();
   }, []);
 
-  // Filter Handlers
-  const handleStarToggle = (starRating) => {
-    setSelectedStars((prev) =>
-      prev.includes(starRating)
-        ? prev.filter((s) => s !== starRating)
-        : [...prev, starRating]
-    );
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setCheckInDate(start);
+    setCheckOutDate(end);
   };
 
-  const handleFacilityToggle = (facilityName) => {
-    setSelectedFacilities((prev) =>
-      prev.includes(facilityName)
-        ? prev.filter((f) => f !== facilityName)
-        : [...prev, facilityName]
-    );
+  const buildSearchUrl = () => {
+    const params = new URLSearchParams();
+    if (searchTerm.trim()) params.append("search", searchTerm.trim());
+    if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
+    if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
+    if (adults) params.append("adults", adults);
+    if (children) params.append("children", children);
+    return `/hotels${params.toString() ? `?${params.toString()}` : ""}`;
+  };
+
+  const handleSearch = () => {
+    navigate(buildSearchUrl());
   };
 
   const handleResetFilters = () => {
@@ -74,34 +110,38 @@ const LandingPage = () => {
     setSelectedStars([]);
     setSelectedFacilities([]);
     setSortBy("recommendation");
+    setCheckInDate(today);
+    setCheckOutDate(tomorrow);
   };
 
-  // Filtered and Sorted Hotels Calculation
+  const handleGuestChange = ({ adults: newAdults, children: newChildren, rooms: newRooms }) => {
+    setAdults(newAdults);
+    setChildren(newChildren);
+    setRooms(newRooms);
+  };
+
+  const handleAddRoomRequest = () => {
+    setPendingAdults(adults);
+    setShowRoomModal(true);
+  };
+
+  const handleConfirmAddRoom = () => {
+    setRooms(rooms + 1);
+    setShowRoomModal(false);
+  };
+
   const filteredHotels = useMemo(() => {
     return hotels
       .filter((hotel) => {
-        // 1. Text Search Filter (Name, City, Address)
-        if (searchTerm.trim()) {
-          const query = searchTerm.toLowerCase();
-          const matchName = hotel.name?.toLowerCase().includes(query);
-          const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
-          const matchCity = cityStr?.toLowerCase().includes(query);
-          const matchAddress = hotel.address?.toLowerCase().includes(query);
-          if (!matchName && !matchCity && !matchAddress) return false;
-        }
-
-        // 2. Min & Max Price Filter
         const price = Number(hotel.starting_price || hotel.price || 0);
         if (minPrice && price < Number(minPrice)) return false;
         if (maxPrice && price > Number(maxPrice)) return false;
 
-        // 3. Star Rating Filter
         if (selectedStars.length > 0) {
-          const hotelRatingInt = Math.floor(Number(hotel.rating || 5));
-          if (!selectedStars.includes(hotelRatingInt)) return false;
+          const hotelRatingInt = Math.floor(Number(hotel.rating || hotel.average_rating || 0));
+          if (hotelRatingInt > 0 && !selectedStars.includes(hotelRatingInt)) return false;
         }
 
-        // 4. Facilities Filter
         if (selectedFacilities.length > 0) {
           const hotelFacs = (hotel.facilities || []).map((f) =>
             (typeof f === "object" ? f.name : String(f)).toLowerCase()
@@ -123,21 +163,29 @@ const LandingPage = () => {
         if (sortBy === "price_asc") return priceA - priceB;
         if (sortBy === "price_desc") return priceB - priceA;
         if (sortBy === "rating_desc") return ratingB - ratingA;
-        return 0; // Default Recommendation
+        return 0;
       });
-  }, [hotels, searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+  }, [hotels, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
 
-  const displayedHotels = filteredHotels.slice(0, visibleCount);
+  const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayedHotels = filteredHotels.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 450, behavior: "smooth" });
+  };
 
   return (
-    <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased">
-      {/* Hero Section */}
-      <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-hidden py-12 px-4">
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
-          style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
-        >
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"></div>
+    <div className="bg-[#fff8f0] text-[#1e1b16] min-h-screen font-body-md antialiased overflow-x-hidden max-w-full">
+      <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-visible py-12 px-4">
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
+            style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
+          >
+            <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"></div>
+          </div>
         </div>
 
         <div className="relative z-10 w-full max-w-[1280px] px-4 md:px-10 mx-auto flex flex-col items-center text-center">
@@ -148,15 +196,13 @@ const LandingPage = () => {
             Platform reservasi hotel modern yang memberikan kemudahan pencarian, perbandingan harga, dan manajemen pemesanan secara cerdas dan aman.
           </p>
 
-          {/* Floating Search Bar */}
           <div className="w-full max-w-5xl bg-[#fff8f0] p-4 rounded-2xl shadow-xl shadow-[#778873]/10 flex flex-col lg:flex-row gap-3 items-center">
-            {/* Destinasi / Hotel Input */}
-            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
                 Destinasi / Hotel
               </label>
               <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
                   location_on
                 </span>
                 <input
@@ -169,67 +215,44 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Check-in Date */}
-            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left relative z-20">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
-                Check-in
+                Tanggal Check-in &amp; Check-out
               </label>
               <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
-                  calendar_today
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
+                  date_range
                 </span>
-                <input
-                  type="date"
-                  value={checkInDate}
-                  onChange={(e) => setCheckInDate(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
+                <DatePicker
+                  selectsRange={true}
+                  startDate={checkInDate}
+                  endDate={checkOutDate}
+                  onChange={handleDateRangeChange}
+                  minDate={today}
+                  monthsShown={window.innerWidth > 640 ? 2 : 1}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Pilih Check-in - Check-out"
+                  popperPlacement="bottom-start"
+                  popperContainer={({ children }) => <div style={{ zIndex: 9999 }}>{children}</div>}
+                  className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
                 />
               </div>
             </div>
 
-            {/* Check-out Date */}
-            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
-              <label className="font-label-sm text-xs font-semibold text-[#444842]">
-                Check-out
-              </label>
-              <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
-                  calendar_month
-                </span>
-                <input
-                  type="date"
-                  value={checkOutDate}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
-                />
-              </div>
+            {/* Guest Selector Component */}
+            <div className="w-full lg:w-1/3">
+              <GuestSelector
+                adults={adults}
+                children={children}
+                rooms={rooms}
+                onGuestChange={handleGuestChange}
+                onAddRoomRequest={handleAddRoomRequest}
+              />
             </div>
 
-            {/* Tamu & Kamar */}
-            <div className="w-full lg:w-1/4 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] transition-all text-left">
-              <label className="font-label-sm text-xs font-semibold text-[#444842]">
-                Tamu &amp; Kamar
-              </label>
-              <div className="flex items-center w-full mt-1">
-                <span className="material-symbols-outlined text-[#747871] mr-2 text-lg">
-                  group
-                </span>
-                <select
-                  value={guestOption}
-                  onChange={(e) => setGuestOption(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer"
-                >
-                  <option value="1 Dewasa, 1 Kamar">1 Dewasa, 1 Kamar</option>
-                  <option value="2 Dewasa, 1 Kamar">2 Dewasa, 1 Kamar</option>
-                  <option value="4 Dewasa, 2 Kamar">4 Dewasa, 2 Kamar</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Search Action Button */}
             <button
               type="button"
-              onClick={() => setVisibleCount(6)}
+              onClick={handleSearch}
               className="w-full lg:w-auto h-full bg-[#778873] text-white px-8 py-4 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined text-xl">search</span>
@@ -239,106 +262,9 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Main Content Area: Sidebar Filters & Hotel Cards Grid */}
-      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16 flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filters */}
-        <aside className="w-full lg:w-1/4 flex flex-col gap-6">
-          <div className="bg-[#FDF6ED] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
-            <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-3">
-              <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
-                Filter Pencarian
-              </h3>
-              {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedFacilities.length > 0) && (
-                <button
-                  onClick={handleResetFilters}
-                  className="text-xs text-[#778873] font-semibold hover:underline"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-
-            {/* Rentang Harga Filter */}
-            <div className="mb-6">
-              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Rentang Harga (per malam)
-              </h4>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  placeholder="Rp Min"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
-                />
-                <span className="text-[#c4c8bf] font-bold">-</span>
-                <input
-                  type="number"
-                  placeholder="Rp Max"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Star Rating Filter */}
-            <div className="mb-6">
-              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Bintang Hotel
-              </h4>
-              <div className="flex flex-col gap-2.5">
-                {[5, 4, 3].map((star) => (
-                  <label key={star} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedStars.includes(star)}
-                      onChange={() => handleStarToggle(star)}
-                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
-                    />
-                    <div className="flex text-[#A1BC98]">
-                      {Array.from({ length: star }).map((_, i) => (
-                        <span
-                          key={i}
-                          className="material-symbols-outlined text-sm"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          star
-                        </span>
-                      ))}
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Facilities Filter */}
-            <div>
-              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Fasilitas Populer
-              </h4>
-              <div className="flex flex-col gap-2.5">
-                {["WiFi Gratis", "Kolam Renang", "Spa & Wellness", "Restoran"].map((fac) => (
-                  <label key={fac} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedFacilities.includes(fac)}
-                      onChange={() => handleFacilityToggle(fac)}
-                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
-                    />
-                    <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
-                      {fac}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Featured Hotels Grid */}
-        <div className="w-full lg:w-3/4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4 text-left">
+      <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16">
+        <div className="w-full">
+          <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
             <div>
               <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
                 Rekomendasi Hotel
@@ -348,7 +274,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3 py-1.5 rounded-lg border border-[#DCCFC0]/50">
+            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3.5 py-2 rounded-xl border border-[#DCCFC0]/60 shrink-0">
               <span className="text-[#444842] text-xs font-semibold">Urutkan:</span>
               <select
                 value={sortBy}
@@ -363,16 +289,14 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Skeleton Loader / Grid */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-[#FDF6ED] rounded-2xl h-80 animate-pulse border border-[#DCCFC0]/30"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+                <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-[#E8E2D9] shadow-xs"></div>
               ))}
             </div>
           ) : filteredHotels.length === 0 ? (
-            /* Empty State */
-            <div className="bg-[#FDF6ED] border border-[#DCCFC0]/50 rounded-2xl p-12 text-center my-6">
+            <div className="bg-white border border-[#E8E2D9] rounded-2xl p-12 text-center my-6 shadow-xs">
               <span className="material-symbols-outlined text-4xl text-[#747871] mb-3">
                 search_off
               </span>
@@ -390,27 +314,66 @@ const LandingPage = () => {
               </button>
             </div>
           ) : (
-            /* Hotel Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {displayedHotels.map((hotel) => (
-                <HotelCard key={hotel.id} hotel={hotel} />
+                <HotelCard
+                  key={hotel.id}
+                  hotel={hotel}
+                  adults={adults}
+                  children={children}
+                  variant="vertical"
+                  customUrl="/hotels"
+                />
               ))}
             </div>
           )}
 
-          {/* Load More Button */}
-          {!loading && filteredHotels.length > visibleCount && (
-            <div className="mt-12 flex justify-center">
-              <button
-                onClick={() => setVisibleCount((prev) => prev + 6)}
-                className="bg-[#FDF6ED] border border-[#778873] text-[#778873] px-8 py-3 rounded-full font-label-md text-sm font-semibold hover:bg-[#778873] hover:text-white transition-all shadow-sm active:scale-95"
-              >
-                Muat Lebih Banyak Hotel
-              </button>
-            </div>
+          {!loading && filteredHotels.length > ITEMS_PER_PAGE && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={filteredHotels.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
           )}
         </div>
       </main>
+
+      {showRoomModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm"
+            onClick={() => setShowRoomModal(false)}
+          />
+
+          <div className="relative bg-white rounded-2xl shadow-lg p-8 max-w-md z-10 border border-[#DCCFC0]">
+            <div className="mb-6">
+              <h3 className="font-headline-md text-2xl font-semibold text-[#2D332C] mb-2">
+                Tambah Kamar?
+              </h3>
+              <p className="font-body-md text-[#747872]">
+                Jumlah tamu ({pendingAdults} dewasa) melebihi kapasitas satu kamar. Apakah Anda ingin menambahkan kamar tambahan?
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowRoomModal(false)}
+                className="px-6 py-2.5 border border-[#DCCFC0] rounded-lg font-label-md text-sm font-semibold text-[#434842] hover:bg-[#FDF6ED] transition-colors"
+              >
+                Tidak
+              </button>
+              <button
+                onClick={handleConfirmAddRoom}
+                className="px-6 py-2.5 bg-[#778873] rounded-lg font-label-md text-sm font-semibold text-white hover:bg-[#50604d] transition-colors"
+              >
+                Ya, Tambah
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

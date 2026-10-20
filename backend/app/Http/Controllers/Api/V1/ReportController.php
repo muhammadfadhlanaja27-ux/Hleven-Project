@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
@@ -15,17 +15,17 @@ class ReportController extends Controller
         $user = $request->user();
         $hotel = $user->hotel;
 
-        if (!$hotel) {
+        if (! $hotel) {
             return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         $period = $request->get('period', 'monthly'); // Default monthly
-        
-        $query = Payment::whereHas('booking.rooms.roomType', function($q) use ($hotel) {
-                $q->where('hotel_id', $hotel->id);
-            })
-            ->where('status', 'success')
-            ->with(['booking.user', 'booking.rooms.roomType']);
+
+        $query = Payment::whereHas('booking.bookingRooms.roomType', function ($q) use ($hotel) {
+            $q->where('hotel_id', $hotel->id);
+        })
+            ->where('payment_status', 'success')
+            ->with(['booking.user', 'booking.bookingRooms.roomType']);
 
         // Filter berdasarkan periode waktu
         $now = Carbon::now();
@@ -34,8 +34,8 @@ class ReportController extends Controller
         } elseif ($period === 'weekly') {
             $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
         } elseif ($period === 'monthly') {
-            $query->whereMonth('created_at', $now->month)
-                  ->whereYear('created_at', $now->year);
+            $query->whereYear('created_at', $now->year)
+                ->whereMonth('created_at', $now->month);
         } elseif ($period === 'yearly') {
             $query->whereYear('created_at', $now->year);
         }
@@ -43,15 +43,15 @@ class ReportController extends Controller
         $payments = $query->latest()->get();
 
         // Hitung total pendapatan
-        $totalRevenue = $payments->sum('amount');
+        $totalRevenue = $payments->sum('gross_amount');
 
         // Petakan data untuk rincian tabel di frontend
-        $details = $payments->map(function($payment) {
+        $details = $payments->map(function ($payment) {
             return [
                 'date' => $payment->created_at->format('Y-m-d H:i'),
-                'booking_code' => $payment->booking->booking_code ?? 'INV-' . $payment->id,
+                'booking_code' => $payment->booking->booking_code ?? 'INV-'.$payment->id,
                 'payment_method' => $payment->payment_method ?? 'Transfer',
-                'amount' => $payment->amount,
+                'amount' => $payment->gross_amount,
             ];
         });
 
@@ -62,8 +62,8 @@ class ReportController extends Controller
                 'total_revenue' => $totalRevenue,
                 'period_revenue' => $totalRevenue, // Pendapatan sesuai periode yang dipilih
                 'transactions_count' => $payments->count(),
-                'details' => $details
-            ]
+                'details' => $details,
+            ],
         ]);
     }
 }

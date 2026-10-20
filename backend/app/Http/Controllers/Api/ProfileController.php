@@ -34,13 +34,12 @@ class ProfileController extends Controller
         // 2. Upload Foto Profil
         if ($request->hasFile('avatar')) {
             // Hapus foto lama jika ada di storage
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
+            if ($user->avatar) {
+                app(\App\Services\FileStorageService::class)->deleteFile($user->avatar);
             }
 
-            // Simpan foto baru ke public/storage/avatars
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
-            $updateData['avatar'] = $avatarPath;
+            // Simpan foto baru ke Supabase
+            $updateData['avatar'] = app(\App\Services\FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
         }
 
         // 3. Simpan ke Database

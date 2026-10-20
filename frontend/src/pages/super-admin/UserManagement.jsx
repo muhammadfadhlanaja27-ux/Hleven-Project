@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const UserManagement = () => {
   const initialKey = getCacheKey("/super-admin/users", { search: "", role: "", status: "" });
@@ -30,6 +31,12 @@ const UserManagement = () => {
     password: "",
     password_confirmation: "",
   });
+
+  // State Dialog Konfirmasi
+  const [pendingStatus, setPendingStatus] = useState(null); // { id, newStatus }
+  const [pendingRole, setPendingRole] = useState(null); // { userId, newRole, userName }
+  const [pendingDelete, setPendingDelete] = useState(null); // { id, name }
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Fetch Users
   const fetchUsers = async (forceRefresh = false) => {
@@ -83,18 +90,16 @@ const UserManagement = () => {
   }, [search, roleFilter, statusFilter]);
 
   // Toggle Status (Block / Activate)
-  const handleToggleStatus = async (id, currentStatus) => {
+  const handleToggleStatus = (id, currentStatus) => {
     const isCurrentlyActive = currentStatus?.toLowerCase() === "active";
     const newStatus = isCurrentlyActive ? "blocked" : "active";
+    setPendingStatus({ id, newStatus });
+  };
 
-    if (
-      !window.confirm(
-        `Apakah Anda yakin ingin mengubah status pengguna ini menjadi ${newStatus.toUpperCase()}?`
-      )
-    ) {
-      return;
-    }
-
+  const performToggleStatus = async () => {
+    if (!pendingStatus) return;
+    const { id, newStatus } = pendingStatus;
+    setIsConfirming(true);
     try {
       await api.patch(`/super-admin/users/${id}/status`, {
         status: newStatus,
@@ -103,25 +108,27 @@ const UserManagement = () => {
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
       toast.success("Status pengguna berhasil diperbarui!");
+      setPendingStatus(null);
       fetchUsers(true);
     } catch (err) {
       console.error("Gagal update status:", err);
       toast.error(
         err.response?.data?.message || "Gagal memperbarui status pengguna."
       );
+    } finally {
+      setIsConfirming(false);
     }
   };
 
   // Ubah Role Pengguna
-  const handleRoleChange = async (userId, newRole, userName) => {
-    if (
-      !window.confirm(
-        `Apakah Anda yakin ingin mengubah role ${userName} menjadi ${formatRole(newRole)}?`
-      )
-    ) {
-      return;
-    }
+  const handleRoleChange = (userId, newRole, userName) => {
+    setPendingRole({ userId, newRole, userName });
+  };
 
+  const performRoleChange = async () => {
+    if (!pendingRole) return;
+    const { userId, newRole } = pendingRole;
+    setIsConfirming(true);
     try {
       await api.patch(`/super-admin/users/${userId}/role`, {
         role: newRole,
@@ -130,30 +137,39 @@ const UserManagement = () => {
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
       toast.success("Role pengguna berhasil diperbarui!");
+      setPendingRole(null);
       fetchUsers(true);
     } catch (err) {
       console.error("Gagal update role:", err);
       toast.error(
         err.response?.data?.message || "Gagal memperbarui role pengguna."
       );
+    } finally {
+      setIsConfirming(false);
     }
   };
 
-  const handleDeleteUser = async (userId, userName) => {
-    if (!window.confirm(`Hapus akun ${userName}? Tindakan ini permanen.`)) {
-      return;
-    }
+  const handleDeleteUser = (userId, userName) => {
+    setPendingDelete({ id: userId, name: userName });
+  };
 
+  const performDeleteUser = async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    setIsConfirming(true);
     try {
-      await api.delete(`/super-admin/users/${userId}`);
+      await api.delete(`/super-admin/users/${id}`);
 
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
       toast.success("Akun pengguna berhasil dihapus!");
+      setPendingDelete(null);
       fetchUsers(true);
     } catch (err) {
       console.error("Gagal hapus user:", err);
       toast.error(err.response?.data?.message || "Gagal menghapus akun pengguna.");
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -258,7 +274,7 @@ const UserManagement = () => {
           className="px-5 py-2.5 bg-[#768875] text-white font-hanken text-[14px] font-semibold tracking-[0.01em] rounded-lg hover:bg-[#657764] shadow-sm hover:shadow transition-all duration-150 flex items-center gap-2 active:scale-95"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
-          <span>+ Tambah Admin Hotel</span>
+          <span>Tambah Admin Hotel</span>
         </button>
       </div>
 
@@ -676,6 +692,40 @@ const UserManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Toggle Status Dialog */}
+      <ConfirmDialog
+        open={!!pendingStatus}
+        title="Ubah Status Pengguna"
+        message={`Apakah Anda yakin ingin mengubah status pengguna ini menjadi ${(pendingStatus?.newStatus || "").toUpperCase()}?`}
+        confirmText="Ya, Ubah Status"
+        processing={isConfirming}
+        onConfirm={performToggleStatus}
+        onCancel={() => setPendingStatus(null)}
+      />
+
+      {/* Confirm Role Change Dialog */}
+      <ConfirmDialog
+        open={!!pendingRole}
+        title="Ubah Role Pengguna"
+        message={`Apakah Anda yakin ingin mengubah role ${pendingRole?.userName} menjadi ${formatRole(pendingRole?.newRole)}?`}
+        confirmText="Ya, Ubah Role"
+        processing={isConfirming}
+        onConfirm={performRoleChange}
+        onCancel={() => setPendingRole(null)}
+      />
+
+      {/* Confirm Delete User Dialog */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        type="danger"
+        title="Hapus Akun Pengguna"
+        message={`Hapus akun ${pendingDelete?.name}? Tindakan ini permanen.`}
+        confirmText="Ya, Hapus Akun"
+        processing={isConfirming}
+        onConfirm={performDeleteUser}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };
