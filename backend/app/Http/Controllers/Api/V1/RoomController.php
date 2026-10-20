@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\BedType;
 use App\Models\BookingRoom;
+use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Services\FileStorageService;
 use Illuminate\Database\QueryException;
@@ -72,8 +73,17 @@ class RoomController extends Controller
                 ->groupBy('room_type_id')
                 ->pluck('total_booked', 'room_type_id');
 
-            $rooms->each(function ($room) use ($bookedQuantities) {
-                $room->available_stock = max(0, $room->stock - ($bookedQuantities[$room->id] ?? 0));
+            $closedTypeIds = RoomAvailability::whereIn('room_type_id', $roomTypeIds)
+                ->where('is_closed', true)
+                ->where('date', '>=', $checkIn)
+                ->where('date', '<', $checkOut)
+                ->pluck('room_type_id')
+                ->unique();
+
+            $rooms->each(function ($room) use ($bookedQuantities, $closedTypeIds) {
+                $room->available_stock = $closedTypeIds->contains($room->id)
+                    ? 0
+                    : max(0, $room->stock - ($bookedQuantities[$room->id] ?? 0));
             });
         } else {
             $rooms->each(function ($room) {

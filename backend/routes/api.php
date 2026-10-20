@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\HotelPayoutController;
 use App\Http\Controllers\Api\V1\ReviewController;
+use App\Http\Controllers\Api\V1\RoomCalendarController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\AppealController;
@@ -165,6 +166,10 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::put('/rooms/{id}', [RoomController::class, 'update']);
     Route::post('/rooms/{id}', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
+
+    // --- Kalender Ketersediaan & Harga per Tanggal ---
+    Route::get('/rooms/{id}/calendar', [RoomCalendarController::class, 'show']);
+    Route::put('/rooms/{id}/calendar', [RoomCalendarController::class, 'update']);
 
     // --- Management Tipe Kamar (RoomTypeController) ---
     Route::get('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'index']);
