@@ -533,47 +533,6 @@ const BookingPage = () => {
                 Data Pemesan &amp; Tamu
               </h2>
 
-<<<<<<< HEAD
-              <form onSubmit={handleOpenPaymentModal} className="space-y-4">
-                <label className="flex items-start gap-3 p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={bookingForSomeoneElse}
-                    onChange={(e) => handleBookingForSomeoneElseChange(e.target.checked)}
-                    className="mt-0.5 accent-[#778873]"
-                  />
-                  <span>
-                    <span className="block font-label-md text-sm font-bold text-[#2D332C]">
-                      Pemesanan untuk orang lain
-                    </span>
-                    <span className="block font-body-md text-xs text-[#778873] mt-1">
-                      {bookingForSomeoneElse
-                        ? "Masukkan data orang yang akan menginap. Booking dan pembayaran tetap tercatat pada akun Anda."
-                        : "Centang jika tamu yang menginap berbeda dengan pemilik akun."}
-                    </span>
-                  </span>
-                </label>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="fullName">
-                      {bookingForSomeoneElse ? "Nama Tamu *" : "Nama Lengkap *"}
-                    </label>
-                    <input
-                      id="fullName"
-                      type="text"
-                      placeholder="Sesuai KTP / Paspor"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                      className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="email">
-                      {bookingForSomeoneElse ? "Email Tamu *" : "Alamat Email *"}
-=======
               <form onSubmit={handleOpenPaymentModal} className="space-y-5">
                 {/* DATA PEMESAN UTAMA */}
                 <div className="space-y-4">
@@ -615,7 +574,6 @@ const BookingPage = () => {
                   <div>
                     <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
                       Nomor Telepon Pemesan *
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
                     </label>
                     <input
                       id="phone"
@@ -629,21 +587,6 @@ const BookingPage = () => {
                   </div>
                 </div>
 
-<<<<<<< HEAD
-                <div>
-                  <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
-                    {bookingForSomeoneElse ? "Nomor Telepon Tamu *" : "Nomor Telepon *"}
-                  </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    placeholder="+62 8xx xxxx xxxx"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                    className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
-                  />
-=======
                 {/* PILIHAN PEMESANAN UNTUK SIAPA */}
                 <div className="pt-2 border-t border-[#DCCFC0]/40">
                   <span className="block font-label-md text-xs font-semibold text-[#444842] mb-3">
@@ -673,7 +616,7 @@ const BookingPage = () => {
                       <span className="ml-2 font-body-md text-sm text-[#2D332C]">Pesan untuk Orang Lain</span>
                     </label>
                   </div>
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
+                </div>
                 </div>
 
                 {/* INPUT DATA TAMU MENGINAP */}

@@ -108,8 +108,6 @@ export default function AdminHotelSidebar() {
               <span>Kalender &amp; Harga</span>
             </Link>
           </li>
-            </Link>
-          </li>
 
           <li>
             <Link

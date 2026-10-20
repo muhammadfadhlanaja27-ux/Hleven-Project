@@ -159,7 +159,6 @@ export default function RoomList() {
   const [rooms, setRooms] = useState([]);
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [bedTypes, setBedTypes] = useState([]);
-  const [bedTypes, setBedTypes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -194,11 +193,7 @@ export default function RoomList() {
       const [roomsRes, facilitiesRes, bedTypesRes] = await Promise.allSettled([
         api.get("/admin/rooms"),
         cachedGet("/facilities"),
-<<<<<<< HEAD
         api.get("/admin/bed-types"),
-=======
-        cachedGet("/admin/bed-types"),
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
       ]);
 
       if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {

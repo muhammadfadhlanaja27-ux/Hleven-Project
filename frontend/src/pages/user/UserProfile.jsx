@@ -79,7 +79,6 @@ const BookingHistory = () => {
       }
     }
 
-<<<<<<< HEAD
     fetchUserBookings();
 
     // Hanya fetch status pendaftaran mitra jika user adalah user biasa (bukan admin)
@@ -98,66 +97,6 @@ const BookingHistory = () => {
     const notificationInterval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(notificationInterval);
   }, [navigate, currentUserRole]);
-
-  const handleFixRevision = () => {
-    navigate("/mitra/daftar", {
-      state: {
-        prefill: {
-          hotel_name: partnerApplication?.hotel_name || "",
-          hotel_type: partnerApplication?.hotel_type || "",
-          hotel_description: partnerApplication?.hotel_description || "",
-          hotel_phone: partnerApplication?.hotel_phone || "",
-          hotel_email: partnerApplication?.hotel_email || "",
-          room_count: partnerApplication?.room_count || "",
-          address: partnerApplication?.address || "",
-          province: partnerApplication?.province || "",
-          city: partnerApplication?.city || "",
-          district: partnerApplication?.district || "",
-          postal_code: partnerApplication?.postal_code || "",
-          maps_url: partnerApplication?.maps_url || "",
-          owner_name: partnerApplication?.owner_name || "",
-          owner_email: partnerApplication?.owner_email || "",
-          owner_phone: partnerApplication?.owner_phone || "",
-          owner_id_number: partnerApplication?.owner_id_number || "",
-          bank_name: partnerApplication?.bank_name || "",
-          bank_account_number: partnerApplication?.bank_account_number || "",
-          bank_account_name: partnerApplication?.bank_account_name || "",
-        },
-      },
-    });
-  };
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Image = reader.result;
-        setAvatarPreview(base64Image);
-
-        const savedUser = localStorage.getItem("user");
-        let userObj = {};
-        if (savedUser) {
-          try { userObj = JSON.parse(savedUser); } catch (err) {}
-        }
-        userObj.avatar = base64Image;
-        userObj.avatarPreview = base64Image;
-        localStorage.setItem("user", JSON.stringify(userObj));
-        window.dispatchEvent(new Event("storage"));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage({ type: "", text: "" });
-=======
-    fetchApiBookings();
-  }, []);
->>>>>>> d7e7884542320b0f9c2fe3b28afd519705ea0143
 
   const fetchApiBookings = async (forceRefresh = false) => {
     setBookingsLoading(true);
