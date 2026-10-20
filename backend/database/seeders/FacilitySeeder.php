@@ -21,6 +21,14 @@ class FacilitySeeder extends Seeder
             ['name' => 'Lift', 'category' => 'Hotel'],
             ['name' => 'Laundry', 'category' => 'Hotel'],
             ['name' => 'AC Area Umum', 'category' => 'Hotel'],
+            ['name' => 'Sarapan', 'category' => 'Hotel'],
+            ['name' => 'Layanan Kamar', 'category' => 'Hotel'],
+            ['name' => 'Keamanan 24 Jam', 'category' => 'Hotel'],
+            ['name' => 'CCTV', 'category' => 'Hotel'],
+            ['name' => 'Ruang Meeting', 'category' => 'Hotel'],
+            ['name' => 'Antar Jemput Bandara', 'category' => 'Hotel'],
+            ['name' => 'Taman', 'category' => 'Hotel'],
+            ['name' => 'Area Bermain Anak', 'category' => 'Hotel'],
 
             // ===== Room Facilities =====
             ['name' => 'AC', 'category' => 'Room'],
@@ -33,15 +41,27 @@ class FacilitySeeder extends Seeder
             ['name' => 'Meja Kerja', 'category' => 'Room'],
             ['name' => 'Lemari', 'category' => 'Room'],
             ['name' => 'Air Mineral', 'category' => 'Room'],
+            ['name' => 'Wi-Fi di Kamar', 'category' => 'Room'],
+            ['name' => 'Ketel Listrik', 'category' => 'Room'],
+            ['name' => 'Brankas Kamar', 'category' => 'Room'],
+            ['name' => 'Telepon', 'category' => 'Room'],
+            ['name' => 'Kedap Suara', 'category' => 'Room'],
+            ['name' => 'Tirai Blackout', 'category' => 'Room'],
+            ['name' => 'Sofa', 'category' => 'Room'],
 
             // ===== Bathroom Facilities (tetap dipertahankan) =====
             ['name' => 'Water Heater', 'category' => 'Bathroom'],
             ['name' => 'Shower', 'category' => 'Bathroom'],
             ['name' => 'Peralatan Mandi Gratis', 'category' => 'Bathroom'],
+            ['name' => 'Handuk', 'category' => 'Bathroom'],
+            ['name' => 'Bidet', 'category' => 'Bathroom'],
         ];
 
         foreach ($facilities as $facility) {
-            Facility::firstOrCreate(['name' => $facility['name']], $facility);
+            Facility::firstOrCreate([
+                'name' => $facility['name'],
+                'category' => $facility['category'],
+            ], $facility);
         }
     }
 }

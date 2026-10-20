@@ -208,6 +208,8 @@ const UserProfile = () => {
     }
 
     fetchNotifications();
+    const notificationInterval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(notificationInterval);
   }, [navigate, currentUserRole]);
 
   const handleFixRevision = () => {
@@ -750,6 +752,12 @@ const UserProfile = () => {
                                 ? "check_circle"
                                 : notif.type === "review_request"
                                 ? "rate_review"
+                                : notif.type === "purchase"
+                                ? "payments"
+                                : notif.type === "refund"
+                                ? "currency_exchange"
+                                : notif.type === "suspend"
+                                ? "block"
                                 : "notifications"}
                             </span>
                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
@@ -1241,7 +1249,7 @@ const UserProfile = () => {
             )}
             {isPaid && isRefundable && (
               <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
-                Pengajuan refund akan dikirim ke admin. Dana kembali menunggu persetujuan.
+                Pembatalan dalam 1x24 jam sejak pembayaran berhasil akan disetujui otomatis dan status booking menjadi refunded. Pengembalian dana diproses terpisah. Setelah 1x24 jam, pengajuan menunggu persetujuan admin.
               </div>
             )}
             <div className="space-y-2">
@@ -1367,6 +1375,22 @@ const UserProfile = () => {
                         {selectedBooking.check_out}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-xl border border-[#DCCFC0]/40">
+                    <p className="font-label-sm text-[11px] text-[#444842] uppercase tracking-widest mb-1 font-semibold">
+                      Tamu yang Menginap
+                    </p>
+                    <p className="font-label-md text-xs text-[#2D332C] font-bold">
+                      {selectedBooking.guests?.[0]?.name || "—"}
+                    </p>
+                    {(selectedBooking.guests?.[0]?.phone || selectedBooking.guests?.[0]?.email) && (
+                      <p className="font-body-md text-xs text-[#444842] mt-1">
+                        {[selectedBooking.guests?.[0]?.phone, selectedBooking.guests?.[0]?.email]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

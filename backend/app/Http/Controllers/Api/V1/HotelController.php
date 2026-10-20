@@ -81,6 +81,57 @@ class HotelController extends Controller
         ], 200);
     }
 
+    public function uploadLogo(Request $request): JsonResponse
+    {
+        $request->validate([
+            'logo' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+
+        if (! $hotel) {
+            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+        }
+
+        $fileStorage = app(FileStorageService::class);
+        $previousLogo = $hotel->logo;
+        $hotel->logo = $fileStorage->uploadFile($request->file('logo'), "hotels/{$hotel->id}/logo");
+        $hotel->save();
+
+        if ($previousLogo && $previousLogo !== $hotel->logo) {
+            $fileStorage->deleteFile($previousLogo);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logo hotel berhasil diperbarui.',
+            'data' => ['logo' => $hotel->logo],
+        ], 201);
+    }
+
+    public function deleteLogo(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+
+        if (! $hotel) {
+            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+        }
+
+        if ($hotel->logo) {
+            app(FileStorageService::class)->deleteFile($hotel->logo);
+            $hotel->logo = null;
+            $hotel->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logo hotel berhasil dihapus.',
+            'data' => ['logo' => null],
+        ]);
+    }
+
     /**
      * Mengambil daftar hotel milik admin yang sedang login
      */

@@ -4,6 +4,11 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  resolveFacilityIcon,
+} from "../../utils/facilities";
 import GuestSelector from "../../components/common/GuestSelector";
 import ReviewSection from "../../components/ReviewSection";
 import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
@@ -310,22 +315,14 @@ const HotelDetail = () => {
   const photosList = Array.from(new Set(resolvedUrls));
   const hasHotelPhotos = photosList.length > 0;
 
-  const facilitiesList = Array.isArray(hotel.facilities) ? hotel.facilities : [];
+  const rawFacilities = Array.isArray(hotel.facilities) ? hotel.facilities : [];
+  const facilitiesList = deduplicateFacilities(
+    rawFacilities,
+    rawFacilities.map((facility) => facility.id)
+  );
 
   const getFacilityIcon = (fac) => {
-    if (typeof fac === "object" && fac?.icon && fac.icon !== "stars") {
-      return fac.icon;
-    }
-    const name = String(typeof fac === "object" ? fac.name : fac || "").toLowerCase();
-    if (name.includes("wifi")) return "wifi";
-    if (name.includes("kolam") || name.includes("pool")) return "pool";
-    if (name.includes("gym") || name.includes("kebugaran") || name.includes("fitness")) return "fitness_center";
-    if (name.includes("restoran") || name.includes("restaurant") || name.includes("bar")) return "restaurant";
-    if (name.includes("spa") || name.includes("wellness") || name.includes("pijat")) return "spa";
-    if (name.includes("parkir") || name.includes("parking")) return "local_parking";
-    if (name.includes("ac") || name.includes("air cond")) return "ac_unit";
-    if (name.includes("tv")) return "tv";
-    return "stars";
+    return resolveFacilityIcon(fac?.name || fac, fac?.icon, "stars");
   };
 
   const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";
@@ -548,7 +545,7 @@ const HotelDetail = () => {
               {facilitiesList.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
                   {facilitiesList.map((fac, idx) => {
-                    const facName = typeof fac === "object" ? fac.name : String(fac);
+                    const facName = getFacilityDisplayName(fac);
                     const iconName = getFacilityIcon(fac);
                     return (
                       <div

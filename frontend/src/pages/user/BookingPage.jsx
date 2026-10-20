@@ -43,6 +43,8 @@ const BookingPage = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [bookingForSomeoneElse, setBookingForSomeoneElse] = useState(false);
+  const [bookerContact, setBookerContact] = useState({ name: "", email: "", phone: "" });
   const [specialRequests, setSpecialRequests] = useState("");
   const [checkInDate, setCheckInDate] = useState(init.checkInStr);
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutStr);
@@ -80,6 +82,11 @@ const BookingPage = () => {
     if (savedUser) {
       try {
         const u = JSON.parse(savedUser);
+        setBookerContact({
+          name: u.name || "",
+          email: u.email || "",
+          phone: u.phone || "",
+        });
         if (u.name) setFullName(u.name);
         if (u.email) setEmail(u.email);
         if (u.phone) setPhone(u.phone);
@@ -88,6 +95,20 @@ const BookingPage = () => {
       }
     }
   }, []);
+
+  const handleBookingForSomeoneElseChange = (checked) => {
+    setBookingForSomeoneElse(checked);
+    if (checked) {
+      setFullName("");
+      setEmail("");
+      setPhone("");
+      return;
+    }
+
+    setFullName(bookerContact.name);
+    setEmail(bookerContact.email);
+    setPhone(bookerContact.phone);
+  };
 
   useEffect(() => {
     const fetchBookingData = async () => {
@@ -405,10 +426,29 @@ const BookingPage = () => {
               </h2>
 
               <form onSubmit={handleOpenPaymentModal} className="space-y-4">
+                <label className="flex items-start gap-3 p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bookingForSomeoneElse}
+                    onChange={(e) => handleBookingForSomeoneElseChange(e.target.checked)}
+                    className="mt-0.5 accent-[#778873]"
+                  />
+                  <span>
+                    <span className="block font-label-md text-sm font-bold text-[#2D332C]">
+                      Pemesanan untuk orang lain
+                    </span>
+                    <span className="block font-body-md text-xs text-[#778873] mt-1">
+                      {bookingForSomeoneElse
+                        ? "Masukkan data orang yang akan menginap. Booking dan pembayaran tetap tercatat pada akun Anda."
+                        : "Centang jika tamu yang menginap berbeda dengan pemilik akun."}
+                    </span>
+                  </span>
+                </label>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="fullName">
-                      Nama Lengkap *
+                      {bookingForSomeoneElse ? "Nama Tamu *" : "Nama Lengkap *"}
                     </label>
                     <input
                       id="fullName"
@@ -423,7 +463,7 @@ const BookingPage = () => {
 
                   <div>
                     <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="email">
-                      Alamat Email *
+                      {bookingForSomeoneElse ? "Email Tamu *" : "Alamat Email *"}
                     </label>
                     <input
                       id="email"
@@ -439,7 +479,7 @@ const BookingPage = () => {
 
                 <div>
                   <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
-                    Nomor Telepon *
+                    {bookingForSomeoneElse ? "Nomor Telepon Tamu *" : "Nomor Telepon *"}
                   </label>
                   <input
                     id="phone"

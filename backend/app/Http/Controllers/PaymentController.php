@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Services\MidtransService;
+use App\Services\NotificationService;
+use App\Services\WalletLedgerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -187,6 +190,8 @@ class PaymentController extends Controller
 
             // Cegah double-confirmation
             if ($payment->payment_status === 'success') {
+                app(WalletLedgerService::class)->recordPayment($payment->booking);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Pembayaran sudah dikonfirmasi.',
@@ -197,14 +202,17 @@ class PaymentController extends Controller
                 ], 200);
             }
 
-            // Set payment & booking ke paid
-            $payment->update([
-                'payment_status' => 'success',
-                'paid_at' => now(),
-                'payment_method' => $request->input('payment_method', $payment->payment_method),
-            ]);
+            DB::transaction(function () use ($payment, $request) {
+                $payment->update([
+                    'payment_status' => 'success',
+                    'paid_at' => now(),
+                    'payment_method' => $request->input('payment_method', $payment->payment_method),
+                ]);
 
-            $payment->booking->update(['status' => 'paid']);
+                $payment->booking->update(['status' => 'paid']);
+                app(WalletLedgerService::class)->recordPayment($payment->booking);
+            });
+            app(NotificationService::class)->notifyBookingPaid($payment->booking);
 
             return response()->json([
                 'success' => true,

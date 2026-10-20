@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\BookingRoom;
+use App\Models\BedType;
 use App\Models\Hotel;
 use App\Models\RoomType;
 use Illuminate\Database\QueryException;
@@ -13,6 +14,7 @@ use App\Services\FileStorageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class RoomController extends Controller
 {
@@ -40,7 +42,7 @@ class RoomController extends Controller
         $checkOut = $request->query('check_out');
 
         $rooms = RoomType::where('hotel_id', $hotelId)
-            ->with(['photos', 'facilities'])
+            ->with(['photos', 'facilities', 'bedType'])
             ->get();
 
         if ($checkIn && $checkOut) {
@@ -91,6 +93,13 @@ class RoomController extends Controller
             'name'           => 'required|string|max:255',
             'type'           => 'nullable|string|max:100',
             'bed'            => 'nullable|string|max:100',
+            'bed_type_id'    => [
+                'nullable',
+                'integer',
+                Rule::exists('bed_types', 'id')
+                    ->where('hotel_id', $hotel->id)
+                    ->where('status', 'active'),
+            ],
             'description'    => 'nullable|string',
             'weekday_price'  => 'required|numeric|min:0',
             'weekend_price'  => 'required|numeric|min:0',
@@ -114,11 +123,16 @@ class RoomController extends Controller
             ], 422);
         }
 
+        $bedType = $request->filled('bed_type_id')
+            ? BedType::where('hotel_id', $hotel->id)->findOrFail($request->integer('bed_type_id'))
+            : null;
+
         $room = RoomType::create([
             'hotel_id'       => $hotel->id,
             'name'           => $request->name,
             'type'           => $request->type ?? 'Standard',
-            'bed'            => $request->bed,
+            'bed'            => $bedType?->name ?? $request->bed,
+            'bed_type_id'    => $bedType?->id,
             'description'    => $request->description,
             'weekday_price'  => $request->weekday_price,
             'weekend_price'  => $request->weekend_price,
@@ -161,7 +175,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil ditambahkan',
-            'data'    => $room->load(['photos', 'facilities']),
+            'data'    => $room->load(['photos', 'facilities', 'bedType']),
         ], 201);
     }
 
@@ -170,7 +184,7 @@ class RoomController extends Controller
      */
     public function show($id): JsonResponse
     {
-        $room = RoomType::with(['photos', 'facilities', 'hotel'])->find($id);
+        $room = RoomType::with(['photos', 'facilities', 'hotel', 'bedType'])->find($id);
 
         if (! $room) {
             return response()->json([
@@ -200,10 +214,24 @@ class RoomController extends Controller
             ], 404);
         }
 
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+        if (! $hotel || (int) $room->hotel_id !== (int) $hotel->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kamar tidak ditemukan.',
+            ], 404);
+        }
+
         $validator = Validator::make($request->all(), [
             'name'           => 'sometimes|required|string|max:255',
             'type'           => 'nullable|string|max:100',
             'bed'            => 'nullable|string|max:100',
+            'bed_type_id'    => [
+                'nullable',
+                'integer',
+                Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id),
+            ],
             'description'    => 'nullable|string',
             'weekday_price'  => 'sometimes|required|numeric|min:0',
             'weekend_price'  => 'sometimes|required|numeric|min:0',
@@ -230,6 +258,13 @@ class RoomController extends Controller
             'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
             'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area',
         ]);
+        if ($request->exists('bed_type_id')) {
+            $bedType = $request->filled('bed_type_id')
+                ? BedType::where('hotel_id', $hotel->id)->findOrFail($request->integer('bed_type_id'))
+                : null;
+            $updateData['bed_type_id'] = $bedType?->id;
+            $updateData['bed'] = $bedType?->name ?? $request->input('bed');
+        }
 
         if ($request->has('is_refundable')) {
             $updateData['is_refundable'] = $request->boolean('is_refundable', true);
@@ -271,7 +306,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kamar berhasil diperbarui',
-            'data'    => $room->load(['photos', 'facilities']),
+            'data'    => $room->load(['photos', 'facilities', 'bedType']),
         ], 200);
     }
 

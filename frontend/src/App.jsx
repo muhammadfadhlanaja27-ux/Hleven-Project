@@ -34,11 +34,11 @@ import MitraRegistrationSuccess from "./pages/mitra/MitraRegistrationSuccess";
 import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
 import Dashboard from "./pages/admin-hotel/Dashboard";
 import HotelInformation from "./pages/admin-hotel/HotelInformation";
-import FacilityManager from "./pages/admin-hotel/FacilityManager";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
 import BookingList from "./pages/admin-hotel/BookingList";
 import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
+import Wallet from "./pages/admin-hotel/Wallet";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
 import AdminProfile from "./pages/admin-hotel/Profile";
@@ -55,6 +55,7 @@ import AppealManagement from "./pages/super-admin/AppealManagement";
 import ActivityLogs from "./pages/super-admin/ActivityLogs";
 import Reports from "./pages/super-admin/Reports";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
+import WalletOverview from "./pages/super-admin/WalletOverview";
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
@@ -169,11 +170,13 @@ function App() {
             <Route element={<AdminHotelLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
               <Route path="/admin/hotel" element={<HotelInformation />} />
-              <Route path="/admin/facilities" element={<FacilityManager />} />
+              <Route path="/admin/facilities" element={<Navigate to="/admin/hotel" replace />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
+              <Route path="/admin/beds" element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="/admin/bookings" element={<BookingList />} />
               <Route path="/admin/transactions" element={<TransactionHistory />} />
+              <Route path="/admin/wallet" element={<Wallet />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
@@ -195,6 +198,7 @@ function App() {
               <Route path="appeals" element={<AppealManagement />} />
               <Route path="activity-logs" element={<ActivityLogs />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="wallet" element={<WalletOverview />} />
             </Route>
           </Route>
 

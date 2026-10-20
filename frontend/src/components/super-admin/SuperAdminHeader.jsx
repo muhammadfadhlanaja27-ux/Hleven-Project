@@ -87,7 +87,6 @@ const SuperAdminHeader = ({ onMenuClick }) => {
     const pathname = location.pathname;
     if (pathname.includes("/users")) return "Manajemen User";
     if (pathname.includes("/hotels")) return "Manajemen Hotel";
-    if (pathname.includes("/facilities")) return "Manajemen Fasilitas";
     if (pathname.includes("/master")) return "Master Data";
     if (pathname.includes("/bookings")) return "Manajemen Pesanan";
     if (pathname.includes("/reviews")) return "Manajemen Ulasan";
@@ -177,6 +176,13 @@ const SuperAdminHeader = ({ onMenuClick }) => {
                   notifications.map((n) => {
                     const isWarning = n.type === 'warning' || (n.title || '').toLowerCase().includes('peringatan');
                     const isLowRating = n.type === 'low_rating_alert';
+                    const notificationIcon = n.type === 'purchase'
+                      ? 'payments'
+                      : n.type === 'refund'
+                      ? 'currency_exchange'
+                      : n.type === 'suspend'
+                      ? 'block'
+                      : 'notifications';
                     return (
                       <div
                         key={n.id}
@@ -189,13 +195,17 @@ const SuperAdminHeader = ({ onMenuClick }) => {
                             <span className="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center">
                               <span className="material-symbols-outlined text-[18px]">star_half</span>
                             </span>
+                          ) : n.type === 'suspend' ? (
+                            <span className="w-8 h-8 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center">
+                              <span className="material-symbols-outlined text-[18px]">{notificationIcon}</span>
+                            </span>
                           ) : isWarning ? (
                             <span className="w-8 h-8 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center">
                               <span className="material-symbols-outlined text-[18px]">warning</span>
                             </span>
                           ) : (
                             <span className="w-8 h-8 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center">
-                              <span className="material-symbols-outlined text-[18px]">notifications</span>
+                              <span className="material-symbols-outlined text-[18px]">{notificationIcon}</span>
                             </span>
                           )}
                         </div>

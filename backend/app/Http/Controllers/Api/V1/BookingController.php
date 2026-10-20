@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use App\Services\WalletLedgerService;
 
 class BookingController extends Controller
 {
@@ -209,6 +210,12 @@ class BookingController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
+        $internalUpdate = $request->attributes->get('internal_booking_status_update') === true;
+
+        if (! $internalUpdate && $request->user()->role !== 'admin_hotel') {
+            return response()->json(['status' => 'error', 'message' => 'Hanya admin hotel yang dapat mengubah status booking.'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:pending,unpaid,paid,checked_in,checked_out,cancelled,expired,refunded,refund_pending',
         ]);
@@ -223,8 +230,20 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
+        if ($request->user()->role === 'admin_hotel') {
+            if (! $request->user()->hotels()->whereKey($booking->hotel_id)->exists()) {
+                return response()->json(['status' => 'error', 'message' => 'Booking ini bukan milik hotel Anda.'], 403);
+            }
+        } elseif ($internalUpdate && $booking->user_id !== $request->user()->id) {
+            return response()->json(['status' => 'error', 'message' => 'Booking ini bukan milik Anda.'], 403);
+        }
+
         $oldStatus = $booking->status;
         $newStatus = $request->status;
+
+        if ($newStatus === 'checked_out' && $oldStatus !== 'checked_in') {
+            return response()->json(['status' => 'error', 'message' => 'Booking hanya dapat check-out setelah check-in.'], 422);
+        }
 
         DB::beginTransaction();
         try {
@@ -252,6 +271,12 @@ class BookingController extends Controller
             }
 
             $booking->update(['status' => $newStatus]);
+
+            if ($newStatus === 'checked_out') {
+                app(WalletLedgerService::class)->releaseBooking($booking);
+            } elseif ($newStatus === 'refunded' && $booking->payment?->payment_status === 'success') {
+                app(WalletLedgerService::class)->reverseBooking($booking);
+            }
 
             // Saat admin menandai booking selesai (checked out), ajukan user menulis ulasan.
             // Ulasan hanya boleh ditulis setelah checkout (lihat ReviewController::eligibleBookings).
@@ -285,7 +310,7 @@ class BookingController extends Controller
     public function cancelBooking(Request $request, $id)
     {
         $user = $request->user();
-        $booking = Booking::with('bookingRooms.roomType')->where('id', $id)
+        $booking = Booking::with(['bookingRooms.roomType', 'payment'])->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -300,7 +325,7 @@ class BookingController extends Controller
 
         if (in_array($booking->status, ['unpaid', 'pending'])) {
             $request->merge(['status' => 'cancelled']);
-            return $this->updateStatus($request, $booking->id);
+            return $this->updateStatusInternally($request, $booking->id);
         }
 
         if (in_array($booking->status, ['paid', 'confirmed'])) {
@@ -309,7 +334,62 @@ class BookingController extends Controller
                 : true;
 
             if ($allRefundable) {
+                $paidAt = $booking->payment?->payment_status === 'success'
+                    ? $booking->payment->paid_at
+                    : null;
+
+                if ($paidAt && $paidAt->copy()->addHours(24)->greaterThanOrEqualTo(now())) {
+                    $request->merge(['status' => 'refunded']);
+                    $response = $this->updateStatusInternally($request, $booking->id);
+
+                    if ($response->getStatusCode() === 200) {
+                        Notification::create([
+                            'user_id' => $booking->user_id,
+                            'title' => 'Refund Disetujui Otomatis',
+                            'message' => "Pembatalan booking {$booking->booking_code} diajukan dalam 1x24 jam sejak pembayaran. Refund disetujui otomatis; pengembalian dana diproses terpisah.",
+                            'type' => 'refund',
+                            'is_read' => false,
+                        ]);
+
+                        $hotelAdminId = $booking->hotel?->admin_id;
+                        if ($hotelAdminId) {
+                            Notification::create([
+                                'user_id' => $hotelAdminId,
+                                'title' => 'Booking Dibatalkan',
+                                'message' => "Booking {$booking->booking_code} dibatalkan dan refund disetujui otomatis.",
+                                'type' => 'refund',
+                                'is_read' => false,
+                            ]);
+                        }
+
+                        $data = json_decode($response->getContent(), true);
+                        $data['message'] = 'Refund disetujui otomatis karena pembatalan diajukan dalam 1x24 jam sejak pembayaran berhasil. Pengembalian dana diproses terpisah.';
+                        $response->setData($data);
+                    }
+
+                    return $response;
+                }
+
                 $booking->update(['status' => 'refund_pending']);
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'title' => 'Pengajuan Refund Diterima',
+                    'message' => "Pengajuan refund untuk booking {$booking->booking_code} sedang menunggu persetujuan hotel.",
+                    'type' => 'refund',
+                    'is_read' => false,
+                ]);
+
+                $hotelAdminId = $booking->hotel?->admin_id;
+                if ($hotelAdminId) {
+                    Notification::create([
+                        'user_id' => $hotelAdminId,
+                        'title' => 'Pengajuan Refund Baru',
+                        'message' => "Pengguna mengajukan refund untuk booking {$booking->booking_code}. Silakan tinjau pengajuan tersebut.",
+                        'type' => 'refund',
+                        'is_read' => false,
+                    ]);
+                }
+
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
@@ -318,7 +398,7 @@ class BookingController extends Controller
             }
 
             $request->merge(['status' => 'cancelled']);
-            $res = $this->updateStatus($request, $booking->id);
+            $res = $this->updateStatusInternally($request, $booking->id);
             if ($res->getStatusCode() === 200) {
                 $data = json_decode($res->getContent(), true);
                 $data['message'] = 'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.';
@@ -354,9 +434,27 @@ class BookingController extends Controller
         if ($request->action === 'approve') {
             $request->merge(['status' => 'refunded']);
 
-            return $this->updateStatus($request, $booking->id);
+            $response = $this->updateStatusInternally($request, $booking->id);
+            if ($response->getStatusCode() === 200) {
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'title' => 'Refund Disetujui',
+                    'message' => "Pengajuan refund untuk booking {$booking->booking_code} telah disetujui hotel. Pengembalian dana diproses terpisah.",
+                    'type' => 'refund',
+                    'is_read' => false,
+                ]);
+            }
+
+            return $response;
         } else {
             $booking->update(['status' => 'paid']);
+            Notification::create([
+                'user_id' => $booking->user_id,
+                'title' => 'Refund Ditolak',
+                'message' => "Pengajuan refund untuk booking {$booking->booking_code} ditolak. Status booking kembali Paid.",
+                'type' => 'refund',
+                'is_read' => false,
+            ]);
 
             return response()->json([
                 'status' => 'success',
@@ -366,10 +464,17 @@ class BookingController extends Controller
         }
     }
 
+    private function updateStatusInternally(Request $request, int $bookingId)
+    {
+        $request->attributes->set('internal_booking_status_update', true);
+
+        return $this->updateStatus($request, $bookingId);
+    }
+
     public function extendBooking(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'required|in:hours,days',
+            'type' => 'required|in:days',
             'duration' => 'required|integer|min:1',
             'notes' => 'nullable|string|max:255',
         ]);
@@ -392,7 +497,6 @@ class BookingController extends Controller
             ], 400);
         }
 
-        $type = $request->type;
         $duration = (int) $request->duration;
         $notes = $request->notes;
 
@@ -404,47 +508,38 @@ class BookingController extends Controller
 
         DB::beginTransaction();
         try {
-            $extensionSubtotal = 0;
-            $extensionLabel = '';
+            $extensionSubtotal = $basePrice * $duration * $qty;
+            $extensionLabel = "[Perpanjang +{$duration} Hari]";
 
-            if ($type === 'hours') {
-                $hourlyRate = (int) round($basePrice / 24);
-                $extensionSubtotal = $hourlyRate * $duration * $qty;
-                $extensionLabel = "[Late Check-Out +{$duration} Jam]";
-            } else {
-                $extensionSubtotal = $basePrice * $duration * $qty;
-                $extensionLabel = "[Perpanjang +{$duration} Hari]";
+            $currentCheckOut = Carbon::parse($booking->check_out);
+            $newCheckOut = $currentCheckOut->copy()->addDays($duration);
+            $period = CarbonPeriod::create($currentCheckOut, $newCheckOut->copy()->subDay());
 
-                $currentCheckOut = Carbon::parse($booking->check_out);
-                $newCheckOut = $currentCheckOut->copy()->addDays($duration);
-                $period = CarbonPeriod::create($currentCheckOut, $newCheckOut->copy()->subDay());
+            foreach ($booking->bookingRooms as $bRoom) {
+                $totalPhysicalStock = max(1, (int) ($bRoom->roomType?->stock ?? 10));
 
-                foreach ($booking->bookingRooms as $bRoom) {
-                    $totalPhysicalStock = max(1, (int) ($bRoom->roomType?->stock ?? 10));
+                foreach ($period as $date) {
+                    $dateStr = $date->format('Y-m-d');
+                    $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
+                        ->where('date', $dateStr)
+                        ->first();
 
-                    foreach ($period as $date) {
-                        $dateStr = $date->format('Y-m-d');
-                        $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
-                            ->where('date', $dateStr)
-                            ->first();
-
-                        if ($avail) {
-                            $avail->decrement('available_stock', $bRoom->qty);
-                            $avail->increment('booked_room', $bRoom->qty);
-                        } else {
-                            RoomAvailability::create([
-                                'room_type_id' => $bRoom->room_type_id,
-                                'date' => $dateStr,
-                                'available_stock' => max(0, $totalPhysicalStock - $bRoom->qty),
-                                'booked_room' => $bRoom->qty,
-                            ]);
-                        }
+                    if ($avail) {
+                        $avail->decrement('available_stock', $bRoom->qty);
+                        $avail->increment('booked_room', $bRoom->qty);
+                    } else {
+                        RoomAvailability::create([
+                            'room_type_id' => $bRoom->room_type_id,
+                            'date' => $dateStr,
+                            'available_stock' => max(0, $totalPhysicalStock - $bRoom->qty),
+                            'booked_room' => $bRoom->qty,
+                        ]);
                     }
                 }
-
-                $booking->check_out = $newCheckOut->toDateString();
-                $booking->total_night = ($booking->total_night ?? 1) + $duration;
             }
+
+            $booking->check_out = $newCheckOut->toDateString();
+            $booking->total_night = ($booking->total_night ?? 1) + $duration;
 
             $addedTax = (int) round($extensionSubtotal * 0.05);
             $addedGrandTotal = $extensionSubtotal + $addedTax;
@@ -468,10 +563,10 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => "Booking berhasil diperpanjang (+{$duration} " . ($type === 'hours' ? 'Jam' : 'Hari') . ").",
+                'message' => "Booking berhasil diperpanjang (+{$duration} Hari).",
                 'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
                 'extension_summary' => [
-                    'type' => $type,
+                    'type' => 'days',
                     'duration' => $duration,
                     'subtotal_added' => $extensionSubtotal,
                     'tax_added' => $addedTax,
@@ -516,7 +611,7 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'bookingRooms.roomType', 'payment', 'review'])
+        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'bookingRooms.roomType', 'payment', 'review', 'guests'])
             ->where('user_id', $user->id)
             ->latest()
             ->get();
@@ -686,6 +781,7 @@ class BookingController extends Controller
                 'booking_id' => $booking->id,
                 'name' => $request->guest_name,
                 'phone' => $request->guest_phone,
+                'email' => strtolower(trim($request->guest_email)),
                 'identity_number' => $request->guest_identity ?? '-',
             ]);
 

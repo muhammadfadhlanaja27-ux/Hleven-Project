@@ -43,6 +43,11 @@ class Booking extends Model
         return $this->hasOne(Payment::class, 'booking_id');
     }
 
+    public function walletLedgerEntries()
+    {
+        return $this->hasMany(WalletLedgerEntry::class, 'booking_id');
+    }
+
     public function refund()
     {
         return $this->hasOne(Refund::class, 'booking_id');

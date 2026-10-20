@@ -114,10 +114,8 @@ export default function AdminHotelLayout() {
             <span className="text-[#2D312C] text-sm font-semibold">
               {location.pathname.includes('/hotel')
                 ? 'Hotel Information'
-                : location.pathname.includes('/facilities')
-                ? 'Manajemen Fasilitas'
                 : location.pathname.includes('/rooms')
-                ? 'Manajemen Kamar'
+                ? 'CRUD Tipe Kamar'
                 : location.pathname.includes('/bookings')
                 ? 'Manajemen Pesanan'
                 : location.pathname.includes('/reviews')
@@ -182,6 +180,13 @@ export default function AdminHotelLayout() {
                     ) : (
                       notifications.map((n) => {
                         const isWarning = n.type === 'warning' || (n.title || '').toLowerCase().includes('peringatan');
+                        const notificationIcon = n.type === 'purchase'
+                          ? 'payments'
+                          : n.type === 'refund'
+                          ? 'currency_exchange'
+                          : n.type === 'suspend'
+                          ? 'block'
+                          : 'notifications';
                         return (
                           <div
                             key={n.id}
@@ -190,13 +195,17 @@ export default function AdminHotelLayout() {
                             }`}
                           >
                             <div className="shrink-0 mt-0.5">
-                              {isWarning ? (
+                              {n.type === 'suspend' ? (
+                                <span className="w-8 h-8 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center">
+                                  <span className="material-symbols-outlined text-[18px]">{notificationIcon}</span>
+                                </span>
+                              ) : isWarning ? (
                                 <span className="w-8 h-8 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center">
                                   <span className="material-symbols-outlined text-[18px]">warning</span>
                                 </span>
                               ) : (
                                 <span className="w-8 h-8 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-[18px]">notifications</span>
+                                  <span className="material-symbols-outlined text-[18px]">{notificationIcon}</span>
                                 </span>
                               )}
                             </div>

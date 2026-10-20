@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\City;
 use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -84,7 +85,21 @@ class SuperAdminUserService
     public function updateUserStatus(User $user, string $status, User $superAdmin): void
     {
         DB::transaction(function () use ($user, $status, $superAdmin) {
+            $oldStatus = $user->status;
             $user->update(['status' => $status]);
+
+            if ($oldStatus !== $status) {
+                $isBlocked = in_array($status, ['blocked', 'suspended'], true);
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => $isBlocked ? 'Akun Ditangguhkan' : 'Status Akun Diperbarui',
+                    'message' => $isBlocked
+                        ? 'Akun Anda telah ditangguhkan oleh Super Admin.'
+                        : "Status akun Anda telah diubah menjadi {$status}.",
+                    'type' => $isBlocked ? 'suspend' : 'system',
+                    'is_read' => false,
+                ]);
+            }
 
             ActivityLog::create([
                 'user_id' => $superAdmin->id,

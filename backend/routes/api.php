@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
+use App\Http\Controllers\Api\V1\BedTypeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\StaffController;
@@ -23,6 +24,8 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\PartnerApplicationController;
 use App\Http\Controllers\AppealController;
+use App\Http\Controllers\Api\V1\HotelWalletController;
+use App\Http\Controllers\Api\V1\SuperAdminWalletController;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,13 +87,6 @@ Route::prefix('v1')->group(function () {
         Route::post('hotel/reviews/{id}/reply', [ReviewController::class, 'reply']);
         Route::delete('hotel/reviews/{id}', [ReviewController::class, 'destroy']);
 
-        // --- Fasilitas (Admin/Super Admin) ---
-        Route::middleware('role:super_admin,admin_hotel')->group(function () {
-            Route::post('/facilities', [FacilityController::class, 'store']);
-            Route::put('/facilities/{id}', [FacilityController::class, 'update']);
-            Route::delete('/facilities/{id}', [FacilityController::class, 'destroy']);
-        });
-
         // --- Booking & Partner Application User ---
         Route::middleware('role:user')->group(function () {
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
@@ -135,6 +131,14 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel'])->prefix('v1/admin')->gro
 });
 Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->prefix('v1/admin')->group(function () {
 
+    Route::get('/wallet', [HotelWalletController::class, 'summary']);
+    Route::get('/wallet/destinations', [HotelWalletController::class, 'destinations']);
+    Route::post('/wallet/destinations', [HotelWalletController::class, 'storeDestination']);
+    Route::put('/wallet/destinations/{id}', [HotelWalletController::class, 'updateDestination'])->whereNumber('id');
+    Route::delete('/wallet/destinations/{id}', [HotelWalletController::class, 'deleteDestination'])->whereNumber('id');
+    Route::get('/wallet/withdrawals', [HotelWalletController::class, 'withdrawals']);
+    Route::post('/wallet/withdrawals', [HotelWalletController::class, 'requestWithdrawal']);
+
     // --- Dashboard Admin Hotel ---
     Route::get('/dashboard-stats', function () {
         return response()->json([
@@ -148,6 +152,8 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     // --- Profil Hotel Admin ---
     Route::get('/hotel/profile', [HotelController::class, 'showProfile']);
     Route::post('/hotel/profile', [HotelController::class, 'update']);
+    Route::post('/hotel/profile/logo', [HotelController::class, 'uploadLogo']);
+    Route::delete('/hotel/profile/logo', [HotelController::class, 'deleteLogo']);
     Route::get('/hotels', [HotelController::class, 'myHotels']);
     Route::put('/hotels/{id}', [HotelController::class, 'update']);
     Route::post('/hotels/{id}/photos', [HotelController::class, 'uploadPhoto']);
@@ -156,7 +162,10 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::delete('/hotels/photos/{photoId}', [HotelController::class, 'deletePhoto']);
     Route::delete('/hotels/{hotelId}/photos/{photoId}', [HotelController::class, 'deletePhoto']);
 
-    // --- Management Kamar (RoomController) ---
+    // --- Read-only tipe kasur for room forms ---
+    Route::get('/bed-types', [BedTypeController::class, 'index']);
+
+    // --- CRUD Kamar ---
     Route::get('/rooms', [RoomController::class, 'index']);
     Route::post('/rooms', [RoomController::class, 'store']);
     Route::get('/rooms/{id}', [RoomController::class, 'show']);
@@ -164,7 +173,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::post('/rooms/{id}', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
 
-    // --- Management Tipe Kamar (RoomTypeController) ---
+    // Read-only room type data is used when creating manual bookings.
     Route::get('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'index']);
     Route::post('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'store']);
     Route::put('/room-types/{id}', [RoomTypeController::class, 'update']);
@@ -183,6 +192,8 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
 // 4. SUPER ADMIN ROUTES
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin')->group(function () {
+
+    Route::get('/wallet', [SuperAdminWalletController::class, 'index']);
 
     Route::prefix('dashboard')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'summary']);

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\BedType;
 use App\Models\RoomType;
 use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class RoomTypeController extends Controller
 {
@@ -23,7 +25,7 @@ class RoomTypeController extends Controller
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with(['photos', 'facilities'])->get();
+        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with(['photos', 'facilities', 'bedType'])->get();
 
         return response()->json([
             'status' => 'success',
@@ -47,6 +49,13 @@ class RoomTypeController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'nullable|string|max:100',
             'bed' => 'nullable|string|max:100',
+            'bed_type_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('bed_types', 'id')
+                    ->where('hotel_id', $hotel->id)
+                    ->where('status', 'active'),
+            ],
             'description' => 'nullable|string',
             'weekday_price' => 'required|numeric|min:0',
             'weekend_price' => 'required|numeric|min:0',
@@ -68,11 +77,16 @@ class RoomTypeController extends Controller
         // 1. Buat data utama RoomType (disesuaikan dengan kolom model: capacity_adult & capacity_child)
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
+            $bedType = $request->filled('bed_type_id')
+                ? BedType::where('hotel_id', $hotel->id)->findOrFail($request->integer('bed_type_id'))
+                : null;
+
             $roomType = RoomType::create([
                 'hotel_id' => $hotel->id,
                 'name' => $request->name,
                 'type' => $request->type ?? 'Standard',
-                'bed' => $request->bed,
+                'bed' => $bedType?->name ?? $request->bed,
+                'bed_type_id' => $bedType?->id,
                 'description' => $request->description,
                 'weekday_price' => $request->weekday_price,
                 'weekend_price' => $request->weekend_price,
@@ -106,7 +120,7 @@ class RoomTypeController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Room type created successfully',
-                'data' => $roomType->load(['photos', 'facilities'])
+                'data' => $roomType->load(['photos', 'facilities', 'bedType'])
             ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
@@ -122,7 +136,7 @@ class RoomTypeController extends Controller
      */
     public function show($id)
     {
-        $roomType = RoomType::with(['photos', 'facilities', 'hotel'])->find($id);
+        $roomType = RoomType::with(['photos', 'facilities', 'hotel', 'bedType'])->find($id);
 
         if (!$roomType) {
             return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
@@ -145,10 +159,22 @@ class RoomTypeController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
         }
 
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+        if (!$hotel || (int) $roomType->hotel_id !== (int) $hotel->id) {
+            return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:255',
             'type' => 'nullable|string|max:100',
             'bed' => 'nullable|string|max:100',
+            'bed_type_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id),
+            ],
             'description' => 'nullable|string',
             'weekday_price' => 'sometimes|numeric|min:0',
             'weekend_price' => 'sometimes|numeric|min:0',
@@ -175,6 +201,13 @@ class RoomTypeController extends Controller
 
         if ($request->has('bed')) {
             $updateData['bed'] = $request->bed;
+        }
+        if ($request->exists('bed_type_id')) {
+            $bedType = $request->filled('bed_type_id')
+                ? BedType::where('hotel_id', $hotel->id)->findOrFail($request->integer('bed_type_id'))
+                : null;
+            $updateData['bed_type_id'] = $bedType?->id;
+            $updateData['bed'] = $bedType?->name ?? $request->input('bed');
         }
         if ($request->has('capacity_adult')) {
             $updateData['capacity_adult'] = $request->capacity_adult;
@@ -218,7 +251,7 @@ class RoomTypeController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Room type updated successfully',
-            'data' => $roomType->load(['photos', 'facilities'])
+            'data' => $roomType->load(['photos', 'facilities', 'bedType'])
         ]);
     }
 

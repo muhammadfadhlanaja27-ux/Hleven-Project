@@ -863,11 +863,11 @@ const BookingHistory = () => {
                     </p>
                     <div className="flex items-center gap-2 text-xs text-[#2D332C] mb-1">
                       <span className="material-symbols-outlined text-[#778873] text-base">person</span>
-                      <span className="font-semibold">{selectedBooking.guest_name || user?.name || "Eleanor Vance"}</span>
+                      <span className="font-semibold">{selectedBooking.guests?.[0]?.name || selectedBooking.guest_name || user?.name || "Eleanor Vance"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-[#444842]">
                       <span className="material-symbols-outlined text-[#778873] text-base">call</span>
-                      <span>+62 812-3456-7890</span>
+                      <span>{selectedBooking.guests?.[0]?.phone || "—"}</span>
                     </div>
                   </div>
                 </div>

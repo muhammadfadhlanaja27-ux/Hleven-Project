@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\City;
 use App\Models\Hotel;
+use App\Models\Payment;
+use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,6 +84,95 @@ class ManualBookingTest extends TestCase
         ])->assertUnprocessable()->assertJsonPath('message', 'Jumlah anak melebihi kapasitas kamar.');
     }
 
+    public function test_booking_extension_rejects_hourly_duration(): void
+    {
+        [$admin] = $this->createHotelRoom();
+        $this->actingAs($admin, 'sanctum');
+
+        $this->postJson('/api/v1/admin/bookings/1/extend', [
+            'type' => 'hours',
+            'duration' => 1,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('type');
+    }
+
+    public function test_user_can_book_for_another_person_and_guest_details_are_saved(): void
+    {
+        [, $roomType] = $this->createHotelRoom();
+        $booker = $this->createUser();
+        $this->actingAs($booker, 'sanctum');
+
+        $response = $this->postJson('/api/v1/user/bookings', [
+            'hotel_id' => $roomType->hotel_id,
+            'room_type_id' => $roomType->id,
+            'check_in' => now()->addDays(3)->toDateString(),
+            'check_out' => now()->addDays(4)->toDateString(),
+            'qty' => 1,
+            'adults' => 1,
+            'children' => 0,
+            'guest_name' => 'Different Guest',
+            'guest_email' => 'guest@example.com',
+            'guest_phone' => '081234567890',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.booking.user_id', $booker->id)
+            ->assertJsonPath('data.booking.guests.0.name', 'Different Guest')
+            ->assertJsonPath('data.booking.guests.0.email', 'guest@example.com')
+            ->assertJsonPath('data.booking.guests.0.phone', '081234567890');
+
+        $this->assertDatabaseHas('bookings', [
+            'user_id' => $booker->id,
+            'hotel_id' => $roomType->hotel_id,
+        ]);
+        $this->assertDatabaseHas('guests', [
+            'name' => 'Different Guest',
+            'email' => 'guest@example.com',
+            'phone' => '081234567890',
+        ]);
+
+        $this->getJson('/api/v1/user/bookings')
+            ->assertOk()
+            ->assertJsonPath('data.0.guests.0.name', 'Different Guest');
+    }
+
+    public function test_refundable_booking_cancelled_within_24_hours_is_automatically_refunded(): void
+    {
+        [$admin, $roomType] = $this->createHotelRoom();
+        $user = $this->createUser();
+        $booking = $this->createPaidBooking($user, $roomType, now()->subHours(23));
+        RoomAvailability::create([
+            'room_type_id' => $roomType->id,
+            'date' => $booking->check_in,
+            'available_stock' => 2,
+            'booked_room' => 1,
+        ]);
+        $this->actingAs($user, 'sanctum');
+
+        $this->postJson("/api/v1/user/bookings/{$booking->id}/cancel", [
+            'reason' => 'Perubahan rencana',
+        ])->assertOk()
+            ->assertJsonPath('data.status', 'refunded')
+            ->assertJsonPath('message', 'Refund disetujui otomatis karena pembatalan diajukan dalam 1x24 jam sejak pembayaran berhasil. Pengembalian dana diproses terpisah.');
+
+        $this->assertDatabaseHas('room_availabilities', [
+            'room_type_id' => $roomType->id,
+            'date' => $booking->check_in,
+            'available_stock' => 3,
+            'booked_room' => 0,
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $user->id,
+            'title' => 'Refund Disetujui Otomatis',
+            'type' => 'refund',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $admin->id,
+            'title' => 'Booking Dibatalkan',
+            'type' => 'refund',
+        ]);
+    }
+
     private function createHotelRoom(): array
     {
         $admin = User::create([
@@ -119,5 +212,51 @@ class ManualBookingTest extends TestCase
         ]);
 
         return [$admin, $roomType];
+    }
+
+    private function createUser(): User
+    {
+        return User::create([
+            'name' => 'Test User',
+            'email' => 'user@example.com',
+            'password' => bcrypt('password123'),
+            'role' => 'user',
+            'status' => 'active',
+        ]);
+    }
+
+    private function createPaidBooking(User $user, RoomType $roomType, $paidAt): Booking
+    {
+        $booking = Booking::create([
+            'booking_code' => 'HLVN-REFUND-'.uniqid(),
+            'user_id' => $user->id,
+            'hotel_id' => $roomType->hotel_id,
+            'check_in' => now()->addDays(2)->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+            'total_night' => 1,
+            'subtotal' => 400000,
+            'tax' => 20000,
+            'grand_total' => 420000,
+            'status' => 'paid',
+        ]);
+
+        BookingRoom::create([
+            'booking_id' => $booking->id,
+            'room_type_id' => $roomType->id,
+            'qty' => 1,
+            'price_per_night' => 400000,
+            'subtotal' => 400000,
+        ]);
+
+        Payment::create([
+            'booking_id' => $booking->id,
+            'payment_method' => 'bank_transfer',
+            'payment_status' => 'success',
+            'gross_amount' => 420000,
+            'order_id' => $booking->booking_code,
+            'paid_at' => $paidAt,
+        ]);
+
+        return $booking;
     }
 }

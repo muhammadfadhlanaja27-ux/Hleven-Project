@@ -108,6 +108,16 @@ const HotelCard = ({ hotel, adults, children }) => {
           {cityName}
         </div>
 
+        {hotel.logo && (
+          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5">
+            <img
+              src={getStorageUrl(hotel.logo)}
+              alt={`${hotel.name} logo`}
+              className="w-full h-full object-contain"
+            />
+          </div>
+        )}
+
         <div className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
           {verifiedStar ? (
             <>

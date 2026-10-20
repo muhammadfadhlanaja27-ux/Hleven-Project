@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  matchesFacilitySearch,
+  resolveFacilityIcon as getFacilityIcon,
+} from "../../utils/facilities";
 import { getStorageUrl } from "../../services/imageUrl";
 
 const FACILITY_ICON_MAP = {
@@ -144,6 +150,7 @@ export default function HotelInformation() {
   // Fasilitas Master & Terpilih
   const [masterFacilities, setMasterFacilities] = useState([]);
   const [formFacilityIds, setFormFacilityIds] = useState([]);
+  const [facilitySearch, setFacilitySearch] = useState("");
 
   const fileInputRef = useRef(null);
 
@@ -179,8 +186,6 @@ export default function HotelInformation() {
       const hotelCatMaster = masterList.filter(
         (f) => !f.category || f.category.toLowerCase() === "hotel"
       );
-      setMasterFacilities(hotelCatMaster);
-
       // 2. Rating & Ulasan
       let reviewsData = [];
       if (reviewsRes.status === "fulfilled" && reviewsRes.value?.data) {
@@ -230,6 +235,10 @@ export default function HotelInformation() {
           const cityName = parseCityName(raw.city);
           const assignedFacilities = Array.isArray(raw.facilities) ? raw.facilities : [];
           const assignedIds = assignedFacilities.map((f) => f.id);
+          const uniqueHotelFacilities = deduplicateFacilities(hotelCatMaster, assignedIds);
+          const uniqueAssignedFacilities = deduplicateFacilities(assignedFacilities, assignedIds);
+          const uniqueAssignedIds = uniqueAssignedFacilities.map((facility) => facility.id);
+          setMasterFacilities(uniqueHotelFacilities);
 
           const updatedData = {
             name: raw.name || "Grand H'Leven Hotel",
@@ -250,14 +259,14 @@ export default function HotelInformation() {
             yearBuilt: "2020",
             website: "www.hleven.com",
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
-            facilities: assignedFacilities,
+            facilities: uniqueAssignedFacilities,
             policies: raw.policies || DEFAULT_HOTEL_POLICIES,
           };
 
           setHotelData(updatedData);
           setFormValues(updatedData);
           setFormPhotos(updatedData.photos);
-          setFormFacilityIds(assignedIds);
+          setFormFacilityIds(uniqueAssignedIds);
           setDeletedPhotoIds([]);
         }
       }
@@ -272,6 +281,7 @@ export default function HotelInformation() {
     setFormValues({ ...hotelData });
     setFormPhotos(hotelData.photos || initialPhotos);
     setFormFacilityIds((hotelData.facilities || []).map((f) => f.id));
+    setFacilitySearch("");
     setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(true);
@@ -281,6 +291,7 @@ export default function HotelInformation() {
     setFormValues({ ...hotelData });
     setFormPhotos(hotelData.photos || initialPhotos);
     setFormFacilityIds((hotelData.facilities || []).map((f) => f.id));
+    setFacilitySearch("");
     setDeletedPhotoIds([]);
     setErrors({});
     setIsEditing(false);
@@ -795,12 +806,12 @@ export default function HotelInformation() {
                   >
                     <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center border border-[#d1dccc]">
                       <span className="material-symbols-outlined text-[26px]">
-                        {fac.icon || resolveFacilityIcon(fac.name, "hotel")}
+                        {getFacilityIcon(fac.name, fac.icon, "hotel")}
                       </span>
                     </div>
                     <div className="text-center">
                       <p className="text-xs font-semibold text-[#2D312C] leading-tight">
-                        {fac.name}
+                        {getFacilityDisplayName(fac)}
                       </p>
                     </div>
                   </div>
@@ -816,7 +827,7 @@ export default function HotelInformation() {
                     Belum ada fasilitas hotel yang dipilih.
                   </p>
                   <p className="text-xs text-[#6B6E6A] mt-1">
-                    Klik <strong>Edit Hotel</strong> untuk memilih fasilitas yang sudah Anda buat di menu Facilities.
+                    Klik <strong>Edit Hotel</strong> untuk mencentang fasilitas hotel yang tersedia.
                   </p>
                 </div>
                 <button
@@ -1104,7 +1115,7 @@ export default function HotelInformation() {
               )}
             </div>
 
-            {/* SEKSI EDIT FASILITAS (MENYAMBUNG DENGAN FACILITY MANAGER) */}
+            {/* Hotel facilities are selected from the existing catalog. */}
             <div className="pt-4 border-t border-[#E5E1DA] space-y-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -1112,7 +1123,7 @@ export default function HotelInformation() {
                     Hotel Facilities
                   </label>
                   <p className="text-[11px] text-[#6B6E6A] mt-0.5">
-                    Pilih fasilitas umum yang tersedia di hotel Anda. Daftar ini diambil dari menu **Facilities**.
+                    Centang fasilitas yang tersedia di hotel Anda dari daftar yang sudah tersedia.
                   </p>
                 </div>
                 <span className="text-xs font-semibold px-3 py-1 bg-[#506147]/10 text-[#506147] rounded-full">
@@ -1120,9 +1131,25 @@ export default function HotelInformation() {
                 </span>
               </div>
 
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873] text-[20px]">
+                  search
+                </span>
+                <input
+                  type="search"
+                  value={facilitySearch}
+                  onChange={(event) => setFacilitySearch(event.target.value)}
+                  placeholder="Cari fasilitas hotel..."
+                  aria-label="Cari fasilitas hotel"
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
+                />
+              </div>
+
               {masterFacilities.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border border-[#E5E0D8] rounded-xl bg-[#fcf9f5]">
-                  {masterFacilities.map((fac) => {
+                  {masterFacilities
+                    .filter((fac) => matchesFacilitySearch(fac, facilitySearch))
+                    .map((fac) => {
                     const isChecked = formFacilityIds.includes(fac.id);
                     return (
                       <label
@@ -1141,20 +1168,25 @@ export default function HotelInformation() {
                           className="accent-[#506147] shrink-0"
                         />
                         <span className="material-symbols-outlined text-[18px] text-[#506147] shrink-0">
-                          {fac.icon || resolveFacilityIcon(fac.name, "hotel")}
+                          {getFacilityIcon(fac.name, fac.icon, "hotel")}
                         </span>
-                        <span className="truncate">{fac.name}</span>
+                        <span className="truncate">{getFacilityDisplayName(fac)}</span>
                       </label>
                     );
-                  })}
+                    })}
+                  {masterFacilities.filter((fac) => matchesFacilitySearch(fac, facilitySearch)).length === 0 && (
+                    <p className="col-span-full py-5 text-center text-xs text-[#6B6E6A]">
+                      Fasilitas tidak ditemukan.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="p-6 rounded-xl border border-dashed border-[#E5E1DA] bg-[#fcf9f5]/50 text-center space-y-2">
                   <p className="text-xs font-semibold text-[#2D312C]">
-                    Belum ada fasilitas hotel yang ditambahkan di menu Facilities.
+                    Belum ada pilihan fasilitas hotel pada katalog.
                   </p>
                   <p className="text-[11px] text-[#6B6E6A]">
-                    Silakan buka menu <strong>Facilities</strong> terlebih dahulu untuk menambah fasilitas master.
+                    Pilihan fasilitas hotel akan tersedia setelah katalog fasilitas diisi.
                   </p>
                 </div>
               )}

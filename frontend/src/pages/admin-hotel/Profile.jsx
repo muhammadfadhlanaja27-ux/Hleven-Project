@@ -71,6 +71,7 @@ const normalizeProfile = (value = {}) => {
       address: asText(safeHotel.address, INITIAL_PROFILE.hotel.address),
       phone: asText(safeHotel.phone, INITIAL_PROFILE.hotel.phone),
       email: asText(safeHotel.email, INITIAL_PROFILE.hotel.email),
+      logo: safeHotel.logo || null,
     },
     preferences: {
       ...INITIAL_PROFILE.preferences,
@@ -136,6 +137,7 @@ export default function Profile() {
   const [hotelForm, setHotelForm] = useState({ ...(profile?.hotel || INITIAL_PROFILE.hotel) });
   const [hotelErrors, setHotelErrors] = useState({});
   const [savingHotel, setSavingHotel] = useState(false);
+  const [savingHotelLogo, setSavingHotelLogo] = useState(false);
 
   // Preferences State
   const [preferencesForm, setPreferencesForm] = useState({ ...(profile?.preferences || INITIAL_PROFILE.preferences) });
@@ -185,8 +187,8 @@ export default function Profile() {
         if (hotelRes.status === "fulfilled" && hotelRes.value.data) {
           const h = hotelRes.value.data.data || hotelRes.value.data;
           if (h) {
-            const cityText = asText(h.city?.name || h.city?.city || h.city, prev.hotel.city);
-            const provinceText = asText(h.city?.province || h.province, prev.hotel.province);
+            const cityText = asText(h.city?.name || h.city?.city || h.city, INITIAL_PROFILE.hotel.city);
+            const provinceText = asText(h.city?.province || h.province, INITIAL_PROFILE.hotel.province);
 
             setProfile((prev) => normalizeProfile({
               ...prev,
@@ -199,6 +201,7 @@ export default function Profile() {
                 province: provinceText,
                 phone: asText(h.phone, prev.hotel.phone),
                 email: asText(h.email, prev.hotel.email),
+                logo: h.logo ? getStorageUrl(h.logo) : null,
               },
             }));
           }
@@ -255,33 +258,58 @@ export default function Profile() {
     }
   };
 
-  const handleHotelLogoChange = (e) => {
+  const handleHotelLogoChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Logo image size must be under 5MB.");
-        return;
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo image size must be under 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setSavingHotelLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+      const response = await api.post("/admin/hotel/profile/logo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const logo = response.data?.data?.logo;
+      if (!logo) {
+        throw new Error("Server did not return the uploaded hotel logo.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setHotelForm((prev) => ({ ...prev, logo: reader.result }));
-        setProfile((prev) => ({
-          ...prev,
-          hotel: { ...prev.hotel, logo: reader.result },
-        }));
-        toast.success("Hotel logo updated successfully.");
-      };
-      reader.readAsDataURL(file);
+      const logoUrl = getStorageUrl(logo);
+      setHotelForm((prev) => ({ ...prev, logo: logoUrl }));
+      setProfile((prev) => normalizeProfile({
+        ...prev,
+        hotel: { ...prev.hotel, logo: logoUrl },
+      }));
+      toast.success("Hotel logo updated successfully.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Gagal mengunggah logo hotel.");
+    } finally {
+      setSavingHotelLogo(false);
+      e.target.value = "";
     }
   };
 
-  const handleRemoveHotelLogo = () => {
-    setHotelForm((prev) => ({ ...prev, logo: null }));
-    setProfile((prev) => ({
-      ...prev,
-      hotel: { ...prev.hotel, logo: null },
-    }));
-    toast.success("Hotel logo removed.");
+  const handleRemoveHotelLogo = async () => {
+    setSavingHotelLogo(true);
+    try {
+      await api.delete("/admin/hotel/profile/logo");
+      setHotelForm((prev) => ({ ...prev, logo: null }));
+      setProfile((prev) => normalizeProfile({
+        ...prev,
+        hotel: { ...prev.hotel, logo: null },
+      }));
+      toast.success("Hotel logo removed.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Gagal menghapus logo hotel.");
+    } finally {
+      setSavingHotelLogo(false);
+    }
   };
 
   // ─── Account Information Actions ────────────────────────────────────────────
@@ -792,7 +820,7 @@ export default function Profile() {
             <div className="w-16 h-16 rounded-xl border border-[#E5E1DA] bg-white overflow-hidden shadow-sm flex items-center justify-center text-[#506147] shrink-0">
               {hotelForm.logo || profile.hotel.logo ? (
                 <img
-                  src={hotelForm.logo || profile.hotel.logo}
+                  src={getStorageUrl(hotelForm.logo || profile.hotel.logo)}
                   alt="Hotel Logo"
                   className="w-full h-full object-contain p-1"
                 />
@@ -811,15 +839,17 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => hotelLogoInputRef.current?.click()}
+              disabled={savingHotelLogo}
               className="px-4 py-2 text-xs font-semibold bg-[#506147] hover:bg-[#3b4b33] text-white rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">upload</span>
-              {hotelForm.logo || profile.hotel.logo ? "Change Logo" : "Upload Hotel Logo"}
+              {savingHotelLogo ? "Saving..." : hotelForm.logo || profile.hotel.logo ? "Change Logo" : "Upload Hotel Logo"}
             </button>
             {(hotelForm.logo || profile.hotel.logo) && (
               <button
                 type="button"
                 onClick={handleRemoveHotelLogo}
+                disabled={savingHotelLogo}
                 className="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200 flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
