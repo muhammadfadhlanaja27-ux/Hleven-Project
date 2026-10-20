@@ -82,8 +82,12 @@ class BookingDedupTest extends TestCase
         Schema::create('bookings', function ($t) {
             $t->id();
             $t->string('booking_code')->unique();
-            $t->foreignId('user_id')->constrained('users');
+            $t->foreignId('user_id')->nullable()->constrained('users');
             $t->foreignId('hotel_id')->constrained('hotels');
+            $t->boolean('is_for_other_guest')->default(false);
+            $t->string('guest_name')->nullable();
+            $t->string('guest_email')->nullable();
+            $t->string('guest_phone')->nullable();
             $t->date('check_in');
             $t->date('check_out');
             $t->integer('total_night');

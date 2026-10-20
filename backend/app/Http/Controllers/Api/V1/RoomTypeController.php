@@ -230,7 +230,6 @@ class RoomTypeController extends Controller
         } elseif ($request->has('capacity_adult') || $request->has('capacity_child')) {
             [$updateData['capacity_adult'], $updateData['capacity_child']] = $this->resolveCapacities($request);
         }
-        }
         if ($request->has('breakfast')) {
             $updateData['breakfast'] = $request->boolean('breakfast');
         }

@@ -21,11 +21,12 @@ class Booking extends Model
         'check_in',
         'check_out',
         'total_night',
+        'children_count',
         'subtotal',
         'tax',
         'grand_total',
         'special_request',
-        'status'
+        'status',
     ];
 
     protected $casts = [

@@ -13,16 +13,14 @@ use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
 use App\Services\RoomAvailabilityService;
+use App\Services\WalletLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
-use App\Services\WalletLedgerService;
-use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
@@ -155,6 +153,7 @@ class BookingController extends Controller
                 ], 422);
             }
 
+            $subtotal = (float) $quote['subtotal'];
             $tax = (int) round($subtotal * 0.05);
             $grandTotal = $subtotal + $tax;
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
@@ -303,7 +302,7 @@ class BookingController extends Controller
                         $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
                             ->where(function ($q) use ($dateStr) {
                                 $q->where('date', $dateStr)
-                                  ->orWhere('date', $dateStr . ' 00:00:00');
+                                    ->orWhere('date', $dateStr.' 00:00:00');
                             })
                             ->first();
 
@@ -370,6 +369,7 @@ class BookingController extends Controller
 
         if (in_array($booking->status, ['unpaid', 'pending'])) {
             $request->merge(['status' => 'cancelled']);
+
             return $this->updateStatusInternally($request, $booking->id);
         }
 
@@ -705,22 +705,25 @@ class BookingController extends Controller
         }
 
         $user = $request->user();
-        if (! $user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Anda harus login terlebih dahulu untuk melakukan pemesanan.',
-            ], 401);
-        }
-
         $qty = (int) $request->qty;
         $adults = (int) ($request->adults ?? 1);
+        $children = (int) ($request->children ?? 0);
         $specialNotes = $request->special_requests ?? $request->special_request ?? null;
-        $isForOtherGuest = (bool) $request->is_for_other_guest;
 
-        // Tentukan data tamu berdasarkan opsi 'is_for_other_guest'
-        $guestName = $isForOtherGuest ? $request->guest_name : $user->name;
-        $guestEmail = $isForOtherGuest ? $request->guest_email : $user->email;
-        $guestPhone = $isForOtherGuest ? $request->guest_phone : ($user->phone ?? $request->guest_phone);
+        // Guest checkout: data pemesan diambil dari payload, sedangkan user login
+        // tetap boleh memesan untuk orang lain.
+        $guestName = $request->guest_name ?: ($user->name ?? $request->booker_name);
+        $guestEmail = $request->guest_email ?: ($user->email ?? $request->booker_email);
+        $guestPhone = $request->guest_phone ?: ($user->phone ?? $request->booker_phone);
+        $isForOtherGuest = (bool) $request->is_for_other_guest
+            || ($request->filled('guest_name') && (! $user || $request->guest_name !== $user->name));
+
+        if (! $guestName || ! $guestEmail) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nama dan email pemesan wajib diisi.',
+            ], 422);
+        }
 
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
@@ -728,6 +731,40 @@ class BookingController extends Controller
         $checkOutStr = $checkOut->toDateString();
         $totalNight = max(1, $checkIn->diffInDays($checkOut));
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existing = Booking::with(['hotel', 'bookingRooms.roomType', 'payment', 'guests'])
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+
+            if ($existing) {
+                return $this->duplicateBookingResponse($existing);
+            }
+        }
+
+        $duplicateQuery = Booking::with(['hotel', 'bookingRooms.roomType', 'payment', 'guests'])
+            ->where('hotel_id', $request->hotel_id)
+            ->whereDate('check_in', $checkInStr)
+            ->whereDate('check_out', $checkOutStr)
+            ->whereIn('status', ['pending', 'unpaid', 'paid', 'checked_in', 'confirmed']);
+
+        if ($user) {
+            $duplicateQuery->where('user_id', $user->id);
+        } else {
+            $duplicateQuery->whereNull('user_id')->where('guest_email', $guestEmail);
+        }
+
+        $duplicate = $duplicateQuery
+            ->whereHas('bookingRooms', function ($query) use ($request, $qty) {
+                $query->where('room_type_id', $request->room_type_id)->where('qty', $qty);
+            })
+            ->latest()
+            ->first();
+
+        if ($duplicate) {
+            return $this->duplicateBookingResponse($duplicate);
+        }
 
         DB::beginTransaction();
         try {
@@ -795,10 +832,17 @@ class BookingController extends Controller
             $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
             $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
 
-            foreach ($period as $date) {
-                $subtotal += ($date->isWeekend() ? $weekendPrice * $qty : $weekdayPrice * $qty);
+            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
+            if (! empty($quote['closed_dates'])) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                ], 422);
             }
-            $subtotal = $quote['subtotal'];
+
+            $subtotal = (float) $quote['subtotal'];
             $tax = (int) round($subtotal * 0.05);
             $grandTotal = $subtotal + $tax;
 
@@ -806,7 +850,8 @@ class BookingController extends Controller
 
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
-                'user_id' => $user->id,
+                'idempotency_key' => $idempotencyKey,
+                'user_id' => $user?->id,
                 'hotel_id' => $request->hotel_id,
                 'is_for_other_guest' => $isForOtherGuest,
                 'guest_name' => $guestName,
@@ -815,6 +860,7 @@ class BookingController extends Controller
                 'check_in' => $checkInStr,
                 'check_out' => $checkOutStr,
                 'total_night' => $totalNight,
+                'children_count' => $children,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'grand_total' => $grandTotal,
@@ -852,9 +898,9 @@ class BookingController extends Controller
 
             Guest::create([
                 'booking_id' => $booking->id,
-                'name' => $request->guest_name,
-                'email' => strtolower(trim($request->guest_email)),
-                'phone' => $request->guest_phone,
+                'name' => $guestName,
+                'email' => $guestEmail ? strtolower(trim($guestEmail)) : null,
+                'phone' => $guestPhone,
                 'identity_number' => $request->guest_identity ?? '-',
             ]);
 
