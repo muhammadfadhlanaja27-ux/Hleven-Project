@@ -49,6 +49,9 @@ const ApplicationRevenue = () => {
   const [error, setError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const commissionPct = Math.round((summary?.commission_rate ?? 0.05) * 100);
+  const netPct = 100 - commissionPct;
+
   const fetchData = async () => {
     try {
       setError(false);
@@ -108,11 +111,11 @@ const ApplicationRevenue = () => {
     try {
       setExporting(true);
       const fileName = `HLeven_Komisi_Aplikasi_${startDate || "awal"}_${endDate || "akhir"}`;
-      let csv = "\uFEFFH'LEVEN PENDAPATAN APLIKASI (KOMISI 5%)\n";
+      let csv = `\uFEFFH'LEVEN PENDAPATAN APLIKASI (KOMISI ${commissionPct}%)\n`;
       csv += `Periode,${startDate || "Awal"} s/d ${endDate || "Sekarang"}\n`;
       csv += `Total Komisi,${summary?.total_platform_commission || 0}\n`;
       csv += `Total Pendapatan Hotel,${summary?.total_hotel_revenue || 0}\n\n`;
-      csv += `Hotel,Kota,Total Pendapatan,Komisi 5%,Net Hotel 95%,Transaksi\n`;
+      csv += `Hotel,Kota,Total Pendapatan,Komisi ${commissionPct}%,Net Hotel ${netPct}%,Transaksi\n`;
       hotels.forEach((h) => {
         csv += `"${h.name}","${h.city}",${h.hotel_revenue},${h.platform_commission},${h.hotel_net},${h.transactions_count}\n`;
       });
@@ -141,7 +144,7 @@ const ApplicationRevenue = () => {
             App Revenue
           </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
-            Komisi platform 5% dari setiap hotel mitra.
+            Komisi platform {commissionPct}% dari setiap hotel mitra.
           </p>
         </div>
         <div className="flex gap-3">
@@ -241,7 +244,7 @@ const ApplicationRevenue = () => {
               <span className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight">
                 {formatRupiah(summary?.total_platform_commission)}
               </span>
-              <p className="font-hanken text-[12px] text-[#747872] mt-1">5% dari seluruh transaksi sukses</p>
+              <p className="font-hanken text-[12px] text-[#747872] mt-1">{commissionPct}% dari seluruh transaksi sukses</p>
             </div>
             <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] min-h-[150px]">
               <div className="flex justify-between items-start mb-4">
@@ -282,9 +285,9 @@ const ApplicationRevenue = () => {
                       Total Pendapatan <span className="material-symbols-outlined text-[16px] align-middle">{sortIcon("hotel_revenue")}</span>
                     </th>
                     <th className={th} onClick={() => toggleSort("platform_commission")}>
-                      Komisi 5% <span className="material-symbols-outlined text-[16px] align-middle">{sortIcon("platform_commission")}</span>
+                      Komisi {commissionPct}% <span className="material-symbols-outlined text-[16px] align-middle">{sortIcon("platform_commission")}</span>
                     </th>
-                    <th className="py-4 px-6">Net Hotel 95%</th>
+                    <th className="py-4 px-6">Net Hotel {netPct}%</th>
                     <th className={th} onClick={() => toggleSort("transactions_count")}>
                       Transaksi <span className="material-symbols-outlined text-[16px] align-middle">{sortIcon("transactions_count")}</span>
                     </th>
@@ -371,8 +374,8 @@ const ApplicationRevenue = () => {
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E0D8" />
                       <XAxis type="number" stroke="#747872" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={shortRupiah} />
                       <YAxis dataKey="name" type="category" stroke="#747872" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={130} />
-                      <Tooltip formatter={(v) => [formatRupiah(v), "Komisi 5%"]} contentStyle={{ borderRadius: "8px", border: "1px solid #E5E0D8" }} />
-                      <Bar dataKey="komisi" name="Komisi 5%" fill="#768875" radius={[0, 4, 4, 0]} barSize={18} />
+                      <Tooltip formatter={(v) => [formatRupiah(v), `Komisi ${commissionPct}%`]} contentStyle={{ borderRadius: "8px", border: "1px solid #E5E0D8" }} />
+                      <Bar dataKey="komisi" name={`Komisi ${commissionPct}%`} fill="#768875" radius={[0, 4, 4, 0]} barSize={18} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -405,7 +408,7 @@ const ApplicationRevenue = () => {
                             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v) => [formatRupiah(v), "Komisi 5%"]} />
+                        <Tooltip formatter={(v) => [formatRupiah(v), `Komisi ${commissionPct}%`]} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="flex flex-wrap justify-center gap-3 pt-2 text-xs font-hanken">
@@ -457,11 +460,11 @@ const ApplicationRevenue = () => {
                     <p className="font-hanken text-[16px] font-semibold text-[#191c1b]">{formatRupiah(selectedHotel.hotel_revenue)}</p>
                   </div>
                   <div>
-                    <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">Komisi Aplikasi 5%</label>
+                    <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">Komisi Aplikasi {commissionPct}%</label>
                     <p className="font-hanken text-[16px] font-semibold text-[#4f604f]">{formatRupiah(selectedHotel.platform_commission)}</p>
                   </div>
                   <div>
-                    <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">Net Hotel 95%</label>
+                    <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">Net Hotel {netPct}%</label>
                     <p className="font-hanken text-[14px] text-[#434842]">{formatRupiah(selectedHotel.hotel_net)}</p>
                   </div>
                   <div>

@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingRoom;
-use App\Models\Hotel;
 use App\Models\RoomType;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class DashboardController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $hotel = $user->hotel ?? Hotel::first();
+        $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel not found'], 404);
@@ -42,15 +43,16 @@ class DashboardController extends Controller
 
         if ($hasCustomRange) {
             try {
-                $fromDate = \Carbon\Carbon::parse($revFrom)->startOfDay();
-                $toDate = \Carbon\Carbon::parse($revTo)->endOfDay();
+                $fromDate = Carbon::parse($revFrom)->startOfDay();
+                $toDate = Carbon::parse($revTo)->endOfDay();
                 $revenueQuery->whereBetween('created_at', [$fromDate, $toDate]);
                 $bookingTrendBase->whereBetween('created_at', [$fromDate, $toDate]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         } elseif ($hasCustomMonth) {
             [$y, $m] = explode('-', $revMonth);
-            $revenueQuery->whereYear('created_at', (int)$y)->whereMonth('created_at', (int)$m);
-            $bookingTrendBase->whereYear('created_at', (int)$y)->whereMonth('created_at', (int)$m);
+            $revenueQuery->whereYear('created_at', (int) $y)->whereMonth('created_at', (int) $m);
+            $bookingTrendBase->whereYear('created_at', (int) $y)->whereMonth('created_at', (int) $m);
         }
 
         $totalRevenue = (clone $revenueQuery)->sum('grand_total');
@@ -114,8 +116,9 @@ class DashboardController extends Controller
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         if ($hasCustomMonth) {
             [$y, $m] = explode('-', $revMonth);
-            $y = (int)$y; $m = (int)$m;
-            $daysInMonth = \Carbon\Carbon::create($y, $m, 1)->daysInMonth;
+            $y = (int) $y;
+            $m = (int) $m;
+            $daysInMonth = Carbon::create($y, $m, 1)->daysInMonth;
             $raw = (clone $revenueQuery)
                 ->selectRaw('EXTRACT(DAY FROM created_at) as d, SUM(grand_total) as amount')
                 ->groupBy('d')
@@ -128,14 +131,14 @@ class DashboardController extends Controller
                 ];
             }
         } elseif ($hasCustomRange) {
-            $fromDate = \Carbon\Carbon::parse($revFrom)->startOfDay();
-            $toDate = \Carbon\Carbon::parse($revTo)->startOfDay();
+            $fromDate = Carbon::parse($revFrom)->startOfDay();
+            $toDate = Carbon::parse($revTo)->startOfDay();
             $raw = (clone $revenueQuery)
                 ->selectRaw('DATE(created_at) as d, SUM(grand_total) as amount')
                 ->groupBy('d')
                 ->pluck('amount', 'd');
             $monthlyChart = [];
-            $period = \Carbon\CarbonPeriod::create($fromDate, $toDate);
+            $period = CarbonPeriod::create($fromDate, $toDate);
             foreach ($period as $date) {
                 $key = $date->format('Y-m-d');
                 $monthlyChart[] = [
@@ -161,8 +164,9 @@ class DashboardController extends Controller
 
         if ($hasCustomMonth) {
             [$y, $m] = explode('-', $revMonth);
-            $y = (int)$y; $m = (int)$m;
-            $daysInMonth = \Carbon\Carbon::create($y, $m, 1)->daysInMonth;
+            $y = (int) $y;
+            $m = (int) $m;
+            $daysInMonth = Carbon::create($y, $m, 1)->daysInMonth;
             $rawTrend = (clone $bookingTrendBase)
                 ->selectRaw('EXTRACT(DAY FROM created_at) as d, SUM(CASE WHEN status IN (\'paid\', \'checked_in\', \'checked_out\') THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status IN (\'pending\', \'unpaid\') THEN 1 ELSE 0 END) as pending')
                 ->groupBy('d')
@@ -170,21 +174,21 @@ class DashboardController extends Controller
             $monthlyBookingChart = [];
             for ($d = 1; $d <= $daysInMonth; $d++) {
                 $t = $rawTrend->get($d);
-                $monthlyBookingChart[] = ['month' => sprintf('%02d', $d), 'completed' => (int)($t->completed ?? 0), 'pending' => (int)($t->pending ?? 0)];
+                $monthlyBookingChart[] = ['month' => sprintf('%02d', $d), 'completed' => (int) ($t->completed ?? 0), 'pending' => (int) ($t->pending ?? 0)];
             }
         } elseif ($hasCustomRange) {
-            $fromDate = \Carbon\Carbon::parse($revFrom)->startOfDay();
-            $toDate = \Carbon\Carbon::parse($revTo)->startOfDay();
+            $fromDate = Carbon::parse($revFrom)->startOfDay();
+            $toDate = Carbon::parse($revTo)->startOfDay();
             $rawTrend = (clone $bookingTrendBase)
                 ->selectRaw('DATE(created_at) as d, SUM(CASE WHEN status IN (\'paid\', \'checked_in\', \'checked_out\') THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status IN (\'pending\', \'unpaid\') THEN 1 ELSE 0 END) as pending')
                 ->groupBy('d')
                 ->get()->keyBy('d');
             $monthlyBookingChart = [];
-            $period = \Carbon\CarbonPeriod::create($fromDate, $toDate);
+            $period = CarbonPeriod::create($fromDate, $toDate);
             foreach ($period as $date) {
                 $key = $date->format('Y-m-d');
                 $t = $rawTrend->get($key);
-                $monthlyBookingChart[] = ['month' => $date->format('d M'), 'completed' => (int)($t->completed ?? 0), 'pending' => (int)($t->pending ?? 0)];
+                $monthlyBookingChart[] = ['month' => $date->format('d M'), 'completed' => (int) ($t->completed ?? 0), 'pending' => (int) ($t->pending ?? 0)];
             }
         } else {
             // Booking trend per bulan (Completed = paid/checked_in/checked_out, Pending = pending/unpaid)
@@ -226,7 +230,7 @@ class DashboardController extends Controller
         ]];
 
         // Booking trend mingguan — Minggu 1-4 dalam bulan (tanggal 1-7, 8-14, 15-21, 22-akhir)
-        $weekBaseMonth = $hasCustomMonth ? \Carbon\Carbon::createFromFormat('Y-m', $revMonth)->startOfMonth() : now()->startOfMonth();
+        $weekBaseMonth = $hasCustomMonth ? Carbon::createFromFormat('Y-m', $revMonth)->startOfMonth() : now()->startOfMonth();
         $weekHotelId = $hotelId;
         $weeklyTrendRaw = (clone $bookingTrendBase)
             ->whereYear('created_at', $weekBaseMonth->year)
@@ -246,7 +250,7 @@ class DashboardController extends Controller
         for ($w = 1; $w <= 4; $w++) {
             $t = $weeklyTrendRaw->get($w);
             $weeklyBookingChart[] = [
-                'label' => 'Minggu ' . $w,
+                'label' => 'Minggu '.$w,
                 'completed' => (int) ($t->completed ?? 0),
                 'pending' => (int) ($t->pending ?? 0),
             ];
@@ -256,20 +260,20 @@ class DashboardController extends Controller
         $weeklyRevenueRaw = (clone $revenueQuery)
             ->whereYear('created_at', $weekBaseMonth->year)
             ->whereMonth('created_at', $weekBaseMonth->month)
-            ->selectRaw("
+            ->selectRaw('
                 CASE WHEN EXTRACT(DAY FROM created_at) BETWEEN 1 AND 7 THEN 1
                      WHEN EXTRACT(DAY FROM created_at) BETWEEN 8 AND 14 THEN 2
                      WHEN EXTRACT(DAY FROM created_at) BETWEEN 15 AND 21 THEN 3
                      ELSE 4 END as minggu,
                 SUM(grand_total) as amount
-            ")
+            ')
             ->groupBy('minggu')
             ->pluck('amount', 'minggu');
 
         $weeklyRevenueChart = [];
         for ($w = 1; $w <= 4; $w++) {
             $weeklyRevenueChart[] = [
-                'name' => 'Minggu ' . $w,
+                'name' => 'Minggu '.$w,
                 'amount' => (float) ($weeklyRevenueRaw[$w] ?? 0),
             ];
         }

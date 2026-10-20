@@ -12,9 +12,11 @@ use App\Models\Payment;
 use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
+use App\Services\RoomAvailabilityService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -22,6 +24,28 @@ use Illuminate\Support\Facades\Validator;
 
 class BookingController extends Controller
 {
+    /**
+     * Cari booking sesuai aktor yang login: admin_hotel dibatasi ke hotelnya,
+     * user biasa dibatasi ke booking miliknya sendiri. Mencegah IDOR lintas tenant.
+     */
+    private function findBookingForActor(Request $request, $id, array $with = []): ?Booking
+    {
+        $user = $request->user();
+        $query = Booking::with($with)->where('id', $id);
+
+        if ($user->role === 'admin_hotel') {
+            $hotel = $user->hotel ?? $user->hotels()->first();
+            if (! $hotel) {
+                return null;
+            }
+            $query->where('hotel_id', $hotel->id);
+        } elseif ($user->role === 'user') {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query->first();
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -118,9 +142,15 @@ class BookingController extends Controller
 
             $weekdayPrice = (float) ($roomType->weekday_price ?? $roomType->price ?? 0);
             $weekendPrice = (float) ($roomType->weekend_price ?? $weekdayPrice);
-            $subtotal = 0;
-            foreach ($period as $date) {
-                $subtotal += ($date->isWeekend() ? $weekendPrice : $weekdayPrice) * $qty;
+
+            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
+            if (! empty($quote['closed_dates'])) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                ], 422);
             }
 
             $tax = (int) round($subtotal * 0.05);
@@ -228,7 +258,7 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $booking = Booking::with('bookingRooms')->find($id);
+        $booking = $this->findBookingForActor($request, $id, ['bookingRooms']);
 
         if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
@@ -357,7 +387,7 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $booking = Booking::find($id);
+        $booking = $this->findBookingForActor($request, $id);
 
         if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
@@ -394,7 +424,7 @@ class BookingController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $booking = Booking::with(['bookingRooms.roomType', 'payment', 'hotel', 'guests'])->find($id);
+        $booking = $this->findBookingForActor($request, $id, ['bookingRooms.roomType', 'payment', 'hotel', 'guests']);
 
         if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
@@ -569,6 +599,7 @@ class BookingController extends Controller
             'guests.*.name' => 'required_with:guests|string|max:255',
             'guests.*.phone' => 'nullable|string|max:30',
             'guests.*.identity_number' => 'nullable|string|max:50',
+            'idempotency_key' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -666,13 +697,13 @@ class BookingController extends Controller
                 ], 422);
             }
 
-            $subtotal = 0;
             $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
             $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
 
             foreach ($period as $date) {
                 $subtotal += ($date->isWeekend() ? $weekendPrice * $qty : $weekdayPrice * $qty);
             }
+            $subtotal = $quote['subtotal'];
             $tax = (int) round($subtotal * 0.05);
             $grandTotal = $subtotal + $tax;
 
@@ -771,6 +802,23 @@ class BookingController extends Controller
                 'message' => 'Gagal membuat booking: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Response untuk booking yang terdeteksi duplikat (idempotency key atau retry identik).
+     */
+    private function duplicateBookingResponse(Booking $booking)
+    {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking sudah dibuat sebelumnya.',
+            'duplicate' => true,
+            'data' => [
+                'booking' => $booking,
+                'payment' => $booking->payment,
+                'token' => null,
+            ],
+        ], 200);
     }
 
     private function getAlternativeRooms($hotelId, $currentRoomTypeId, $checkInStr, $checkOutStr, $adults)

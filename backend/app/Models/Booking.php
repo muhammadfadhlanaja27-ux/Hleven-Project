@@ -11,6 +11,7 @@ class Booking extends Model
 
     protected $fillable = [
         'booking_code',
+        'idempotency_key',
         'user_id',
         'hotel_id',
         'is_for_other_guest',

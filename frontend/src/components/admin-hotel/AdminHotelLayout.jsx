@@ -185,7 +185,12 @@ export default function AdminHotelLayout() {
                         return (
                           <div
                             key={n.id}
-                            onClick={() => { if (isWarning) { setNotifOpen(false); navigate('/admin/warnings'); } }}
+                            onClick={() => {
+                              if (isWarning) {
+                                setNotifOpen(false);
+                                navigate('/admin/warnings');
+                              }
+                            }}
                             className={`p-3.5 transition-colors flex gap-3 ${isWarning ? 'cursor-pointer' : ''} ${
                               !n.is_read ? (isWarning ? 'bg-[#ffdad6]/30' : 'bg-[#F2EBE1]/40') : 'hover:bg-[#fcf9f5]'
                             }`}

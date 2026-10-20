@@ -32,5 +32,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="HLEVEN_COMMISSION_RATE" value="0.05"/>
+        <env name="HLEVEN_MIN_PAYOUT" value="50000"/>
+        <env name="HLEVEN_AUTO_APPROVE_PAYOUT" value="false"/>
+        <env name="HLEVEN_AUTO_APPROVE_DAILY_LIMIT" value="5000000"/>
     </php>
 </phpunit>

@@ -12,11 +12,18 @@ const fmtDateTime = (str) => {
   } catch { return str; }
 };
 
-const badge = (w) => {
+const warningBadge = (w) => {
   const s = (w.status || 'unread').toLowerCase();
   if (s === 'closed') return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E4EBE0] text-[#4A5D43] border border-[#4A5D43]/20">Selesai</span>;
   if (s === 'read') return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E0F2FE] text-[#0369A1] border border-[#0369A1]/20">Sudah Dibaca</span>;
   return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ffdad6] text-[#ba1a1a] border border-[#ba1a1a]/20">Belum Dibaca</span>;
+};
+
+const appealBadge = (status) => {
+  if (status === 'pending') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Banding Menunggu Review</span>;
+  if (status === 'approved') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-300">Banding Disetujui</span>;
+  if (status === 'rejected') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300">Banding Ditolak</span>;
+  return null;
 };
 
 export default function WarningList() {
@@ -24,6 +31,11 @@ export default function WarningList() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [marking, setMarking] = useState(false);
+
+  // Form State untuk Banding Warning
+  const [showAppealForm, setShowAppealForm] = useState(false);
+  const [appealReason, setAppealReason] = useState('');
+  const [submittingAppeal, setSubmittingAppeal] = useState(false);
 
   const fetchWarnings = useCallback(async () => {
     setLoading(true);
@@ -52,7 +64,34 @@ export default function WarningList() {
 
   const openDetail = (w) => {
     setSelected(w);
+    setShowAppealForm(false);
+    setAppealReason('');
     if ((w.status || '').toLowerCase() === 'unread') markAsRead(w.id);
+  };
+
+  const handleSendAppeal = async (e) => {
+    e.preventDefault();
+    if (!selected) return;
+    if (!appealReason.trim() || appealReason.trim().length < 10) {
+      toast.error('Alasan banding minimal 10 karakter.');
+      return;
+    }
+    setSubmittingAppeal(true);
+    try {
+      await api.post('/admin/appeals', {
+        warning_id: selected.id,
+        reason: appealReason.trim(),
+      });
+      toast.success('Banding atas peringatan berhasil diajukan ke Super Admin!');
+      setShowAppealForm(false);
+      setAppealReason('');
+      fetchWarnings();
+      setSelected(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Gagal mengajukan banding.');
+    } finally {
+      setSubmittingAppeal(false);
+    }
   };
 
   if (loading) return <p className="text-sm text-[#6B6E6A]">Memuat peringatan...</p>;
@@ -69,6 +108,10 @@ export default function WarningList() {
     <div className="space-y-3">
       {warnings.map((w) => {
         const unread = (w.status || '').toLowerCase() === 'unread';
+        const latestAppeal = Array.isArray(w.appeals) && w.appeals.length > 0
+          ? w.appeals[w.appeals.length - 1]
+          : null;
+
         return (
           <button
             key={w.id}
@@ -81,12 +124,15 @@ export default function WarningList() {
                   <span className="material-symbols-outlined text-[20px]">warning</span>
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#2D312C] truncate">{w.title}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-[#2D312C] truncate">{w.title}</p>
+                    {latestAppeal && appealBadge(latestAppeal.status)}
+                  </div>
                   <p className="text-xs text-[#6B6E6A] truncate mt-0.5">{w.message}</p>
                   <p className="text-[11px] text-[#6B6E6A]/70 mt-1">{fmtDateTime(w.created_at)}</p>
                 </div>
               </div>
-              {badge(w)}
+              {warningBadge(w)}
             </div>
           </button>
         );
@@ -95,7 +141,7 @@ export default function WarningList() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-[#2D312C]/40 backdrop-blur-sm" onClick={() => setSelected(null)}></div>
-          <div className="relative bg-white rounded-2xl shadow-xl border border-[#E5E1DA] max-w-lg w-full z-10 p-6">
+          <div className="relative bg-white rounded-2xl shadow-xl border border-[#E5E1DA] max-w-lg w-full z-10 p-6 animate-fadeIn">
             <div className="flex justify-between items-start gap-2 pb-4 border-b border-[#E5E1DA]">
               <div>
                 <h3 className="font-semibold text-[#2D312C]">{selected.title}</h3>
@@ -105,31 +151,123 @@ export default function WarningList() {
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
+
             <div className="py-4 space-y-3 text-sm">
-              <div className="p-3.5 bg-[#F9F6F1] rounded-xl border border-[#E5E1DA] text-[#2D312C] whitespace-pre-wrap leading-relaxed">
+              <div className="p-3.5 bg-[#F9F6F1] rounded-xl border border-[#E5E1DA] text-[#2D312C] whitespace-pre-wrap leading-relaxed text-xs">
                 {selected.message}
               </div>
-              <div className="flex items-center justify-between">
-                {badge({ ...selected, status: (warnings.find((w) => w.id === selected.id)?.status || selected.status) })}
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                {warningBadge({ ...selected, status: (warnings.find((w) => w.id === selected.id)?.status || selected.status) })}
                 {selected.read_at && <span className="text-[11px] text-[#6B6E6A]">Dibaca: {fmtDateTime(selected.read_at)}</span>}
               </div>
-            </div>
-            <div className="pt-4 border-t border-[#E5E1DA] flex justify-end gap-2">
-              {(warnings.find((w) => w.id === selected.id)?.status || selected.status) === 'unread' && (
-                <button
-                  onClick={() => markAsRead(selected.id)}
-                  disabled={marking}
-                  className="px-4 py-2 bg-[#506147] text-white rounded-xl text-sm font-semibold hover:bg-[#3b4b33] disabled:opacity-50 transition-colors"
-                >
-                  {marking ? 'Memproses...' : 'Tandai Dibaca'}
-                </button>
+
+              {/* Status Banding jika ada */}
+              {(() => {
+                const cur = warnings.find((w) => w.id === selected.id) || selected;
+                const latestAppeal = Array.isArray(cur.appeals) && cur.appeals.length > 0
+                  ? cur.appeals[cur.appeals.length - 1]
+                  : null;
+
+                if (latestAppeal) {
+                  return (
+                    <div className="mt-3 p-3 rounded-xl bg-stone-50 border border-[#E5E1DA] text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-[#2D312C]">Riwayat Banding Peringatan:</span>
+                        {appealBadge(latestAppeal.status)}
+                      </div>
+                      <p className="text-[#6B6E6A] italic">&ldquo;{latestAppeal.reason}&rdquo;</p>
+                      {latestAppeal.admin_note && (
+                        <p className="text-[#2D312C] pt-1">
+                          Catatan Super Admin: <span className="font-medium">{latestAppeal.admin_note}</span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Form Aju Banding Peringatan */}
+              {showAppealForm && (
+                <form onSubmit={handleSendAppeal} className="mt-3 p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+                  <h4 className="text-xs font-bold text-amber-900">Form Pengajuan Banding Peringatan</h4>
+                  <p className="text-[11px] text-amber-800">
+                    Sampaikan argumen atau bukti perbaikan untuk meminta pembatalan surat peringatan ini.
+                  </p>
+                  <textarea
+                    rows={3}
+                    maxLength={2000}
+                    value={appealReason}
+                    onChange={(e) => setAppealReason(e.target.value)}
+                    placeholder="Tuliskan alasan banding secara jelas (minimal 10 karakter)..."
+                    className="w-full p-2.5 text-xs bg-white border border-amber-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                  <div className="flex justify-between items-center text-[10px] text-amber-800">
+                    <span>{appealReason.length}/2000 karakter</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAppealForm(false)}
+                        className="px-3 py-1 text-xs border border-amber-300 rounded-lg text-amber-900 hover:bg-amber-100"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submittingAppeal || appealReason.trim().length < 10}
+                        className="px-3.5 py-1 text-xs bg-[#506147] text-white font-semibold rounded-lg hover:bg-[#3b4b33] disabled:opacity-50"
+                      >
+                        {submittingAppeal ? 'Mengirim...' : 'Kirim Banding'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
               )}
-              <button
-                onClick={() => setSelected(null)}
-                className="px-4 py-2 border border-[#E5E1DA] text-[#434842] hover:bg-[#F9F6F1] rounded-xl text-sm font-semibold transition-colors"
-              >
-                Tutup
-              </button>
+            </div>
+
+            <div className="pt-4 border-t border-[#E5E1DA] flex justify-between items-center gap-2">
+              <div>
+                {/* Tombol Buka Form Banding jika warning belum closed dan belum ada pending appeal */}
+                {(() => {
+                  const cur = warnings.find((w) => w.id === selected.id) || selected;
+                  const isClosed = (cur.status || '').toLowerCase() === 'closed';
+                  const hasPendingAppeal = Array.isArray(cur.appeals) && cur.appeals.some((a) => a.status === 'pending');
+
+                  if (!isClosed && !hasPendingAppeal && !showAppealForm) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setShowAppealForm(true)}
+                        className="px-3.5 py-2 border border-[#8a6d00] text-[#8a6d00] hover:bg-[#8a6d00]/10 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">gavel</span>
+                        <span>Aju Banding Peringatan</span>
+                      </button>
+                    );
+                  }
+                  return <div />;
+                })()}
+              </div>
+
+              <div className="flex gap-2">
+                {(warnings.find((w) => w.id === selected.id)?.status || selected.status) === 'unread' && (
+                  <button
+                    onClick={() => markAsRead(selected.id)}
+                    disabled={marking}
+                    className="px-4 py-2 bg-[#506147] text-white rounded-xl text-xs font-semibold hover:bg-[#3b4b33] disabled:opacity-50 transition-colors"
+                  >
+                    {marking ? 'Memproses...' : 'Tandai Dibaca'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelected(null)}
+                  className="px-4 py-2 border border-[#E5E1DA] text-[#434842] hover:bg-[#F9F6F1] rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>

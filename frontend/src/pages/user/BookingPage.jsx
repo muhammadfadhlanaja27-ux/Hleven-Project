@@ -396,6 +396,12 @@ const BookingPage = () => {
 
     const isForOtherGuest = bookingFor === "someone_else";
 
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
     const payload = {
       hotel_id: Number(targetHotelId),
       room_type_id: Number(targetRoomTypeId),
@@ -410,6 +416,7 @@ const BookingPage = () => {
       guest_phone: isForOtherGuest ? guestPhone : phone,
       special_request: specialRequests,
       special_requests: specialRequests,
+      idempotency_key: idempotencyKeyRef.current,
     };
 
     try {

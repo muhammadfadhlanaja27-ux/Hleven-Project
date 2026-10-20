@@ -11,6 +11,7 @@ const navItems = [
   { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
   { name: "Reports & Analytics", to: "/super-admin/reports", icon: "monitoring" },
   { name: "App Revenue", to: "/super-admin/application-revenue", icon: "attach_money" },
+  { name: "Pencairan Dana", to: "/super-admin/payouts", icon: "account_balance_wallet" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {

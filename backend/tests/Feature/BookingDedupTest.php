@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\City;
 use App\Models\Hotel;
 use App\Models\RoomType;
 use App\Models\User;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class BookingDedupTest extends TestCase
@@ -93,6 +93,7 @@ class BookingDedupTest extends TestCase
             $t->decimal('grand_total', 15, 2);
             $t->text('special_request')->nullable();
             $t->string('status')->default('unpaid');
+            $t->string('idempotency_key')->nullable()->unique();
             $t->timestamps();
         });
         Schema::create('booking_rooms', function ($t) {
@@ -168,12 +169,12 @@ class BookingDedupTest extends TestCase
 
         $second = $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $payload);
         $second->assertOk();
-        $second->assertJsonPath('deduped', true);
+        $second->assertJsonPath('duplicate', true);
         $secondCode = $second->json('data.booking.booking_code') ?? $second->json('data.data.booking.booking_code');
 
         $this->assertEquals($firstCode, $secondCode);
         $this->assertEquals(1, Booking::count());
-        $this->assertEquals(1, \App\Models\BookingRoom::count());
+        $this->assertEquals(1, BookingRoom::count());
     }
 
     public function test_different_checkin_creates_new_booking(): void

@@ -35,6 +35,15 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         window.location.href = '/login';
       }
+    } else if (error.response && error.response.status === 403 && error.response.data?.blocked) {
+      try {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        u.hotel_status = 'blocked';
+        localStorage.setItem('user', JSON.stringify(u));
+      } catch (_) {}
+      if (!window.location.pathname.startsWith('/admin/suspended')) {
+        window.location.href = '/admin/suspended';
+      }
     }
     return Promise.reject(error);
   }

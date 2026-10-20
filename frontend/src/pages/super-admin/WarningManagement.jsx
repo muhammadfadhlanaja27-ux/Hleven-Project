@@ -329,7 +329,13 @@ const WarningManagement = () => {
                             )}
                             {row.read_at && (
                               <p className="text-[11px] text-[#747872] mt-1 whitespace-nowrap">
-                                {new Date(row.read_at).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                {new Date(row.read_at).toLocaleString("id-ID", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                               </p>
                             )}
                           </td>
@@ -520,17 +526,39 @@ const WarningManagement = () => {
                     );
                   })()}
                 </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
-                    Waktu Dilihat
-                  </label>
-                  <p className="text-[#434842]">
-                    {selectedWarning.read_at
-                      ? new Date(selectedWarning.read_at).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-                      : "Belum dilihat"}
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
+                  Waktu Dilihat oleh Mitra
+                </label>
+                <p className="text-xs text-[#434842]">
+                  {selectedWarning.read_at
+                    ? new Date(selectedWarning.read_at).toLocaleString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Belum dilihat"}
+                </p>
+              </div>
+
+              {/* Status Banding jika ada */}
+              {Array.isArray(selectedWarning.appeals) && selectedWarning.appeals.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-900">Permohonan Banding Masuk:</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      {selectedWarning.appeals[selectedWarning.appeals.length - 1].status}
+                    </span>
+                  </div>
+                  <p className="text-[#434842] italic">
+                    &ldquo;{selectedWarning.appeals[selectedWarning.appeals.length - 1].reason}&rdquo;
                   </p>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-[#E5E0D8] flex justify-end gap-3">
