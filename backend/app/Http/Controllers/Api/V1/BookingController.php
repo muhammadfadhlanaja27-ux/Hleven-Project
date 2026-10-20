@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
+use App\Services\RoomAvailabilityService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -143,10 +144,17 @@ class BookingController extends Controller
 
             $weekdayPrice = (float) ($roomType->weekday_price ?? $roomType->price ?? 0);
             $weekendPrice = (float) ($roomType->weekend_price ?? $weekdayPrice);
-            $subtotal = 0;
-            foreach ($period as $date) {
-                $subtotal += ($date->isWeekend() ? $weekendPrice : $weekdayPrice) * $qty;
+
+            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
+            if (! empty($quote['closed_dates'])) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                ], 422);
             }
+            $subtotal = $quote['subtotal'];
             $tax = (int) round($subtotal * 0.05);
             $grandTotal = $subtotal + $tax;
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
@@ -693,8 +701,8 @@ class BookingController extends Controller
             // dalam window pembayaran (15 menit) tidak membuat booking baru.
             $existing = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests'])
                 ->where('user_id', $userId)
-                ->where('check_in', $checkInStr)
-                ->where('check_out', $checkOutStr)
+                ->whereDate('check_in', $checkInStr)
+                ->whereDate('check_out', $checkOutStr)
                 ->whereIn('status', ['unpaid', 'pending'])
                 ->where('created_at', '>=', Carbon::now()->subMinutes(15))
                 ->whereHas('bookingRooms', function ($q) use ($roomType, $qty) {
@@ -730,15 +738,19 @@ class BookingController extends Controller
                 ], 422);
             }
 
-            $subtotal = 0;
             $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
             $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
 
-            foreach ($period as $date) {
-                $subtotal += ($date->isWeekend())
-                    ? ($weekendPrice * $qty)
-                    : ($weekdayPrice * $qty);
+            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
+            if (! empty($quote['closed_dates'])) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                ], 422);
             }
+            $subtotal = $quote['subtotal'];
             $tax = (int) round($subtotal * 0.05);
             $grandTotal = $subtotal + $tax;
 

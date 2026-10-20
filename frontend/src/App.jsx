@@ -37,6 +37,7 @@ import HotelInformation from "./pages/admin-hotel/HotelInformation";
 import FacilityManager from "./pages/admin-hotel/FacilityManager";
 import RoomList from "./pages/admin-hotel/RoomList";
 import RoomCreate from "./pages/admin-hotel/RoomCreate";
+import RoomCalendar from "./pages/admin-hotel/RoomCalendar";
 import BookingList from "./pages/admin-hotel/BookingList";
 import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
@@ -177,6 +178,7 @@ function App() {
               <Route path="/admin/facilities" element={<FacilityManager />} />
               <Route path="/admin/rooms" element={<RoomList />} />
               <Route path="/admin/rooms/create" element={<RoomCreate />} />
+              <Route path="/admin/calendar" element={<RoomCalendar />} />
               <Route path="/admin/bed-types" element={<BedTypeManager />} />
               <Route path="/admin/bookings" element={<BookingList />} />
               <Route path="/admin/transactions" element={<TransactionHistory />} />

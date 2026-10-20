@@ -9,7 +9,12 @@ class RoomAvailability extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['room_type_id', 'date', 'available_stock', 'booked_room'];
+    protected $fillable = ['room_type_id', 'date', 'available_stock', 'booked_room', 'price', 'is_closed'];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'is_closed' => 'boolean',
+    ];
 
     public function roomType()
     {

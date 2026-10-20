@@ -37,10 +37,10 @@ class Booking extends Model
     ];
 
     protected $casts = [
-        'children_count'     => 'integer',
+        'children_count' => 'integer',
         'is_for_other_guest' => 'boolean',
-        'check_in'           => 'date',
-        'check_out'          => 'date',
+        'check_in' => 'date',
+        'check_out' => 'date',
     ];
 
     protected $appends = [
@@ -54,7 +54,7 @@ class Booking extends Model
     ];
 
     /* -------------------------------------------------------------------------- */
-    /*                                RELASI MODEL                                */
+    /*                                RELASI MODEL */
     /* -------------------------------------------------------------------------- */
 
     public function user()
@@ -103,7 +103,7 @@ class Booking extends Model
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                                  ACCESSORS                                 */
+    /*                                  ACCESSORS */
     /* -------------------------------------------------------------------------- */
 
     public function getIsRefundableAttribute(): bool
@@ -131,7 +131,7 @@ class Booking extends Model
 
     public function getPrimaryBookerPhoneAttribute(): string
     {
-        return $this->user ? ($this->user->phone ?? $this->booker_phone) : ($this->booker_phone ?? '-');
+        return $this->user ? ($this->user->phone ?? $this->booker_phone ?? '-') : ($this->booker_phone ?? '-');
     }
 
     // Accessor Data Tamu Menginap (Fallback ke Pemesan Utama jika is_for_other_guest = false)

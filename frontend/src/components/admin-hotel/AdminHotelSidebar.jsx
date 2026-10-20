@@ -95,6 +95,22 @@ export default function AdminHotelSidebar() {
 
           <li>
             <Link
+              to="/admin/calendar"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/calendar')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                calendar_month
+              </span>
+              <span>Kalender &amp; Harga</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
               to="/admin/facilities"
               className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
                 isActive('/admin/facilities')
