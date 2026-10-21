@@ -18,12 +18,13 @@ class BookingResource extends JsonResource
             'total_night' => $this->total_night,
             'subtotal' => (float) $this->subtotal,
             'tax' => (float) $this->tax,
+            'tax_rate' => $this->tax_rate !== null ? (float) $this->tax_rate : null,
             'grand_total' => (float) $this->grand_total,
             'special_request' => $this->special_request,
             'is_for_other_guest' => (bool) $this->is_for_other_guest,
 
             'booker' => [
-                'is_registered' => !is_null($this->user_id),
+                'is_registered' => ! is_null($this->user_id),
                 'name' => $this->booker_name,
                 'email' => $this->booker_email,
                 'phone' => $this->booker_phone,

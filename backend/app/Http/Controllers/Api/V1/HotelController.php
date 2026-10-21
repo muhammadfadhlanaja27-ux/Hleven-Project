@@ -181,6 +181,7 @@ class HotelController extends Controller
             'description' => 'nullable|string',
             'address' => 'sometimes|string',
             'policies' => 'nullable|string|max:5000',
+            'tax_rate' => 'sometimes|numeric|min:0|max:100',
             'bank_name' => 'nullable|string|max:100',
             'bank_account_number' => 'nullable|string|max:50',
             'bank_account_name' => 'nullable|string|max:255',
@@ -201,7 +202,7 @@ class HotelController extends Controller
         }
 
         $hotel->update($request->only([
-            'name', 'description', 'address', 'policies',
+            'name', 'description', 'address', 'policies', 'tax_rate',
             'bank_name', 'bank_account_number', 'bank_account_name',
         ]));
 

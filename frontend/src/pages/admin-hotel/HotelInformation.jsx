@@ -125,6 +125,7 @@ const initialHotelData = {
   photos: [],
   facilities: [],
   policies: DEFAULT_HOTEL_POLICIES,
+  tax_rate: 5,
   bank_name: "",
   bank_account_number: "",
   bank_account_name: "",
@@ -264,6 +265,7 @@ export default function HotelInformation() {
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
             facilities: uniqueAssignedFacilities,
             policies: raw.policies || DEFAULT_HOTEL_POLICIES,
+            tax_rate: Number(raw.tax_rate ?? 5),
             bank_name: raw.bank_name || "",
             bank_account_number: raw.bank_account_number || "",
             bank_account_name: raw.bank_account_name || "",
@@ -420,6 +422,11 @@ export default function HotelInformation() {
       newErrors.location = "Location is required.";
     }
 
+    const taxRate = Number(formValues.tax_rate);
+    if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
+      newErrors.tax_rate = "Tax rate must be between 0 and 100.";
+    }
+
     return newErrors;
   };
 
@@ -442,6 +449,7 @@ export default function HotelInformation() {
         phone: formValues.phone.trim(),
         email: formValues.email.trim(),
         policies: (formValues.policies || "").trim(),
+        tax_rate: Number(formValues.tax_rate) || 0,
         facilities: formFacilityIds,
         bank_name: (formValues.bank_name || "").trim(),
         bank_account_number: (formValues.bank_account_number || "").trim(),
@@ -1120,6 +1128,39 @@ export default function HotelInformation() {
               {errors.location && (
                 <span className="text-xs text-[#ba1a1a] font-medium">
                   {errors.location}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="tax_rate"
+                className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
+              >
+                Pajak &amp; Service (%)
+              </label>
+              <input
+                id="tax_rate"
+                name="tax_rate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={formValues.tax_rate}
+                onChange={handleChange}
+                disabled={isSaving}
+                placeholder="5"
+                className={`w-full h-11 px-4 bg-white border ${
+                  errors.tax_rate ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+              />
+              {errors.tax_rate ? (
+                <span className="text-xs text-[#ba1a1a] font-medium">
+                  {errors.tax_rate}
+                </span>
+              ) : (
+                <span className="text-[11px] text-[#6B6E6A]">
+                  Satu tarif pajak dan service yang dipakai untuk semua booking hotel ini.
                 </span>
               )}
             </div>

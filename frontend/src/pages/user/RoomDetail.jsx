@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
 import GuestSelector from "../../components/common/GuestSelector";
@@ -87,6 +88,7 @@ const RoomDetail = () => {
 
   const [hotel, setHotel] = useState(null);
   const [room, setRoom] = useState(null);
+  const [priceQuote, setPriceQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -247,10 +249,41 @@ const mappedRoom = {
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
 
+  useEffect(() => {
+    let active = true;
+
+    const fetchPriceQuote = async () => {
+      if (!room?.id || !checkInDate || !checkOutDate) {
+        if (active) setPriceQuote(null);
+        return;
+      }
+
+      try {
+        const response = await api.post("/bookings/quote", {
+          hotel_id: Number(hotel?.id || hotelId || 1),
+          room_type_id: Number(room.id),
+          check_in: fmtDateStr(checkInDate),
+          check_out: fmtDateStr(checkOutDate),
+          qty: 1,
+        });
+        if (active) setPriceQuote(response.data?.data || null);
+      } catch {
+        if (active) setPriceQuote(null);
+      }
+    };
+
+    fetchPriceQuote();
+
+    return () => {
+      active = false;
+    };
+  }, [room?.id, hotel?.id, hotelId, checkInDate, checkOutDate]);
+
   const roomPrice = Number(room?.price || room?.weekday_price || 3200000);
-  const subtotalPrice = roomPrice * nightsCount;
-  const taxAndFees = Math.round(subtotalPrice * 0.05);
-  const totalPrice = subtotalPrice + taxAndFees;
+  const taxRate = Number(priceQuote?.tax_rate ?? hotel?.tax_rate ?? 5);
+  const subtotalPrice = Number(priceQuote?.subtotal ?? roomPrice * nightsCount);
+  const taxAndFees = Number(priceQuote?.tax ?? (subtotalPrice * taxRate) / 100);
+  const totalPrice = Number(priceQuote?.grand_total ?? subtotalPrice + taxAndFees);
 
   const getImageUrl = (photoItem) => {
     if (!photoItem) return null;
@@ -583,11 +616,11 @@ const mappedRoom = {
               {/* Dynamic Price Breakdown */}
               <div className="space-y-3 mb-6 font-body-md text-xs text-[#444842]">
                 <div className="flex justify-between">
-                  <span>Rp {roomPrice.toLocaleString("id-ID")} x {nightsCount} malam</span>
+                  <span>Rp {Math.round(subtotalPrice / nightsCount).toLocaleString("id-ID")} x {nightsCount} malam</span>
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Pajak &amp; Biaya Layanan (5%)</span>
+                  <span>Pajak &amp; Biaya Layanan ({taxRate}%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
                 <hr className="border-[#DCCFC0]/50 my-2" />

@@ -12,7 +12,7 @@ use App\Models\Payment;
 use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
-use App\Services\RoomAvailabilityService;
+use App\Services\PricingService;
 use App\Services\WalletLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -63,6 +63,57 @@ class BookingController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $bookings,
+        ]);
+    }
+
+    public function quote(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'hotel_id' => 'required|integer|exists:hotels,id',
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $roomType = RoomType::with('hotel')
+            ->where('id', $request->room_type_id)
+            ->where('hotel_id', $request->hotel_id)
+            ->whereHas('hotel', fn ($query) => $query->where('status', 'active'))
+            ->first();
+
+        if (! $roomType || ! $roomType->is_active) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tipe kamar atau hotel ini tidak ditemukan atau sedang tidak aktif.',
+            ], 422);
+        }
+
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $qty = (int) $request->qty;
+
+        $quote = app(PricingService::class)->quote($roomType, $period, $qty);
+
+        if (! empty($quote['closed_dates'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                'closed_dates' => $quote['closed_dates'],
+            ], 422);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => array_merge($quote, [
+                'nights' => max(1, $checkIn->diffInDays($checkOut)),
+                'qty' => $qty,
+            ]),
         ]);
     }
 
@@ -143,7 +194,7 @@ class BookingController extends Controller
             $weekdayPrice = (float) ($roomType->weekday_price ?? $roomType->price ?? 0);
             $weekendPrice = (float) ($roomType->weekend_price ?? $weekdayPrice);
 
-            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
+            $quote = app(PricingService::class)->quote($roomType, $period, $qty);
             if (! empty($quote['closed_dates'])) {
                 DB::rollBack();
 
@@ -154,8 +205,8 @@ class BookingController extends Controller
             }
 
             $subtotal = (float) $quote['subtotal'];
-            $tax = (int) round($subtotal * 0.05);
-            $grandTotal = $subtotal + $tax;
+            $tax = (float) $quote['tax'];
+            $grandTotal = (float) $quote['grand_total'];
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
             $isPaid = $request->payment_method !== 'unpaid';
 
@@ -173,6 +224,7 @@ class BookingController extends Controller
                 'children_count' => $children,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
+                'tax_rate' => $quote['tax_rate'],
                 'grand_total' => $grandTotal,
                 'status' => $isPaid ? 'paid' : 'unpaid',
             ]);
@@ -237,7 +289,11 @@ class BookingController extends Controller
 
     public function show(Request $request, $id)
     {
-        $booking = Booking::with(['user', 'bookingRooms.roomType', 'payment', 'guests', 'hotel'])->find($id);
+        $booking = $this->findBookingForActor(
+            $request,
+            $id,
+            ['user', 'bookingRooms.roomType', 'payment', 'guests', 'hotel']
+        );
 
         if (! $booking) {
             return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
@@ -551,10 +607,13 @@ class BookingController extends Controller
         $qty = $booking->bookingRooms->sum('qty') ?: 1;
 
         $basePrice = (float) ($firstBookingRoom?->price_per_night ?? $roomType?->weekday_price ?? 350000);
+        $pricing = app(PricingService::class);
+        $extensionTaxRate = $pricing->taxRateForBooking($booking);
 
         DB::beginTransaction();
         try {
             $extensionSubtotal = $basePrice * $duration * $qty;
+            $extensionTotals = $pricing->calculate($extensionSubtotal, $extensionTaxRate);
             $extensionLabel = "[Perpanjang +{$duration} Hari]";
 
             $currentCheckOut = Carbon::parse($booking->check_out);
@@ -588,10 +647,10 @@ class BookingController extends Controller
             $booking->check_out = $newCheckOut->toDateString();
             $booking->total_night = ($booking->total_night ?? 1) + $duration;
 
-            $addedTax = (int) round($extensionSubtotal * 0.05);
-            $addedGrandTotal = $extensionSubtotal + $addedTax;
+            $addedTax = (float) $extensionTotals['tax'];
+            $addedGrandTotal = (float) $extensionTotals['grand_total'];
 
-            $booking->subtotal = ($booking->subtotal ?? 0) + $extensionSubtotal;
+            $booking->subtotal = ($booking->subtotal ?? 0) + $extensionTotals['subtotal'];
             $booking->tax = ($booking->tax ?? 0) + $addedTax;
             $booking->grand_total = ($booking->grand_total ?? 0) + $addedGrandTotal;
 
@@ -832,7 +891,7 @@ class BookingController extends Controller
             $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
             $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
 
-            $quote = app(RoomAvailabilityService::class)->quote($roomType, $period, $qty);
+            $quote = app(PricingService::class)->quote($roomType, $period, $qty);
             if (! empty($quote['closed_dates'])) {
                 DB::rollBack();
 
@@ -843,8 +902,8 @@ class BookingController extends Controller
             }
 
             $subtotal = (float) $quote['subtotal'];
-            $tax = (int) round($subtotal * 0.05);
-            $grandTotal = $subtotal + $tax;
+            $tax = (float) $quote['tax'];
+            $grandTotal = (float) $quote['grand_total'];
 
             $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
 
@@ -863,6 +922,7 @@ class BookingController extends Controller
                 'children_count' => $children,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
+                'tax_rate' => $quote['tax_rate'],
                 'grand_total' => $grandTotal,
                 'special_request' => $specialNotes,
                 'status' => 'unpaid',

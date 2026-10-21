@@ -99,6 +99,7 @@ const normalizeBooking = (b) => {
     weekdayNights: Number(b.weekday_nights || 1),
     weekendNights: Number(b.weekend_nights || 0),
     roomPriceSum: total,
+    taxRate: Number(b.tax_rate ?? 5),
     additionalCharges: 0,
     discount: 0,
     totalAmount: total,
@@ -1748,7 +1749,8 @@ export default function BookingList() {
         const basePrice = Number(extendingBooking.room?.weekdayPrice || extendingBooking.room?.price || extendingBooking.roomPriceSum || 350000);
         const qty = extendingBooking.bookingRooms?.reduce((s, br) => s + (br.qty || 1), 0) || 1;
         const sub = basePrice * Number(extensionDuration || 0) * qty;
-        const tax = Math.round(sub * 0.05);
+        const taxRate = Number(extendingBooking.taxRate ?? 5);
+        const tax = Math.round((sub * taxRate) / 100);
         const total = sub + tax;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -1775,7 +1777,7 @@ export default function BookingList() {
                 </div>
                 <div className="bg-white rounded-lg border border-[#E5E1DA] p-3 space-y-1.5">
                   <div className="flex justify-between"><span className="text-[#6B6E6A]">Rp {basePrice.toLocaleString("id-ID")}/malam × {extensionDuration} hari × {qty} kamar</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
-                  <div className="flex justify-between text-[#6B6E6A]"><span>Pajak 5%</span><span>{fmtRupiah(tax)}</span></div>
+                  <div className="flex justify-between text-[#6B6E6A]"><span>Pajak &amp; Service ({taxRate}%)</span><span>{fmtRupiah(tax)}</span></div>
                   <div className="flex justify-between font-bold text-[#506147] text-sm pt-1 border-t border-[#E5E1DA]"><span>Total Tambahan</span><span>{fmtRupiah(total)}</span></div>
                 </div>
                 <p className="text-[11px] text-[#6B6E6A]">Tanggal check-out akan mundur sesuai durasi. Stok kamar untuk hari tambahan akan dipotong.</p>

@@ -18,6 +18,7 @@ const INITIAL_PROFILE = {
     address: "Jl. Example No. 123",
     city: "Bandung",
     description: "Comfortable accommodation with modern facilities.",
+    tax_rate: 5,
     logo: null,
   },
 
@@ -207,6 +208,7 @@ export default function Profile() {
                 province: provinceText,
                 phone: asText(h.phone, prev.hotel.phone),
                 email: asText(h.email, prev.hotel.email),
+                tax_rate: Number(h.tax_rate ?? prev.hotel.tax_rate ?? 5),
                 logo: h.logo ? getStorageUrl(h.logo) : null,
               },
             }));
@@ -422,6 +424,10 @@ export default function Profile() {
     if (hotelForm.description && hotelForm.description.length > 500) {
       errs.description = "Description cannot exceed 500 characters.";
     }
+    const taxRate = Number(hotelForm.tax_rate);
+    if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
+      errs.tax_rate = "Tax rate must be between 0 and 100.";
+    }
     setHotelErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -439,27 +445,23 @@ export default function Profile() {
       payload.append("address", hotelForm.address.trim());
       payload.append("phone", hotelForm.phone.trim());
       payload.append("email", hotelForm.email.trim());
+      payload.append("tax_rate", String(Number(hotelForm.tax_rate) || 0));
       if (hotelForm.city && hotelForm.city.trim() !== "") {
         payload.append("city", hotelForm.city.trim());
       }
-      if (hotelLogoFile) {
-        payload.append("banner", hotelLogoFile);
-      }
 
-      const res = await api.post("/admin/hotel/profile", payload, {
+      await api.post("/admin/hotel/profile", payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      const saved = res?.data?.data || {};
 
       setProfile((prev) => normalizeProfile({
         ...prev,
         hotel: {
           ...prev.hotel,
           ...hotelForm,
-          logo: saved.banner || prev.hotel.logo,
+          logo: prev.hotel.logo,
         },
       }));
-      setHotelLogoFile(null);
       setEditHotel(false);
       toast.success("Hotel information updated successfully.");
     } catch (err) {
@@ -987,6 +989,35 @@ export default function Profile() {
                   <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">error</span>
                     {hotelErrors.city}
+                  </p>
+                )}
+              </div>
+
+              {/* Tax & Service Rate */}
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
+                  Pajak &amp; Service (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={hotelForm.tax_rate}
+                  onChange={(e) => setHotelForm({ ...hotelForm, tax_rate: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                    hotelErrors.tax_rate ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                  }`}
+                  placeholder="5"
+                />
+                {hotelErrors.tax_rate ? (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {hotelErrors.tax_rate}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-[#6B6E6A] mt-1">
+                    Tarif ini dipakai untuk perhitungan pajak dan service semua booking.
                   </p>
                 )}
               </div>

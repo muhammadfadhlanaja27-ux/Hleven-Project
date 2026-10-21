@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\City;
 use App\Models\Hotel;
+use App\Models\HotelPayoutDestination;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\PayoutService;
@@ -88,6 +89,18 @@ class PayoutTest extends TestCase
             $t->timestamp('paid_at')->nullable();
             $t->timestamps();
         });
+        Schema::create('hotel_payout_destinations', function ($t) {
+            $t->id();
+            $t->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete();
+            $t->string('type', 20);
+            $t->string('channel_code', 80);
+            $t->text('account_number');
+            $t->string('account_name');
+            $t->string('provider_recipient_id')->nullable();
+            $t->string('status', 20)->default('pending');
+            $t->timestamps();
+            $t->softDeletes();
+        });
         Schema::create('payouts', function ($t) {
             $t->id();
             $t->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete();
@@ -127,7 +140,7 @@ class PayoutTest extends TestCase
     protected function tearDown(): void
     {
         foreach ([
-            'activity_logs', 'notifications', 'payouts', 'payments', 'bookings',
+            'activity_logs', 'notifications', 'payouts', 'hotel_payout_destinations', 'payments', 'bookings',
             'hotels', 'cities', 'personal_access_tokens', 'users',
         ] as $t) {
             Schema::dropIfExists($t);
@@ -176,6 +189,55 @@ class PayoutTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         app(PayoutService::class)->requestPayout($hotel, $hotel->admin, 100000);
+    }
+
+    public function test_request_payout_uses_selected_destination_snapshot(): void
+    {
+        $hotel = $this->makeHotel('Hotel A', 'a@x.com');
+        $this->makeBooking($hotel, 1000000, 'paid', 'success');
+
+        $destination = HotelPayoutDestination::create([
+            'hotel_id' => $hotel->id,
+            'type' => 'e_wallet',
+            'channel_code' => 'GOPAY',
+            'account_number' => '081234567890',
+            'account_name' => 'Hotel Owner',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($hotel->admin, 'sanctum')
+            ->postJson('/api/v1/admin/payouts', [
+                'amount' => 100000,
+                'destination_id' => $destination->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.bank_name', 'GOPAY')
+            ->assertJsonPath('data.bank_account_number', '081234567890')
+            ->assertJsonPath('data.bank_account_name', 'Hotel Owner');
+    }
+
+    public function test_request_payout_rejects_another_hotels_destination(): void
+    {
+        $hotel = $this->makeHotel('Hotel A', 'a@x.com');
+        $otherHotel = $this->makeHotel('Hotel B', 'b@x.com');
+        $this->makeBooking($hotel, 1000000, 'paid', 'success');
+
+        $destination = HotelPayoutDestination::create([
+            'hotel_id' => $otherHotel->id,
+            'type' => 'bank',
+            'channel_code' => 'BANK',
+            'account_number' => '1234567890',
+            'account_name' => 'Other Owner',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($hotel->admin, 'sanctum')
+            ->postJson('/api/v1/admin/payouts', [
+                'amount' => 100000,
+                'destination_id' => $destination->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('destination_id');
     }
 
     public function test_admin_hotel_payout_endpoints_and_super_admin_approval(): void

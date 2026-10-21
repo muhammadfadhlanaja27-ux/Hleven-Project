@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\City;
 use App\Models\Facility;
+use App\Models\Hotel;
+use App\Models\User;
 use Database\Seeders\FacilitySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -55,5 +58,69 @@ class FacilityCatalogTest extends TestCase
             'name' => 'Handuk',
             'category' => 'Bathroom',
         ]);
+        $this->assertDatabaseHas('facilities', [
+            'name' => 'Bar & Lounge',
+            'category' => 'Hotel',
+        ]);
+        $this->assertDatabaseHas('facilities', [
+            'name' => 'Pemandangan Laut',
+            'category' => 'Room',
+        ]);
+        $this->assertDatabaseHas('facilities', [
+            'name' => 'Rain Shower',
+            'category' => 'Bathroom',
+        ]);
+        $this->assertDatabaseHas('facilities', [
+            'name' => 'Detektor Asap',
+            'category' => 'Hotel',
+            'icon' => 'detector_smoke',
+        ]);
+    }
+
+    public function test_facility_seeder_is_idempotent_and_keeps_categories_separate(): void
+    {
+        (new FacilitySeeder)->run();
+        (new FacilitySeeder)->run();
+
+        $this->assertSame(42, Facility::whereNull('hotel_id')->where('category', 'Hotel')->count());
+        $this->assertSame(41, Facility::whereNull('hotel_id')->where('category', 'Room')->count());
+        $this->assertSame(17, Facility::whereNull('hotel_id')->where('category', 'Bathroom')->count());
+        $this->assertSame(1, Facility::whereNull('hotel_id')->where('name', 'Bar & Lounge')->count());
+    }
+
+    public function test_facility_seeder_does_not_overwrite_hotel_specific_facilities(): void
+    {
+        $admin = User::create([
+            'name' => 'Hotel Admin',
+            'email' => 'facility-custom@example.com',
+            'password' => bcrypt('password123'),
+            'role' => 'admin_hotel',
+            'status' => 'active',
+        ]);
+        $city = City::create([
+            'province' => 'Jawa Barat',
+            'city' => 'Bandung',
+        ]);
+        $hotel = Hotel::create([
+            'admin_id' => $admin->id,
+            'city_id' => $city->id,
+            'name' => 'Hotel Custom Facility',
+            'slug' => 'hotel-custom-facility',
+            'description' => 'Hotel test',
+            'address' => 'Jl. Test 123',
+            'status' => 'active',
+        ]);
+
+        $custom = Facility::create([
+            'hotel_id' => $hotel->id,
+            'name' => 'Bar & Lounge',
+            'category' => 'Hotel',
+            'icon' => 'star',
+        ]);
+
+        (new FacilitySeeder)->run();
+
+        $this->assertSame('star', $custom->fresh()->icon);
+        $this->assertSame(1, Facility::whereNull('hotel_id')->where('name', 'Bar & Lounge')->count());
     }
 }

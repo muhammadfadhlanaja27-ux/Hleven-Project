@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\BookingRoom;
-use App\Models\RoomType;
+use App\Services\HotelOccupancyService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
@@ -31,11 +30,10 @@ class DashboardController extends Controller
         $hasCustomRange = $revFrom && $revTo && strtotime($revFrom) && strtotime($revTo);
         $hasCustomMonth = $revMonth && preg_match('/^\d{4}-\d{2}$/', $revMonth);
 
-        $totalRooms = RoomType::where('hotel_id', $hotelId)->sum('stock');
-        $occupiedRooms = BookingRoom::whereHas('booking', function ($q) use ($hotelId) {
-            $q->where('hotel_id', $hotelId)->where('status', 'checked_in');
-        })->sum('qty');
-        $availableRooms = max(0, $totalRooms - $occupiedRooms);
+        $occupancy = app(HotelOccupancyService::class)->summary($hotel);
+        $totalRooms = $occupancy['total_rooms'];
+        $occupiedRooms = $occupancy['occupied_rooms'];
+        $availableRooms = $occupancy['available_rooms'];
 
         $revenueQuery = Booking::where('hotel_id', $hotelId)
             ->whereIn('status', ['paid', 'checked_in', 'checked_out']);

@@ -57,6 +57,7 @@ const BookingPage = () => {
 
   const [hotel, setHotel] = useState(null);
   const [room, setRoom] = useState(null);
+  const [priceQuote, setPriceQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -264,10 +265,41 @@ const BookingPage = () => {
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
 
+  useEffect(() => {
+    let active = true;
+
+    const fetchPriceQuote = async () => {
+      if (!hotelId || !room?.id || !checkInDate || !checkOutDate || !roomQty) {
+        if (active) setPriceQuote(null);
+        return;
+      }
+
+      try {
+        const response = await api.post("/bookings/quote", {
+          hotel_id: Number(hotelId),
+          room_type_id: Number(room.id),
+          check_in: checkInDate,
+          check_out: checkOutDate,
+          qty: Number(roomQty),
+        });
+        if (active) setPriceQuote(response.data?.data || null);
+      } catch {
+        if (active) setPriceQuote(null);
+      }
+    };
+
+    fetchPriceQuote();
+
+    return () => {
+      active = false;
+    };
+  }, [hotelId, room?.id, checkInDate, checkOutDate, roomQty]);
+
   const roomPrice = Number(room?.price || room?.weekday_price || 350000);
-  const subtotalPrice = roomPrice * nightsCount * roomQty;
-  const taxAndFees = Math.round(subtotalPrice * 0.05);
-  const totalPrice = subtotalPrice + taxAndFees;
+  const taxRate = Number(priceQuote?.tax_rate ?? hotel?.tax_rate ?? 5);
+  const subtotalPrice = Number(priceQuote?.subtotal ?? roomPrice * nightsCount * roomQty);
+  const taxAndFees = Number(priceQuote?.tax ?? (subtotalPrice * taxRate) / 100);
+  const totalPrice = Number(priceQuote?.grand_total ?? subtotalPrice + taxAndFees);
 
   const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -832,13 +864,13 @@ const BookingPage = () => {
                 <div className="flex justify-between items-center">
                   <span>
                     Tarif Kamar ({nightsCount} Malam x {roomQty} Kamar)
-                    <span className="text-[#444842] text-xs block">Rp {roomPrice.toLocaleString("id-ID")} / malam</span>
+                    <span className="text-[#444842] text-xs block">Rp {Math.round(subtotalPrice / Math.max(1, nightsCount * roomQty)).toLocaleString("id-ID")} / malam</span>
                   </span>
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-[#778873]">
-                  <span>Pajak (5%)</span>
+                  <span>Pajak &amp; Service ({taxRate}%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
               </div>

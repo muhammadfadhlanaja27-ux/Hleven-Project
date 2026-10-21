@@ -1,0 +1,19 @@
+{
+    "php.validate.executablePath": "/usr/bin/php",
+    "intelephense.environment.phpVersion": "8.3.0",
+    "intelephense.environment.includePaths": [
+        "${workspaceFolder}/backend/vendor"
+    ],
+    "intelephense.files.exclude": [
+        "**/.git/**",
+        "**/.svn/**",
+        "**/.hg/**",
+        "**/CVS/**",
+        "**/.DS_Store/**",
+        "**/node_modules/**",
+        "**/bower_components/**",
+        "**/vendor/**/{Tests,tests}/**",
+        "**/vendor/**/.git/**",
+        "**/frontend/node_modules/**"
+    ]
+}

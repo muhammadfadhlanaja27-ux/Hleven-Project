@@ -173,6 +173,9 @@ const TransactionHistory = () => {
       case "failure":
       case "failed":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wider">Expired / Failed</span>;
+      case "cancel":
+      case "cancelled":
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">Cancelled</span>;
       default:
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">{status || "—"}</span>;
     }
@@ -212,7 +215,9 @@ const TransactionHistory = () => {
             <option value="">All Status</option>
             <option value="success">Settlement</option>
             <option value="pending">Pending</option>
-            <option value="expire">Expired / Failure</option>
+            <option value="expired">Expired</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
 

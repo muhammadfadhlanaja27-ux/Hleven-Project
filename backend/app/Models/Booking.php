@@ -24,6 +24,7 @@ class Booking extends Model
         'children_count',
         'subtotal',
         'tax',
+        'tax_rate',
         'grand_total',
         'special_request',
         'status',
@@ -35,6 +36,7 @@ class Booking extends Model
         'check_out' => 'date',
         'subtotal' => 'decimal:2',
         'tax' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
         'grand_total' => 'decimal:2',
     ];
 
