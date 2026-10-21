@@ -40,7 +40,6 @@ import RoomCreate from "./pages/admin-hotel/RoomCreate";
 import RoomCalendar from "./pages/admin-hotel/RoomCalendar";
 import BookingList from "./pages/admin-hotel/BookingList";
 import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
-import Wallet from "./pages/admin-hotel/Wallet";
 import ReviewManager from "./pages/admin-hotel/ReviewManager";
 import RevenueReport from "./pages/admin-hotel/Reports";
 import AdminPayouts from "./pages/admin-hotel/Payouts";
@@ -48,6 +47,7 @@ import AdminProfile from "./pages/admin-hotel/Profile";
 import SuspendedPage from "./pages/admin-hotel/SuspendedPage";
 import AdminWarnings from "./pages/admin-hotel/Warnings";
 import BedTypeManager from "./pages/admin-hotel/BedTypeManager";
+import RoomTypeManager from "./pages/admin-hotel/RoomTypeManager";
 
 // Super Admin pages
 import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
@@ -207,9 +207,10 @@ function App() {
               <Route path="/admin/calendar" element={<RoomCalendar />} />
               <Route path="/admin/bed-types" element={<BedTypeManager />} />
               <Route path="/admin/beds" element={<Navigate to="/admin/bed-types" replace />} />
+              <Route path="/admin/room-types" element={<RoomTypeManager />} />
               <Route path="/admin/bookings" element={<BookingList />} />
               <Route path="/admin/transactions" element={<TransactionHistory />} />
-              <Route path="/admin/wallet" element={<Wallet />} />
+              <Route path="/admin/wallet" element={<Navigate to="/admin/payouts" replace />} />
               <Route path="/admin/reviews" element={<ReviewManager />} />
               <Route path="/admin/warnings" element={<AdminWarnings />} />
               <Route path="/admin/revenue" element={<RevenueReport />} />

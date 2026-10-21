@@ -7,6 +7,7 @@ use App\Models\BedType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BedTypeController extends Controller
 {
@@ -22,6 +23,7 @@ class BedTypeController extends Controller
         }
 
         $bedTypes = BedType::where('hotel_id', $hotel->id)
+            ->withCount('roomTypes')
             ->orderBy('name')
             ->get();
 
@@ -64,6 +66,8 @@ class BedTypeController extends Controller
         $maxChildren = $validated['max_children'] ?? 0;
         $maxTotal = $validated['max_total'] ?? ($maxAdults + $maxChildren);
 
+        $this->validateCapacity($maxAdults, $maxChildren, $maxTotal);
+
         $bedType = BedType::create([
             ...$validated,
             'hotel_id' => $hotel->id,
@@ -77,7 +81,7 @@ class BedTypeController extends Controller
             'success' => true,
             'status' => 'success',
             'message' => 'Tipe kasur berhasil ditambahkan.',
-            'data' => $bedType,
+            'data' => $bedType->loadCount('roomTypes'),
         ], 201);
     }
 
@@ -104,7 +108,7 @@ class BedTypeController extends Controller
         return response()->json([
             'success' => true,
             'status' => 'success',
-            'data' => $bed,
+            'data' => $bed->loadCount('roomTypes'),
         ]);
     }
 
@@ -147,13 +151,19 @@ class BedTypeController extends Controller
             'max_total' => 'sometimes|integer|min:1',
         ]);
 
+        $maxAdults = $validated['max_adults'] ?? $bedType->max_adults;
+        $maxChildren = $validated['max_children'] ?? $bedType->max_children;
+        $maxTotal = $validated['max_total'] ?? $bedType->max_total;
+
+        $this->validateCapacity($maxAdults, $maxChildren, $maxTotal);
+
         $bedType->update($validated);
 
         return response()->json([
             'success' => true,
             'status' => 'success',
             'message' => 'Tipe kasur berhasil diperbarui.',
-            'data' => $bedType->fresh(),
+            'data' => $bedType->fresh()->loadCount('roomTypes'),
         ]);
     }
 
@@ -192,5 +202,14 @@ class BedTypeController extends Controller
             'status' => 'success',
             'message' => 'Tipe kasur berhasil dihapus.',
         ]);
+    }
+
+    private function validateCapacity(int $adults, int $children, int $total): void
+    {
+        if ($total < ($adults + $children)) {
+            throw ValidationException::withMessages([
+                'max_total' => 'Total tamu tidak boleh kurang dari jumlah dewasa dan anak.',
+            ]);
+        }
     }
 }

@@ -8,6 +8,7 @@ use App\Services\PayoutService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class HotelPayoutController extends Controller
@@ -46,6 +47,10 @@ class HotelPayoutController extends Controller
                     'bank_account_name' => $hotel->bank_account_name,
                 ],
                 'payouts' => $payouts,
+                'destinations' => $hotel->payoutDestinations()
+                    ->where('status', 'active')
+                    ->latest()
+                    ->get(),
                 'limits' => [
                     'min_payout' => (float) config('hleven.min_payout', 0),
                     'commission_rate' => (float) config('hleven.commission_rate', 0.05),
@@ -67,14 +72,27 @@ class HotelPayoutController extends Controller
         $data = $request->validate([
             'amount' => 'required|numeric|min:1',
             'note' => 'nullable|string|max:1000',
+            'destination_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('hotel_payout_destinations', 'id')
+                    ->where('hotel_id', $hotel->id)
+                    ->where('status', 'active')
+                    ->whereNull('deleted_at'),
+            ],
         ]);
+
+        $destination = $request->filled('destination_id')
+            ? $hotel->payoutDestinations()->where('status', 'active')->find($data['destination_id'])
+            : null;
 
         try {
             $payout = $this->payoutService->requestPayout(
                 $hotel,
                 $request->user(),
                 (float) $data['amount'],
-                $data['note'] ?? null
+                $data['note'] ?? null,
+                $destination
             );
         } catch (RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);

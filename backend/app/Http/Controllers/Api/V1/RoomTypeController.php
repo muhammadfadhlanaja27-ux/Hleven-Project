@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\BedType;
 use App\Models\RoomType;
+use App\Models\RoomTypeCategory;
 use App\Services\FileStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class RoomTypeController extends Controller
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with(['photos', 'facilities', 'bedType'])->get();
+        $roomTypes = RoomType::where('hotel_id', $hotel->id)->with(['photos', 'facilities', 'bedType', 'category'])->get();
 
         return response()->json([
             'status' => 'success',
@@ -64,6 +65,11 @@ class RoomTypeController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'type' => 'nullable|string|max:100',
+            'room_type_category_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('room_type_categories', 'id')->where('hotel_id', $hotel->id)->whereNull('deleted_at'),
+            ],
             'bed' => 'nullable|string|max:100',
             'bed_type_id' => [
                 'nullable',
@@ -97,11 +103,15 @@ class RoomTypeController extends Controller
                 ? BedType::where('hotel_id', $hotel->id)->findOrFail($request->integer('bed_type_id'))
                 : null;
 
+            $category = $request->filled('room_type_category_id')
+                ? RoomTypeCategory::where('hotel_id', $hotel->id)->find($request->integer('room_type_category_id'))
+                : null;
+
             $roomType = RoomType::create([
                 'hotel_id' => $hotel->id,
-                'bed_type_id' => $request->input('bed_type_id') ?: null,
+                'room_type_category_id' => $category?->id,
                 'name' => $request->name,
-                'type' => $request->type ?? 'Standard',
+                'type' => $category?->name ?? $request->type ?? 'Standard',
                 'bed' => $bedType?->name ?? $request->bed,
                 'bed_type_id' => $bedType?->id,
                 'description' => $request->description,
@@ -137,7 +147,7 @@ class RoomTypeController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Room type created successfully',
-                'data' => $roomType->load(['photos', 'facilities', 'bedType'])
+                'data' => $roomType->load(['photos', 'facilities', 'bedType', 'category']),
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -179,13 +189,18 @@ class RoomTypeController extends Controller
 
         $user = $request->user();
         $hotel = $user->hotel ?? $user->hotels()->first();
-        if (!$hotel || (int) $roomType->hotel_id !== (int) $hotel->id) {
+        if (! $hotel || (int) $roomType->hotel_id !== (int) $hotel->id) {
             return response()->json(['status' => 'error', 'message' => 'Room type not found'], 404);
         }
 
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:255',
             'type' => 'nullable|string|max:100',
+            'room_type_category_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('room_type_categories', 'id')->where('hotel_id', $roomType->hotel_id)->whereNull('deleted_at'),
+            ],
             'bed' => 'nullable|string|max:100',
             'bed_type_id' => [
                 'sometimes',
@@ -216,6 +231,18 @@ class RoomTypeController extends Controller
             'name', 'type', 'description', 'weekday_price', 'weekend_price',
             'stock', 'policies',
         ]);
+
+        if ($request->exists('room_type_category_id')) {
+            $category = $request->filled('room_type_category_id')
+                ? RoomTypeCategory::where('hotel_id', $roomType->hotel_id)->find($request->integer('room_type_category_id'))
+                : null;
+
+            $updateData['room_type_category_id'] = $category?->id;
+
+            if ($category) {
+                $updateData['type'] = $category->name;
+            }
+        }
 
         if ($request->has('bed')) {
             $updateData['bed'] = $request->bed;
@@ -266,7 +293,7 @@ class RoomTypeController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Room type updated successfully',
-            'data' => $roomType->load(['photos', 'facilities', 'bedType'])
+            'data' => $roomType->load(['photos', 'facilities', 'bedType', 'category']),
         ]);
     }
 

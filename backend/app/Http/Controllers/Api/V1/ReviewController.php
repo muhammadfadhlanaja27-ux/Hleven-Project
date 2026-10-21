@@ -141,10 +141,12 @@ class ReviewController extends Controller
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $reviews = Review::where('hotel_id', $hotel->id)
-            ->orWhereHas('booking', function ($q) use ($hotel) {
-                $q->where('hotel_id', $hotel->id);
-            })
+        $reviews = Review::where(function ($q) use ($hotel) {
+            $q->where('hotel_id', $hotel->id)
+                ->orWhereHas('booking', function ($bookingQuery) use ($hotel) {
+                    $bookingQuery->where('hotel_id', $hotel->id);
+                });
+        })
             ->with(['user', 'booking.bookingRooms.roomType'])
             ->latest()
             ->get();

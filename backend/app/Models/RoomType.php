@@ -18,8 +18,9 @@ class RoomType extends Model
     ];
 
     protected $fillable = [
-        'hotel_id', 'bed_type_id', 'name', 'type', 'bed', 'description', 'weekday_price', 'weekend_price',
-        'stock', 'capacity_adult', 'capacity_child', 'breakfast', 'smoking_area', 'is_refundable', 'policies',
+        'hotel_id', 'bed_type_id', 'room_type_category_id', 'name', 'type', 'bed', 'description',
+        'weekday_price', 'weekend_price', 'stock', 'capacity_adult', 'capacity_child', 'breakfast',
+        'smoking_area', 'is_refundable', 'policies',
     ];
 
     public function hotel()
@@ -30,6 +31,11 @@ class RoomType extends Model
     public function bedType()
     {
         return $this->belongsTo(BedType::class, 'bed_type_id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(RoomTypeCategory::class, 'room_type_category_id');
     }
 
     public function photos()

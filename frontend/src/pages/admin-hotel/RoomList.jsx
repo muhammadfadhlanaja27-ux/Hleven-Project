@@ -16,6 +16,11 @@ const normalizeImageUrl = (value) => getStorageUrl(value);
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
+const dateInputValue = (date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+
 const FACILITY_ICON_MAP = {
   "AC": "ac_unit",
   "Air Conditioning": "ac_unit",
@@ -125,6 +130,13 @@ const normalizeRoom = (r) => {
   const facIds = Array.isArray(r.facilities)
     ? r.facilities.map((f) => f.id)
     : r.facilityIds || [];
+  const stock = Number(r.stock || 0);
+  const availableStock =
+    r.available_stock !== undefined ? Number(r.available_stock) : stock;
+  const occupied =
+    r.occupied !== undefined
+      ? Number(r.occupied)
+      : Math.max(0, stock - availableStock);
 
   return {
     id: r.id,
@@ -138,18 +150,20 @@ const normalizeRoom = (r) => {
     ),
     bed: r.bedType?.name || r.bed || "",
     bed_type_id: r.bed_type_id || (r.bedType?.id ?? ""),
+    room_type_category_id: r.room_type_category_id || r.category?.id || "",
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
     weekend_price: Number(r.weekend_price || 0),
     capacity: Number(r.capacity_adult || r.capacity || 2),
-    stock: Number(r.stock || 0),
-    occupied: Number(r.occupied || 0),
+    stock,
+    availableStock,
+    occupied,
     is_refundable: r.is_refundable !== undefined ? Boolean(r.is_refundable) : true,
     policies: r.policies || "",
     facilityIds: facIds,
     facilities: r.facilities || [],
     photos: photos,
-    status: Number(r.stock || 0) > 0 ? "Available" : "Occupied",
+    status: availableStock > 0 ? "Available" : "Occupied",
   };
 };
 
@@ -159,6 +173,8 @@ export default function RoomList() {
   const [rooms, setRooms] = useState([]);
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [bedTypes, setBedTypes] = useState([]);
+  const [roomTypeCategories, setRoomTypeCategories] = useState([]);
+  const [facilitySearch, setFacilitySearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,10 +206,19 @@ export default function RoomList() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [roomsRes, facilitiesRes, bedTypesRes] = await Promise.allSettled([
-        api.get("/admin/rooms"),
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const [roomsRes, facilitiesRes, bedTypesRes, categoriesRes] = await Promise.allSettled([
+        api.get("/admin/rooms", {
+          params: {
+            check_in: dateInputValue(today),
+            check_out: dateInputValue(tomorrow),
+          },
+        }),
         cachedGet("/facilities"),
-        api.get("/admin/bed-types"),
+        cachedGet("/admin/bed-types"),
+        cachedGet("/admin/room-type-categories"),
       ]);
 
       if (roomsRes.status === "fulfilled" && roomsRes.value?.data) {
@@ -220,6 +245,15 @@ export default function RoomList() {
             ? payload.data
             : [];
         setBedTypes(Array.isArray(rawBeds) ? rawBeds : []);
+      }
+      if (categoriesRes.status === "fulfilled") {
+        const payload = categoriesRes.value?.data ?? categoriesRes.value ?? [];
+        const rawCategories = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+        setRoomTypeCategories(Array.isArray(rawCategories) ? rawCategories : []);
       }
     } catch (err) {
       console.error(err);
@@ -288,6 +322,7 @@ export default function RoomList() {
     setEditValues({
       name: room.name,
       type: room.type || "Standard",
+      room_type_category_id: room.room_type_category_id || "",
       bed: room.bed || "",
       bed_type_id: room.bed_type_id || "",
       description: room.description || "",
@@ -313,6 +348,19 @@ export default function RoomList() {
     setEditValues((prev) => ({ ...prev, [name]: value }));
     if (editErrors[name]) {
       setEditErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleEditCategoryChange = (e) => {
+    const value = e.target.value;
+    const selected = roomTypeCategories.find((c) => String(c.id) === String(value));
+    setEditValues((prev) => ({
+      ...prev,
+      room_type_category_id: value,
+      type: selected ? selected.name : prev.type,
+    }));
+    if (editErrors.room_type_category_id) {
+      setEditErrors((prev) => ({ ...prev, room_type_category_id: "" }));
     }
   };
 
@@ -392,6 +440,8 @@ export default function RoomList() {
 
     const errs = {};
     if (!editValues.name.trim()) errs.name = "Room name is required.";
+    if (!editValues.room_type_category_id)
+      errs.room_type_category_id = "Pilih tipe kamar.";
     if (!editValues.weekday_price || Number(editValues.weekday_price) <= 0)
       errs.weekday_price = "Weekday price must be greater than 0.";
     if (!editValues.weekend_price || Number(editValues.weekend_price) <= 0)
@@ -421,6 +471,7 @@ export default function RoomList() {
       const payload = new FormData();
       payload.append("_method", "PUT");
       payload.append("name", editValues.name.trim());
+      payload.append("room_type_category_id", editValues.room_type_category_id || "");
       payload.append("type", editValues.type || "Standard");
       payload.append("bed", editValues.bed || "");
       payload.append("bed_type_id", editValues.bed_type_id || "");
@@ -632,7 +683,7 @@ export default function RoomList() {
             <tbody className="divide-y divide-[#E5E1DA] text-sm">
               {paginatedRooms.length > 0 ? (
                 paginatedRooms.map((room) => {
-                  const availableStock = Math.max(0, room.stock - (room.occupied || 0));
+                  const availableStock = Math.max(0, room.availableStock ?? room.stock - (room.occupied || 0));
                   const assignedFacilities = getFacilitiesForRoom(room.facilityIds);
                   const firstPhoto = room.photos?.[0]?.url || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=400&q=80";
 
@@ -883,7 +934,7 @@ export default function RoomList() {
                   </div>
                   <div className="p-3 bg-[#E4EBE0] rounded-lg border border-[#E5E1DA]">
                     <span className="text-[11px] font-semibold text-[#4A5D43]">Available</span>
-                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#4A5D43] mt-1">{Math.max(0, viewingRoom.stock - (viewingRoom.occupied || 0))}</p>
+                    <p className="font-['Newsreader',serif] text-2xl font-bold text-[#4A5D43] mt-1">{Math.max(0, viewingRoom.availableStock ?? viewingRoom.stock - (viewingRoom.occupied || 0))}</p>
                   </div>
                 </div>
               </div>
@@ -945,11 +996,35 @@ export default function RoomList() {
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Room Type *</label>
-                    <select name="type" value={editValues.type} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white">
-                      <option value="Standard">Standard</option>
-                      <option value="Deluxe">Deluxe</option>
-                      <option value="Suite">Suite</option>
+                    <select
+                      name="room_type_category_id"
+                      value={editValues.room_type_category_id || ""}
+                      onChange={handleEditCategoryChange}
+                      className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Pilih tipe kamar</option>
+                      {roomTypeCategories
+                        .filter(
+                          (category) =>
+                            category.status === "active" ||
+                            String(category.id) === String(editValues.room_type_category_id)
+                        )
+                        .map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
                     </select>
+                    {editErrors.room_type_category_id && (
+                      <span className="text-xs text-[#ba1a1a]">
+                        {editErrors.room_type_category_id}
+                      </span>
+                    )}
+                    {roomTypeCategories.length === 0 && (
+                      <span className="text-xs text-[#6B6E6A]">
+                        Belum ada tipe kamar. Tambahkan di menu Room Types Management.
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1003,7 +1078,9 @@ export default function RoomList() {
                       className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
                     >
                       <option value="">Pilih Tipe Kasur</option>
-                      {bedTypes.map((b) => (
+                      {bedTypes.filter((b) =>
+                        b.status === "active" || String(b.id) === String(editValues.bed_type_id)
+                      ).map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.name}
                           {b.size ? ` — ${b.size}` : ""} ({b.max_adults}D/{b.max_children}A, maks {b.max_total})

@@ -146,19 +146,19 @@ export default function Dashboard() {
     fetchWarnings();
   }, []);
 
-  const buildDashboardUrl = () => {
-    const params = new URLSearchParams();
-    if (customRevFrom && customRevTo) { params.set('rev_from', customRevFrom); params.set('rev_to', customRevTo); }
-    else if (customRevMonth) { params.set('rev_month', customRevMonth); }
-    const qs = params.toString();
-    return `/admin/hotel/dashboard${qs ? `?${qs}` : ''}`;
-  };
-
-  const fetchStats = useCallback(async (forceRefresh = false) => {
+  const fetchStats = useCallback(async (forceRefresh = false, filters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const url = buildDashboardUrl();
+      const params = new URLSearchParams();
+      if (filters.from && filters.to) {
+        params.set('rev_from', filters.from);
+        params.set('rev_to', filters.to);
+      } else if (filters.month) {
+        params.set('rev_month', filters.month);
+      }
+      const qs = params.toString();
+      const url = `/admin/hotel/dashboard${qs ? `?${qs}` : ''}`;
       const { data: resData } = await cachedGet(url, {}, forceRefresh);
       const data = resData?.data;
       if (!data) throw new Error('Format data tidak valid dari server.');
@@ -581,15 +581,15 @@ export default function Dashboard() {
                     <input type="date" value={customRevFrom} onChange={(e) => setCustomRevFrom(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
                     <span className="text-xs text-[#6B6E6A]">s/d</span>
                     <input type="date" value={customRevTo} onChange={(e) => setCustomRevTo(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
-                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
-                    {(customRevFrom || customRevTo) && <button type="button" onClick={() => { setCustomRevFrom(''); setCustomRevTo(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
+                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { from: customRevFrom, to: customRevTo }); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
+                    {(customRevFrom || customRevTo) && <button type="button" onClick={() => { setCustomRevFrom(''); setCustomRevTo(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { from: '', to: '' }); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
                   </div>
                 )}
                 {revPeriod === 'monthly' && (
                   <div className="flex items-center gap-1.5">
                     <input type="month" value={customRevMonth} onChange={(e) => setCustomRevMonth(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
-                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
-                    {customRevMonth && <button type="button" onClick={() => { setCustomRevMonth(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
+                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { month: customRevMonth }); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
+                    {customRevMonth && <button type="button" onClick={() => { setCustomRevMonth(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { month: '' }); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
                   </div>
                 )}
               </div>

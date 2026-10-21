@@ -118,6 +118,9 @@ export default function RoomCreate() {
   // Shared Room Facilities list
   const [roomFacilities, setRoomFacilities] = useState([]);
   const [bedTypes, setBedTypes] = useState([]);
+  const [roomTypeCategories, setRoomTypeCategories] = useState([]);
+  const [facilitySearch, setFacilitySearch] = useState("");
+  const [isLoadingFacilities, setIsLoadingFacilities] = useState(true);
   const [rawFiles, setRawFiles] = useState([]);
 
   const ROOM_POLICY_TEMPLATE = `Waktu Check-in & Check-out
@@ -133,6 +136,7 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
   const [formData, setFormData] = useState({
     name: "",
     type: "",
+    room_type_category_id: "",
     bed: "",
     bed_type_id: "",
     description: "",
@@ -150,9 +154,10 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
 
   useEffect(() => {
     const fetchRoomFacilities = async () => {
-      const [facilityResult, bedTypeResult] = await Promise.allSettled([
+      const [facilityResult, bedTypeResult, categoryResult] = await Promise.allSettled([
         cachedGet("/facilities"),
-        api.get("/admin/bed-types"),
+        cachedGet("/admin/bed-types"),
+        cachedGet("/admin/room-type-categories"),
       ]);
       if (facilityResult.status === "fulfilled") {
         const responseData = facilityResult.value.data;
@@ -177,24 +182,16 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
         console.error("Failed to load bed types:", bedTypeResult.reason);
         toast.error("Gagal memuat daftar tipe kasur.");
       }
+      if (categoryResult.status === "fulfilled") {
+        const categoryData = categoryResult.value.data?.data ?? [];
+        setRoomTypeCategories(Array.isArray(categoryData) ? categoryData : []);
+      } else {
+        console.error("Failed to load room type categories:", categoryResult.reason);
+        toast.error("Gagal memuat daftar tipe kamar.");
+      }
       setIsLoadingFacilities(false);
-      setIsLoadingBedTypes(false);
     };
     fetchRoomFacilities();
-  }, []);
-
-  useEffect(() => {
-    const fetchBedTypes = async () => {
-      try {
-        const { data } = await cachedGet("/admin/bed-types");
-        const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        setBedTypes(list);
-      } catch (err) {
-        console.error("Failed to load bed types:", err);
-        setBedTypes([]);
-      }
-    };
-    fetchBedTypes();
   }, []);
 
   const handleChange = (e) => {
@@ -205,6 +202,19 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
     }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleRoomTypeCategoryChange = (e) => {
+    const value = e.target.value;
+    const selected = roomTypeCategories.find((c) => String(c.id) === String(value));
+    setFormData((prev) => ({
+      ...prev,
+      room_type_category_id: value,
+      type: selected ? selected.name : "",
+    }));
+    if (errors.room_type_category_id) {
+      setErrors((prev) => ({ ...prev, room_type_category_id: "" }));
     }
   };
 
@@ -271,6 +281,10 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
       newErrors.name = "Room name is required.";
     }
 
+    if (!formData.room_type_category_id) {
+      newErrors.room_type_category_id = "Pilih tipe kamar.";
+    }
+
     if (!formData.weekday_price || Number(formData.weekday_price) <= 0) {
       newErrors.weekday_price = "Weekday price must be greater than 0.";
     }
@@ -304,14 +318,13 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
     try {
       const payload = new FormData();
       payload.append("name", formData.name.trim());
+      payload.append("room_type_category_id", formData.room_type_category_id);
       payload.append("type", formData.type || "Standard");
       payload.append("description", formData.description.trim());
       payload.append("weekday_price", formData.weekday_price);
       payload.append("weekend_price", formData.weekend_price);
       payload.append("bed", formData.bed || "");
       payload.append("bed_type_id", formData.bed_type_id || "");
-      payload.append("bed_type_id", formData.bed_type_id || "");
-      payload.append("stock", formData.stock);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
       payload.append("policies", (formData.policies || "").trim());
@@ -409,29 +422,42 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
 
             {/* Room Type */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="type" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              <label htmlFor="room_type_category_id" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
                 Room Type <span className="text-[#ba1a1a]">*</span>
               </label>
               <select
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
+                id="room_type_category_id"
+                name="room_type_category_id"
+                value={formData.room_type_category_id}
+                onChange={handleRoomTypeCategoryChange}
                 disabled={isSubmitting}
                 className={`w-full h-11 px-4 bg-white border ${
-                  errors.type ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  errors.room_type_category_id ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                 } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer`}
               >
                 <option value="" disabled>
-                  Select a type
+                  Pilih tipe kamar
                 </option>
-                <option value="Standard">Standard</option>
-                <option value="Deluxe">Deluxe</option>
-                <option value="Suite">Suite</option>
+                {roomTypeCategories
+                  .filter((category) => category.status === "active")
+                  .map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
               </select>
-              {errors.type && (
+              {errors.room_type_category_id && (
                 <span className="text-xs text-[#ba1a1a] font-medium">
-                  {errors.type}
+                  {errors.room_type_category_id}
+                </span>
+              )}
+              {roomTypeCategories.length === 0 && (
+                <span className="text-[11px] text-[#6B6E6A]">
+                  Belum ada tipe kamar. Tambahkan dulu di menu{" "}
+                  <Link to="/admin/room-types" className="font-semibold text-[#506147] underline">
+                    Room Types Management
+                  </Link>
+                  .
                 </span>
               )}
             </div>
@@ -470,7 +496,9 @@ Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwa
               } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all cursor-pointer`}
             >
               <option value="">Pilih Tipe Kasur</option>
-              {bedTypes.map((b) => (
+              {bedTypes.filter((b) =>
+                b.status === "active" || String(b.id) === String(formData.bed_type_id)
+              ).map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
                   {b.size ? ` — ${b.size}` : ""} ({b.max_adults}D/{b.max_children}A, maks {b.max_total})

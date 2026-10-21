@@ -3,19 +3,28 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
 
+const emptyForm = {
+  name: "",
+  size: "",
+  max_adults: 1,
+  max_children: 0,
+  max_total: 1,
+  description: "",
+  status: "active",
+};
+
+const getErrorMessage = (error, fallback) => {
+  const data = error.response?.data;
+  const firstValidationError = data?.errors && Object.values(data.errors).flat()[0];
+  return firstValidationError || data?.message || fallback;
+};
+
 export default function BedTypeManager() {
   const [bedTypes, setBedTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState(null); // add | edit | delete
   const [selectedBed, setSelectedBed] = useState(null);
-  const [formValues, setFormValues] = useState({
-    name: "",
-    size: "",
-    max_adults: 1,
-    max_children: 0,
-    max_total: 1,
-    description: "",
-  });
+  const [formValues, setFormValues] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,7 +36,7 @@ export default function BedTypeManager() {
       setBedTypes(list);
     } catch (e) {
       console.error(e);
-      toast.error("Gagal memuat tipe tempat tidur.");
+      toast.error(getErrorMessage(e, "Gagal memuat tipe tempat tidur."));
     } finally {
       setLoading(false);
     }
@@ -38,7 +47,7 @@ export default function BedTypeManager() {
   }, []);
 
   const handleOpenAdd = () => {
-    setFormValues({ name: "", size: "", max_adults: 1, max_children: 0, max_total: 1, description: "" });
+    setFormValues(emptyForm);
     setErrors({});
     setSelectedBed(null);
     setModalMode("add");
@@ -52,6 +61,7 @@ export default function BedTypeManager() {
       max_children: bed.max_children ?? 0,
       max_total: bed.max_total ?? 1,
       description: bed.description || "",
+      status: bed.status || "active",
     });
     setSelectedBed(bed);
     setErrors({});
@@ -60,6 +70,7 @@ export default function BedTypeManager() {
 
   const handleOpenDelete = (bed) => {
     setSelectedBed(bed);
+    setErrors({});
     setModalMode("delete");
   };
 
@@ -84,7 +95,9 @@ export default function BedTypeManager() {
     if (!formValues.name.trim()) err.name = "Nama diperlukan.";
     if (formValues.max_adults < 1) err.max_adults = "Minimal 1 dewasa.";
     if (formValues.max_total < 1) err.max_total = "Minimal 1 total.";
-    if (formValues.max_adults > formValues.max_total) err.max_total = "Total harus >= Dewasa.";
+    if (formValues.max_total < formValues.max_adults + formValues.max_children) {
+      err.max_total = "Total tidak boleh kurang dari jumlah dewasa dan anak.";
+    }
     return err;
   };
 
@@ -100,16 +113,30 @@ export default function BedTypeManager() {
       } else if (modalMode === "edit" && selectedBed) {
         await api.put(`/admin/bed-types/${selectedBed.id}`, formValues);
         toast.success("Tipe tempat tidur diperbarui.");
-      } else if (modalMode === "delete" && selectedBed) {
-        await api.delete(`/admin/bed-types/${selectedBed.id}`);
-        toast.success("Tipe tempat tidur dihapus.");
       }
       invalidateCache("/admin/bed-types");
       await fetchBedTypes(true);
       closeModal();
     } catch (e) {
       console.error(e);
-      toast.error(e.response?.data?.message || "Operasi gagal.");
+      toast.error(getErrorMessage(e, "Operasi gagal."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedBed) return;
+    setSubmitting(true);
+    try {
+      await api.delete(`/admin/bed-types/${selectedBed.id}`);
+      toast.success("Tipe tempat tidur dihapus.");
+      invalidateCache("/admin/bed-types");
+      await fetchBedTypes(true);
+      closeModal();
+    } catch (e) {
+      console.error(e);
+      toast.error(getErrorMessage(e, "Gagal menghapus tipe tempat tidur."));
     } finally {
       setSubmitting(false);
     }
@@ -153,6 +180,8 @@ export default function BedTypeManager() {
                     <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Dewasa</th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Anak</th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Total Tamu</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Dipakai</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
@@ -173,6 +202,18 @@ export default function BedTypeManager() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="px-3 py-1 bg-[#2D312C] text-white rounded-md text-sm font-bold">{b.max_total}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          b.status === "inactive"
+                            ? "bg-[#BA1A1A]/10 text-[#BA1A1A]"
+                            : "bg-[#506147]/10 text-[#506147]"
+                        }`}>
+                          {b.status === "inactive" ? "Nonaktif" : "Aktif"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-[#6B6E6A]">
+                        {b.room_types_count ?? 0} kamar
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -284,6 +325,20 @@ export default function BedTypeManager() {
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[#6B6E6A] uppercase tracking-wider">Status</label>
+                <select
+                  name="status"
+                  value={formValues.status}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8EAE8] focus:border-[#506147] outline-none transition-all bg-white"
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Nonaktif</option>
+                </select>
+                <p className="text-[11px] text-[#6B6E6A]">Tipe nonaktif disembunyikan dari pilihan kamar baru.</p>
+              </div>
+
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button" 
@@ -313,9 +368,14 @@ export default function BedTypeManager() {
               <span className="material-symbols-outlined text-[40px]">warning</span>
             </div>
             <h3 className="text-xl font-bold text-[#2D312C] mb-2 font-['Newsreader',serif]">Hapus Tipe Kasur?</h3>
-            <p className="text-[#6B6E6A] text-sm mb-8">
+            <p className="text-[#6B6E6A] text-sm mb-4">
               Apakah Anda yakin ingin menghapus <span className="font-bold text-[#2D312C]">"{selectedBed.name}"</span>? Tindakan ini tidak dapat dibatalkan.
             </p>
+            {(selectedBed.room_types_count ?? 0) > 0 && (
+              <p className="text-[#BA1A1A] text-xs font-semibold mb-4">
+                Tipe ini dipakai {selectedBed.room_types_count} kamar. Ubah status menjadi Nonaktif jika tidak ingin menghapusnya.
+              </p>
+            )}
             <div className="flex gap-3">
               <button 
                 onClick={closeModal} 
@@ -324,7 +384,7 @@ export default function BedTypeManager() {
                 Batal
               </button>
               <button 
-                onClick={handleSubmit} 
+                onClick={handleDelete}
                 disabled={submitting}
                 className="flex-1 px-4 py-3 bg-[#BA1A1A] text-white rounded-xl font-bold hover:bg-[#93000A] transition-all shadow-md active:scale-95"
               >

@@ -94,6 +94,7 @@ class BookingDedupTest extends TestCase
             $t->smallInteger('children_count')->default(0);
             $t->decimal('subtotal', 15, 2);
             $t->decimal('tax', 15, 2);
+            $t->decimal('tax_rate', 5, 2)->nullable();
             $t->decimal('grand_total', 15, 2);
             $t->text('special_request')->nullable();
             $t->string('status')->default('unpaid');

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ActivityLog;
 use App\Models\Hotel;
+use App\Models\HotelPayoutDestination;
 use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\Payout;
@@ -50,10 +51,19 @@ class PayoutService
         ];
     }
 
-    public function requestPayout(Hotel $hotel, User $user, float $amount, ?string $note = null): Payout
-    {
-        if (! $hotel->bank_name || ! $hotel->bank_account_number) {
-            throw new RuntimeException('Rekening bank hotel belum diisi. Lengkapi di profil hotel terlebih dahulu.');
+    public function requestPayout(
+        Hotel $hotel,
+        User $user,
+        float $amount,
+        ?string $note = null,
+        ?HotelPayoutDestination $destination = null
+    ): Payout {
+        $bankName = $destination?->channel_code ?: $hotel->bank_name;
+        $bankAccountNumber = $destination?->account_number ?: $hotel->bank_account_number;
+        $bankAccountName = $destination?->account_name ?: $hotel->bank_account_name;
+
+        if (! $bankName || ! $bankAccountNumber) {
+            throw new RuntimeException('Tujuan pencairan belum diisi. Simpan rekening bank atau e-wallet terlebih dahulu.');
         }
 
         if ($amount <= 0) {
@@ -65,7 +75,7 @@ class PayoutService
             throw new RuntimeException('Nominal pencairan minimal Rp '.number_format($min, 0, ',', '.').'.');
         }
 
-        return DB::transaction(function () use ($hotel, $user, $amount, $note) {
+        return DB::transaction(function () use ($hotel, $user, $amount, $note, $bankName, $bankAccountNumber, $bankAccountName) {
             // ponytail: lock baris hotel sebagai mutex agar dua pengajuan bersamaan tak melebihi saldo
             Hotel::whereKey($hotel->id)->lockForUpdate()->first();
 
@@ -82,9 +92,9 @@ class PayoutService
                 'requested_by' => $user->id,
                 'amount' => $amount,
                 'status' => $status,
-                'bank_name' => $hotel->bank_name,
-                'bank_account_number' => $hotel->bank_account_number,
-                'bank_account_name' => $hotel->bank_account_name,
+                'bank_name' => $bankName,
+                'bank_account_number' => $bankAccountNumber,
+                'bank_account_name' => $bankAccountName,
                 'note' => $note,
                 'requested_at' => now(),
             ]);

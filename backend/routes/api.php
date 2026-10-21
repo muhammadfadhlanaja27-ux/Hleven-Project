@@ -10,9 +10,11 @@ use App\Http\Controllers\Api\V1\FacilityController;
 use App\Http\Controllers\Api\V1\HotelController;
 use App\Http\Controllers\Api\V1\HotelPayoutController;
 use App\Http\Controllers\Api\V1\HotelWalletController;
+use App\Http\Controllers\Api\V1\ReportController as HotelReportController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\RoomCalendarController;
 use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RoomTypeCategoryController;
 use App\Http\Controllers\Api\V1\RoomTypeController;
 use App\Http\Controllers\Api\V1\SuperAdminWalletController;
 use App\Http\Controllers\AppealController;
@@ -52,6 +54,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
 
     // Public booking (guest checkout — auto-creates a session token in controller)
+    Route::post('/bookings/quote', [BookingController::class, 'quote']);
     Route::post('/bookings', [BookingController::class, 'store']);
 
     // ==========================================
@@ -96,7 +99,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('hotel/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 
             // --- Laporan & Pembayaran ---
-            Route::get('hotel/reports/revenue', [ReportController::class, 'revenueReport']);
+            Route::get('hotel/reports/revenue', [HotelReportController::class, 'revenueReport']);
             Route::get('hotel/payments', [PaymentController::class, 'hotelPayments']);
             Route::post('hotel/payments/{orderId}/check-status', [PaymentController::class, 'syncStatus']);
 
@@ -169,6 +172,13 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
     Route::post('/hotels/{hotelId}/room-types', [RoomTypeController::class, 'store']);
     Route::put('/room-types/{id}', [RoomTypeController::class, 'update']);
     Route::delete('/room-types/{id}', [RoomTypeController::class, 'destroy']);
+
+    // --- Master Tipe Kamar (kategori yang dipilih saat membuat kamar) ---
+    Route::get('/room-type-categories', [RoomTypeCategoryController::class, 'index']);
+    Route::post('/room-type-categories', [RoomTypeCategoryController::class, 'store']);
+    Route::get('/room-type-categories/{id}', [RoomTypeCategoryController::class, 'show']);
+    Route::put('/room-type-categories/{id}', [RoomTypeCategoryController::class, 'update']);
+    Route::delete('/room-type-categories/{id}', [RoomTypeCategoryController::class, 'destroy']);
 
     // --- CRUD Bed Types (admin hotel) ---
     Route::get('/bed-types', [BedTypeController::class, 'index']);

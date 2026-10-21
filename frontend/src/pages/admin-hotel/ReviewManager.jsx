@@ -32,6 +32,21 @@ const renderStars = (rating) => {
   return <div className="flex items-center gap-0.5">{stars}</div>;
 };
 
+const getReviewerName = (review) =>
+  review?.user?.name || review?.guest?.name || "Guest";
+
+const getReviewerInitials = (review) =>
+  getReviewerName(review)
+    .split(" ")
+    .map((name) => name[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "G";
+
+const getBookingCode = (review) =>
+  review?.booking?.booking_code || review?.booking_code || "";
+
 export default function ReviewManager() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -137,7 +152,7 @@ export default function ReviewManager() {
   // Filter Logic
   const filteredReviews = reviews.filter((r) => {
     const q = searchQuery.toLowerCase();
-    const guestName = r.guest?.name || "";
+    const guestName = getReviewerName(r);
     const comment = r.comment || "";
     const matchesSearch =
       guestName.toLowerCase().includes(q) ||
@@ -361,12 +376,8 @@ export default function ReviewManager() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {sortedReviews.map((review) => {
               const isUnread = !readIds.has(review.id);
-              const guestInitials = (review.guest?.name || "G")
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase();
+              const guestInitials = getReviewerInitials(review);
+              const bookingCode = getBookingCode(review);
               const dateStr = review.created_at
                 ? new Date(review.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
                 : "";
@@ -396,10 +407,10 @@ export default function ReviewManager() {
                       </div>
                       <div>
                         <h4 className="font-semibold text-[#2D312C] text-base leading-snug">
-                          {review.guest?.name || "Guest"}
+                          {getReviewerName(review)}
                         </h4>
                         <p className="text-xs text-[#6B6E6A]">
-                          {review.booking_code ? `Booking: ${review.booking_code} • ` : ""}{dateStr}
+                          {bookingCode ? `Booking: ${bookingCode} • ` : ""}{dateStr}
                         </p>
                       </div>
                     </div>
@@ -547,12 +558,12 @@ export default function ReviewManager() {
                 <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Guest Information</h4>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#4A5D43] font-bold text-sm flex items-center justify-center border border-[#E5E1DA]">
-                    {(viewingReview.guest?.name || "G").slice(0, 2).toUpperCase()}
+                    {getReviewerInitials(viewingReview)}
                   </div>
                   <div className="text-xs space-y-0.5">
-                    <p className="font-bold text-[#2D312C] text-sm">{viewingReview.guest?.name || "Guest"}</p>
-                    {viewingReview.booking_code && (
-                      <p className="text-[#6B6E6A]">Booking: {viewingReview.booking_code}</p>
+                    <p className="font-bold text-[#2D312C] text-sm">{getReviewerName(viewingReview)}</p>
+                    {getBookingCode(viewingReview) && (
+                      <p className="text-[#6B6E6A]">Booking: {getBookingCode(viewingReview)}</p>
                     )}
                     <p className="text-[#6B6E6A]">
                       {viewingReview.created_at

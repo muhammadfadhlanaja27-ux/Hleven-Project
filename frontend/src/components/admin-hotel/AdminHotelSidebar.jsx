@@ -143,6 +143,22 @@ export default function AdminHotelSidebar() {
 
           <li>
             <Link
+              to="/admin/room-types"
+              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                isActive('/admin/room-types')
+                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
+                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3 text-[20px]">
+                category
+              </span>
+              <span>Room Types Management</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
               to="/admin/transactions"
               className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
                 isActive('/admin/transactions')
@@ -154,20 +170,6 @@ export default function AdminHotelSidebar() {
                 receipt_long
               </span>
               <span>Transaction History</span>
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              to="/admin/wallet"
-              className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 ${
-                isActive('/admin/wallet')
-                  ? 'bg-[#506147] text-white border-l-4 border-[#d6e8c8]'
-                  : 'text-[#D1D5D1] hover:bg-[#69795f]/25 hover:text-white border-l-4 border-transparent'
-              }`}
-            >
-              <span className="material-symbols-outlined mr-3 text-[20px]">account_balance_wallet</span>
-              <span>Saldo Hotel</span>
             </Link>
           </li>
 

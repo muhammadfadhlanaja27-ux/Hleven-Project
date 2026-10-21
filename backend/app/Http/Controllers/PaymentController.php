@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Hotel;
 use App\Models\Payment;
 use App\Services\MidtransService;
 use App\Services\NotificationService;
@@ -165,6 +166,7 @@ class PaymentController extends Controller
             $msg = $e->getMessage();
             $code = (int) ($e->getCode() ?: 0);
             $isNotFound = $code === 404 || str_contains($msg, "doesn't exist") || str_contains($msg, '404') || str_contains($msg, 'not found');
+
             return response()->json([
                 'success' => false,
                 'message' => $isNotFound ? $msg : 'Gagal menyinkronkan data dengan Midtrans.',
@@ -246,12 +248,12 @@ class PaymentController extends Controller
             $user = $request->user();
             $hotelId = $user->hotel->id ?? null;
 
-            if (!$hotelId) {
+            if (! $hotelId) {
                 // Ambil hotel pertama jika admin_id tidak terikat via hasOne (fallback)
-                $hotelId = \App\Models\Hotel::where('admin_id', $user->id)->value('id');
+                $hotelId = Hotel::where('admin_id', $user->id)->value('id');
             }
 
-            if (!$hotelId) {
+            if (! $hotelId) {
                 return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
             }
 
@@ -260,7 +262,7 @@ class PaymentController extends Controller
             })->with(['booking.user', 'booking.guests']);
 
             if ($request->filled('search')) {
-                $like = '%' . $request->search . '%';
+                $like = '%'.$request->search.'%';
                 $query->where(function ($q) use ($like) {
                     $q->where('order_id', 'like', $like)
                         ->orWhere('transaction_id', 'like', $like)
@@ -278,7 +280,15 @@ class PaymentController extends Controller
 
             // Filter Status
             if ($request->filled('status')) {
-                $query->where('payment_status', $request->status);
+                $status = strtolower(trim((string) $request->input('status')));
+                $status = match ($status) {
+                    'expire' => 'expired',
+                    'failure' => 'failed',
+                    'cancel' => 'cancelled',
+                    default => $status,
+                };
+
+                $query->where('payment_status', $status);
             }
 
             // Filter Date Range
@@ -299,7 +309,7 @@ class PaymentController extends Controller
                     'per_page' => $payments->perPage(),
                     'current_page' => $payments->currentPage(),
                     'last_page' => $payments->lastPage(),
-                ]
+                ],
             ], 200);
 
         } catch (\Exception $e) {
@@ -319,7 +329,7 @@ class PaymentController extends Controller
     {
         try {
             $user = $request->user();
-            $hotelId = $user->hotel->id ?? \App\Models\Hotel::where('admin_id', $user->id)->value('id');
+            $hotelId = $user->hotel->id ?? Hotel::where('admin_id', $user->id)->value('id');
 
             $payment = Payment::where('order_id', $orderId)
                 ->whereHas('booking', function ($q) use ($hotelId) {

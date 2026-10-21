@@ -226,6 +226,49 @@ class BedTypeTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_bed_type_total_capacity_must_cover_adults_and_children(): void
+    {
+        [$admin] = $this->createHotelAdmin('capacity@example.com');
+        $this->actingAs($admin, 'sanctum');
+
+        $this->postJson('/api/v1/admin/bed-types', [
+            'name' => 'Too Small',
+            'max_adults' => 2,
+            'max_children' => 1,
+            'max_total' => 2,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('max_total');
+    }
+
+    public function test_admin_can_deactivate_a_bed_type_used_by_a_room(): void
+    {
+        [$admin, $hotel] = $this->createHotelAdmin('deactivate@example.com');
+        $bedType = BedType::create([
+            'hotel_id' => $hotel->id,
+            'name' => 'Used Queen',
+            'status' => 'active',
+        ]);
+        RoomType::create([
+            'hotel_id' => $hotel->id,
+            'name' => 'Room with a bed',
+            'type' => 'Standard',
+            'bed' => $bedType->name,
+            'bed_type_id' => $bedType->id,
+            'weekday_price' => 100000,
+            'weekend_price' => 120000,
+            'stock' => 1,
+            'capacity_adult' => 2,
+            'capacity_child' => 0,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/bed-types/{$bedType->id}", ['status' => 'inactive'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'inactive')
+            ->assertJsonPath('data.room_types_count', 1);
+    }
+
     private function createHotelAdmin(string $email, ?string $slug = null): array
     {
         $admin = User::create([
