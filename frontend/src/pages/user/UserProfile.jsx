@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
 import { formatRefundDeadline, getRefundPolicy } from "../../utils/refundPolicy";
+import ApplicationStatus from "../../components/mitra/ApplicationStatus";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 // Helper untuk format tanggal dari ISO string menjadi "06 Okt 2026"
@@ -23,16 +24,61 @@ const formatDate = (dateStr) => {
   }
 };
 
-const BookingHistory = () => {
-  const navigate = useNavigate();
+const getInitialUser = () => {
+  try {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
 
-  // Component States
+const UserProfile = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const initialUser = getInitialUser();
+  const initialRole = initialUser?.role || "user";
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const requestedTab = location.state?.defaultTab;
+    if (
+      requestedTab === "partner" &&
+      (initialRole === "admin_hotel" || initialRole === "super_admin")
+    ) {
+      return "personal";
+    }
+    return ["personal", "history", "partner", "notifications"].includes(requestedTab)
+      ? requestedTab
+      : "personal";
+  });
+
+  // Account & Profile States
+  const [user, setUser] = useState(initialUser);
+  const [currentUserRole, setCurrentUserRole] = useState(initialRole);
+  const [partnerApplication, setPartnerApplication] = useState(null);
+  const [partnerLoading, setPartnerLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  // Personal Info Form State
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  // Security Form State
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [pwdLoading, setPwdLoading] = useState(false);
+
+  // Booking History States
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("All");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [user, setUser] = useState(null);
 
   // Avatar Upload & Error Handling States
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -42,6 +88,7 @@ const BookingHistory = () => {
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleDownloadPdf = async (bookingId, bookingCode) => {
     try {
@@ -74,41 +121,7 @@ const BookingHistory = () => {
     }
   };
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error("Gagal membaca user:", e);
-      }
-    }
-
-    fetchUserBookings();
-
-    // Hanya fetch status pendaftaran mitra jika user adalah user biasa (bukan admin)
-    // Admin hotel/super admin SUDAH menjadi bagian dari operasional hotel,
-    // sehingga tidak perlu (dan tidak bisa) mendaftar sebagai mitra lagi.
-    if (
-      currentUserRole !== "admin_hotel" &&
-      currentUserRole !== "super_admin"
-    ) {
-      fetchPartnerStatus();
-    } else {
-      setPartnerApplication(null);
-    }
-
-    fetchNotifications();
-    const notificationInterval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(notificationInterval);
-  }, [navigate, currentUserRole]);
-
-  // Reset error avatar setiap kali data user atau foto berubah
-  useEffect(() => {
-    setAvatarError(false);
-  }, [user?.avatar, user?.avatar_url, user?.avatarPreview]);
-
-  const fetchApiBookings = async (forceRefresh = false) => {
+  const fetchUserBookings = async (forceRefresh = false) => {
     setBookingsLoading(true);
     try {
       const TTL_30DETIK = 30 * 1000;
@@ -128,6 +141,114 @@ const BookingHistory = () => {
     }
   };
 
+  const fetchPartnerStatus = async () => {
+    setPartnerLoading(true);
+    try {
+      const res = await api.get("/user/partner-application");
+      const data = res.data?.data || res.data;
+      if (data && (data.id || data.application_number || data.status)) {
+        setPartnerApplication(data);
+      } else {
+        setPartnerApplication(null);
+      }
+    } catch {
+      try {
+        const saved = localStorage.getItem("partner_app_submission");
+        setPartnerApplication(saved ? JSON.parse(saved) : null);
+      } catch {
+        setPartnerApplication(null);
+      }
+    } finally {
+      setPartnerLoading(false);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const res = await api.get("/notifications");
+      const data = res.data?.data || res.data || [];
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn("Gagal memuat notifikasi:", err);
+      setNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (notifId) => {
+    try {
+      await api.patch(`/notifications/${notifId}/read`);
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification.id === notifId
+            ? { ...notification, is_read: true }
+            : notification
+        )
+      );
+    } catch (err) {
+      console.error("Gagal menandai notifikasi dibaca:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await api.patch("/notifications/read-all");
+      setNotifications((prev) =>
+        prev.map((notification) => ({ ...notification, is_read: true }))
+      );
+      toast.success("Semua notifikasi ditandai sebagai dibaca.");
+    } catch {
+      toast.error("Gagal menandai semua notifikasi.");
+    }
+  };
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (!savedUser) {
+      navigate("/login");
+      return;
+    }
+
+    let role = "user";
+    try {
+      const parsedUser = JSON.parse(savedUser);
+      role = parsedUser.role || "user";
+      const nameParts = (parsedUser.name || "").split(" ");
+
+      setUser(parsedUser);
+      setCurrentUserRole(role);
+      setFirstName(parsedUser.first_name || nameParts[0] || "");
+      setLastName(parsedUser.last_name || nameParts.slice(1).join(" ") || "");
+      setEmail(parsedUser.email || "");
+      setPhone(parsedUser.phone || "");
+
+      if (role === "admin_hotel" || role === "super_admin") {
+        setActiveTab((prev) => (prev === "partner" ? "personal" : prev));
+      }
+    } catch (err) {
+      console.error("Gagal membaca user:", err);
+    }
+
+    fetchUserBookings();
+
+    if (role !== "admin_hotel" && role !== "super_admin") {
+      fetchPartnerStatus();
+    } else {
+      setPartnerApplication(null);
+    }
+
+    fetchNotifications();
+    const notificationInterval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(notificationInterval);
+  }, [navigate]);
+
+  // Reset error avatar setiap kali data user atau foto berubah
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatar, user?.avatar_url, user?.avatarPreview]);
+
   // Handler Upload Foto Profil Langsung dari Sidebar
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -146,12 +267,14 @@ const BookingHistory = () => {
     setIsUploadingAvatar(true);
 
     try {
+      const nameParts = (user?.name || "").split(" ");
       const formData = new FormData();
-      formData.append("avatar", file);
       formData.append("_method", "PUT");
-
-      if (user?.first_name) formData.append("first_name", user.first_name);
-      if (user?.email) formData.append("email", user.email);
+      formData.append("avatar", file);
+      formData.append("first_name", user?.first_name || nameParts[0] || "User");
+      formData.append("last_name", user?.last_name || nameParts.slice(1).join(" ") || "");
+      formData.append("email", user?.email || "");
+      formData.append("phone", user?.phone || "");
 
       const res = await api.post("/user/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -181,6 +304,98 @@ const BookingHistory = () => {
     }
   };
 
+  const handleFixRevision = () => {
+    navigate("/mitra/daftar", {
+      state: {
+        prefill: {
+          hotel_name: partnerApplication?.hotel_name || "",
+          hotel_type: partnerApplication?.hotel_type || "",
+          hotel_description: partnerApplication?.hotel_description || "",
+          hotel_phone: partnerApplication?.hotel_phone || "",
+          hotel_email: partnerApplication?.hotel_email || "",
+          room_count: partnerApplication?.room_count || "",
+          address: partnerApplication?.address || "",
+          province: partnerApplication?.province || "",
+          city: partnerApplication?.city || "",
+          district: partnerApplication?.district || "",
+          postal_code: partnerApplication?.postal_code || "",
+          maps_url: partnerApplication?.maps_url || "",
+          owner_name: partnerApplication?.owner_name || "",
+          owner_email: partnerApplication?.owner_email || "",
+          owner_phone: partnerApplication?.owner_phone || "",
+          owner_id_number: partnerApplication?.owner_id_number || "",
+          bank_name: partnerApplication?.bank_name || "",
+          bank_account_number: partnerApplication?.bank_account_number || "",
+          bank_account_name: partnerApplication?.bank_account_name || "",
+        },
+      },
+    });
+  };
+
+  const handleSaveProfile = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+
+    try {
+      const res = await api.put("/user/profile", {
+        first_name: firstName,
+        last_name: lastName || "",
+        email,
+        phone: phone || "",
+      });
+
+      const updatedUser = res.data?.user || res.data?.data || {
+        name: `${firstName} ${lastName}`.trim(),
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+      };
+
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const newUserData = { ...savedUser, ...updatedUser };
+
+      localStorage.setItem("user", JSON.stringify(newUserData));
+      setUser(newUserData);
+      window.dispatchEvent(new Event("storage"));
+      toast.success("Profil berhasil diperbarui!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memperbarui profil.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (event) => {
+    event.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+
+    setPwdLoading(true);
+
+    try {
+      await api.put("/user/change-password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      toast.success("Kata sandi berhasil diperbarui!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          "Gagal memperbarui kata sandi. Periksa kata sandi saat ini."
+      );
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
   const handleProcessCancelOrRefund = async () => {
     if (!cancelModalBooking) return;
     setIsSubmittingCancel(true);
@@ -193,7 +408,7 @@ const BookingHistory = () => {
       toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
       setCancelModalBooking(null);
       setCancelReason("");
-      fetchApiBookings(true);
+      fetchUserBookings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
     } finally {
@@ -251,8 +466,6 @@ const BookingHistory = () => {
       return 0;
     });
   }, [bookings, filterStatus, sortBy]);
-
-  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = () => setConfirmLogout(true);
 
@@ -351,8 +564,9 @@ const BookingHistory = () => {
     }
   };
 
-  const initialRole = user?.role || "user";
-  const isAdminOrSuperAdmin = initialRole === "admin_hotel" || initialRole === "super_admin";
+  const resolvedRole = user?.role || currentUserRole || "user";
+  const isAdminOrSuperAdmin =
+    resolvedRole === "admin_hotel" || resolvedRole === "super_admin";
 
   const getAvatarUrl = () => {
     const a = user?.avatar || user?.avatar_url || user?.avatarPreview;
@@ -368,7 +582,7 @@ const BookingHistory = () => {
   const initialLetter = (fullName.charAt(0) || "U").toUpperCase();
 
   const accountStatus = (() => {
-    const s = String(user?.status || initialRole || "").toLowerCase();
+    const s = String(user?.status || resolvedRole || "").toLowerCase();
     if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
     if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
     if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
@@ -481,33 +695,65 @@ const BookingHistory = () => {
 
             <nav className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/40 overflow-hidden shadow-xs">
               {!isAdminOrSuperAdmin && (
-                <Link
-                  to="/profile"
-                  state={{ defaultTab: "partner" }}
-                  className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("partner")}
+                  className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                    activeTab === "partner"
+                      ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                      : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                  }`}
                 >
                   <span className="material-symbols-outlined text-xl">
                     real_estate_agent
                   </span>
                   Status Mitra Hotel
-                </Link>
+                </button>
               )}
 
-              <Link
-                to="/profile"
-                state={{ defaultTab: "personal" }}
-                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+              <button
+                type="button"
+                onClick={() => setActiveTab("personal")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "personal"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
               >
                 <span className="material-symbols-outlined text-xl">person_outline</span>
                 Informasi Pribadi
-              </Link>
+              </button>
 
-              <div
-                className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left bg-[#778873]/10 text-[#778873] border-[#778873]"
+              <button
+                type="button"
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "notifications"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
+              >
+                <span className="material-symbols-outlined text-xl">notifications</span>
+                Notifikasi
+                {notifications.filter((notification) => !notification.is_read).length > 0 && (
+                  <span className="ml-auto bg-[#ba1a1a] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {notifications.filter((notification) => !notification.is_read).length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("history")}
+                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                  activeTab === "history"
+                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                }`}
               >
                 <span className="material-symbols-outlined text-xl">history</span>
                 Riwayat Pemesanan
-              </div>
+              </button>
 
               <button
                 type="button"
@@ -1358,4 +1604,4 @@ const BookingHistory = () => {
   );
 };
 
-export default BookingHistory;
+export default UserProfile;
