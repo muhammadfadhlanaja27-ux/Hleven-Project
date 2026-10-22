@@ -1,122 +1,249 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+
+// Layout Components
+import Navbar from "./components/layouts/NavBar";
+import Footer from "./components/layouts/Footer";
+import SuperAdminLayout from "./components/super-admin/SuperAdminLayout";
+import AdminHotelLayout from "./components/admin-hotel/AdminHotelLayout";
+
+// User / Public Pages
+import LandingPage from "./pages/user/LandingPage";
+import HotelList from "./pages/user/HotelList";
+import RoomDetail from "./pages/user/RoomDetail";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import UserProfile from "./pages/user/UserProfile";
+import HotelDetail from "./pages/user/HotelDetail";
+import BookingPage from "./pages/user/BookingPage";
+import BookingHistory from "./pages/user/BookingHistory";
+
+// Mitra Hotel Pages
+import MitraLanding from "./pages/mitra/MitraLanding";
+import MitraRegistration from "./pages/mitra/MitraRegistration";
+import MitraRegistrationSuccess from "./pages/mitra/MitraRegistrationSuccess";
+
+// Admin Hotel pages
+import AdminLogin from "./pages/auth/admin-hotel/AdminLogin";
+import Dashboard from "./pages/admin-hotel/Dashboard";
+import HotelInformation from "./pages/admin-hotel/HotelInformation";
+import RoomList from "./pages/admin-hotel/RoomList";
+import RoomCreate from "./pages/admin-hotel/RoomCreate";
+import RoomCalendar from "./pages/admin-hotel/RoomCalendar";
+import BookingList from "./pages/admin-hotel/BookingList";
+import TransactionHistory from "./pages/admin-hotel/TransactionHistory";
+import ReviewManager from "./pages/admin-hotel/ReviewManager";
+import RevenueReport from "./pages/admin-hotel/Reports";
+import AdminPayouts from "./pages/admin-hotel/Payouts";
+import AdminProfile from "./pages/admin-hotel/Profile";
+import SuspendedPage from "./pages/admin-hotel/SuspendedPage";
+import AdminWarnings from "./pages/admin-hotel/Warnings";
+import BedTypeManager from "./pages/admin-hotel/BedTypeManager";
+import RoomTypeManager from "./pages/admin-hotel/RoomTypeManager";
+
+// Super Admin pages
+import SuperAdminLogin from "./pages/auth/super-admin/SuperAdminLogin";
+import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
+import UserManagement from "./pages/super-admin/UserManagement";
+import HotelMonitoring from "./pages/super-admin/HotelMonitoring";
+import PartnerApproval from "./pages/super-admin/PartnerApproval";
+import WarningManagement from "./pages/super-admin/WarningManagement";
+import AppealManagement from "./pages/super-admin/AppealManagement";
+import ActivityLogs from "./pages/super-admin/ActivityLogs";
+import Reports from "./pages/super-admin/Reports";
+import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
+import PayoutManagement from "./pages/super-admin/PayoutManagement";
+import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
+import WalletOverview from "./pages/super-admin/WalletOverview";
+
+// ---------------------------------------------------------
+// 1. Layout Wrapper Publik
+// ---------------------------------------------------------
+const MainLayout = () => (
+  <div className="flex flex-col min-h-screen">
+    <Navbar />
+    <main className="flex-grow">
+      <Outlet />
+    </main>
+    <Footer />
+  </div>
+);
+
+// ---------------------------------------------------------
+// 2. SATPAM AMAN: Protected Route untuk User Biasa (Wajib Login)
+// ---------------------------------------------------------
+const UserProtectedRoute = () => {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+  const userString = localStorage.getItem("user");
+
+  const isValidToken =
+    token &&
+    token !== "null" &&
+    token !== "undefined" &&
+    token.trim() !== "";
+
+  if (!isValidToken || !userString || userString === "null" || userString === "undefined") {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
+};
+
+// ---------------------------------------------------------
+// 3. SATPAM AMAN: Protected Route untuk Admin Hotel
+// ---------------------------------------------------------
+const AdminHotelProtectedRoute = () => {
+  const token = localStorage.getItem("token");
+  const userString = localStorage.getItem("user");
+
+  if (!token || !userString) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  try {
+    const user = JSON.parse(userString);
+    if (user.role !== "admin_hotel" && user.role !== "super_admin") {
+      return <Navigate to="/admin/login" replace />;
+    }
+    const blocked = user.hotel_status === "blocked" || user.hotel?.status === "blocked";
+    const onSuspended = window.location.pathname.startsWith("/admin/suspended");
+    if (blocked && !onSuspended) {
+      return <Navigate to="/admin/suspended" replace />;
+    }
+    if (!blocked && onSuspended) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+  } catch (e) {
+    localStorage.clear();
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  return <Outlet />;
+};
+
+// ---------------------------------------------------------
+// 4. SATPAM AMAN: Protected Route untuk Super Admin
+// ---------------------------------------------------------
+const SuperAdminProtectedRoute = () => {
+  const token = localStorage.getItem("token");
+  const userString = localStorage.getItem("user");
+
+  if (
+    !token ||
+    !userString ||
+    userString === "undefined" ||
+    userString === "null"
+  ) {
+    return <Navigate to="/super-admin/login" replace />;
+  }
+
+  try {
+    const user = JSON.parse(userString);
+    if (user.role !== "super_admin") {
+      return <Navigate to="/super-admin/login" replace />;
+    }
+  } catch (e) {
+    localStorage.clear();
+    return <Navigate to="/super-admin/login" replace />;
+  }
+
+  return <Outlet />;
+};
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Router>
+      <div id="root" className="flex flex-col min-h-screen">
+        <Toaster position="top-right" />
+        <Routes>
+          {/* Rute Login Khusus Admin (Bebas Diakses) */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/super-admin/login" element={<SuperAdminLogin />} />
 
-      <div className="ticks"></div>
+          {/* GRUP 1: Rute Publik & User */}
+          <Route element={<MainLayout />}>
+            {/* Rute Bebas Publik */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/hotels" element={<HotelList />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
+            <Route path="/hotels/:hotelId/rooms/:roomId" element={<RoomDetail />} />
+            <Route path="/rooms/:hotelId/:roomId" element={<RoomDetail />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            {/* Rute Khusus User Terautentikasi (WAJIB LOGIN) */}
+            <Route element={<UserProtectedRoute />}>
+              <Route path="/booking/:hotelId/:roomId" element={<BookingPage />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/booking-history" element={<BookingHistory />} />
+            </Route>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+            {/* Mitra Hotel */}
+            <Route path="/mitra" element={<MitraLanding />} />
+            <Route path="/mitra/sukses" element={<MitraRegistrationSuccess />} />
+          </Route>
+
+          {/* Form Pendaftaran Mitra */}
+          <Route path="/mitra/daftar" element={<MitraRegistration />} />
+
+          {/* GRUP 2: Rute Admin Hotel */}
+          <Route element={<AdminHotelProtectedRoute />}>
+            <Route path="/admin/suspended" element={<SuspendedPage />} />
+            <Route element={<AdminHotelLayout />}>
+              <Route path="/admin/dashboard" element={<Dashboard />} />
+              <Route path="/admin/hotel" element={<HotelInformation />} />
+              <Route path="/admin/facilities" element={<Navigate to="/admin/hotel" replace />} />
+              <Route path="/admin/rooms" element={<RoomList />} />
+              <Route path="/admin/rooms/create" element={<RoomCreate />} />
+              <Route path="/admin/calendar" element={<RoomCalendar />} />
+              <Route path="/admin/bed-types" element={<BedTypeManager />} />
+              <Route path="/admin/beds" element={<Navigate to="/admin/bed-types" replace />} />
+              <Route path="/admin/room-types" element={<RoomTypeManager />} />
+              <Route path="/admin/bookings" element={<BookingList />} />
+              <Route path="/admin/transactions" element={<TransactionHistory />} />
+              <Route path="/admin/wallet" element={<Navigate to="/admin/payouts" replace />} />
+              <Route path="/admin/reviews" element={<ReviewManager />} />
+              <Route path="/admin/warnings" element={<AdminWarnings />} />
+              <Route path="/admin/revenue" element={<RevenueReport />} />
+              <Route path="/admin/payouts" element={<AdminPayouts />} />
+              <Route path="/admin/profile" element={<AdminProfile />} />
+            </Route>
+          </Route>
+
+          {/* GRUP 3: Rute Khusus Super Admin */}
+          <Route element={<SuperAdminProtectedRoute />}>
+            <Route path="/super-admin" element={<SuperAdminLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<SuperAdminDashboard />} />
+              <Route path="profile" element={<SuperAdminProfile />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="hotels" element={<HotelMonitoring />} />
+              <Route path="partners" element={<PartnerApproval />} />
+              <Route path="warnings" element={<WarningManagement />} />
+              <Route path="appeals" element={<AppealManagement />} />
+              <Route path="activity-logs" element={<ActivityLogs />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="application-revenue" element={<ApplicationRevenue />} />
+              <Route path="payouts" element={<PayoutManagement />} />
+              <Route path="wallet" element={<WalletOverview />} />
+            </Route>
+          </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;
