@@ -136,7 +136,7 @@ class ManualBookingTest extends TestCase
             ->assertJsonPath('data.0.guests.0.name', 'Different Guest');
     }
 
-    public function test_refundable_booking_cancelled_within_24_hours_is_automatically_refunded(): void
+    public function test_refundable_booking_cancelled_outside_cutoff_is_automatically_refunded(): void
     {
         [$admin, $roomType] = $this->createHotelRoom();
         $user = $this->createUser();
@@ -153,7 +153,7 @@ class ManualBookingTest extends TestCase
             'reason' => 'Perubahan rencana',
         ])->assertOk()
             ->assertJsonPath('data.status', 'refunded')
-            ->assertJsonPath('message', 'Refund disetujui otomatis karena pembatalan diajukan dalam 1x24 jam sejak pembayaran berhasil. Pengembalian dana diproses terpisah.');
+            ->assertJsonPath('message', 'Refund disetujui otomatis karena pembatalan dilakukan di luar batas 24 jam sebelum check-in. Pengembalian dana diproses terpisah.');
 
         $this->assertDatabaseHas('room_availabilities', [
             'room_type_id' => $roomType->id,

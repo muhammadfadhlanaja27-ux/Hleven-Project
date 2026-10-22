@@ -13,6 +13,7 @@ use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
 use App\Services\PricingService;
+use App\Services\RefundPolicyService;
 use App\Services\WalletLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -376,6 +377,8 @@ class BookingController extends Controller
                 app(WalletLedgerService::class)->releaseBooking($booking);
             } elseif ($newStatus === 'refunded' && $booking->payment?->payment_status === 'success') {
                 app(WalletLedgerService::class)->reverseBooking($booking);
+            } elseif ($newStatus === 'cancelled' && $booking->payment?->payment_status === 'success') {
+                app(WalletLedgerService::class)->releaseForfeitedBooking($booking);
             }
 
             // Saat admin menandai booking selesai (checked out), ajukan user menulis ulasan.
@@ -430,52 +433,32 @@ class BookingController extends Controller
         }
 
         if (in_array($booking->status, ['paid', 'confirmed'])) {
-            $allRefundable = $booking->bookingRooms->isNotEmpty()
-                ? $booking->bookingRooms->every(fn ($br) => (bool) ($br->roomType?->is_refundable ?? true))
-                : true;
+            $refundPolicy = app(RefundPolicyService::class)->evaluate($booking);
 
-            if ($allRefundable) {
-                $paidAt = $booking->payment?->payment_status === 'success'
-                    ? $booking->payment->paid_at
-                    : null;
+            if (! $refundPolicy['is_refundable']) {
+                return $this->cancelWithoutRefund(
+                    $request,
+                    $booking,
+                    'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.'
+                );
+            }
 
-                if ($paidAt && $paidAt->copy()->addHours(24)->greaterThanOrEqualTo(now())) {
-                    $request->merge(['status' => 'refunded']);
-                    $response = $this->updateStatusInternally($request, $booking->id);
+            if ($refundPolicy['is_within_cutoff']) {
+                return $this->cancelWithoutRefund(
+                    $request,
+                    $booking,
+                    'Pembatalan berhasil. Dana tidak dapat dikembalikan karena pembatalan dilakukan dalam '.$refundPolicy['refund_cutoff_hours'].' jam sebelum check-in.'
+                );
+            }
 
-                    if ($response->getStatusCode() === 200) {
-                        Notification::create([
-                            'user_id' => $booking->user_id,
-                            'title' => 'Refund Disetujui Otomatis',
-                            'message' => "Pembatalan booking {$booking->booking_code} diajukan dalam 1x24 jam sejak pembayaran. Refund disetujui otomatis; pengembalian dana diproses terpisah.",
-                            'type' => 'refund',
-                            'is_read' => false,
-                        ]);
+            $request->merge(['status' => 'refunded']);
+            $response = $this->updateStatusInternally($request, $booking->id);
 
-                        $hotelAdminId = $booking->hotel?->admin_id;
-                        if ($hotelAdminId) {
-                            Notification::create([
-                                'user_id' => $hotelAdminId,
-                                'title' => 'Booking Dibatalkan',
-                                'message' => "Booking {$booking->booking_code} dibatalkan dan refund disetujui otomatis.",
-                                'type' => 'refund',
-                                'is_read' => false,
-                            ]);
-                        }
-
-                        $data = json_decode($response->getContent(), true);
-                        $data['message'] = 'Refund disetujui otomatis karena pembatalan diajukan dalam 1x24 jam sejak pembayaran berhasil. Pengembalian dana diproses terpisah.';
-                        $response->setData($data);
-                    }
-
-                    return $response;
-                }
-
-                $booking->update(['status' => 'refund_pending']);
+            if ($response->getStatusCode() === 200) {
                 Notification::create([
                     'user_id' => $booking->user_id,
-                    'title' => 'Pengajuan Refund Diterima',
-                    'message' => "Pengajuan refund untuk booking {$booking->booking_code} sedang menunggu persetujuan hotel.",
+                    'title' => 'Refund Disetujui Otomatis',
+                    'message' => "Pembatalan booking {$booking->booking_code} dilakukan di luar batas {$refundPolicy['refund_cutoff_hours']} jam sebelum check-in. Refund disetujui otomatis; pengembalian dana diproses terpisah.",
                     'type' => 'refund',
                     'is_read' => false,
                 ]);
@@ -484,32 +467,55 @@ class BookingController extends Controller
                 if ($hotelAdminId) {
                     Notification::create([
                         'user_id' => $hotelAdminId,
-                        'title' => 'Pengajuan Refund Baru',
-                        'message' => "Pengguna mengajukan refund untuk booking {$booking->booking_code}. Silakan tinjau pengajuan tersebut.",
+                        'title' => 'Booking Dibatalkan',
+                        'message' => "Booking {$booking->booking_code} dibatalkan dan refund disetujui otomatis.",
                         'type' => 'refund',
                         'is_read' => false,
                     ]);
                 }
 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Pengajuan refund berhasil dikirim. Menunggu persetujuan admin.',
-                    'data' => $booking->fresh()->load('bookingRooms.roomType'),
-                ]);
+                $data = json_decode($response->getContent(), true);
+                $data['message'] = "Refund disetujui otomatis karena pembatalan dilakukan di luar batas {$refundPolicy['refund_cutoff_hours']} jam sebelum check-in. Pengembalian dana diproses terpisah.";
+                $response->setData($data);
             }
 
-            $request->merge(['status' => 'cancelled']);
-            $res = $this->updateStatusInternally($request, $booking->id);
-            if ($res->getStatusCode() === 200) {
-                $data = json_decode($res->getContent(), true);
-                $data['message'] = 'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.';
-                $res->setContent(json_encode($data));
-            }
-
-            return $res;
+            return $response;
         }
 
         return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan'], 400);
+    }
+
+    private function cancelWithoutRefund(Request $request, Booking $booking, string $message)
+    {
+        $request->merge(['status' => 'cancelled']);
+        $response = $this->updateStatusInternally($request, $booking->id);
+
+        if ($response->getStatusCode() === 200) {
+            Notification::create([
+                'user_id' => $booking->user_id,
+                'title' => 'Pembatalan Tanpa Refund',
+                'message' => "Booking {$booking->booking_code} dibatalkan. {$message}",
+                'type' => 'refund',
+                'is_read' => false,
+            ]);
+
+            $hotelAdminId = $booking->hotel?->admin_id;
+            if ($hotelAdminId) {
+                Notification::create([
+                    'user_id' => $hotelAdminId,
+                    'title' => 'Booking Dibatalkan Tanpa Refund',
+                    'message' => "Booking {$booking->booking_code} dibatalkan oleh pengguna. {$message}",
+                    'type' => 'refund',
+                    'is_read' => false,
+                ]);
+            }
+
+            $data = json_decode($response->getContent(), true);
+            $data['message'] = $message;
+            $response->setData($data);
+        }
+
+        return $response;
     }
 
     public function handleRefundApproval(Request $request, $id)
@@ -725,6 +731,13 @@ class BookingController extends Controller
             ->where('user_id', $user->id)
             ->latest()
             ->get();
+
+        $refundPolicy = app(RefundPolicyService::class);
+
+        $bookings = $bookings->map(fn (Booking $booking) => array_merge(
+            $booking->toArray(),
+            $refundPolicy->evaluate($booking)
+        ));
 
         return response()->json([
             'status' => 'success',

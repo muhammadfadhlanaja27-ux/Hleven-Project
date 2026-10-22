@@ -840,7 +840,7 @@ const BookingPage = () => {
                       Reservasi Bisa Direfund
                     </p>
                     <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
-                      Pembatalan gratis &amp; pengembalian dana penuh tersedia sampai H-3 sebelum check-in.
+                      Refund otomatis tersedia jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana hangus.
                     </p>
                   </div>
                 </div>

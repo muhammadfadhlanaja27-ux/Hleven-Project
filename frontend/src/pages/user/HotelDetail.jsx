@@ -579,9 +579,15 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
                 Kebijakan Hotel
               </h2>
               {hotel.policies ? (
-                <div className="text-sm text-[#5A625B] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
-                  {hotel.policies}
-                </div>
+                <>
+                  <div className="text-sm text-[#5A625B] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
+                    {hotel.policies}
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-[#4F6F52]/20 bg-[#4F6F52]/10 p-4 text-left">
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Aturan Refund Sistem</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir sebelum check-in, dana tidak dapat dikembalikan.</p>
+                  </div>
+                </>
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
@@ -598,7 +604,7 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#1C251D] text-sm">Pembatalan</h4>
-                    <p className="text-xs text-[#5A625B] mt-1">Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.</p>
+                    <p className="text-xs text-[#5A625B] mt-1">Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana tidak dapat dikembalikan.</p>
                   </div>
                 </div>
               )}

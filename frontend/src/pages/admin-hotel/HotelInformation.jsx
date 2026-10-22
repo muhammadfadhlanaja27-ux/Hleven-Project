@@ -106,7 +106,7 @@ Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
 Hewan Peliharaan
 Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
 Pembatalan
-Pembatalan tersedia: Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.`;
+Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir sebelum check-in, dana tidak dapat dikembalikan.`;
 
 const initialHotelData = {
   name: "Grand H'Leven Hotel",
