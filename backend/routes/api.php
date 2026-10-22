@@ -15,20 +15,22 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\RoomCalendarController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomTypeCategoryController;
-use App\Http\Controllers\Api\V1\RoomTypeController;
-use App\Http\Controllers\Api\V1\SuperAdminWalletController;
-use App\Http\Controllers\AppealController;
-use App\Http\Controllers\FileStorageController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartnerApplicationController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\AppealController;
+use App\Http\Controllers\Api\V1\RoomTypeController;
+
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdminPayoutController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\WarningController;
+use App\Http\Controllers\FileStorageController;
+
+
 use Illuminate\Support\Facades\Route;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -203,18 +205,19 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
 // ==========================================
 Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin')->group(function () {
 
-    Route::get('/wallet', [SuperAdminWalletController::class, 'index']);
-
     Route::prefix('dashboard')->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'summary']);
+        Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
         Route::get('/bookings', [SuperAdminDashboardController::class, 'bookings']);
         Route::get('/payments', [SuperAdminDashboardController::class, 'payments']);
         Route::get('/refunds', [SuperAdminDashboardController::class, 'refunds']);
         Route::get('/revenue', [SuperAdminDashboardController::class, 'revenue']);
         Route::get('/hotel-commission', [SuperAdminDashboardController::class, 'hotelCommission']);
         Route::get('/charts', [SuperAdminDashboardController::class, 'charts']);
-        Route::get('/recent-activities', [SuperAdminDashboardController::class, 'recentActivities']);
+        Route::get('/hotel-health', [SuperAdminDashboardController::class, 'hotelHealthReport']);
     });
+
+    Route::get('/wallet', [SuperAdminDashboardController::class, 'wallet']);
 
     Route::prefix('users')->group(function () {
         Route::get('/', [SuperAdminUserController::class, 'index']);
@@ -250,8 +253,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::patch('/{id}/status', [SuperAdminPayoutController::class, 'updateStatus']);
     });
 
-    // --- Partner Application (User) ---
-    Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
+    // --- Partner Application (Super Admin) ---
+    Route::prefix('partners')->group(function () {
+        Route::get('/', [PartnerApplicationController::class, 'index']);
+        Route::get('/{id}/documents/{docId}', [PartnerApplicationController::class, 'document']);
+        Route::patch('/{id}/approve', [PartnerApplicationController::class, 'approve']);
+        Route::patch('/{id}/reject', [PartnerApplicationController::class, 'reject']);
+    });
 });
 
 // ==========================================

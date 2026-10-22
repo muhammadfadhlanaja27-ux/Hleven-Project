@@ -790,13 +790,6 @@ class BookingController extends Controller
         $isForOtherGuest = (bool) $request->is_for_other_guest
             || ($request->filled('guest_name') && (! $user || $request->guest_name !== $user->name));
 
-        if (! $guestName || ! $guestEmail) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Nama dan email pemesan wajib diisi.',
-            ], 422);
-        }
-
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
         $checkInStr = $checkIn->toDateString();

@@ -62,6 +62,7 @@ import Reports from "./pages/super-admin/Reports";
 import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
 import PayoutManagement from "./pages/super-admin/PayoutManagement";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
+import HotelHealthReport from "./pages/super-admin/HotelHealthReport";
 import WalletOverview from "./pages/super-admin/WalletOverview";
 
 // ---------------------------------------------------------
@@ -235,6 +236,7 @@ function App() {
               <Route path="application-revenue" element={<ApplicationRevenue />} />
               <Route path="payouts" element={<PayoutManagement />} />
               <Route path="wallet" element={<WalletOverview />} />
+              <Route path="hotel-health" element={<HotelHealthReport />} />
             </Route>
           </Route>
 

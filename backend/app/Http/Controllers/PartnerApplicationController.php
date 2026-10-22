@@ -257,28 +257,12 @@ class PartnerApplicationController extends Controller
             ->where('id', $docId)
             ->firstOrFail();
 
-        $path = $this->resolveDocumentPath($doc->file_path);
+        $path = $doc->file_path;
 
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (!$path) {
             return response()->json(['success' => false, 'message' => 'File dokumen tidak ditemukan.'], 404);
         }
 
-        return Storage::disk('public')->response($path);
-    }
-
-    protected function resolveDocumentPath(?string $stored): ?string
-    {
-        if (!$stored) {
-            return null;
-        }
-        $str = trim($stored);
-        $path = parse_url($str, PHP_URL_PATH) ?: $str;
-        $path = ltrim($path, '/');
-        if (str_starts_with($path, 'storage/')) {
-            $path = substr($path, 8);
-        } elseif (str_starts_with($path, 'public/')) {
-            $path = substr($path, 7);
-        }
-        return $path ?: null;
+        return $this->storageService->downloadFile($path);
     }
 }
