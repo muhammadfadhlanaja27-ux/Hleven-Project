@@ -46,7 +46,9 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
       const res = await api.get(`/hotels/${hotelId}/eligible-bookings`);
       setEligibleBookings(res.data.data || []);
     } catch (err) {
-      console.error(err);
+      if (err.response?.status !== 404) {
+        console.error(err);
+      }
     }
   };
 

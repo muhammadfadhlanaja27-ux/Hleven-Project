@@ -69,7 +69,8 @@ class PaymentController extends Controller
             $payment = Payment::with('booking.user')->findOrFail($id);
 
             // Otorisasi: Pastikan user yang login adalah pemilik booking
-            if ($payment->booking->user_id !== $request->user()->id) {
+            if ($payment->booking->user_id && $payment->booking->user_id !== $request->user()->id) {
+                \Log::warning("Forbidden snap-token attempt: User ID {$request->user()->id} trying to access booking user ID {$payment->booking->user_id}");
                 return response()->json([
                     'success' => false,
                     'message' => 'Forbidden.',

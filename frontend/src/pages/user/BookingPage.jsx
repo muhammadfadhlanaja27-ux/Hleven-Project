@@ -60,11 +60,13 @@ const BookingPage = () => {
   const [priceQuote, setPriceQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [bookerContact, setBookerContact] = useState({ name: '', email: '', phone: '' });
 
   // Synchronous submission locks
   const isSubmittingRef = useRef(false);
   const submitLockRef = useRef(false);
   const pollRef = useRef(null);
+  const idempotencyKeyRef = useRef(null);
 
   // Form State: Pemesan Utama
   const [fullName, setFullName] = useState("");
@@ -136,7 +138,7 @@ const BookingPage = () => {
   }, []);
 
   const handleBookingForSomeoneElseChange = (checked) => {
-    setBookingForSomeoneElse(checked);
+    setBookingFor(checked ? "someone_else" : "me");
     if (checked) {
       setFullName("");
       setEmail("");
