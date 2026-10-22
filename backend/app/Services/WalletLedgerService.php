@@ -85,6 +85,50 @@ class WalletLedgerService
         });
     }
 
+    /**
+     * Pembatalan tanpa refund (non-refundable / sudah masuk cutoff check-in):
+     * dana yang tertahan menjadi milik hotel dan platform, bukan dikembalikan.
+     */
+    public function releaseForfeitedBooking(Booking $booking): void
+    {
+        DB::transaction(function () use ($booking) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+
+            foreach ([
+                ['account_type' => 'hotel', 'hotel_id' => $booking->hotel_id],
+                ['account_type' => 'platform', 'hotel_id' => null],
+            ] as $account) {
+                $heldAmount = $this->balance($account['account_type'], $account['hotel_id'], 'held', $booking->id);
+
+                if ($heldAmount <= 0) {
+                    continue;
+                }
+
+                $scope = $account['account_type'] === 'hotel' ? "hotel:{$booking->hotel_id}" : 'platform';
+
+                $this->createEntry([
+                    ...$account,
+                    'booking_id' => $booking->id,
+                    'entry_type' => 'booking_forfeit',
+                    'bucket' => 'held',
+                    'amount' => -$heldAmount,
+                    'idempotency_key' => "booking:{$booking->id}:forfeit:{$scope}:held",
+                    'description' => "Dana hangus booking {$booking->booking_code} dikeluarkan dari saldo tertahan",
+                ]);
+
+                $this->createEntry([
+                    ...$account,
+                    'booking_id' => $booking->id,
+                    'entry_type' => 'booking_forfeit',
+                    'bucket' => 'available',
+                    'amount' => $heldAmount,
+                    'idempotency_key' => "booking:{$booking->id}:forfeit:{$scope}:available",
+                    'description' => "Dana hangus booking {$booking->booking_code} menjadi saldo tersedia",
+                ]);
+            }
+        });
+    }
+
     public function reverseBooking(Booking $booking): void
     {
         DB::transaction(function () use ($booking) {

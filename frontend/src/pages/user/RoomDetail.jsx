@@ -515,9 +515,19 @@ const mappedRoom = {
                 Kebijakan Kamar
               </h2>
               {room?.policies ? (
-                <div className="text-sm text-[#444842] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
-                  {room.policies}
-                </div>
+                <>
+                  <div className="text-sm text-[#444842] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
+                    {room.policies}
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-[#4F6F52]/20 bg-[#4F6F52]/10 p-4 text-left">
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Aturan Refund Sistem</h4>
+                    {room?.is_refundable ? (
+                      <p className="text-xs text-[#444842] mt-1">Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir sebelum check-in, dana tidak dapat dikembalikan.</p>
+                    ) : (
+                      <p className="text-xs text-[#444842] mt-1">Kamar ini non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.</p>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
@@ -536,7 +546,7 @@ const mappedRoom = {
                     <h4 className="font-semibold text-[#1e1b16] text-sm">Pembatalan</h4>
                     {room?.is_refundable ? (
                       <p className="text-xs text-[#444842] mt-1">
-                        <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Pengembalian dana penuh berlaku hingga 3 hari sebelum jadwal kedatangan.
+                        <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana tidak dapat dikembalikan.
                       </p>
                     ) : (
                       <p className="text-xs text-[#444842] mt-1">
@@ -567,7 +577,7 @@ const mappedRoom = {
                       Bisa Refund
                     </p>
                     <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
-                      Pengembalian dana penuh jika dibatalkan H-3 sebelum check-in.
+                      Refund otomatis jika dibatalkan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana hangus.
                     </p>
                   </div>
                 </div>

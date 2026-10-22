@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
+import { formatRefundDeadline, getRefundPolicy } from "../../utils/refundPolicy";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const QR_CODE_PLACEHOLDER =
@@ -494,6 +495,7 @@ const BookingHistory = () => {
                     const grandTotal = Number(item.grand_total || item.total_price || item.subtotal || 0);
                     const imageUrl = getItemImage(item);
                     const isCancelled = ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system"].includes(item.status);
+                    const refundPolicy = getRefundPolicy(item);
 
                     return (
                       <article
@@ -545,7 +547,7 @@ const BookingHistory = () => {
                               </p>
 
                               <div className="mt-2">
-                                {(item.is_refundable === undefined || item.is_refundable) ? (
+                                {refundPolicy.canRefund ? (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
                                     <span className="material-symbols-outlined text-[12px]">verified</span>
                                     Bisa Refund
@@ -553,7 +555,7 @@ const BookingHistory = () => {
                                 ) : (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold text-[10px] uppercase tracking-wider">
                                     <span className="material-symbols-outlined text-[12px]">block</span>
-                                    Non-Refundable
+                                    {refundPolicy.withinCutoff ? "Refund Ditutup" : "Non-Refundable"}
                                   </span>
                                 )}
                               </div>
@@ -635,7 +637,7 @@ const BookingHistory = () => {
                                 onClick={() => setCancelModalBooking(item)}
                                 className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
                               >
-                                {item.is_refundable === false ? "Batalkan (Hangus)" : "Ajukan Refund"}
+                                {refundPolicy.canRefund ? "Ajukan Refund" : "Batalkan (Hangus)"}
                               </button>
                             )}
 
@@ -676,8 +678,12 @@ const BookingHistory = () => {
       {/* MODAL REFUND / CANCEL */}
       {cancelModalBooking && (() => {
         const isPaid = ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(cancelModalBooking.status);
-        const isRefundable = cancelModalBooking.is_refundable !== false;
-        const title = !isPaid ? "Batalkan Pesanan" : isRefundable ? "Pengajuan Refund" : "Batalkan Pesanan (Hangus)";
+        const refundPolicy = getRefundPolicy(cancelModalBooking);
+        const title = !isPaid
+          ? "Batalkan Pesanan"
+          : refundPolicy.canRefund
+            ? "Pengajuan Refund"
+            : "Batalkan Pesanan (Hangus)";
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
@@ -685,15 +691,25 @@ const BookingHistory = () => {
               <p className="font-body-md text-xs text-[#444842]">
                 Kode Booking: <strong className="text-[#778873]">{cancelModalBooking.booking_code || cancelModalBooking.id}</strong>
               </p>
-              {isPaid && !isRefundable && (
+              {isPaid && !refundPolicy.isRefundable && (
                 <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
                   Kamar non-refundable — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar akan dikembalikan, pembayaran tetap hangus.
                 </div>
               )}
-              {isPaid && isRefundable && (
-                <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
-                  Pengajuan refund akan dikirim ke admin. Dana kembali menunggu persetujuan.
+              {isPaid && refundPolicy.isRefundable && refundPolicy.withinCutoff && (
+                <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
+                  Pembatalan kurang dari {refundPolicy.cutoffHours} jam sebelum check-in — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar tetap dikembalikan.
                 </div>
+              )}
+              {isPaid && refundPolicy.canRefund && (
+                <div className="bg-[#E0F2FE] border border-[#0369A1]/20 rounded-xl p-3 text-xs text-[#0369A1] leading-relaxed">
+                  Refund akan <strong>disetujui otomatis</strong> karena pembatalan dilakukan di luar batas {refundPolicy.cutoffHours} jam sebelum check-in.
+                </div>
+              )}
+              {isPaid && refundPolicy.deadline && (
+                <p className="text-xs text-[#444842]">
+                  Batas refund: <strong>{formatRefundDeadline(refundPolicy.deadline)} WIB</strong>
+                </p>
               )}
 
               <div className="space-y-2">
@@ -724,7 +740,7 @@ const BookingHistory = () => {
                   disabled={isSubmittingCancel || !cancelReason.trim()}
                   className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
                 >
-                  {isSubmittingCancel ? "Memproses..." : isPaid && !isRefundable ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
+                  {isSubmittingCancel ? "Memproses..." : isPaid && !refundPolicy.canRefund ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
                 </button>
               </div>
             </div>
@@ -839,7 +855,7 @@ const BookingHistory = () => {
                       1 Kamar • 2 Tamu • Termasuk Sarapan Pagi
                     </p>
                     <div className="mt-2">
-                      {(selectedBooking.is_refundable === undefined || selectedBooking.is_refundable) ? (
+                      {getRefundPolicy(selectedBooking).canRefund ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold text-[10px] uppercase tracking-wider">
                           <span className="material-symbols-outlined text-[12px]">verified</span>
                           Booking Bisa Direfund
@@ -847,7 +863,7 @@ const BookingHistory = () => {
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold text-[10px] uppercase tracking-wider">
                           <span className="material-symbols-outlined text-[12px]">block</span>
-                          Non-Refundable
+                          {getRefundPolicy(selectedBooking).withinCutoff ? "Refund Ditutup" : "Non-Refundable"}
                         </span>
                       )}
                     </div>
