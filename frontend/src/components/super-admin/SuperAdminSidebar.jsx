@@ -2,15 +2,15 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const navItems = [
-  { name: "Dashboard", to: "/super-admin/dashboard", icon: "dashboard" },
-  { name: "Hotel Monitoring", to: "/super-admin/hotels", icon: "hotel" },
-  { name: "Users Management", to: "/super-admin/users", icon: "group" },
-  { name: "Partner Approvals", to: "/super-admin/partners", icon: "handshake" },
-  { name: "Warning Management", to: "/super-admin/warnings", icon: "warning" },
-  { name: "Appeals (Banding)", to: "/super-admin/appeals", icon: "gavel" },
-  { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
-  { name: "Hotel Health", to: "/super-admin/hotel-health", icon: "monitor_heart" },
-  { name: "Pencairan Dana", to: "/super-admin/payouts", icon: "account_balance_wallet" },
+  { name: "Ringkasan Sistem", to: "/super-admin/dashboard", icon: "dashboard" },
+  { name: "Pemantauan Hotel", to: "/super-admin/hotels", icon: "hotel" },
+  { name: "Manajemen Pengguna", to: "/super-admin/users", icon: "group" },
+  { name: "Persetujuan Mitra", to: "/super-admin/partners", icon: "handshake" },
+  { name: "Manajemen Peringatan", to: "/super-admin/warnings", icon: "warning" },
+  { name: "Manajemen Banding", to: "/super-admin/appeals", icon: "gavel" },
+  { name: "Riwayat Aktivitas", to: "/super-admin/activity-logs", icon: "history" },
+  { name: "Kesehatan Hotel", to: "/super-admin/hotel-health", icon: "monitor_heart" },
+  { name: "Manajemen Payout", to: "/super-admin/payouts", icon: "account_balance_wallet" },
   { name: "Saldo & Komisi", to: "/super-admin/wallet", icon: "payments" },
 ];
 
@@ -69,7 +69,7 @@ const SuperAdminSidebar = ({ onLogout }) => {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 account_circle
               </span>
-              <span>Profile</span>
+              <span>Profil</span>
             </Link>
           </li>
           <li>
@@ -80,7 +80,7 @@ const SuperAdminSidebar = ({ onLogout }) => {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 logout
               </span>
-              <span>Logout</span>
+              <span>Keluar</span>
             </button>
           </li>
         </ul>
