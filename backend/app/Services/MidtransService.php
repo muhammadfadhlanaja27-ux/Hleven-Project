@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
+use App\Mail\BookingConfirmedMail;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\Payment;
-use App\Mail\BookingConfirmedMail;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Transaction;
@@ -45,7 +45,7 @@ class MidtransService
         }
 
         $booking = $payment->booking;
-        if (!$booking) {
+        if (! $booking) {
             throw new \Exception("Booking terkait pembayaran #{$payment->id} tidak ditemukan.");
         }
 
@@ -66,7 +66,7 @@ class MidtransService
         try {
             $snapToken = Snap::getSnapToken($params);
         } catch (\Exception $e) {
-            Log::error("Midtrans Snap Error: " . $e->getMessage(), ['params' => $params, 'serverKey' => substr(Config::$serverKey, 0, 10) . '...']);
+            Log::error('Midtrans Snap Error: '.$e->getMessage(), ['params' => $params, 'serverKey' => substr(Config::$serverKey, 0, 10).'...']);
             throw $e;
         }
 
@@ -229,7 +229,7 @@ class MidtransService
                 Mail::to($recipient)->send(new BookingConfirmedMail($booking));
             }
         } catch (\Exception $e) {
-            Log::error("Failed to send booking confirmation email for {$booking->booking_code}: " . $e->getMessage());
+            Log::error("Failed to send booking confirmation email for {$booking->booking_code}: ".$e->getMessage());
         }
     }
 }

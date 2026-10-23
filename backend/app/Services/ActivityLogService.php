@@ -26,14 +26,14 @@ class ActivityLogService
 
         // Filter berdasarkan jenis aktivitas[cite: 1]
         if (isset($filters['activity'])) {
-            $query->where('activity', 'like', '%' . $filters['activity'] . '%');
+            $query->where('activity', 'like', '%'.$filters['activity'].'%');
         }
 
         // Filter berdasarkan rentang tanggal[cite: 1]
         if (isset($filters['start_date']) && isset($filters['end_date'])) {
             $query->whereBetween('created_at', [
-                $filters['start_date'] . ' 00:00:00',
-                $filters['end_date'] . ' 23:59:59'
+                $filters['start_date'].' 00:00:00',
+                $filters['end_date'].' 23:59:59',
             ]);
         }
 

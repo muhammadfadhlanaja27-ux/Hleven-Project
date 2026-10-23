@@ -5,10 +5,10 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\PartnerApplication;
 use App\Models\Payment;
 use App\Models\Refund;
-use App\Models\Notification;
 use App\Models\RoomType;
 use App\Models\User;
 use Carbon\Carbon;
@@ -168,7 +168,7 @@ class SuperAdminDashboardService
                     'hotel_name' => $hotel->name,
                     'health_score' => round($healthScore, 1),
                     'average_rating' => round($avgRating, 1),
-                    'cancellation_rate' => round($cancelRate * 100, 1) . '%',
+                    'cancellation_rate' => round($cancelRate * 100, 1).'%',
                     'status' => $healthScore < 60 ? 'critical' : ($healthScore < 80 ? 'warning' : 'healthy'),
                 ];
             })

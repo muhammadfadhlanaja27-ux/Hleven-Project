@@ -49,12 +49,12 @@ class PartnerApplication extends Model
     {
         static::creating(function (self $application) {
             if (empty($application->application_number)) {
-                $application->application_number = 'HLVN-MIT-' . strtoupper(Str::random(8));
+                $application->application_number = 'HLVN-MIT-'.strtoupper(Str::random(8));
             }
-            if (empty($application->email) && !empty($application->owner_email)) {
+            if (empty($application->email) && ! empty($application->owner_email)) {
                 $application->email = $application->owner_email;
             }
-            if (empty($application->phone) && !empty($application->owner_phone)) {
+            if (empty($application->phone) && ! empty($application->owner_phone)) {
                 $application->phone = $application->owner_phone;
             }
         });

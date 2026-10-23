@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\FileStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -16,17 +17,17 @@ class ProfileController extends Controller
         // 1. Validasi Input
         $request->validate([
             'first_name' => 'required|string|max:255',
-            'last_name'  => 'nullable|string|max:255',
-            'email'      => 'required|email|unique:users,email,' . $user->id,
-            'phone'      => 'nullable|string|max:20',
-            'avatar'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'last_name' => 'nullable|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'phone' => 'nullable|string|max:20',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         // Gabungkan first_name dan last_name menjadi 'name'
-        $fullName = trim($request->first_name . ' ' . ($request->last_name ?? ''));
+        $fullName = trim($request->first_name.' '.($request->last_name ?? ''));
 
         $updateData = [
-            'name'  => $fullName,
+            'name' => $fullName,
             'email' => $request->email,
             'phone' => $request->phone,
         ];
@@ -35,11 +36,11 @@ class ProfileController extends Controller
         if ($request->hasFile('avatar')) {
             // Hapus foto lama jika ada di storage
             if ($user->avatar) {
-                app(\App\Services\FileStorageService::class)->deleteFile($user->avatar);
+                app(FileStorageService::class)->deleteFile($user->avatar);
             }
 
             // Simpan foto baru ke Supabase
-            $updateData['avatar'] = app(\App\Services\FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
+            $updateData['avatar'] = app(FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
         }
 
         // 3. Simpan ke Database
@@ -47,7 +48,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui',
-            'user'    => $user
+            'user' => $user,
         ], 200);
     }
 
@@ -57,15 +58,15 @@ class ProfileController extends Controller
 
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:8',
+            'new_password' => 'required|min:8',
         ]);
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json(['message' => 'Kata sandi saat ini salah.'], 422);
         }
 
         $user->update([
-            'password' => Hash::make($request->new_password)
+            'password' => Hash::make($request->new_password),
         ]);
 
         return response()->json(['message' => 'Kata sandi berhasil diubah']);

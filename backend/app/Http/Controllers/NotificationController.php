@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Notification;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
@@ -34,13 +34,13 @@ class NotificationController extends Controller
                     'current_page' => $notifications->currentPage(),
                     'last_page' => $notifications->lastPage(),
                     'per_page' => $notifications->perPage(),
-                    'total' => $notifications->total()
-                ]
+                    'total' => $notifications->total(),
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada server.'
+                'message' => 'Terjadi kesalahan pada server.',
             ], 500);
         }
     }
@@ -61,12 +61,12 @@ class NotificationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $notification
+                'data' => $notification,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Notification tidak ditemukan.'
+                'message' => 'Notification tidak ditemukan.',
             ], 404);
         }
     }
@@ -88,12 +88,12 @@ class NotificationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Notification berhasil ditandai sebagai telah dibaca.'
+                'message' => 'Notification berhasil ditandai sebagai telah dibaca.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memperbarui notifikasi.'
+                'message' => 'Gagal memperbarui notifikasi.',
             ], 500);
         }
     }
@@ -109,12 +109,12 @@ class NotificationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Seluruh notification berhasil ditandai sebagai telah dibaca.'
+                'message' => 'Seluruh notification berhasil ditandai sebagai telah dibaca.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memperbarui notifikasi.'
+                'message' => 'Gagal memperbarui notifikasi.',
             ], 500);
         }
     }
@@ -136,12 +136,12 @@ class NotificationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Notification berhasil dihapus.'
+                'message' => 'Notification berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus notifikasi.'
+                'message' => 'Gagal menghapus notifikasi.',
             ], 500);
         }
     }

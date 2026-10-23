@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Hotel;
-use App\Models\RoomType;
 use App\Models\HotelPhoto;
 use App\Models\RoomPhoto;
-use App\Models\User;
+use App\Models\RoomType;
 use App\Services\FileStorageService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class FileStorageController extends Controller
 {
@@ -24,7 +23,7 @@ class FileStorageController extends Controller
     {
         $request->validate([
             'photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120', // Max 5MB[cite: 1]
-            'is_thumbnail' => 'boolean'
+            'is_thumbnail' => 'boolean',
         ]);
 
         try {
@@ -40,12 +39,12 @@ class FileStorageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Foto hotel berhasil diunggah.'
+                'message' => 'Foto hotel berhasil diunggah.',
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengunggah foto hotel.'
+                'message' => 'Gagal mengunggah foto hotel.',
             ], 500);
         }
     }
@@ -64,7 +63,7 @@ class FileStorageController extends Controller
             if ($photoCount <= 1) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Hotel harus tetap memiliki minimal satu foto.'
+                    'message' => 'Hotel harus tetap memiliki minimal satu foto.',
                 ], 400);
             }
 
@@ -72,12 +71,12 @@ class FileStorageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Foto hotel berhasil dihapus.'
+                'message' => 'Foto hotel berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus foto.'
+                'message' => 'Gagal menghapus foto.',
             ], 500);
         }
     }
@@ -86,7 +85,7 @@ class FileStorageController extends Controller
     {
         $request->validate([
             'photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
-            'is_thumbnail' => 'boolean'
+            'is_thumbnail' => 'boolean',
         ]);
 
         try {
@@ -101,12 +100,12 @@ class FileStorageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Foto kamar berhasil diunggah.'
+                'message' => 'Foto kamar berhasil diunggah.',
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengunggah foto kamar: ' . $e->getMessage()
+                'message' => 'Gagal mengunggah foto kamar: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -116,10 +115,10 @@ class FileStorageController extends Controller
         try {
             $photo = RoomPhoto::with('roomType.hotel')->find($id);
 
-            if (!$photo) {
+            if (! $photo) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Foto kamar tidak ditemukan.'
+                    'message' => 'Foto kamar tidak ditemukan.',
                 ], 404);
             }
 
@@ -131,12 +130,12 @@ class FileStorageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Foto kamar berhasil dihapus.'
+                'message' => 'Foto kamar berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus foto kamar: ' . $e->getMessage()
+                'message' => 'Gagal menghapus foto kamar: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -144,7 +143,7 @@ class FileStorageController extends Controller
     public function uploadAvatar(Request $request): JsonResponse
     {
         $request->validate([
-            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         try {
@@ -153,12 +152,12 @@ class FileStorageController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Avatar berhasil diperbarui.',
-                'data' => $request->user()->fresh()
+                'data' => $request->user()->fresh(),
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengunggah avatar: ' . $e->getMessage()
+                'message' => 'Gagal mengunggah avatar: '.$e->getMessage(),
             ], 500);
         }
     }

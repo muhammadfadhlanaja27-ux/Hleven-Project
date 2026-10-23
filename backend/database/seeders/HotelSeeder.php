@@ -1,11 +1,12 @@
 <?php
 
 // database/seeders/HotelSeeder.php
+
 namespace Database\Seeders;
 
 use App\Models\Hotel;
-use App\Models\RoomType;
 use App\Models\RoomPhoto;
+use App\Models\RoomType;
 use Illuminate\Database\Seeder;
 
 class HotelSeeder extends Seeder

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('room_types', function (Blueprint $table) {
-            $table->id(); //[cite: 1]
+            $table->id(); // [cite: 1]
             $table->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete(); // Hotel pemilik[cite: 1]
             $table->string('name'); // Nama kamar[cite: 1]
             $table->text('description')->nullable(); // Deskripsi[cite: 1]
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('capacity_child'); // Kapasitas anak[cite: 1]
             $table->boolean('breakfast')->default(false); // Termasuk sarapan[cite: 1]
             $table->boolean('smoking_area')->default(false); // Area merokok[cite: 1]
-            $table->timestamps(); //[cite: 1]
+            $table->timestamps(); // [cite: 1]
             $table->softDeletes(); // Direkomendasikan menggunakan Soft Delete[cite: 1]
         });
     }

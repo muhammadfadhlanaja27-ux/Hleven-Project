@@ -231,7 +231,7 @@ const SuperAdminDashboard = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl md:text-4xl font-semibold text-[#4f604f] tracking-tight">
-            System Overview
+            Ringkasan Sistem
           </h2>
           <p className="text-sm text-[#434842] mt-1">
             Terakhir diperbarui: Hari ini pukul {lastUpdatedTime} WIB
@@ -254,7 +254,7 @@ const SuperAdminDashboard = () => {
         <div className="flex items-center gap-2 mb-4">
           <span className="material-symbols-outlined text-[#A65A3D]">warning</span>
           <h3 className="font-['Newsreader',serif] text-xl font-medium text-[#A65A3D]">
-            Action Required / Perlu Tindakan
+            Perlu Tindakan
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

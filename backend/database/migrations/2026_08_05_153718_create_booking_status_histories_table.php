@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('booking_status_histories', function (Blueprint $table) {
-            $table->id(); //[cite: 1]
-            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete(); //[cite: 1]
+            $table->id(); // [cite: 1]
+            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete(); // [cite: 1]
             $table->string('old_status')->nullable(); // Status sebelumnya[cite: 1]
             $table->string('new_status'); // Status baru[cite: 1]
             $table->foreignId('changed_by')->nullable()->constrained('users')->onDelete('set null'); // User yang mengubah[cite: 1]
-            $table->timestamp('changed_at'); //[cite: 1]
+            $table->timestamp('changed_at'); // [cite: 1]
         });
     }
 

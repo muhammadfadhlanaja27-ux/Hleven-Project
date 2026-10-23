@@ -22,7 +22,7 @@ class CreateBookingRequest extends FormRequest
             'tax' => 'required|numeric|min:0',
             'grand_total' => 'required|numeric|min:0',
             'special_request' => 'nullable|string',
-            
+
             'is_for_other_guest' => 'boolean',
 
             // Wajib diisi jika pesan untuk orang lain ATAU jika pengguna belum login

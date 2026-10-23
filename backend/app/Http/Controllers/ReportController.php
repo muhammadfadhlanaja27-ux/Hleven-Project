@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
@@ -19,43 +19,49 @@ class ReportController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $data
+            'data' => $data,
         ], 200);
     }
 
     public function bookings(Request $request): JsonResponse
     {
         $filters = $request->only(['start_date', 'end_date', 'hotel_id', 'status']);
+
         return $this->successResponse($this->reportService->getBookingReport($request->user(), $filters));
     }
 
     public function revenue(Request $request): JsonResponse
     {
         $filters = $request->only(['start_date', 'end_date', 'hotel_id']);
+
         return $this->successResponse($this->reportService->getRevenueReport($request->user(), $filters));
     }
 
     public function refunds(Request $request): JsonResponse
     {
         $filters = $request->only(['start_date', 'end_date', 'hotel_id']);
+
         return $this->successResponse($this->reportService->getRefundReport($request->user(), $filters));
     }
 
     public function users(Request $request): JsonResponse
     {
         $filters = $request->only(['start_date', 'end_date']);
+
         return $this->successResponse($this->reportService->getUserReport($filters));
     }
 
     public function hotels(Request $request): JsonResponse
     {
         $filters = $request->only(['start_date', 'end_date']);
+
         return $this->successResponse($this->reportService->getHotelReport($filters));
     }
 
     public function partners(Request $request): JsonResponse
     {
         $filters = $request->only(['start_date', 'end_date']);
+
         return $this->successResponse($this->reportService->getPartnerReport($filters));
     }
 
@@ -64,7 +70,7 @@ class ReportController extends Controller
         // PERBAIKAN: Tambahkan 'user' ke dalam daftar validasi 'in:'
         $request->validate([
             'type' => 'required|in:booking,revenue,refund,hotel,partner,user',
-            'format' => 'required|in:pdf,excel'
+            'format' => 'required|in:pdf,excel',
         ]);
 
         $filters = $request->all();
@@ -73,7 +79,7 @@ class ReportController extends Controller
         return response()->json([
             'success' => true,
             'message' => $result['message'],
-            'download_url' => $result['download_url']
+            'download_url' => $result['download_url'],
         ], 200);
     }
 }

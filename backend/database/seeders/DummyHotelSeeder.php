@@ -21,8 +21,11 @@ class DummyHotelSeeder extends Seeder
         $idsFor = function (array $names) use ($facilityByName) {
             $ids = [];
             foreach ($names as $n) {
-                if (isset($facilityByName[$n])) $ids[] = $facilityByName[$n];
+                if (isset($facilityByName[$n])) {
+                    $ids[] = $facilityByName[$n];
+                }
             }
+
             return array_values(array_unique($ids));
         };
 
@@ -111,7 +114,7 @@ class DummyHotelSeeder extends Seeder
                     'name' => "Admin Hotel $i",
                     'role' => 'admin_hotel',
                     'password' => Hash::make('adminhotel'),
-                    'phone' => '0812' . str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT),
+                    'phone' => '0812'.str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT),
                     'status' => 'active',
                     'email_verified_at' => now(),
                 ]
@@ -120,7 +123,7 @@ class DummyHotelSeeder extends Seeder
             $meta = $hotelMeta[$i - 1] ?? ['name' => "Hotel $i", 'city' => 'bandung', 'address' => "Jl. Dago No. $i, Bandung", 'lat' => -6.9039, 'lng' => 107.6186, 'tier' => 'city'];
             $cityId = $cityMap[$meta['city']] ?? $fallbackCity;
             $hotelName = $meta['name'];
-            $slug = Str::slug($hotelName) . '-dummy-' . $i;
+            $slug = Str::slug($hotelName).'-dummy-'.$i;
 
             $hotel = Hotel::updateOrCreate(
                 ['slug' => $slug],
@@ -128,7 +131,7 @@ class DummyHotelSeeder extends Seeder
                     'admin_id' => $user->id,
                     'city_id' => $cityId,
                     'name' => $hotelName,
-                    'description' => fake()->paragraph(3) . ' Fasilitas lengkap dan lokasi strategis di pusat kota.',
+                    'description' => fake()->paragraph(3).' Fasilitas lengkap dan lokasi strategis di pusat kota.',
                     'address' => $meta['address'],
                     'average_rating' => 0,
                     'total_review' => 0,

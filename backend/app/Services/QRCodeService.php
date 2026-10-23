@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\ETicket;
-use App\Models\ActivityLog;
-use Illuminate\Support\Str;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class QRCodeService
 {
@@ -18,7 +18,7 @@ class QRCodeService
     public function generateTicket(Booking $booking): ETicket
     {
         // Membuat string unik untuk QR Code (Misal: QR-HLV2026080001-A1B2C3D4)
-        $uniqueString = 'QR-' . $booking->booking_code . '-' . strtoupper(Str::random(8));
+        $uniqueString = 'QR-'.$booking->booking_code.'-'.strtoupper(Str::random(8));
 
         // Menyimpan data ke tabel e_tickets[cite: 1]
         $ticket = ETicket::firstOrCreate(
@@ -43,30 +43,30 @@ class QRCodeService
     {
         $ticket = ETicket::with('booking.hotel')->where('qr_code', $qrString)->first();
 
-        if (!$ticket) {
+        if (! $ticket) {
             throw new \Exception('QR Code tidak valid atau tidak ditemukan.');
         }
 
         $booking = $ticket->booking;
 
         // Aturan BR-043: QR Code tidak dapat digunakan dua kali[cite: 1]
-        if ($booking->status === 'Checked In' || $booking->status === 'Checked Out') {
+        if ($booking->status === 'checked_in' || $booking->status === 'checked_out') {
             throw new \Exception('QR Code sudah digunakan untuk Check In.');
         }
 
-        if ($booking->status !== 'Paid') {
+        if ($booking->status !== 'paid') {
             throw new \Exception('Booking belum lunas atau tidak valid.');
         }
 
         // Aturan BR-044: Status berubah menjadi Checked In setelah QR diverifikasi[cite: 1]
         DB::transaction(function () use ($booking, $adminId) {
-            $booking->update(['status' => 'Checked In']);
+            $booking->update(['status' => 'checked_in']);
 
             ActivityLog::create([
                 'user_id' => $adminId,
                 'activity' => 'Check In',
                 'description' => "Tamu berhasil Check In menggunakan QR Code untuk Booking {$booking->booking_code}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
         });
 

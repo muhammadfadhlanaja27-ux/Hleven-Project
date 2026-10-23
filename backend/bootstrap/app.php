@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Middleware\CheckHotelSuspended;
+use App\Http\Middleware\CheckRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,12 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Aktifkan CORS untuk semua request API (mengizinkan frontend Vite)
-        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->prepend(HandleCors::class);
 
         // Daftarkan alias middleware Anda di sini
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
-            'hotel_suspended' => \App\Http\Middleware\CheckHotelSuspended::class,
+            'role' => CheckRole::class,
+            'hotel_suspended' => CheckHotelSuspended::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

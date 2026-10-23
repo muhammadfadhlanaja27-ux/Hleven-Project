@@ -57,7 +57,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 dashboard
               </span>
-              <span>Dashboard</span>
+              <span>Dasbor</span>
             </Link>
           </li>
 
@@ -73,7 +73,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 hotel
               </span>
-              <span>Hotel Information</span>
+              <span>Informasi Hotel</span>
             </Link>
           </li>
 
@@ -89,7 +89,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 bed
               </span>
-              <span>Room Management</span>
+              <span>Manajemen Kamar</span>
             </Link>
           </li>
 
@@ -105,7 +105,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 calendar_month
               </span>
-              <span>Kalender &amp; Harga</span>
+              <span>Kalender & Harga</span>
             </Link>
           </li>
 
@@ -121,7 +121,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 calendar_today
               </span>
-              <span>Bookings Management</span>
+              <span>Manajemen Pemesanan</span>
             </Link>
           </li>
 
@@ -137,7 +137,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 king_bed
               </span>
-              <span>Bed Types Management</span>
+              <span>Manajemen Tipe Kasur</span>
             </Link>
           </li>
 
@@ -153,7 +153,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 category
               </span>
-              <span>Room Types Management</span>
+              <span>Manajemen Tipe Kamar</span>
             </Link>
           </li>
 
@@ -169,7 +169,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 receipt_long
               </span>
-              <span>Transaction History</span>
+              <span>Riwayat Transaksi</span>
             </Link>
           </li>
 
@@ -201,7 +201,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 star
               </span>
-              <span>Reviews Management</span>
+              <span>Manajemen Ulasan</span>
             </Link>
           </li>
 
@@ -217,7 +217,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 account_balance_wallet
               </span>
-              <span>Saldo &amp; Pencairan</span>
+              <span>Saldo & Pencairan</span>
             </Link>
           </li>
 
@@ -233,7 +233,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 monitoring
               </span>
-              <span>Revenue Report</span>
+              <span>Laporan Pendapatan</span>
             </Link>
           </li>
         </ul>

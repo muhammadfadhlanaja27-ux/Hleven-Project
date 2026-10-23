@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
 use App\Services\SuperAdminUserService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class SuperAdminUserController extends Controller
 {
@@ -31,14 +31,14 @@ class SuperAdminUserController extends Controller
                     'current_page' => $users->currentPage(),
                     'last_page' => $users->lastPage(),
                     'per_page' => $users->perPage(),
-                    'total' => $users->total()
-                ]
+                    'total' => $users->total(),
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan pada server.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -47,14 +47,15 @@ class SuperAdminUserController extends Controller
     {
         try {
             $user = User::findOrFail($id);
+
             return response()->json([
                 'success' => true,
-                'data' => $user
+                'data' => $user,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Pengguna tidak ditemukan.'
+                'message' => 'Pengguna tidak ditemukan.',
             ], 404);
         }
     }
@@ -68,7 +69,7 @@ class SuperAdminUserController extends Controller
             'role' => 'required|in:admin_hotel,user,super_admin',
             'phone' => 'nullable|string|max:20',
             'status' => 'nullable|in:active,blocked,inactive',
-            'hotel_name' => 'nullable|string|max:255'
+            'hotel_name' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -76,13 +77,13 @@ class SuperAdminUserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pengguna berhasil ditambahkan.'
+                'message' => 'Pengguna berhasil ditambahkan.',
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal membuat pengguna.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -91,7 +92,7 @@ class SuperAdminUserController extends Controller
     {
         // 1. Terima data dari React (apapun bentuk hurufnya)
         $request->validate([
-            'status' => 'required|in:Active,Blocked,Inactive,active,blocked,inactive'
+            'status' => 'required|in:Active,Blocked,Inactive,active,blocked,inactive',
         ]);
 
         try {
@@ -100,7 +101,7 @@ class SuperAdminUserController extends Controller
             if ($user->id === $request->user()->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak dapat mengubah status akun Anda sendiri.'
+                    'message' => 'Tidak dapat mengubah status akun Anda sendiri.',
                 ], 400);
             }
 
@@ -111,13 +112,13 @@ class SuperAdminUserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Status pengguna berhasil diperbarui.'
+                'message' => 'Status pengguna berhasil diperbarui.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memperbarui status pengguna.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -125,7 +126,7 @@ class SuperAdminUserController extends Controller
     public function updateRole(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
-            'role' => 'required|in:admin_hotel,user'
+            'role' => 'required|in:admin_hotel,user',
         ]);
 
         try {
@@ -134,7 +135,7 @@ class SuperAdminUserController extends Controller
             if ($user->id === $request->user()->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak dapat mengubah role akun Anda sendiri.'
+                    'message' => 'Tidak dapat mengubah role akun Anda sendiri.',
                 ], 400);
             }
 
@@ -142,13 +143,13 @@ class SuperAdminUserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Role pengguna berhasil diperbarui.'
+                'message' => 'Role pengguna berhasil diperbarui.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memperbarui role pengguna.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -162,7 +163,7 @@ class SuperAdminUserController extends Controller
             if ($user->id === $request->user()->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak dapat menghapus akun Anda sendiri.'
+                    'message' => 'Tidak dapat menghapus akun Anda sendiri.',
                 ], 400);
             }
 
@@ -170,12 +171,12 @@ class SuperAdminUserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pengguna berhasil dihapus.'
+                'message' => 'Pengguna berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus pengguna. Pengguna mungkin masih memiliki data terkait.'
+                'message' => 'Gagal menghapus pengguna. Pengguna mungkin masih memiliki data terkait.',
             ], 500);
         }
     }
