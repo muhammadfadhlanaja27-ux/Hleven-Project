@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
+use App\Models\PartnerDocument;
 use App\Models\RoomPhoto;
 use App\Models\User;
-use App\Models\PartnerDocument;
 use App\Services\FileStorageService;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 class MigratePhotosToSupabase extends Command
 {
@@ -48,7 +48,7 @@ class MigratePhotosToSupabase extends Command
 
         // Helper function to process a single file path/url
         $processFile = function ($currentUrl, string $directory) {
-            if (!$currentUrl) {
+            if (! $currentUrl) {
                 return [null, 'empty'];
             }
 
@@ -63,8 +63,9 @@ class MigratePhotosToSupabase extends Command
                     $url
                 );
                 if ($bucket !== '') {
-                    $publicUrl = str_replace('/object/public/' . $bucket . '/' . $bucket . '/', '/object/public/' . $bucket . '/', $publicUrl);
+                    $publicUrl = str_replace('/object/public/'.$bucket.'/'.$bucket.'/', '/object/public/'.$bucket.'/', $publicUrl);
                 }
+
                 return $publicUrl;
             };
 
@@ -74,6 +75,7 @@ class MigratePhotosToSupabase extends Command
                 if ($normalized !== $currentUrl) {
                     return [$normalized, 'normalized'];
                 }
+
                 return [$currentUrl, 'already_supabase'];
             }
 
@@ -88,35 +90,37 @@ class MigratePhotosToSupabase extends Command
                 try {
                     $fileContents = Storage::disk('public')->get($relativePath);
                     $filename = basename($relativePath);
-                    $targetPath = trim($directory, '/') . '/' . uniqid() . '_' . $filename;
+                    $targetPath = trim($directory, '/').'/'.uniqid().'_'.$filename;
 
                     // Put file to s3 disk
                     Storage::disk('s3')->put($targetPath, $fileContents);
 
                     // Build public Supabase URL
-                    $newUrl = $normalizeSupabaseUrl($baseUrl . '/' . ltrim($targetPath, '/'));
+                    $newUrl = $normalizeSupabaseUrl($baseUrl.'/'.ltrim($targetPath, '/'));
 
                     return [$newUrl, 'success'];
                 } catch (\Throwable $e) {
-                    return [null, 'error: ' . $e->getMessage()];
+                    return [null, 'error: '.$e->getMessage()];
                 }
             }
 
             // If file is not found locally but is a relative path (e.g. room_types/foo.jpg or rooms/bar.jpg),
             // construct the expected Supabase public URL assuming it was uploaded directly to S3
-            if (!str_starts_with($currentUrl, 'http://') && !str_starts_with($currentUrl, 'https://')) {
+            if (! str_starts_with($currentUrl, 'http://') && ! str_starts_with($currentUrl, 'https://')) {
                 $targetPath = ltrim($currentUrl, '/');
-                if ($bucket !== '' && str_starts_with($targetPath, $bucket . '/')) {
+                if ($bucket !== '' && str_starts_with($targetPath, $bucket.'/')) {
                     $targetPath = substr($targetPath, strlen($bucket) + 1);
                 }
-                $constructedUrl = $normalizeSupabaseUrl($baseUrl . '/' . $targetPath);
+                $constructedUrl = $normalizeSupabaseUrl($baseUrl.'/'.$targetPath);
+
                 return [$constructedUrl, 'constructed_supabase'];
             }
 
             // If it starts with localhost URL (e.g. http://localhost:8000/storage/rooms/foo.jpg), extract path and convert to Supabase public URL
             if (str_contains($currentUrl, 'localhost:8000/storage/')) {
                 $path = substr($currentUrl, strpos($currentUrl, '/storage/') + 9);
-                $constructedUrl = $normalizeSupabaseUrl($baseUrl . '/' . ltrim($path, '/'));
+                $constructedUrl = $normalizeSupabaseUrl($baseUrl.'/'.ltrim($path, '/'));
+
                 return [$constructedUrl, 'converted_localhost'];
             }
 
@@ -184,6 +188,7 @@ class MigratePhotosToSupabase extends Command
         }
 
         $this->info("Migration completed! Total migrated: {$migratedCount}, skipped: {$skippedCount}, failed: {$failedCount}");
+
         return 0;
     }
 }

@@ -15,22 +15,18 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\RoomCalendarController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomTypeCategoryController;
-use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\Api\V1\RoomTypeController;
+use App\Http\Controllers\AppealController;
+use App\Http\Controllers\FileStorageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartnerApplicationController;
-use App\Http\Controllers\AppealController;
-use App\Http\Controllers\Api\V1\RoomTypeController;
-
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdminPayoutController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\WarningController;
-use App\Http\Controllers\FileStorageController;
-
-
 use Illuminate\Support\Facades\Route;
-
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +41,8 @@ Route::prefix('v1')->group(function () {
     // ==========================================
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     Route::get('/check-email', [PartnerApplicationController::class, 'checkEmail']);
     Route::get('/facilities', [FacilityController::class, 'index']);
     Route::post('/payments/callback', [PaymentController::class, 'callback']);

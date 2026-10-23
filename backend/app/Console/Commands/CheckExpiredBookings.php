@@ -2,12 +2,12 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Booking;
-use App\Models\RoomType;
 use App\Models\RoomAvailability;
+use App\Models\RoomType;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class CheckExpiredBookings extends Command
@@ -16,6 +16,7 @@ class CheckExpiredBookings extends Command
      * Nama perintah disesuaikan dengan yang ada di routes/console.php
      */
     protected $signature = 'booking:check-expired';
+
     protected $description = 'Membatalkan otomatis booking yang kadaluarsa dan mengembalikan stok kamar';
 
     public function handle()
@@ -27,12 +28,13 @@ class CheckExpiredBookings extends Command
                 $query->whereHas('payment', function ($q) {
                     $q->where('expired_at', '<=', Carbon::now());
                 })
-                ->orWhere('created_at', '<=', Carbon::now()->subMinutes(15));
+                    ->orWhere('created_at', '<=', Carbon::now()->subMinutes(15));
             })
             ->get();
 
         if ($expiredBookings->isEmpty()) {
             $this->info('Tidak ada booking yang kedaluwarsa.');
+
             return 0;
         }
 
@@ -41,9 +43,9 @@ class CheckExpiredBookings extends Command
         foreach ($expiredBookings as $booking) {
             DB::beginTransaction();
             try {
-                $checkIn  = Carbon::parse($booking->check_in);
+                $checkIn = Carbon::parse($booking->check_in);
                 $checkOut = Carbon::parse($booking->check_out);
-                $period   = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+                $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
                 foreach ($booking->bookingRooms as $bRoom) {
                     // 1. Restore Stok Master RoomType
@@ -73,11 +75,12 @@ class CheckExpiredBookings extends Command
                 $count++;
             } catch (\Exception $e) {
                 DB::rollBack();
-                $this->error("Gagal membatalkan booking ID {$booking->id}: " . $e->getMessage());
+                $this->error("Gagal membatalkan booking ID {$booking->id}: ".$e->getMessage());
             }
         }
 
         $this->info("Berhasil membatalkan {$count} booking yang kedaluwarsa.");
+
         return 0;
     }
 }

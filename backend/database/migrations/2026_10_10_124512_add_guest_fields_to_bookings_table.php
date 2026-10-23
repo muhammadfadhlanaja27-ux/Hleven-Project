@@ -9,16 +9,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            if (!Schema::hasColumn('bookings', 'is_for_other_guest')) {
+            if (! Schema::hasColumn('bookings', 'is_for_other_guest')) {
                 $table->boolean('is_for_other_guest')->default(false)->after('hotel_id');
             }
-            if (!Schema::hasColumn('bookings', 'guest_name')) {
+            if (! Schema::hasColumn('bookings', 'guest_name')) {
                 $table->string('guest_name')->nullable()->after('is_for_other_guest');
             }
-            if (!Schema::hasColumn('bookings', 'guest_email')) {
+            if (! Schema::hasColumn('bookings', 'guest_email')) {
                 $table->string('guest_email')->nullable()->after('guest_name');
             }
-            if (!Schema::hasColumn('bookings', 'guest_phone')) {
+            if (! Schema::hasColumn('bookings', 'guest_phone')) {
                 $table->string('guest_phone')->nullable()->after('guest_email');
             }
         });

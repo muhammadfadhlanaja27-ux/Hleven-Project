@@ -18,7 +18,7 @@ class AuthenticationService
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'phone' => $data['phone'] ?? null,
-            'role' => $role, 
+            'role' => $role,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -33,7 +33,7 @@ class AuthenticationService
     {
         $user = User::where('email', $email)->first();
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (! $user || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Kredensial yang diberikan tidak cocok dengan data kami.'],
             ]);
@@ -56,6 +56,7 @@ class AuthenticationService
     {
         // Hapus token yang sedang digunakan
         $user->currentAccessToken()->delete();
+
         return true;
     }
 }

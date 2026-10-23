@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('room_availabilities', function (Blueprint $table) {
-            $table->id(); //[cite: 1]
-            $table->foreignId('room_type_id')->constrained('room_types')->cascadeOnDelete(); //[cite: 1]
+            $table->id(); // [cite: 1]
+            $table->foreignId('room_type_id')->constrained('room_types')->cascadeOnDelete(); // [cite: 1]
             $table->date('date'); // Tanggal ketersediaan[cite: 1]
             $table->integer('available_stock'); // Sisa kamar[cite: 1]
             $table->integer('booked_room')->default(0); // Jumlah kamar dipesan[cite: 1]
-            $table->timestamps(); //[cite: 1]
+            $table->timestamps(); // [cite: 1]
 
             // Composite Index untuk mempercepat query pencarian stok berdasarkan tanggal[cite: 1]
             $table->index(['room_type_id', 'date']);

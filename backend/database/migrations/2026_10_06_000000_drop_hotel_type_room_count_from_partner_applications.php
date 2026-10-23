@@ -21,10 +21,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('partner_applications', function (Blueprint $table) {
-            if (!Schema::hasColumn('partner_applications', 'hotel_type')) {
+            if (! Schema::hasColumn('partner_applications', 'hotel_type')) {
                 $table->string('hotel_type')->nullable()->after('hotel_name');
             }
-            if (!Schema::hasColumn('partner_applications', 'room_count')) {
+            if (! Schema::hasColumn('partner_applications', 'room_count')) {
                 $table->unsignedInteger('room_count')->nullable()->after('hotel_email');
             }
         });

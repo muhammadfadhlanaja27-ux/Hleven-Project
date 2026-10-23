@@ -111,7 +111,7 @@ class RoomUploadTest extends TestCase
 
         $this->actingAs($user, 'sanctum');
 
-        $response = $this->putJson('/api/v1/admin/rooms/' . $room->id, [
+        $response = $this->putJson('/api/v1/admin/rooms/'.$room->id, [
             'is_refundable' => false,
         ]);
 

@@ -109,14 +109,15 @@ class SuperAdminDashboardController extends Controller
     public function wallet(): JsonResponse
     {
         // Fallback implementation if Service method doesn't exist
-        $data = method_exists($this->dashboardService, 'getWalletStats') 
-            ? $this->dashboardService->getWalletStats() 
+        $data = method_exists($this->dashboardService, 'getWalletStats')
+            ? $this->dashboardService->getWalletStats()
             : [
                 'commission_total' => 0,
                 'commission_held' => 0,
                 'commission_available' => 0,
-                'withdrawals' => ['data' => []]
+                'withdrawals' => ['data' => []],
             ];
+
         return $this->successResponse($data);
     }
 

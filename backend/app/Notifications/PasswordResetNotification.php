@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -11,9 +10,7 @@ class PasswordResetNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public string $otp)
-    {
-    }
+    public function __construct(public string $otp) {}
 
     /**
      * Get the notification's delivery channels.
@@ -34,7 +31,7 @@ class PasswordResetNotification extends Notification
             ->subject("Kode Reset Password H'Leven")
             ->line('Kami menerima permintaan reset password untuk akun Anda.')
             ->line('Gunakan kode OTP berikut untuk melanjutkan proses reset:')
-            ->line('Kode OTP: ' . $this->otp)
+            ->line('Kode OTP: '.$this->otp)
             ->line('Kode ini berlaku selama 10 menit.')
             ->line('Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini.');
     }

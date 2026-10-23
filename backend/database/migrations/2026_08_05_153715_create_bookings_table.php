@@ -11,11 +11,11 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
             $table->string('booking_code')->unique();
-            
+
             // user_id dibuat nullable agar mendukung Guest Checkout (pemesanan tanpa login)
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete(); 
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('hotel_id')->constrained('hotels')->onDelete('restrict');
-            
+
             // Kolom pendukung pemesanan untuk orang lain & guest checkout
             $table->boolean('is_for_other_guest')->default(false);
             $table->string('guest_name')->nullable();
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->decimal('grand_total', 15, 2);
             $table->text('special_request')->nullable();
             $table->enum('status', [
-                'pending', 'unpaid', 'paid', 'checked_in', 'checked_out', 'cancelled', 'expired', 'refunded'
+                'pending', 'unpaid', 'paid', 'checked_in', 'checked_out', 'cancelled', 'expired', 'refunded',
             ])->default('pending');
             $table->timestamps();
         });

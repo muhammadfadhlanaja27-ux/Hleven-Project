@@ -2,20 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\PartnerApplication;
 use App\Models\PartnerDocument;
 use App\Models\User;
-use App\Services\PartnerApplicationService;
 use App\Services\FileStorageService;
+use App\Services\PartnerApplicationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PartnerApplicationController extends Controller
 {
     protected PartnerApplicationService $partnerService;
+
     protected FileStorageService $storageService;
 
     public function __construct(
@@ -41,7 +41,7 @@ class PartnerApplicationController extends Controller
 
         return response()->json([
             'success' => true,
-            'available' => !$exists,
+            'available' => ! $exists,
             'message' => $exists ? 'Email ini sudah terpakai.' : 'Email tersedia.',
         ], 200);
     }
@@ -73,7 +73,7 @@ class PartnerApplicationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $applications
+            'data' => $applications,
         ], 200);
     }
 
@@ -86,7 +86,7 @@ class PartnerApplicationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $application
+            'data' => $application,
         ], 200);
     }
 
@@ -131,7 +131,7 @@ class PartnerApplicationController extends Controller
         if ($existing) {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda sudah memiliki pengajuan mitra yang sedang diproses.'
+                'message' => 'Anda sudah memiliki pengajuan mitra yang sedang diproses.',
             ], 400);
         }
 
@@ -191,14 +191,15 @@ class PartnerApplicationController extends Controller
                     'status' => $application->status,
                     'created_at' => $application->created_at,
                     'hotel_name' => $application->hotel_name,
-                ]
+                ],
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengirim pengajuan mitra.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -217,13 +218,13 @@ class PartnerApplicationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Partner berhasil disetujui.'
+                'message' => 'Partner berhasil disetujui.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyetujui partner.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -240,12 +241,12 @@ class PartnerApplicationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pengajuan partner ditolak.'
+                'message' => 'Pengajuan partner ditolak.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menolak partner.'
+                'message' => 'Gagal menolak partner.',
             ], 500);
         }
     }
@@ -259,7 +260,7 @@ class PartnerApplicationController extends Controller
 
         $path = $doc->file_path;
 
-        if (!$path) {
+        if (! $path) {
             return response()->json(['success' => false, 'message' => 'File dokumen tidak ditemukan.'], 404);
         }
 

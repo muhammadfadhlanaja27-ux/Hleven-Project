@@ -16,18 +16,18 @@ return new class extends Migration
             $table->foreignId('city_id')->constrained('cities')->onDelete('restrict'); // FK ke cities[cite: 1]
 
             // Kolom Data
-            $table->string('name'); //[cite: 1]
+            $table->string('name'); // [cite: 1]
             $table->string('slug')->unique(); // URL Slug, harus unik[cite: 1]
-            $table->text('description')->nullable(); //[cite: 1]
-            $table->text('address'); //[cite: 1]
+            $table->text('description')->nullable(); // [cite: 1]
+            $table->text('address'); // [cite: 1]
 
             // Statistik (Dihitung otomatis via relasi)
             $table->decimal('average_rating', 3, 2)->default(0.00); // Rating rata-rata[cite: 1]
             $table->integer('total_review')->default(0); // Jumlah review[cite: 1]
 
             // Maps
-            $table->decimal('latitude', 10, 8)->nullable(); //[cite: 1]
-            $table->decimal('longitude', 11, 8)->nullable(); //[cite: 1]
+            $table->decimal('latitude', 10, 8)->nullable(); // [cite: 1]
+            $table->decimal('longitude', 11, 8)->nullable(); // [cite: 1]
 
             // Status & Timestamps
             $table->enum('status', ['active', 'inactive', 'blocked'])->default('inactive'); // Status hotel[cite: 1]
