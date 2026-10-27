@@ -15,6 +15,9 @@ const normalizeImageUrl = (value) => getStorageUrl(value);
 
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
+const formatPriceInput = (value) =>
+  value === "" ? "" : Number(value).toLocaleString("id-ID");
+const parsePriceInput = (value) => value.replace(/\D/g, "");
 
 const dateInputValue = (date) =>
   new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -150,6 +153,7 @@ const normalizeRoom = (r) => {
     ),
     bed: r.bedType?.name || r.bed || "",
     bed_type_id: r.bed_type_id || (r.bedType?.id ?? ""),
+    bed_count: Number(r.bed_count || 1),
     room_type_category_id: r.room_type_category_id || r.category?.id || "",
     description: r.description || "",
     weekday_price: Number(r.weekday_price || 0),
@@ -325,6 +329,7 @@ export default function RoomList() {
       room_type_category_id: room.room_type_category_id || "",
       bed: room.bed || "",
       bed_type_id: room.bed_type_id || "",
+      bed_count: String(room.bed_count || 1),
       description: room.description || "",
       weekday_price: room.weekday_price,
       weekend_price: room.weekend_price,
@@ -345,7 +350,12 @@ export default function RoomList() {
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditValues((prev) => ({ ...prev, [name]: value }));
+    setEditValues((prev) => ({
+      ...prev,
+      [name]: name === "weekday_price" || name === "weekend_price"
+        ? parsePriceInput(value)
+        : value,
+    }));
     if (editErrors[name]) {
       setEditErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -448,6 +458,8 @@ export default function RoomList() {
       errs.weekend_price = "Weekend price must be greater than 0.";
     if (!editValues.bed_type_id)
       errs.bed_type_id = "Pilih tipe tempat tidur.";
+    if (!editValues.bed_count || Number(editValues.bed_count) < 1)
+      errs.bed_count = "Jumlah kasur minimal 1.";
     if (!editValues.stock || Number(editValues.stock) < 1)
       errs.stock = "Stock must be at least 1.";
 
@@ -475,6 +487,7 @@ export default function RoomList() {
       payload.append("type", editValues.type || "Standard");
       payload.append("bed", editValues.bed || "");
       payload.append("bed_type_id", editValues.bed_type_id || "");
+      payload.append("bed_count", Number(editValues.bed_count) || 1);
       payload.append("description", editValues.description?.trim() || "");
       payload.append("weekday_price", Number(editValues.weekday_price));
       payload.append("weekend_price", Number(editValues.weekend_price));
@@ -719,7 +732,9 @@ export default function RoomList() {
                         {(room.bed_type?.name || room.bed) ? (
                           <span className="inline-flex items-center gap-1">
                             <span className="material-symbols-outlined text-[16px] text-[#506147]">bed</span>
-                            {room.bed_type?.name || room.bed}
+                            {room.bed_count > 1
+                              ? `${room.bed_count} × ${(room.bed_type?.name || room.bed).replace(/^1\s+/, "")}`
+                              : room.bed_type?.name || room.bed}
                           </span>
                         ) : (
                           <span className="text-xs text-[#6B6E6A]">—</span>
@@ -897,7 +912,11 @@ export default function RoomList() {
                   </div>
                   <div>
                     <span className="text-[#6B6E6A]">Bed:</span>
-                    <p className="font-semibold text-[#2D312C] mt-0.5">{viewingRoom.bed || "—"}</p>
+                    <p className="font-semibold text-[#2D312C] mt-0.5">
+                      {viewingRoom.bed
+                        ? `${viewingRoom.bed_count > 1 ? `${viewingRoom.bed_count} × ` : ""}${viewingRoom.bed_count > 1 ? viewingRoom.bed.replace(/^1\s+/, "") : viewingRoom.bed}`
+                        : "—"}
+                    </p>
                   </div>
                   <div>
                     <span className="text-[#6B6E6A]">Capacity:</span>
@@ -1054,13 +1073,13 @@ export default function RoomList() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Weekday Price (Rp) *</label>
-                    <input type="number" name="weekday_price" value={editValues.weekday_price} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
+                    <input type="text" inputMode="numeric" name="weekday_price" value={formatPriceInput(editValues.weekday_price)} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.weekday_price && <span className="text-xs text-[#ba1a1a]">{editErrors.weekday_price}</span>}
                   </div>
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-[#2D312C]">Weekend Price (Rp) *</label>
-                    <input type="number" name="weekend_price" value={editValues.weekend_price} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
+                    <input type="text" inputMode="numeric" name="weekend_price" value={formatPriceInput(editValues.weekend_price)} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.weekend_price && <span className="text-xs text-[#ba1a1a]">{editErrors.weekend_price}</span>}
                   </div>
                 </div>
@@ -1097,6 +1116,13 @@ export default function RoomList() {
                         </span>
                       );
                     })()}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[#2D312C]">Jumlah Kasur *</label>
+                    <input type="number" name="bed_count" value={editValues.bed_count} onChange={handleEditChange} min="1" max="50" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
+                    {editErrors.bed_count && <span className="text-xs text-[#ba1a1a]">{editErrors.bed_count}</span>}
+                    <span className="text-[10px] text-[#6B6E6A]">Tidak mengubah kapasitas tamu.</span>
                   </div>
 
                   <div className="flex flex-col gap-1">
@@ -1204,10 +1230,10 @@ export default function RoomList() {
                     .map((fac) => {
                     const isChecked = (editValues.facilityIds || []).includes(fac.id);
                     return (
-                      <label key={fac.id} className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${isChecked ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]" : "border-[#E5E1DA] bg-white text-[#2D312C]"}`}>
+                      <label key={fac.id} title={getFacilityDisplayName(fac)} className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${isChecked ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]" : "border-[#E5E1DA] bg-white text-[#2D312C]"}`}>
                         <input type="checkbox" checked={isChecked} onChange={() => handleEditFacilityToggle(fac.id)} className="accent-[#506147]" />
                         <span className="material-symbols-outlined text-[16px] text-[#506147]">{getFacilityIcon(fac.name, fac.icon, "bed")}</span>
-                        <span className="truncate">{getFacilityDisplayName(fac)}</span>
+                        <span className="truncate" title={getFacilityDisplayName(fac)}>{getFacilityDisplayName(fac)}</span>
                       </label>
                     );
                     })}
