@@ -221,7 +221,7 @@ const BookingHistory = () => {
       }
     }
 
-    fetchApiBookings();
+    fetchApiBookings(true);
   }, []);
 
   const fetchApiBookings = async (forceRefresh = false) => {
@@ -256,8 +256,6 @@ const BookingHistory = () => {
       toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
       setCancelModalBooking(null);
       setCancelReason("");
-      // hapus cache agar status terbaru langsung muncul
-      invalidateCache("/user/bookings");
       fetchApiBookings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");

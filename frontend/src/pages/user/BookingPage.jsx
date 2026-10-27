@@ -3,6 +3,49 @@ import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
+import { getInitialSearchValues, fmtDateStr } from "../../services/searchStorage";
+
+const SNAP_URL = "https://app.sandbox.midtrans.com/snap/snap.js";
+const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+
+// Helper validasi token ketat
+const isUserLoggedIn = () => {
+  const token = localStorage.getItem("token");
+  return Boolean(
+    token &&
+    token !== "null" &&
+    token !== "undefined" &&
+    token.trim() !== ""
+  );
+};
+
+const loadSnapScript = () =>
+  new Promise((resolve, reject) => {
+    if (window.snap) return resolve();
+
+    const existingScript = document.querySelector(`script[src="${SNAP_URL}"]`);
+    if (existingScript) {
+      const check = setInterval(() => {
+        if (window.snap) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+      setTimeout(() => {
+        clearInterval(check);
+        reject(new Error("Snap load timeout"));
+      }, 8000);
+      return;
+    }
+
+    const s = document.createElement("script");
+    s.src = SNAP_URL;
+    s.setAttribute("data-client-key", CLIENT_KEY || "");
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Gagal memuat Midtrans Snap"));
+    document.body.appendChild(s);
+  });
 
 const BookingPage = () => {
   const { hotelId, roomId } = useParams();
@@ -26,6 +69,8 @@ const BookingPage = () => {
   // Data States
   const [hotel, setHotel] = useState(null);
   const [room, setRoom] = useState(null);
+  const [priceQuote, setPriceQuote] = useState(null);
+  const [priceQuoteError, setPriceQuoteError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [bookerContact, setBookerContact] = useState({ name: '', email: '', phone: '' });
@@ -179,8 +224,8 @@ const BookingPage = () => {
             const hotelThumbRaw = apiHotel.thumbnail;
             const hotelImage = hotelThumbRaw
               ? (typeof hotelThumbRaw === 'object'
-                  ? (hotelThumbRaw.photo || hotelThumbRaw.url || null)
-                  : (hotelThumbRaw.startsWith('http') ? hotelThumbRaw : `http://localhost:8000/storage/${String(hotelThumbRaw).replace(/^\//, '')}`))
+                ? (hotelThumbRaw.photo || hotelThumbRaw.url || null)
+                : (hotelThumbRaw.startsWith('http') ? hotelThumbRaw : `http://localhost:8000/storage/${String(hotelThumbRaw).replace(/^\//, '')}`))
               : null;
 
             const mappedRoom = {
@@ -240,10 +285,59 @@ const BookingPage = () => {
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
 
-  const roomPrice = Number(room?.price || room?.weekday_price || 3500000);
-  const subtotalPrice = roomPrice * nightsCount * roomQty;
-  const taxAndFees = Math.round(subtotalPrice * 0.21);
-  const totalPrice = subtotalPrice + taxAndFees;
+  useEffect(() => {
+    let active = true;
+
+    const fetchPriceQuote = async () => {
+      if (!hotelId || !room?.id || !checkInDate || !checkOutDate || !roomQty) {
+        if (active) {
+          setPriceQuote(null);
+          setPriceQuoteError("");
+        }
+        return;
+      }
+
+      setPriceQuoteError("");
+      try {
+        const response = await api.post("/bookings/quote", {
+          hotel_id: Number(hotelId),
+          room_type_id: Number(room.id),
+          check_in: checkInDate,
+          check_out: checkOutDate,
+          qty: Number(roomQty),
+        });
+        if (active) {
+          setPriceQuote(response.data?.data || null);
+          setPriceQuoteError("");
+        }
+      } catch (error) {
+        if (active) {
+          setPriceQuote(null);
+          const responseData = error.response?.data;
+          const validationMessage = responseData?.errors
+            ? Object.values(responseData.errors).flat().find(Boolean)
+            : null;
+          setPriceQuoteError(
+            responseData?.message ||
+            validationMessage ||
+            "Gagal memeriksa harga dan ketersediaan kamar."
+          );
+        }
+      }
+    };
+
+    fetchPriceQuote();
+
+    return () => {
+      active = false;
+    };
+  }, [hotelId, room?.id, checkInDate, checkOutDate, roomQty]);
+
+  const roomPrice = Number(room?.price || room?.weekday_price || 350000);
+  const taxRate = Number(priceQuote?.tax_rate ?? hotel?.tax_rate ?? 5);
+  const subtotalPrice = Number(priceQuote?.subtotal ?? roomPrice * nightsCount * roomQty);
+  const taxAndFees = Number(priceQuote?.tax ?? (subtotalPrice * taxRate) / 100);
+  const totalPrice = Number(priceQuote?.grand_total ?? subtotalPrice + taxAndFees);
 
   const dynamicQrUrl = useMemo(() => {
     const qrisPayload = `00020101021226670016ID.CO.QRIS.WWW01189360091100000000005204581253033605802ID5913HLEVEN HOTEL6007BANDUNG61054011562070703A016304|ORDER:${orderId}|TOTAL:${totalPrice}`;
@@ -282,18 +376,10 @@ const BookingPage = () => {
     };
 
     try {
-      let res;
-      try {
-        res = await api.post("/bookings", payload);
-      } catch (firstErr) {
-        if (firstErr.response?.status === 405) {
-          res = await api.post("/user/bookings", payload);
-        } else {
-          throw firstErr;
-        }
-      }
+      const res = await api.post("/user/bookings", payload);
 
       if (res.data && res.data.data) {
+        invalidateCache("/user/bookings");
         const createdBooking = res.data.data.booking || res.data.data;
         // Riwayat memakai cache 30 detik; hapus agar booking baru langsung tampak
         invalidateCache("/user/bookings");
@@ -309,8 +395,16 @@ const BookingPage = () => {
     } catch (err) {
       const responseData = err.response?.data;
 
-      if (err.response?.status === 422) {
-        const errorMessage = responseData?.message || "Kamar tidak memenuhi kriteria pesanan.";
+      if (err.response?.status === 401) {
+        toast.error("Sesi Anda telah berakhir. Silakan login kembali.");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login", { state: { from: location } });
+      } else if (err.response?.status === 422) {
+        const validationMessage = responseData?.errors
+          ? Object.values(responseData.errors).flat().find(Boolean)
+          : null;
+        const errorMessage = responseData?.message || validationMessage || "Kamar tidak memenuhi kriteria pesanan.";
         toast.error(errorMessage);
 
         if (responseData?.suggestions) {
@@ -347,7 +441,7 @@ const BookingPage = () => {
         try {
           const checkRes = await api.get(`/bookings/${currentBookingId}`);
           paymentIdToMark = checkRes.data?.data?.payment?.id;
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (paymentIdToMark) {
@@ -616,6 +710,11 @@ const BookingPage = () => {
               <hr className="border-t border-[#DCCFC0]/50" />
 
               <div className="space-y-3 font-body-md text-sm text-[#2D332C]">
+                {priceQuoteError && (
+                  <p role="alert" className="rounded-lg border border-[#ba1a1a]/20 bg-[#ba1a1a]/10 p-3 text-xs text-[#ba1a1a]">
+                    {priceQuoteError}
+                  </p>
+                )}
                 <div className="flex justify-between items-center">
                   <span>
                     Tarif Kamar ({nightsCount} Malam x {roomQty} Kamar)
@@ -851,8 +950,8 @@ const BookingPage = () => {
             <p className="font-body-md text-xs text-[#444842]">
               {suggestionData.rooms && suggestionData.rooms.length > 0
                 ? (suggestionData.type === "same_hotel"
-                    ? "Pilihan kamar lain yang muat dan tersedia di hotel ini:"
-                    : "Semua kamar di hotel ini penuh. Berikut opsi kamar di hotel lain sekitar kota ini:")
+                  ? "Pilihan kamar lain yang muat dan tersedia di hotel ini:"
+                  : "Semua kamar di hotel ini penuh. Berikut opsi kamar di hotel lain sekitar kota ini:")
                 : "Tidak ada opsi kamar alternatif yang tersedia untuk tanggal dan kapasitas tamu yang Anda pilih."}
             </p>
 
