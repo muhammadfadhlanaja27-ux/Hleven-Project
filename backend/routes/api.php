@@ -25,6 +25,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdminPayoutController;
 use App\Http\Controllers\SuperAdminUserController;
+use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\WarningController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +45,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     Route::get('/check-email', [PartnerApplicationController::class, 'checkEmail']);
+    Route::get('/public-stats', [PublicStatsController::class, 'index']);
     Route::get('/facilities', [FacilityController::class, 'index']);
     Route::post('/payments/callback', [PaymentController::class, 'callback']);
     Route::get('/hotels', [HotelController::class, 'index']);
