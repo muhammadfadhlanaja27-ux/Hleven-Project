@@ -13,6 +13,31 @@ const dateInputValue = (offset = 0) => {
     .slice(0, 10);
 };
 
+const normalizeDate = (value) => {
+  if (!value) return "-";
+  const datePart = String(value).match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (datePart) return datePart;
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "-";
+  return [
+    parsedDate.getFullYear(),
+    String(parsedDate.getMonth() + 1).padStart(2, "0"),
+    String(parsedDate.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
+const formatBookingDate = (value) => {
+  const normalizedDate = normalizeDate(value);
+  if (normalizedDate === "-") return normalizedDate;
+  const [year, month, day] = normalizedDate.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 const normalizeBooking = (b) => {
   const rawStatus = (b.status || "unpaid").toLowerCase();
   // Nilai enum bookings.status dari backend: unpaid, pending, paid, checked_in,
@@ -59,6 +84,8 @@ const normalizeBooking = (b) => {
   const nights = Number(
     b.nights || b.total_night || b.total_nights || 1
   );
+  const subtotal = Number(b.subtotal ?? total);
+  const taxes = Number(b.tax ?? 0);
 
   return {
     id: b.id,
@@ -92,15 +119,17 @@ const normalizeBooking = (b) => {
       weekdayPrice: Number(firstRoom.weekday_price || 0),
       weekendPrice: Number(firstRoom.weekend_price || 0),
     },
-    checkIn: b.check_in_date || b.check_in || "-",
-    checkOut: b.check_out_date || b.check_out || "-",
-    nights: Number(b.nights || 1),
+    checkIn: normalizeDate(b.check_in_date || b.check_in),
+    checkOut: normalizeDate(b.check_out_date || b.check_out),
+    checkInDisplay: formatBookingDate(b.check_in_date || b.check_in),
+    checkOutDisplay: formatBookingDate(b.check_out_date || b.check_out),
+    nights,
     childrenCount: Number(b.children_count ?? b.children ?? 0),
     weekdayNights: Number(b.weekday_nights || 1),
     weekendNights: Number(b.weekend_nights || 0),
-    roomPriceSum: total,
+    roomPriceSum: subtotal,
     taxRate: Number(b.tax_rate ?? 5),
-    additionalCharges: 0,
+    additionalCharges: taxes,
     discount: 0,
     totalAmount: total,
     bookingStatus: bookingStatusMap[rawStatus] || "Pending",
@@ -926,8 +955,8 @@ export default function BookingList() {
                       {/* Check In / Out */}
                       <td className="p-4 text-xs whitespace-nowrap">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-[#2D312C]">{b.checkIn}</span>
-                          <span className="text-[#6B6E6A]">{b.checkOut}</span>
+                          <span className="font-semibold text-[#2D312C]">{b.checkInDisplay}</span>
+                          <span className="text-[#6B6E6A]">{b.checkOutDisplay}</span>
                         </div>
                       </td>
 
@@ -1269,13 +1298,13 @@ export default function BookingList() {
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     <div className="p-3 bg-[#E4EBE0] rounded-xl border border-[#E5E1DA]">
                       <span className="text-[#4A5D43] font-semibold block">Check In Date</span>
-                      <p className="text-sm font-bold text-[#2D312C] mt-1">{viewingBooking.checkIn}</p>
+                      <p className="text-sm font-bold text-[#2D312C] mt-1">{viewingBooking.checkInDisplay}</p>
                       <span className="text-[10px] text-[#6B6E6A]">After 02:00 PM</span>
                     </div>
 
                     <div className="p-3 bg-[#F2EBE1] rounded-xl border border-[#E5E1DA]">
                       <span className="text-[#506147] font-semibold block">Check Out Date</span>
-                      <p className="text-sm font-bold text-[#2D312C] mt-1">{viewingBooking.checkOut}</p>
+                      <p className="text-sm font-bold text-[#2D312C] mt-1">{viewingBooking.checkOutDisplay}</p>
                       <span className="text-[10px] text-[#6B6E6A]">Before 12:00 PM ({viewingBooking.nights} Nights)</span>
                     </div>
                   </div>

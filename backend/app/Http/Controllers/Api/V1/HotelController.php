@@ -189,6 +189,8 @@ class HotelController extends Controller
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin?->id)],
             'city' => 'nullable|string|max:255',
             'city_id' => 'nullable|exists:cities,id',
+            'latitude' => 'nullable|required_with:longitude|numeric|between:-90,90',
+            'longitude' => 'nullable|required_with:latitude|numeric|between:-180,180',
             'banner' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'facilities' => 'nullable|array',
             'facilities.*' => [Rule::exists('facilities', 'id')->where(fn ($q) => $q->where('hotel_id', $hotel->id)->orWhereNull('hotel_id'))],
@@ -202,7 +204,7 @@ class HotelController extends Controller
         }
 
         $hotel->update($request->only([
-            'name', 'description', 'address', 'policies', 'tax_rate',
+            'name', 'description', 'address', 'latitude', 'longitude', 'policies', 'tax_rate',
             'bank_name', 'bank_account_number', 'bank_account_name',
         ]));
 

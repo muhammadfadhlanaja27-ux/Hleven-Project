@@ -1058,15 +1058,16 @@ class BookingController extends Controller
             $sameHotelQuery->where('is_active', true);
         }
 
-        $sameHotelRooms = $sameHotelQuery->whereHas('hotel', function ($q) {
-            $q->where('status', 'active');
-        })
+        $sameHotelRooms = $sameHotelQuery->with(['hotel.city', 'photos', 'facilities'])
+            ->whereHas('hotel', function ($q) {
+                $q->where('status', 'active');
+            })
             ->where('capacity_adult', '>=', $adults)
             ->get()
             ->filter(function ($r) use ($checkInStr, $checkOutStr) {
                 $booked = BookingRoom::where('room_type_id', $r->id)
                     ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
-                        $q->whereIn('status', ['paid', 'confirmed', 'checked_in', 'refund_pending'])
+                        $q->whereIn('status', ['unpaid', 'paid', 'pending', 'confirmed', 'checked_in', 'refund_pending'])
                             ->where('check_in', '<', $checkOutStr)
                             ->where('check_out', '>', $checkInStr);
                     })->sum('qty');
@@ -1077,31 +1078,34 @@ class BookingController extends Controller
         if ($sameHotelRooms->isNotEmpty()) {
             return [
                 'type' => 'same_hotel',
-                'rooms' => $sameHotelRooms->values(),
+                'rooms' => $sameHotelRooms->values()->map(function (RoomType $room) {
+                    return $this->alternativeRoomDetails($room, null);
+                }),
             ];
         }
 
-        $currentHotel = Hotel::find($hotelId);
-        $cityId = $currentHotel->city_id ?? null;
+        $currentHotel = Hotel::with('city')->find($hotelId);
+        $cityId = $currentHotel?->city_id;
 
         $otherHotelQuery = RoomType::query();
         if ($hasIsActive) {
             $otherHotelQuery->where('is_active', true);
         }
 
-        $otherHotelRooms = $otherHotelQuery->whereHas('hotel', function ($q) use ($cityId, $hotelId) {
-            $q->where('status', 'active');
-            if ($cityId) {
-                $q->where('city_id', $cityId);
-            }
-            $q->where('id', '!=', $hotelId);
-        })
+        $otherHotelRooms = $otherHotelQuery->with(['hotel.city', 'photos', 'facilities'])
+            ->whereHas('hotel', function ($q) use ($cityId, $hotelId) {
+                $q->where('status', 'active');
+                if ($cityId) {
+                    $q->where('city_id', $cityId);
+                }
+                $q->where('id', '!=', $hotelId);
+            })
             ->where('capacity_adult', '>=', $adults)
             ->get()
             ->filter(function ($r) use ($checkInStr, $checkOutStr) {
                 $booked = BookingRoom::where('room_type_id', $r->id)
                     ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
-                        $q->whereIn('status', ['paid', 'confirmed', 'checked_in', 'refund_pending'])
+                        $q->whereIn('status', ['unpaid', 'paid', 'pending', 'confirmed', 'checked_in', 'refund_pending'])
                             ->where('check_in', '<', $checkOutStr)
                             ->where('check_out', '>', $checkInStr);
                     })->sum('qty');
@@ -1109,9 +1113,47 @@ class BookingController extends Controller
                 return (($r->stock ?? 10) - $booked) > 0;
             });
 
+        $recommendations = $otherHotelRooms->map(function (RoomType $room) use ($currentHotel) {
+            $distance = $this->distanceBetweenHotels($currentHotel, $room->hotel);
+
+            return $this->alternativeRoomDetails($room, $distance);
+        })->sortBy(fn (array $room) => $room['distance_km'] ?? INF)->values();
+
         return [
             'type' => 'other_hotels_in_city',
-            'rooms' => $otherHotelRooms->values(),
+            'rooms' => $recommendations,
         ];
+    }
+
+    private function alternativeRoomDetails(RoomType $room, ?float $distanceKm): array
+    {
+        return array_merge($room->toArray(), [
+            'hotel' => $room->hotel ? [
+                'id' => $room->hotel->id,
+                'name' => $room->hotel->name,
+                'address' => $room->hotel->address,
+                'city' => $room->hotel->city?->city,
+            ] : null,
+            'distance_km' => $distanceKm,
+        ]);
+    }
+
+    private function distanceBetweenHotels(?Hotel $origin, ?Hotel $destination): ?float
+    {
+        if (! $origin || ! $destination
+            || ! is_numeric($origin->latitude) || ! is_numeric($origin->longitude)
+            || ! is_numeric($destination->latitude) || ! is_numeric($destination->longitude)) {
+            return null;
+        }
+
+        $latitudeDelta = deg2rad((float) $destination->latitude - (float) $origin->latitude);
+        $longitudeDelta = deg2rad((float) $destination->longitude - (float) $origin->longitude);
+        $originLatitude = deg2rad((float) $origin->latitude);
+        $destinationLatitude = deg2rad((float) $destination->latitude);
+
+        $a = sin($latitudeDelta / 2) ** 2
+            + cos($originLatitude) * cos($destinationLatitude) * sin($longitudeDelta / 2) ** 2;
+
+        return round(6371 * 2 * asin(sqrt(min(1, $a))), 1);
     }
 }

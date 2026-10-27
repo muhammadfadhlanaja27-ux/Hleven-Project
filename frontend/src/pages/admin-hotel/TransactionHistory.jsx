@@ -5,6 +5,20 @@ import api from "../../services/api";
 const fmtRupiah = (val) =>
   "Rp " + Number(val || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 });
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+  const datePart = String(dateStr).match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  const date = datePart
+    ? new Date(`${datePart}T00:00:00`)
+    : new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 const fmtPaymentMethod = (raw) => {
   if (!raw) return "—";
   const m = String(raw).toLowerCase();
@@ -379,8 +393,8 @@ const TransactionHistory = () => {
 
               <div className="bg-[#F7F6F2] rounded-xl p-4 border border-[#E2DDD3] space-y-2">
                 <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Kode Booking</span><span className="font-mono font-bold">{selected.booking?.booking_code || selected.order_id}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Check-in</span><span>{selected.booking?.check_in || "-"}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Check-out</span><span>{selected.booking?.check_out || "-"}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Check-in</span><span>{formatDate(selected.booking?.check_in)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Check-out</span><span>{formatDate(selected.booking?.check_out)}</span></div>
                 <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Status Booking</span><span className="font-semibold capitalize">{selected.booking?.status || "-"}</span></div>
                 <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Waktu Dibayar</span><span>{selected.paid_at ? new Date(selected.paid_at).toLocaleString("id-ID") : "-"}</span></div>
                 <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Kedaluwarsa</span><span>{selected.expired_at ? new Date(selected.expired_at).toLocaleString("id-ID") : "-"}</span></div>

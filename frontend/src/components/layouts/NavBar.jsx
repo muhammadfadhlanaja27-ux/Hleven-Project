@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import api from "../../services/api";
 import { getPublicImageUrl } from "../../services/imageHelper";
 
 import { getStorageUrl } from "../../services/imageUrl";
@@ -37,8 +38,13 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [avatarErrored, setAvatarErrored] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const notificationRef = useRef(null);
 
   useEffect(() => {
     const checkUser = () => {
@@ -125,6 +131,70 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
 
+  useEffect(() => {
+    if (user?.role !== "user") {
+      setUnreadNotifications([]);
+      setUnreadCount(0);
+      return undefined;
+    }
+
+    let active = true;
+    const fetchUnreadNotifications = async (showLoading = false) => {
+      if (showLoading && active) setNotificationsLoading(true);
+      try {
+        const response = await api.get("/notifications", {
+          params: { is_read: false },
+        });
+        if (!active) return;
+        const notifications = response.data?.data || [];
+        setUnreadNotifications(Array.isArray(notifications) ? notifications : []);
+        setUnreadCount(Number(response.data?.meta?.total ?? notifications.length));
+      } catch (error) {
+        if (active) console.warn("Gagal memuat notifikasi:", error);
+      } finally {
+        if (showLoading && active) setNotificationsLoading(false);
+      }
+    };
+
+    fetchUnreadNotifications(true);
+    const intervalId = setInterval(() => fetchUnreadNotifications(), 30000);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return undefined;
+    const handler = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [notificationsOpen]);
+
+  const openNotification = async (notification) => {
+    if (!notification.is_read) {
+      try {
+        await api.patch(`/notifications/${notification.id}/read`);
+        setUnreadNotifications((current) =>
+          current.filter((item) => item.id !== notification.id)
+        );
+        setUnreadCount((current) => Math.max(0, current - 1));
+      } catch (error) {
+        console.error("Gagal menandai notifikasi dibaca:", error);
+        toast.error("Notifikasi gagal diperbarui.");
+        return;
+      }
+    }
+
+    setNotificationsOpen(false);
+    navigate("/profile", { state: { defaultTab: "notifications" } });
+  };
+
   return (
     <>
       <header className="w-full sticky top-0 bg-[#FDF6ED] border-b border-[#DCCFC0]/30 shadow-sm shadow-[#5F7161]/5 z-50">
@@ -165,6 +235,92 @@ const Navbar = () => {
                       {user.role === "super_admin" ? "Super Admin" : "Admin Panel"}
                     </span>
                   </Link>
+                )}
+
+                {user.role === "user" && (
+                  <div className="relative" ref={notificationRef}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen((open) => !open);
+                        setDropdownOpen(false);
+                      }}
+                      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#DCCFC0]/60 text-[#5F7161] transition-colors hover:bg-[#DCCFC0]/20"
+                      aria-label={unreadCount > 0 ? `Notifikasi, ${unreadCount} belum dibaca` : "Notifikasi"}
+                      aria-expanded={notificationsOpen}
+                      title="Notifikasi"
+                    >
+                      <span className="material-symbols-outlined text-[22px]">notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#ba1a1a] px-1 text-[10px] font-bold leading-none text-white">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {notificationsOpen && (
+                      <div className="absolute right-0 z-50 mt-3 w-[min(90vw,360px)] overflow-hidden rounded-2xl border border-[#DCCFC0]/50 bg-white text-left shadow-[0_10px_40px_rgba(0,0,0,0.12)]">
+                        <div className="flex items-center justify-between border-b border-[#DCCFC0]/30 bg-[#FDF6ED]/60 px-4 py-3">
+                          <h2 className="text-sm font-bold text-[#2D332C]">Notifikasi</h2>
+                          {unreadCount > 0 && (
+                            <span className="text-xs font-semibold text-[#778873]">
+                              {unreadCount} belum dibaca
+                            </span>
+                          )}
+                        </div>
+
+                        {notificationsLoading ? (
+                          <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[#747871]">
+                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                            Memuat notifikasi...
+                          </div>
+                        ) : unreadNotifications.length === 0 ? (
+                          <p className="px-4 py-8 text-center text-sm text-[#747871]">
+                            Tidak ada notifikasi baru.
+                          </p>
+                        ) : (
+                          <div className="max-h-[min(60vh,380px)] overflow-y-auto">
+                            {unreadNotifications.slice(0, 5).map((notification) => (
+                              <button
+                                type="button"
+                                key={notification.id}
+                                onClick={() => openNotification(notification)}
+                                className="flex w-full items-start gap-3 border-b border-[#DCCFC0]/20 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#FDF6ED]"
+                              >
+                                <span className="material-symbols-outlined mt-0.5 text-[19px] text-[#778873]">
+                                  {notification.type === "purchase"
+                                    ? "payments"
+                                    : notification.type === "refund"
+                                    ? "currency_exchange"
+                                    : notification.type === "review_request"
+                                    ? "rate_review"
+                                    : "notifications"}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-semibold text-[#2D332C]">
+                                    {notification.title}
+                                  </span>
+                                  <span className="mt-0.5 line-clamp-2 block text-xs text-[#5b6058]">
+                                    {notification.message}
+                                  </span>
+                                </span>
+                                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#ba1a1a]" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <Link
+                          to="/profile"
+                          state={{ defaultTab: "notifications" }}
+                          onClick={() => setNotificationsOpen(false)}
+                          className="block border-t border-[#DCCFC0]/30 px-4 py-3 text-center text-xs font-bold text-[#5F7161] transition-colors hover:bg-[#FDF6ED]"
+                        >
+                          Lihat semua notifikasi
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <div className="relative" ref={dropdownRef}>

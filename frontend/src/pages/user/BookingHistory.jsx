@@ -44,17 +44,16 @@ const QR_CODE_PLACEHOLDER =
 // Helper untuk format tanggal dari ISO string menjadi "06 Okt 2026"
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
+  const datePart = String(dateStr).match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  const date = datePart
+    ? new Date(`${datePart}T00:00:00`)
+    : new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 };
 
 const BookingHistory = () => {

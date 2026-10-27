@@ -56,7 +56,6 @@ Route::prefix('v1')->group(function () {
     // Public booking (guest checkout — auto-creates a session token in controller)
     Route::post('/bookings/quote', [BookingController::class, 'quote']);
     Route::post('/bookings', [BookingController::class, 'store']);
-    Route::get('/hotels/{id}/eligible-bookings', [ReviewController::class, 'eligibleBookings']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)
@@ -78,10 +77,13 @@ Route::prefix('v1')->group(function () {
 
         // --- Booking User ---
         Route::middleware('role:user')->group(function () {
+            Route::get('/hotels/{id}/eligible-bookings', [ReviewController::class, 'eligibleBookings']);
+            Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
+            Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
         });
 
         // --- Admin Hotel Management (legacy prefix, tetap dipakai frontend) ---

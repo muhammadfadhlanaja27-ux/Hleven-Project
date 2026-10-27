@@ -82,6 +82,29 @@ class BookingPricingTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('tax_rate');
     }
 
+    public function test_hotel_profile_saves_and_validates_coordinate_pair(): void
+    {
+        [$admin, $hotel] = $this->createHotelRoom(5.0);
+        $this->actingAs($admin, 'sanctum');
+
+        $this->postJson('/api/v1/admin/hotel/profile', [
+            'latitude' => -6.914744,
+            'longitude' => 107.609810,
+        ])->assertOk();
+
+        $this->assertEquals(-6.914744, (float) $hotel->fresh()->latitude);
+        $this->assertEquals(107.609810, (float) $hotel->fresh()->longitude);
+
+        $this->postJson('/api/v1/admin/hotel/profile', [
+            'latitude' => -6.914744,
+        ])->assertUnprocessable()->assertJsonValidationErrors('longitude');
+
+        $this->postJson('/api/v1/admin/hotel/profile', [
+            'latitude' => -91,
+            'longitude' => 107.609810,
+        ])->assertUnprocessable()->assertJsonValidationErrors('latitude');
+    }
+
     private function createHotelRoom(float $taxRate): array
     {
         $admin = User::create([
