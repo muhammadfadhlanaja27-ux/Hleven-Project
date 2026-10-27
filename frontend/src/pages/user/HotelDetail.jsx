@@ -49,6 +49,7 @@ const HotelDetail = () => {
       rooms,
     });
   }, [filterCheckIn, filterCheckOut, filterAdults, filterChildren, rooms]);
+
   const [filterRoomType, setFilterRoomType] = useState("all");
   const [filterBedType, setFilterBedType] = useState("all");
   const [filterRoomName, setFilterRoomName] = useState("");
@@ -62,12 +63,20 @@ const HotelDetail = () => {
     setFilterCheckIn(start || null);
     setFilterCheckOut(end || null);
   };
+
   const handleGuestChange = ({ adults: a, children: c, rooms: r }) => {
     setFilterAdults(a > 0 ? String(a) : "");
     setFilterChildren(c > 0 ? String(c) : "");
     setRooms(r);
   };
-  const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,"0"); const day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
+
+  const fmtDateParam = (d) => {
+    if (!d || isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
 
   // Pagination Kamar
   const ROOMS_PER_PAGE = 5;
@@ -135,7 +144,8 @@ const HotelDetail = () => {
             });
             liveRooms = liveResponse?.data || [];
           }
-const mappedRooms = (apiData.room_types || []).map((rt) => {
+
+          const mappedRooms = (apiData.room_types || []).map((rt) => {
             const thumbnailPhoto =
               rt.photos && rt.photos.length > 0
                 ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
@@ -233,7 +243,7 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
     filterRefundable,
   ]);
 
-  // Sync URL agar RoomDetail/Booking dapat prefill — must be before early returns
+  // Sync URL agar RoomDetail/Booking dapat prefill
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (filterAdults) params.set("adults", filterAdults); else params.delete("adults");
@@ -487,40 +497,44 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
           <div className="lg:col-span-2 space-y-8">
             {/* Card 1: Hotel Info & Description */}
             <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <div className="flex text-[#D97706]">
-                  {Array.from({ length: 5 }).map((_, i) => (
+              {/* Klasifikasi Bintang Hotel & Rating Ulasan Tamu */}
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <div className="flex items-center gap-1.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] px-3 py-1 rounded-full">
+                  <div className="flex text-[#D97706]">
+                    {Array.from({ length: starCount || 4 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="material-symbols-outlined text-sm"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        star
+                      </span>
+                    ))}
+                  </div>
+                  <span className="font-label-sm text-xs font-bold">
+                    Bintang {starCount || 4}
+                  </span>
+                </div>
+
+                {liveRating > 0 && (
+                  <div className="flex items-center gap-1.5 bg-[#4F6F52]/10 text-[#4F6F52] border border-[#4F6F52]/20 px-3 py-1 rounded-full">
                     <span
-                      key={i}
-                      className="material-symbols-outlined text-lg"
-                      style={{
-                        fontVariationSettings: i < starCount ? "'FILL' 1" : "'FILL' 0",
-                        color: i < starCount ? "#D97706" : "#E2E8E2",
-                      }}
+                      className="material-symbols-outlined text-sm"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
                     >
                       star
                     </span>
-                  ))}
-                </div>
-                {verifiedStar ? (
-                  <span className="inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] px-3 py-1 rounded-full font-label-sm text-xs font-bold">
-                    {verifiedStar} Bintang
-                  </span>
-                ) : (
-                  <span className="bg-[#F3F4F3] text-[#8C968D] border border-[#E2E8E2] px-3 py-1 rounded-full font-label-sm text-xs font-semibold">
-                    Belum Terverifikasi
-                  </span>
+                    <span className="font-label-sm text-xs font-bold">
+                      {liveRating.toFixed(1)} / 5.0
+                    </span>
+                    {reviewCount > 0 && (
+                      <span className="text-xs text-[#5A625B]">
+                        ({reviewCount} Ulasan)
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-              {liveRating > 0 && (
-                <p className="text-xs text-[#8C968D] mb-4 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs text-[#9CA3AF]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    star
-                  </span>
-                  {liveRating.toFixed(1)}
-                  {reviewCount > 0 ? ` · ${reviewCount} ulasan` : " · ulasan tamu"}
-                </p>
-              )}
 
               <h1 className="font-headline-xl text-3xl md:text-4xl font-extrabold text-[#1C251D] mb-4 leading-tight">
                 {hotel.name}
@@ -698,7 +712,7 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
                   <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Pilih Tanggal" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
                 </div>
               </div>
-              <GuestSelector adults={Number(filterAdults)||2} children={Number(filterChildren)||0} rooms={rooms} onGuestChange={handleGuestChange} />
+              <GuestSelector adults={Number(filterAdults) || 2} children={Number(filterChildren) || 0} rooms={rooms} onGuestChange={handleGuestChange} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
@@ -835,7 +849,7 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
                             }, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
-                        {/* Features Checkmarks (Sudah Aman dari Angka 0) */}
+                        {/* Features Checkmarks */}
                         <div className="flex flex-wrap gap-2.5 mb-3 text-xs">
                           {Boolean(room.bed) && (
                             <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
