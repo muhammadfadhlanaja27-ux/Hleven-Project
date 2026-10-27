@@ -32,6 +32,11 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
     return Number(rawPrice).toLocaleString('id-ID');
   };
 
+  // Ekstraksi Rating & Ulasan dari Data Backend
+  const rawRating = Number(hotel.average_rating || hotel.rating || hotel.reviews_avg_rating || 0);
+  const averageRating = rawRating > 0 ? rawRating.toFixed(1) : null;
+  const totalReviews = hotel.total_review || hotel.reviews_count || hotel.total_reviews || 0;
+
   const renderFacilityIcon = (fac, idx) => {
     const facObj = typeof fac === 'object' ? fac : null;
     const facName = (facObj ? facObj.name : String(fac)).toLowerCase();
@@ -67,7 +72,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
     hotel.city_name ||
     "Bandung";
 
-  // Penanganan Bintang Hotel: Jika data backend null/kosong, otomatis fallback ke Bintang 4
+  // Penanganan Bintang Klasifikasi Hotel (1-5 Bintang Properti)
   const starCount = Math.min(Math.max(Number(hotel.star_rating || hotel.stars || hotel.star || 4), 1), 5);
 
   const handleNavigateDetail = (e) => {
@@ -121,6 +126,25 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               <h3 className="font-headline-md text-xl font-bold text-[#2D332C] leading-tight group-hover:text-[#778873] transition-colors">
                 {hotel.name}
               </h3>
+            </div>
+
+            {/* Badge Rating & Ulasan */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-1 bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md font-bold text-xs border border-[#FDE68A]">
+                <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  star
+                </span>
+                <span>{averageRating ? averageRating : "Baru"}</span>
+              </div>
+              {totalReviews > 0 ? (
+                <span className="text-xs text-[#747871] font-medium">
+                  ({totalReviews} ulasan)
+                </span>
+              ) : (
+                <span className="text-xs text-[#747871] italic">
+                  Belum ada ulasan
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
@@ -208,9 +232,28 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
 
       {/* Content Area */}
       <div className="p-5 flex flex-col flex-grow">
-        <h3 className="font-headline-md text-xl font-semibold text-[#2D332C] leading-tight line-clamp-2 mb-2 group-hover:text-[#778873] transition-colors">
+        <h3 className="font-headline-md text-xl font-semibold text-[#2D332C] leading-tight line-clamp-2 mb-1.5 group-hover:text-[#778873] transition-colors">
           {hotel.name}
         </h3>
+
+        {/* Badge Rating & Ulasan */}
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="flex items-center gap-1 bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md font-bold text-xs border border-[#FDE68A]">
+            <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+              star
+            </span>
+            <span>{averageRating ? averageRating : "Baru"}</span>
+          </div>
+          {totalReviews > 0 ? (
+            <span className="text-xs text-[#747871] font-medium">
+              ({totalReviews} ulasan)
+            </span>
+          ) : (
+            <span className="text-xs text-[#747871] italic">
+              Belum ada ulasan
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
           <span className="material-symbols-outlined text-sm text-[#778873]">location_on</span>
