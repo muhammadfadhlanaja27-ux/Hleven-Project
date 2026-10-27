@@ -7,20 +7,84 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
 use App\Notifications\PasswordResetNotification;
+use App\Notifications\RegisterOTPNotification;
 use App\Services\FileStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
+    /**
+     * Kirim OTP untuk Pendaftaran
+     */
+    public function sendRegisterOtp(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email|unique:users,email'], [
+            'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain atau login.'
+        ]);
+
+        $otp = rand(100000, 999999);
+        $cacheKey = 'register_otp_'.$request->email;
+
+        Cache::put($cacheKey, $otp, now()->addMinutes(10));
+
+        Notification::route('mail', $request->email)->notify(new RegisterOTPNotification((string) $otp));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode OTP telah dikirim ke email Anda',
+        ]);
+    }
+
+    /**
+     * Verifikasi OTP Pendaftaran
+     */
+    public function verifyRegisterOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|numeric',
+        ]);
+
+        $cacheKey = 'register_otp_'.$request->email;
+        $storedOtp = Cache::get($cacheKey);
+
+        if (! $storedOtp || $storedOtp != $request->otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode OTP tidak valid atau sudah kadaluarsa',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode OTP valid',
+        ]);
+    }
+
     /**
      * Register User Baru
      */
     public function register(RegisterRequest $request): JsonResponse
     {
+        $request->validate(['otp' => 'required|numeric']);
+
+        $cacheKey = 'register_otp_'.$request->email;
+        $storedOtp = Cache::get($cacheKey);
+
+        if (! $storedOtp || $storedOtp != $request->otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verifikasi email gagal. Kode OTP tidak valid atau sudah kadaluarsa.',
+            ], 422);
+        }
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -29,6 +93,8 @@ class AuthController extends Controller
             'role' => $request->role ?? 'user',
             'status' => 'active',
         ]);
+
+        Cache::forget($cacheKey);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -252,5 +318,42 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Password berhasil diperbarui',
         ]);
+    }
+
+    /**
+     * Redirect ke Google
+     */
+    public function redirectToGoogle()
+    {
+        return Socialite::driver('google')->stateless()->redirect();
+    }
+
+    /**
+     * Handle callback dari Google
+     */
+    public function handleGoogleCallback()
+    {
+        $googleUser = Socialite::driver('google')->stateless()->user();
+        $user = User::where('email', $googleUser->getEmail())->first();
+
+        if ($user) {
+            if (!$user->google_id) {
+                $user->update(['google_id' => $googleUser->getId()]);
+            }
+        } else {
+            $user = User::create([
+                'name' => $googleUser->getName(),
+                'email' => $googleUser->getEmail(),
+                'google_id' => $googleUser->getId(),
+                'password' => Hash::make(Str::random(16)),
+                'role' => 'user',
+                'status' => 'active',
+            ]);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Redirect ke frontend dengan token
+        return redirect()->away(config('app.frontend_url', 'http://localhost:5713') . '/auth/callback?token=' . $token . '&user=' . urlencode(json_encode($user)));
     }
 }

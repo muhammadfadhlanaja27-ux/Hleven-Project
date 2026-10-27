@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 const Register = () => {
@@ -16,13 +17,81 @@ const Register = () => {
   const [isTermsAgreed, setIsTermsAgreed] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
+  // OTP states
+  const [otp, setOtp] = useState('');
+  const [otpStatus, setOtpStatus] = useState('none'); // none, sending, sent, verified
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [timer, setTimer] = useState(0);
+
   const [error, setError] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    let interval = null;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
+
+  const handleSendOtp = async () => {
+    if (!formData.email) {
+      toast.error('Masukkan email terlebih dahulu');
+      return;
+    }
+    
+    setOtpLoading(true);
+    setError({});
+    try {
+      const res = await api.post('/register/send-otp', { email: formData.email });
+      toast.success(res.data.message || 'OTP terkirim ke email');
+      setOtpStatus('sent');
+      setTimer(60);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Gagal mengirim OTP';
+      toast.error(msg);
+      if (err.response?.data?.errors?.email) {
+        setError({ email: err.response.data.errors.email });
+      }
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length < 6) {
+      toast.error('Masukkan 6 digit kode OTP');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      await api.post('/register/verify-otp', { 
+        email: formData.email,
+        otp: otp 
+      });
+      toast.success('Email berhasil diverifikasi');
+      setOtpStatus('verified');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'OTP salah atau kadaluarsa');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError({});
+
+    if (otpStatus !== 'verified') {
+      toast.error('Anda harus memverifikasi email dengan OTP terlebih dahulu.');
+      return;
+    }
 
     if (!isTermsAgreed) {
       setError({ general: 'Anda harus menyetujui Syarat dan Ketentuan terlebih dahulu.' });
@@ -40,7 +109,8 @@ const Register = () => {
       email: formData.email,
       phone: formData.phone,
       password: formData.password,
-      password_confirmation: formData.password_confirmation
+      password_confirmation: formData.password_confirmation,
+      otp: otp
     };
 
     try {
@@ -148,25 +218,74 @@ const Register = () => {
               {error.first_name && <p className="text-red-500 text-xs mt-1">{error.first_name[0]}</p>}
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="block font-label-md text-[14px] text-[#778873] mb-1" htmlFor="email">
-                Email Address
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747871] text-[20px]">mail</span>
-                <input
-                  id="email"
-                  type="email"
-                  className="w-full pl-10 pr-4 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-              </div>
-              {error.email && <p className="text-red-500 text-xs mt-1">{error.email[0]}</p>}
-            </div>
+             {/* Email */}
+             <div>
+               <label className="block font-label-md text-[14px] text-[#778873] mb-1" htmlFor="email">
+                 Email Address
+               </label>
+               <div className="relative flex gap-2">
+                 <div className="relative flex-grow">
+                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747871] text-[20px]">mail</span>
+                   <input
+                     id="email"
+                     type="email"
+                     className="w-full pl-10 pr-4 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors"
+                     placeholder="john@example.com"
+                     value={formData.email}
+                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                     required
+                     disabled={otpStatus === 'verified'}
+                   />
+                 </div>
+                 {otpStatus !== 'verified' && (
+                   <button
+                     type="button"
+                     onClick={handleSendOtp}
+                     disabled={otpLoading || timer > 0}
+                     className="px-4 py-3 bg-[#778873] text-white rounded font-label-md text-[13px] hover:bg-[#50604d] disabled:opacity-50 transition-colors"
+                   >
+                     {otpLoading ? '...' : timer > 0 ? `${timer}s` : 'Send OTP'}
+                   </button>
+                 )}
+               </div>
+               {error.email && <p className="text-red-500 text-xs mt-1">{error.email[0]}</p>}
+             </div>
+
+             {/* OTP Field */}
+             {otpStatus !== 'none' && otpStatus !== 'verified' && (
+               <div>
+                 <label className="block font-label-md text-[14px] text-[#778873] mb-1" htmlFor="otp">
+                   OTP Code
+                 </label>
+                 <div className="relative flex gap-2">
+                   <input
+                     id="otp"
+                     type="text"
+                     maxLength={6}
+                     className="w-full px-4 py-3 bg-[#e8e2d9] border border-[#DCCFC0] rounded font-body-md text-[16px] text-[#2D332C] focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none transition-colors tracking-widest"
+                     placeholder="123456"
+                     value={otp}
+                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                     required
+                   />
+                   <button
+                     type="button"
+                     onClick={handleVerifyOtp}
+                     disabled={otpLoading}
+                     className="px-6 py-3 bg-[#778873] text-white rounded font-label-md text-[13px] hover:bg-[#50604d] disabled:opacity-50 transition-colors"
+                   >
+                     Verify
+                   </button>
+                 </div>
+               </div>
+             )}
+             {otpStatus === 'verified' && (
+               <div className="text-green-600 text-sm font-medium flex items-center gap-1">
+                 <span className="material-symbols-outlined text-base">check_circle</span>
+                 Email Verified
+               </div>
+             )}
+
 
             {/* Phone */}
             <div>

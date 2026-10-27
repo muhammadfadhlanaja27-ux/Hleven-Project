@@ -249,6 +249,30 @@ const Login = () => {
             </div>
           </form>
 
+          {/* Social Login Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#DCCFC0]/50"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-[#747871] font-body-sm">Or continue with</span>
+            </div>
+          </div>
+
+          {/* Google Login Button */}
+          <button
+            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/google`}
+            className="w-full flex justify-center items-center gap-3 py-3 px-4 rounded border border-[#DCCFC0] bg-white text-[#444842] hover:bg-[#faf3ea] transition-all duration-200 font-label-md text-[14px] shadow-sm cursor-pointer"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.25h2.91c1.7-1.56 2.68-3.86 2.68-6.58z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.25c-.8.54-1.83.86-3.05.86-2.34 0-4.32-1.58-5.03-3.7H1.06v2.29C2.54 15.96 5.58 18 9 18z" />
+              <path fill="#FBBC05" d="M3.97 10.73c-.18-.54-.28-1.12-.28-1.73s.1-1.19.28-1.73V4.98H1.06C.38 6.19 0 7.55 0 9s.38 2.81 1.06 4.02l2.91-2.29z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.89 11.43 0 9 0 5.58 0 2.54 2.04 1.06 4.98l2.91 2.29C4.68 5.16 6.66 3.58 9 3.58z" />
+            </svg>
+            Google
+          </button>
+
           {/* Register Link */}
           <div className="mt-[2rem] text-center font-body-md text-[16px] text-[#444842]">
             Don't have an account?{' '}
