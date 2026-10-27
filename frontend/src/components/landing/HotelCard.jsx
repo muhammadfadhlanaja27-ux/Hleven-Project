@@ -32,9 +32,10 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
     return Number(rawPrice).toLocaleString('id-ID');
   };
 
-  const getRating = () => {
-    return hotel.rating || hotel.average_rating || "4.8";
-  };
+  // Ekstraksi Rating & Ulasan dari Data Backend
+  const rawRating = Number(hotel.average_rating || hotel.rating || hotel.reviews_avg_rating || 0);
+  const averageRating = rawRating > 0 ? rawRating.toFixed(1) : null;
+  const totalReviews = hotel.total_review || hotel.reviews_count || hotel.total_reviews || 0;
 
   const renderFacilityIcon = (fac, idx) => {
     const facObj = typeof fac === 'object' ? fac : null;
@@ -70,11 +71,9 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
     (typeof hotel.city === 'object' ? hotel.city?.city : hotel.city) ||
     hotel.city_name ||
     "Bandung";
-  const verifiedStar = hotel.star_rating
-    ? Number(hotel.star_rating)
-    : hotel.stars
-      ? Number(hotel.stars)
-      : null;
+
+  // Penanganan Bintang Klasifikasi Hotel (1-5 Bintang Properti)
+  const starCount = Math.min(Math.max(Number(hotel.star_rating || hotel.stars || hotel.star || 4), 1), 5);
 
   const handleNavigateDetail = (e) => {
     e.stopPropagation();
@@ -106,12 +105,17 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               </p>
             </div>
           )}
-          <div className="absolute top-3 left-3 bg-[#fff8f0]/90 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-            <span className="material-symbols-outlined text-[#D48C45] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+
+          <div className="absolute top-3 left-3 bg-[#1C251D]/75 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+            {cityName}
+          </div>
+
+          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
+            <span className="material-symbols-outlined text-[#D97706] text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
               star
             </span>
-            <span className="font-label-sm text-xs font-semibold text-[#2D332C]">
-              {getRating()}
+            <span className="font-label-sm text-[11px] font-bold text-[#1C251D]">
+              {starCount} Bintang
             </span>
           </div>
         </div>
@@ -122,6 +126,25 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               <h3 className="font-headline-md text-xl font-bold text-[#2D332C] leading-tight group-hover:text-[#778873] transition-colors">
                 {hotel.name}
               </h3>
+            </div>
+
+            {/* Badge Rating & Ulasan */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-1 bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md font-bold text-xs border border-[#FDE68A]">
+                <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  star
+                </span>
+                <span>{averageRating ? averageRating : "Baru"}</span>
+              </div>
+              {totalReviews > 0 ? (
+                <span className="text-xs text-[#747871] font-medium">
+                  ({totalReviews} ulasan)
+                </span>
+              ) : (
+                <span className="text-xs text-[#747871] italic">
+                  Belum ada ulasan
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
@@ -198,26 +221,39 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
         )}
 
         <div className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
-          {verifiedStar ? (
-            <>
-              <span className="material-symbols-outlined text-[#D97706] text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-                star
-              </span>
-              <span className="font-label-sm text-[11px] md:text-xs font-bold text-[#1C251D]">
-                {verifiedStar} Bintang
-              </span>
-            </>
-          ) : (
-            <span className="font-label-sm text-[10px] md:text-xs font-semibold text-[#8C968D]">Belum Terverifikasi</span>
-          )}
+          <span className="material-symbols-outlined text-[#D97706] text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+            star
+          </span>
+          <span className="font-label-sm text-[11px] md:text-xs font-bold text-[#1C251D]">
+            {starCount} Bintang
+          </span>
         </div>
       </div>
 
       {/* Content Area */}
       <div className="p-5 flex flex-col flex-grow">
-        <h3 className="font-headline-md text-xl font-semibold text-[#2D332C] leading-tight line-clamp-2 mb-2 group-hover:text-[#778873] transition-colors">
+        <h3 className="font-headline-md text-xl font-semibold text-[#2D332C] leading-tight line-clamp-2 mb-1.5 group-hover:text-[#778873] transition-colors">
           {hotel.name}
         </h3>
+
+        {/* Badge Rating & Ulasan */}
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="flex items-center gap-1 bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md font-bold text-xs border border-[#FDE68A]">
+            <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+              star
+            </span>
+            <span>{averageRating ? averageRating : "Baru"}</span>
+          </div>
+          {totalReviews > 0 ? (
+            <span className="text-xs text-[#747871] font-medium">
+              ({totalReviews} ulasan)
+            </span>
+          ) : (
+            <span className="text-xs text-[#747871] italic">
+              Belum ada ulasan
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
           <span className="material-symbols-outlined text-sm text-[#778873]">location_on</span>
@@ -254,4 +290,4 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   );
 };
 
-export default HotelCard; 
+export default HotelCard;

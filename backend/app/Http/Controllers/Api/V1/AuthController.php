@@ -197,6 +197,32 @@ class AuthController extends Controller
     }
 
     /**
+     * Verifikasi Kode OTP
+     */
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'otp' => 'required|numeric',
+        ]);
+
+        $cacheKey = 'password_reset_otp_'.$request->email;
+        $storedOtp = Cache::get($cacheKey);
+
+        if (! $storedOtp || $storedOtp != $request->otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode OTP tidak valid atau sudah kadaluarsa',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode OTP valid',
+        ]);
+    }
+
+    /**
      * Reset Password menggunakan OTP
      */
     public function resetPassword(Request $request): JsonResponse

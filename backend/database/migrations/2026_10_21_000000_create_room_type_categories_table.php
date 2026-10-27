@@ -32,7 +32,11 @@ return new class extends Migration
             });
         }
 
+        // Hanya ambil room_types yang hotel_id-nya benar-benar ada di tabel hotels (mencegah FK orphan error)
+        $validHotelIds = DB::table('hotels')->pluck('id');
+
         $rooms = DB::table('room_types')
+            ->whereIn('hotel_id', $validHotelIds)
             ->select('id', 'hotel_id', 'type')
             ->get();
 

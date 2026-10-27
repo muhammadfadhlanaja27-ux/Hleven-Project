@@ -356,7 +356,6 @@ const BookingPage = () => {
         return;
       }
       try {
-        try { await api.post(`/payments/${pid}/sync`); } catch {}
         const res = await api.get(`/payments/${pid}/status`);
         const ps = res.data?.data?.payment_status;
         const bs = res.data?.data?.booking_status;
@@ -382,17 +381,18 @@ const BookingPage = () => {
       await loadSnapScript();
     } catch (e) {
       toast.error(e.message);
+      releaseSubmitLock();
       return;
     }
     if (!window.snap) {
       toast.error("Midtrans Snap belum siap");
+      releaseSubmitLock();
       return;
     }
     startPolling(pid, oid, bookingId);
     window.snap.pay(token, {
       onSuccess: async () => {
         releaseSubmitLock();
-        try { await api.post(`/payments/${pid}/sync`); } catch {}
         try {
           const res = await api.get(`/payments/${pid}/status`);
           showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
@@ -410,6 +410,7 @@ const BookingPage = () => {
         toast.error("Pembayaran gagal");
       },
       onClose: () => {
+        releaseSubmitLock();
         toast("Popup ditutup — status tetap dipolling 2 menit", { icon: "ℹ️" });
       },
     });
@@ -461,7 +462,8 @@ const BookingPage = () => {
       return;
     }
 
-    if (isSubmittingRef.current) return;
+    if (isSubmittingRef.current || submitting || submitLockRef.current) return;
+    submitLockRef.current = true;
     isSubmittingRef.current = true;
     setSubmitting(true);
 
@@ -510,12 +512,14 @@ const BookingPage = () => {
           } catch (snapErr) {
             console.error("Gagal ambil snap token:", snapErr);
             toast.error(snapErr.response?.data?.message || snapErr.response?.data?.error || "Gagal membuat sesi pembayaran Midtrans");
+            releaseSubmitLock();
             return;
           }
         }
 
         if (!token) {
           toast.error("Snap token tidak tersedia");
+          releaseSubmitLock();
           return;
         }
 
