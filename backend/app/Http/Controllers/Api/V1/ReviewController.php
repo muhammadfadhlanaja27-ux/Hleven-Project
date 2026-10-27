@@ -59,7 +59,12 @@ class ReviewController extends Controller
 
     public function eligibleBookings(Request $request, $hotelId)
     {
-        $bookings = Booking::where('user_id', $request->user()->id)
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['status' => 'success', 'data' => []]);
+        }
+
+        $bookings = Booking::where('user_id', $user->id)
             ->where('hotel_id', $hotelId)
             ->where('status', 'checked_out')
             ->whereDoesntHave('review')

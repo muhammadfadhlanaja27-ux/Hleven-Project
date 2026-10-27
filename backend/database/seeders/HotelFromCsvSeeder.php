@@ -136,6 +136,26 @@ class HotelFromCsvSeeder extends Seeder
                 $hotel->facilities()->sync($hotelFacilities->random(min(4, $hotelFacilities->count()))->pluck('id'));
             }
 
+            // Create BedTypes for this hotel
+            $bedTypes = [
+                'single' => BedType::firstOrCreate(
+                    ['hotel_id' => $hotel->id, 'name' => '1 Single Bed'],
+                    ['max_adults' => 1, 'max_children' => 0, 'max_total' => 1, 'status' => 'active']
+                ),
+                'twin' => BedType::firstOrCreate(
+                    ['hotel_id' => $hotel->id, 'name' => '1 Twin Bed'],
+                    ['max_adults' => 2, 'max_children' => 0, 'max_total' => 2, 'status' => 'active']
+                ),
+                'queen' => BedType::firstOrCreate(
+                    ['hotel_id' => $hotel->id, 'name' => '1 Queen Bed'],
+                    ['max_adults' => 2, 'max_children' => 0, 'max_total' => 2, 'status' => 'active']
+                ),
+                'king' => BedType::firstOrCreate(
+                    ['hotel_id' => $hotel->id, 'name' => '1 King Bed'],
+                    ['max_adults' => 2, 'max_children' => 1, 'max_total' => 3, 'status' => 'active']
+                ),
+            ];
+
             // Create rooms (3-4 per hotel)
             foreach ($roomNames as $rIndex => $rInfo) {
                 $roomName = $rInfo['name'];
@@ -147,19 +167,13 @@ class HotelFromCsvSeeder extends Seeder
                 };
                 $price = $basePrice + ($rIndex * 150000);
 
-                $bedType = BedType::where('hotel_id', $hotel->id)->inRandomOrder()->first();
-
-                // Fallback jika bedType null
-                if (!$bedType) {
-                    $bedType = BedType::create([
-                        'hotel_id' => $hotel->id,
-                        'name' => '1 Queen Bed',
-                        'max_adults' => 2,
-                        'max_children' => 0,
-                        'max_total' => 2,
-                        'status' => 'active'
-                    ]);
-                }
+                $bedType = match ($roomName) {
+                    'Superior Room' => $bedTypes['single'],
+                    'Deluxe Room' => $bedTypes['twin'],
+                    'Executive Suite' => $bedTypes['queen'],
+                    'Junior Suite' => $bedTypes['king'],
+                    default => $bedTypes['queen'],
+                };
 
                 // Markup harga berdasarkan tipe bed
                 $markup = match ($bedType->name) {
