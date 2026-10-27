@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 const Login = () => {
@@ -7,9 +8,93 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Forgot password modal state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from || '/';
+
+  const resetForgotState = () => {
+    setShowForgotModal(false);
+    setForgotStep(1);
+    setForgotEmail('');
+    setForgotOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setForgotError('');
+    setForgotLoading(false);
+  };
+
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+
+    try {
+      const response = await api.post('/forgot-password', { email: forgotEmail });
+      toast.success(response.data?.message || 'Kode OTP dikirim ke email');
+      setForgotStep(2);
+    } catch (err) {
+      setForgotError(err.response?.data?.message || 'Gagal mengirim OTP. Pastikan email terdaftar.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+
+    try {
+      const response = await api.post('/verify-otp', {
+        email: forgotEmail,
+        otp: forgotOtp,
+      });
+      toast.success(response.data?.message || 'Kode OTP valid');
+      setForgotStep(3);
+    } catch (err) {
+      setForgotError(err.response?.data?.message || 'Kode OTP tidak valid atau sudah kadaluarsa.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+
+    if (newPassword !== confirmPassword) {
+      setForgotError('Konfirmasi password tidak cocok');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const response = await api.post('/reset-password', {
+        email: forgotEmail,
+        otp: forgotOtp,
+        password: newPassword,
+        password_confirmation: confirmPassword,
+      });
+      toast.success(response.data?.message || 'Password berhasil diperbarui');
+      resetForgotState();
+    } catch (err) {
+      setForgotError(err.response?.data?.message || 'Reset password gagal. Periksa kembali kode OTP.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -138,12 +223,17 @@ const Login = () => {
                 </label>
               </div>
               <div className="text-sm">
-                <a
-                  href="#"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(true);
+                    setForgotStep(1);
+                    setForgotEmail(formData.email || '');
+                  }}
                   className="font-label-md text-[14px] text-[#778873] hover:text-[#4c6546] transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-0 after:bg-[#778873] after:transition-all after:duration-300 hover:after:w-full"
                 >
                   Forgot password?
-                </a>
+                </button>
               </div>
             </div>
 
@@ -159,6 +249,30 @@ const Login = () => {
             </div>
           </form>
 
+          {/* Social Login Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#DCCFC0]/50"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-[#747871] font-body-sm">Or continue with</span>
+            </div>
+          </div>
+
+          {/* Google Login Button */}
+          <button
+            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/google`}
+            className="w-full flex justify-center items-center gap-3 py-3 px-4 rounded border border-[#DCCFC0] bg-white text-[#444842] hover:bg-[#faf3ea] transition-all duration-200 font-label-md text-[14px] shadow-sm cursor-pointer"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.25h2.91c1.7-1.56 2.68-3.86 2.68-6.58z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.25c-.8.54-1.83.86-3.05.86-2.34 0-4.32-1.58-5.03-3.7H1.06v2.29C2.54 15.96 5.58 18 9 18z" />
+              <path fill="#FBBC05" d="M3.97 10.73c-.18-.54-.28-1.12-.28-1.73s.1-1.19.28-1.73V4.98H1.06C.38 6.19 0 7.55 0 9s.38 2.81 1.06 4.02l2.91-2.29z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.89 11.43 0 9 0 5.58 0 2.54 2.04 1.06 4.98l2.91 2.29C4.68 5.16 6.66 3.58 9 3.58z" />
+            </svg>
+            Google
+          </button>
+
           {/* Register Link */}
           <div className="mt-[2rem] text-center font-body-md text-[16px] text-[#444842]">
             Don't have an account?{' '}
@@ -172,6 +286,170 @@ const Login = () => {
 
         </div>
       </main>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md bg-white rounded-xl shadow-lg border border-[#DCCFC0]/40 p-6 md:p-8 relative">
+            <button
+              type="button"
+              onClick={resetForgotState}
+              className="absolute top-4 right-4 text-[#747871] hover:text-[#1e1b16]"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <h2 className="font-headline-md text-[22px] font-bold text-[#1e1b16] mb-1">
+              {forgotStep === 1
+                ? 'Lupa Password'
+                : forgotStep === 2
+                ? 'Verifikasi Kode OTP'
+                : 'Reset Password'}
+            </h2>
+            <p className="font-body-md text-[14px] text-[#444842] mb-4">
+              {forgotStep === 1
+                ? 'Masukkan email akun Anda untuk menerima kode OTP verifikasi.'
+                : forgotStep === 2
+                ? `Masukkan 6 digit kode OTP yang dikirim ke ${forgotEmail}.`
+                : 'Buat password baru untuk akun Anda.'}
+            </p>
+
+            {forgotError && (
+              <div className="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm font-medium flex items-center gap-2 border border-red-200">
+                <span className="material-symbols-outlined text-base">error</span>
+                <span>{forgotError}</span>
+              </div>
+            )}
+
+            {forgotStep === 1 && (
+              <form onSubmit={handleRequestOtp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#747871] mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="nama@email.com"
+                    className="w-full px-3 py-2.5 rounded border border-[#DCCFC0] text-sm focus:outline-none focus:border-[#778873]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-2.5 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] font-medium text-sm disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {forgotLoading ? 'Mengirim OTP...' : 'Kirim Kode OTP'}
+                </button>
+              </form>
+            )}
+
+            {forgotStep === 2 && (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#747871] mb-1">
+                    Kode OTP (6 digit)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={forgotOtp}
+                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-full px-3 py-2.5 rounded border border-[#DCCFC0] text-sm tracking-widest text-center font-bold focus:outline-none focus:border-[#778873]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-[#747871] pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotStep(1);
+                      setForgotError('');
+                    }}
+                    className="hover:underline text-[#778873] cursor-pointer"
+                  >
+                    Ganti Email
+                  </button>
+                  <button
+                    type="button"
+                    disabled={forgotLoading}
+                    onClick={handleRequestOtp}
+                    className="hover:underline text-[#778873] disabled:opacity-50 cursor-pointer"
+                  >
+                    Kirim Ulang OTP
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading || forgotOtp.length < 6}
+                  className="w-full py-2.5 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] font-medium text-sm disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {forgotLoading ? 'Memverifikasi...' : 'Lanjut Isi Password Baru'}
+                </button>
+              </form>
+            )}
+
+            {forgotStep === 3 && (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#747871] mb-1">
+                    Password Baru (min 8 karakter)
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      minLength={8}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3 py-2.5 pr-10 rounded border border-[#DCCFC0] text-sm focus:outline-none focus:border-[#778873]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 text-[#747871] hover:text-[#1e1b16] cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {showNewPassword ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#747871] mb-1">
+                    Konfirmasi Password Baru
+                  </label>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    minLength={8}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2.5 rounded border border-[#DCCFC0] text-sm focus:outline-none focus:border-[#778873]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-2.5 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] font-medium text-sm disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {forgotLoading ? 'Menyimpan...' : 'Simpan Password Baru'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

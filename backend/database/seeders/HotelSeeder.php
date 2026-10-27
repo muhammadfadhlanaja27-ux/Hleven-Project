@@ -128,7 +128,7 @@ class HotelSeeder extends Seeder
                         'weekday_price' => $price,
                         'weekend_price' => $price + 200000,
                         'stock' => rand(5, 15),
-                        'capacity_adult' => 2,
+                        'capacity_adult' => in_array($roomName, ['Superior Room', 'Deluxe Room']) ? 1 : 2,
                         'capacity_child' => 1,
                         'breakfast' => ($star >= 3),
                         'smoking_area' => (rand(0, 1) === 1),

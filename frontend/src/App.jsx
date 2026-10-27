@@ -20,6 +20,7 @@ import LandingPage from "./pages/user/LandingPage";
 import HotelList from "./pages/user/HotelList";
 import RoomDetail from "./pages/user/RoomDetail";
 import Login from "./pages/auth/Login";
+import GoogleCallback from "./pages/auth/GoogleCallback";
 import Register from "./pages/auth/Register";
 import UserProfile from "./pages/user/UserProfile";
 import HotelDetail from "./pages/user/HotelDetail";
@@ -179,6 +180,7 @@ function App() {
             <Route path="/hotels/:hotelId/rooms/:roomId" element={<RoomDetail />} />
             <Route path="/rooms/:hotelId/:roomId" element={<RoomDetail />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<GoogleCallback />} />
             <Route path="/register" element={<Register />} />
 
             {/* Rute Khusus User Terautentikasi (WAJIB LOGIN) */}
