@@ -63,7 +63,7 @@ const TransactionHistory = () => {
         return response.data.data;
       }
     } catch (error) {
-      if (!silent) toast.error("Failed to load transaction history.");
+      if (!silent) toast.error("Gagal memuat riwayat transaksi.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -140,7 +140,7 @@ const TransactionHistory = () => {
         return;
       }
       if (response.data.success) {
-        toast.success("Transaction status updated.");
+        toast.success("Status transaksi berhasil diperbarui.");
         skippedSyncRef.current.delete(orderId);
         fetchPayments(currentPage, true);
       }
@@ -152,7 +152,7 @@ const TransactionHistory = () => {
         skippedSyncRef.current.add(orderId);
         toast(d?.message || msg || "Transaksi belum ada di Midtrans — pembayaran manual / belum Snap.", { icon: "ℹ️" });
       } else {
-        toast.error(msg || "Failed to sync with Midtrans.");
+        toast.error(msg || "Gagal menyinkronkan dengan Midtrans.");
       }
     } finally {
       setSyncing(null);
@@ -165,17 +165,17 @@ const TransactionHistory = () => {
       case "success":
       case "settlement":
       case "capture":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wider">Settlement</span>;
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wider">Berhasil</span>;
       case "pending":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider">Pending</span>;
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider">Menunggu Pembayaran</span>;
       case "expire":
       case "expired":
       case "failure":
       case "failed":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wider">Expired / Failed</span>;
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wider">Kedaluwarsa / Gagal</span>;
       case "cancel":
       case "cancelled":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">Cancelled</span>;
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">Dibatalkan</span>;
       default:
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">{status || "—"}</span>;
     }
@@ -185,44 +185,44 @@ const TransactionHistory = () => {
     <div className="p-6 min-h-screen bg-[#F8F9F8]">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C251D] font-['Newsreader',serif]">Transaction History</h1>
-          <p className="text-sm text-[#5F7161]">View and manage all guest payments and transaction status. Auto-refresh every 5s.</p>
+          <h1 className="text-2xl font-bold text-[#1C251D] font-['Newsreader',serif]">Riwayat Transaksi</h1>
+          <p className="text-sm text-[#5F7161]">Lihat dan kelola semua pembayaran tamu dan status transaksi. Auto-refresh setiap 5s.</p>
         </div>
       </div>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E8E2D9] mb-6 flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Search</label>
+          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Cari</label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">search</span>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search order, customer..."
+              placeholder="Cari pesanan, pelanggan..."
               className="w-full pl-10 pr-4 py-2 bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Payment Status</label>
+          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Status Pembayaran</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-4 py-2 text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none min-w-[160px]"
           >
-            <option value="">All Status</option>
-            <option value="success">Settlement</option>
-            <option value="pending">Pending</option>
-            <option value="expired">Expired</option>
-            <option value="failed">Failed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">Semua Status</option>
+            <option value="success">Berhasil</option>
+            <option value="pending">Menunggu</option>
+            <option value="expired">Kedaluwarsa</option>
+            <option value="failed">Gagal</option>
+            <option value="cancelled">Dibatalkan</option>
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Start Date</label>
+          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Tanggal Mulai</label>
           <input
             type="date"
             value={startDate}
@@ -232,7 +232,7 @@ const TransactionHistory = () => {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">End Date</label>
+          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Tanggal Selesai</label>
           <input
             type="date"
             value={endDate}
@@ -245,7 +245,7 @@ const TransactionHistory = () => {
           onClick={() => { setFilterStatus(""); setStartDate(""); setEndDate(""); setSearch(""); }}
           className="px-4 py-2 text-sm font-bold text-[#5F7161] hover:bg-[#5F7161]/5 transition-colors rounded-xl underline"
         >
-          Reset Filters
+          Reset Filter
         </button>
       </div>
 
@@ -254,12 +254,12 @@ const TransactionHistory = () => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-[#F7F6F2] border-b border-[#E8E2D9]">
               <tr>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Order Info</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Customer</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Amount</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Payment Method</th>
+                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Info Pesanan</th>
+                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Pelanggan</th>
+                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Total Pembayaran</th>
+                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Metode Pembayaran</th>
                 <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Status</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider text-center">Actions</th>
+                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0EBE1]">
@@ -275,7 +275,7 @@ const TransactionHistory = () => {
                     <td className="p-4">
                       <div className="font-bold text-[#1C251D] text-sm">{p.order_id}</div>
                       <div className="text-[10px] text-[#5F7161] mt-0.5">
-                        Created: {new Date(p.created_at).toLocaleString("en-GB", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        Dibuat: {new Date(p.created_at).toLocaleString("id-ID", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
                       {p.transaction_id && <div className="text-[10px] text-gray-400 truncate max-w-[160px]">Trx: {p.transaction_id}</div>}
                     </td>
@@ -286,7 +286,6 @@ const TransactionHistory = () => {
                     </td>
                     <td className="p-4">
                       <div className="font-bold text-[#5F7161] text-sm">{fmtRupiah(p.gross_amount)}</div>
-                      <div className="text-[10px] text-gray-400">Total Payment</div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -302,7 +301,7 @@ const TransactionHistory = () => {
                         <button
                           onClick={() => setSelected(p)}
                           className="inline-flex items-center justify-center p-2 rounded-xl border border-[#E2DDD3] hover:bg-[#5F7161] hover:text-white hover:border-[#5F7161] transition-all"
-                          title="View Detail"
+                          title="Lihat Detail"
                         >
                           <span className="material-symbols-outlined text-[18px]">visibility</span>
                         </button>
@@ -310,7 +309,7 @@ const TransactionHistory = () => {
                           onClick={() => handleSync(p.order_id)}
                           disabled={syncing === p.order_id}
                           className={`inline-flex items-center justify-center p-2 rounded-xl border border-[#E2DDD3] hover:bg-[#5F7161] hover:text-white hover:border-[#5F7161] transition-all ${syncing === p.order_id ? 'animate-spin opacity-50' : ''}`}
-                          title="Sync with Midtrans"
+                          title="Sinkronisasi"
                         >
                           <span className="material-symbols-outlined text-[18px]">sync</span>
                         </button>
@@ -322,7 +321,7 @@ const TransactionHistory = () => {
                 <tr>
                   <td colSpan="6" className="p-12 text-center">
                     <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">receipt_long</span>
-                    <p className="text-gray-400 text-sm italic">No transactions found.</p>
+                    <p className="text-gray-400 text-sm italic">Tidak ada transaksi ditemukan.</p>
                   </td>
                 </tr>
               )}
@@ -337,15 +336,15 @@ const TransactionHistory = () => {
               onClick={() => fetchPayments(currentPage - 1)}
               className="px-4 py-2 text-sm font-bold text-[#5F7161] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
             >
-              <span className="material-symbols-outlined text-lg">chevron_left</span> Previous
+              <span className="material-symbols-outlined text-lg">chevron_left</span> Sebelumnya
             </button>
-            <span className="text-xs font-bold text-[#5F7161] uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+            <span className="text-xs font-bold text-[#5F7161] uppercase tracking-widest">Halaman {currentPage} dari {totalPages}</span>
             <button
               disabled={currentPage === totalPages || loading}
               onClick={() => fetchPayments(currentPage + 1)}
               className="px-4 py-2 text-sm font-bold text-[#5F7161] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
             >
-              Next <span className="material-symbols-outlined text-lg">chevron_right</span>
+              Selanjutnya <span className="material-symbols-outlined text-lg">chevron_right</span>
             </button>
           </div>
         )}
@@ -356,42 +355,42 @@ const TransactionHistory = () => {
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 text-left" onClick={(e) => e.stopPropagation()}>
             <div className="bg-[#2D312C] text-white p-5 flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-base">Transaction Detail</h3>
-                <p className="text-xs opacity-70 mt-1">Order ID: {selected.order_id}</p>
-                {selected.transaction_id && <p className="text-xs opacity-60">Trx ID: {selected.transaction_id}</p>}
+                <h3 className="font-bold text-base">Rincian Transaksi</h3>
+                <p className="text-xs opacity-70 mt-1">ID Pesanan: {selected.order_id}</p>
+                {selected.transaction_id && <p className="text-xs opacity-60">ID Transaksi: {selected.transaction_id}</p>}
               </div>
               <button onClick={() => setSelected(null)} className="text-white/70 hover:text-white p-1"><span className="material-symbols-outlined">close</span></button>
             </div>
             <div className="p-5 space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-1">Customer</p>
+                  <p className="text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-1">Data Pelanggan</p>
                   <p className="font-semibold text-[#1C251D]">{selected.booking?.guests?.[0]?.name || selected.booking?.user?.name || "-"}</p>
                   <p className="text-xs text-[#5F7161]">{selected.booking?.guests?.[0]?.email || selected.booking?.user?.email || "-"}</p>
                   <p className="text-xs text-gray-500">{selected.booking?.guests?.[0]?.phone || selected.booking?.user?.phone || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-1">Payment</p>
+                  <p className="text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-1">Pembayaran</p>
                   <p className="font-semibold">{fmtPaymentMethod(selected.payment_method)} {selected.payment_method ? "" : "(belum ada)"}</p>
                   <div className="mt-1">{getStatusBadge(selected.payment_status)}</div>
-                  <p className="text-xs text-gray-400 mt-1">Gross: {fmtRupiah(selected.gross_amount)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Total: {fmtRupiah(selected.gross_amount)}</p>
                 </div>
               </div>
 
               <div className="bg-[#F7F6F2] rounded-xl p-4 border border-[#E2DDD3] space-y-2">
-                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Booking Code</span><span className="font-mono font-bold">{selected.booking?.booking_code || selected.order_id}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Kode Booking</span><span className="font-mono font-bold">{selected.booking?.booking_code || selected.order_id}</span></div>
                 <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Check-in</span><span>{selected.booking?.check_in || "-"}</span></div>
                 <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Check-out</span><span>{selected.booking?.check_out || "-"}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Booking Status</span><span className="font-semibold capitalize">{selected.booking?.status || "-"}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Paid At</span><span>{selected.paid_at ? new Date(selected.paid_at).toLocaleString("id-ID") : "-"}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Expired At</span><span>{selected.expired_at ? new Date(selected.expired_at).toLocaleString("id-ID") : "-"}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Status Booking</span><span className="font-semibold capitalize">{selected.booking?.status || "-"}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Waktu Dibayar</span><span>{selected.paid_at ? new Date(selected.paid_at).toLocaleString("id-ID") : "-"}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#5F7161]">Kedaluwarsa</span><span>{selected.expired_at ? new Date(selected.expired_at).toLocaleString("id-ID") : "-"}</span></div>
               </div>
 
               <div className="flex gap-2">
                 <button onClick={() => handleSync(selected.order_id)} disabled={syncing === selected.order_id} className="flex-1 bg-[#5F7161] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#4D5E4F] disabled:opacity-50 flex items-center justify-center gap-2">
-                  <span className={`material-symbols-outlined text-base ${syncing === selected.order_id ? 'animate-spin' : ''}`}>sync</span> Sync with Midtrans
+                  <span className={`material-symbols-outlined text-base ${syncing === selected.order_id ? 'animate-spin' : ''}`}>sync</span> Sinkronisasi
                 </button>
-                <button onClick={() => setSelected(null)} className="px-6 py-2.5 border border-[#E2DDD3] rounded-xl text-sm font-bold hover:bg-gray-50">Close</button>
+                <button onClick={() => setSelected(null)} className="px-6 py-2.5 border border-[#E2DDD3] rounded-xl text-sm font-bold hover:bg-gray-50">Tutup</button>
               </div>
             </div>
           </div>

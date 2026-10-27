@@ -5,10 +5,10 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\Hotel;
+use App\Models\Notification;
 use App\Models\PartnerApplication;
 use App\Models\Payment;
 use App\Models\Refund;
-use App\Models\Notification;
 use App\Models\RoomType;
 use App\Models\User;
 use Carbon\Carbon;
@@ -20,8 +20,8 @@ class SuperAdminDashboardService
     public function getSummary(): array
     {
         return Cache::remember('super_admin_summary', 30, function () {
-            // DASHBOARD-SA-003: Pendapatan hari ini hanya dari status Success
-            $todayRevenue = Payment::where('payment_status', 'Success')
+            // DASHBOARD-SA-003: Pendapatan hari ini hanya dari status success
+            $todayRevenue = Payment::where('payment_status', 'success')
                 ->whereDate('paid_at', Carbon::today())
                 ->sum('gross_amount');
 
@@ -30,9 +30,9 @@ class SuperAdminDashboardService
                 'total_hotels' => Hotel::count(),
                 'total_rooms' => RoomType::sum('stock'),
                 'total_bookings' => Booking::count(),
-                'active_bookings' => Booking::whereIn('status', ['Pending', 'Paid', 'Checked In'])->count(),
+                'active_bookings' => Booking::whereIn('status', ['pending', 'paid', 'checked_in'])->count(),
                 'today_revenue' => (float) $todayRevenue,
-                'pending_refunds' => Refund::where('status', 'Pending')->count(),
+                'pending_refunds' => Refund::where('status', 'pending')->count(),
                 'pending_partner_applications' => PartnerApplication::where('status', 'pending')->count(),
             ];
         });
@@ -41,37 +41,37 @@ class SuperAdminDashboardService
     public function getBookingStats(): array
     {
         return [
-            'pending' => Booking::where('status', 'Pending')->count(),
-            'paid' => Booking::where('status', 'Paid')->count(),
-            'checked_in' => Booking::where('status', 'Checked In')->count(),
-            'checked_out' => Booking::where('status', 'Checked Out')->count(),
-            'cancelled' => Booking::where('status', 'Cancelled')->count(),
-            'expired' => Booking::where('status', 'Expired')->count(),
-            'refunded' => Booking::where('status', 'Refunded')->count(),
+            'pending' => Booking::where('status', 'pending')->count(),
+            'paid' => Booking::where('status', 'paid')->count(),
+            'checked_in' => Booking::where('status', 'checked_in')->count(),
+            'checked_out' => Booking::where('status', 'checked_out')->count(),
+            'cancelled' => Booking::where('status', 'cancelled')->count(),
+            'expired' => Booking::where('status', 'expired')->count(),
+            'refunded' => Booking::where('status', 'refunded')->count(),
         ];
     }
 
     public function getPaymentStats(): array
     {
         return [
-            'pending' => Payment::where('payment_status', 'Pending')->count(),
-            'success' => Payment::where('payment_status', 'Success')->count(),
-            'failed' => Payment::where('payment_status', 'Failed')->count(),
-            'expired' => Payment::where('payment_status', 'Expired')->count(),
-            'cancelled' => Payment::where('payment_status', 'Cancelled')->count(),
-            'total_transaction' => (float) Payment::where('payment_status', 'Success')->sum('gross_amount'),
+            'pending' => Payment::where('payment_status', 'pending')->count(),
+            'success' => Payment::where('payment_status', 'success')->count(),
+            'failed' => Payment::where('payment_status', 'failed')->count(),
+            'expired' => Payment::where('payment_status', 'expired')->count(),
+            'cancelled' => Payment::where('payment_status', 'cancelled')->count(),
+            'total_transaction' => (float) Payment::where('payment_status', 'success')->sum('gross_amount'),
         ];
     }
 
     public function getRefundStats(): array
     {
-        // DASHBOARD-SA-004: Refund dihitung dari yang Completed/Approved[cite: 1]
+        // DASHBOARD-SA-004: Refund dihitung dari yang completed/approved[cite: 1]
         return [
-            'pending' => Refund::where('status', 'Pending')->count(),
-            'approved' => Refund::where('status', 'Approved')->count(),
-            'rejected' => Refund::where('status', 'Rejected')->count(),
-            'completed' => Refund::where('status', 'Completed')->count(),
-            'total_refund_amount' => (float) Refund::whereIn('status', ['Approved', 'Completed'])
+            'pending' => Refund::where('status', 'pending')->count(),
+            'approved' => Refund::where('status', 'approved')->count(),
+            'rejected' => Refund::where('status', 'rejected')->count(),
+            'completed' => Refund::where('status', 'completed')->count(),
+            'total_refund_amount' => (float) Refund::whereIn('status', ['approved', 'completed'])
                 ->join('payments', 'refunds.booking_id', '=', 'payments.booking_id')
                 ->sum('payments.gross_amount'),
         ];
@@ -83,19 +83,19 @@ class SuperAdminDashboardService
         $targetYear = $year ?? Carbon::now()->year;
 
         // Total Bulanan[cite: 1]
-        $monthlyTotal = Payment::where('payment_status', 'Success')
+        $monthlyTotal = Payment::where('payment_status', 'success')
             ->whereYear('paid_at', $targetYear)
             ->whereMonth('paid_at', $targetMonth)
             ->sum('gross_amount');
 
         // Total Tahunan[cite: 1]
-        $yearlyTotal = Payment::where('payment_status', 'Success')
+        $yearlyTotal = Payment::where('payment_status', 'success')
             ->whereYear('paid_at', $targetYear)
             ->sum('gross_amount');
 
         // Data Harian dalam satu bulan[cite: 1]
         $daily = Payment::select(DB::raw('DATE(paid_at) as date'), DB::raw('SUM(gross_amount) as total'))
-            ->where('payment_status', 'Success')
+            ->where('payment_status', 'success')
             ->whereYear('paid_at', $targetYear)
             ->whereMonth('paid_at', $targetMonth)
             ->groupBy('date')
@@ -146,13 +146,35 @@ class SuperAdminDashboardService
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    public function getPartnerStats(): array
+    public function getHotelHealthReport(): array
     {
-        return [
-            'pending' => PartnerApplication::where('status', 'pending')->count(),
-            'approved' => PartnerApplication::where('status', 'approved')->count(),
-            'rejected' => PartnerApplication::where('status', 'rejected')->count(),
-        ];
+        return Hotel::with(['reviews:hotel_id,rating'])
+            ->withCount(['bookings', 'bookings as cancelled_bookings_count' => function ($q) {
+                $q->where('status', 'cancelled');
+            }])
+            ->get()
+            ->map(function ($hotel) {
+                $avgRating = $hotel->reviews->avg('rating') ?? 5.0;
+                $totalBookings = $hotel->bookings_count ?: 1;
+                $cancelRate = $hotel->cancelled_bookings_count / $totalBookings;
+
+                // Score: 0 - 100
+                $ratingScore = min(100, max(0, ($avgRating / 5) * 100));
+                $cancelScore = min(100, max(0, (1 - $cancelRate) * 100));
+                $healthScore = ($ratingScore * 0.6) + ($cancelScore * 0.4);
+
+                return [
+                    'hotel_id' => $hotel->id,
+                    'hotel_name' => $hotel->name,
+                    'health_score' => round($healthScore, 1),
+                    'average_rating' => round($avgRating, 1),
+                    'cancellation_rate' => round($cancelRate * 100, 1).'%',
+                    'status' => $healthScore < 60 ? 'critical' : ($healthScore < 80 ? 'warning' : 'healthy'),
+                ];
+            })
+            ->sortBy('health_score')
+            ->values()
+            ->toArray();
     }
 
     public function getCharts(): array

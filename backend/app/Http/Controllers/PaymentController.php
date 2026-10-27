@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\BookingConfirmedMail;
 use App\Models\Hotel;
 use App\Models\Payment;
 use App\Services\MidtransService;
 use App\Services\NotificationService;
+use App\Services\QRCodeService;
 use App\Services\WalletLedgerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
 {
@@ -69,7 +72,9 @@ class PaymentController extends Controller
             $payment = Payment::with('booking.user')->findOrFail($id);
 
             // Otorisasi: Pastikan user yang login adalah pemilik booking
-            if ($payment->booking->user_id !== $request->user()->id) {
+            if ($payment->booking->user_id && $payment->booking->user_id !== $request->user()->id) {
+                \Log::warning("Forbidden snap-token attempt: User ID {$request->user()->id} trying to access booking user ID {$payment->booking->user_id}");
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Forbidden.',
@@ -216,8 +221,23 @@ class PaymentController extends Controller
 
                 $payment->booking->update(['status' => 'paid']);
                 app(WalletLedgerService::class)->recordPayment($payment->booking);
+
+                // Generate Ticket & Send Email
+                app(QRCodeService::class)->generateTicket($payment->booking);
             });
+
             app(NotificationService::class)->notifyBookingPaid($payment->booking);
+
+            // Send Email (outside transaction for safety)
+            try {
+                $booking = $payment->booking->fresh(['guests', 'hotel', 'bookingRooms.roomType', 'user', 'eTicket']);
+                $recipient = $booking->guests->first()->email ?? $booking->user->email;
+                if ($recipient) {
+                    Mail::to($recipient)->send(new BookingConfirmedMail($booking));
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send booking confirmation email in markPaid: '.$e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,

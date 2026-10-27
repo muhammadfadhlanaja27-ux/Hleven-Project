@@ -2,12 +2,11 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-     public function up(): void
+    public function up(): void
     {
         Schema::disableForeignKeyConstraints();
 
@@ -16,16 +15,16 @@ return new class extends Migration
             Schema::table('hotels', function (Blueprint $table) {
                 $table->dropForeign(['admin_id']);
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Abaikan
         }
 
         // Tambahkan Foreign Key constraint ON DELETE CASCADE
         Schema::table('hotels', function (Blueprint $table) {
             $table->foreign('admin_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
         });
 
         Schema::enableForeignKeyConstraints();
@@ -39,7 +38,7 @@ return new class extends Migration
             Schema::table('hotels', function (Blueprint $table) {
                 $table->dropForeign(['admin_id']);
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Abaikan
         }
 

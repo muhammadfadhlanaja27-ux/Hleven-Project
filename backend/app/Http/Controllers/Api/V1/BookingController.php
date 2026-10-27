@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\BookingConfirmedMail;
 use App\Models\Booking;
 use App\Models\BookingRoom;
 use App\Models\Guest;
@@ -13,6 +14,7 @@ use App\Models\RoomAvailability;
 use App\Models\RoomType;
 use App\Models\User;
 use App\Services\PricingService;
+use App\Services\QRCodeService;
 use App\Services\RefundPolicyService;
 use App\Services\WalletLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,6 +22,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
@@ -276,10 +279,26 @@ class BookingController extends Controller
 
             DB::commit();
 
+            $booking->load(['user', 'bookingRooms.roomType', 'payment', 'guests']);
+
+            // Send email if paid
+            if ($isPaid) {
+                try {
+                    app(QRCodeService::class)->generateTicket($booking);
+                    $booking->load('eTicket');
+                    $recipient = $booking->guests->first()->email ?? $booking->user->email;
+                    if ($recipient) {
+                        Mail::to($recipient)->send(new BookingConfirmedMail($booking));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send manual booking confirmation: '.$e->getMessage());
+                }
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Booking manual berhasil dibuat.',
-                'data' => $booking->load(['user', 'bookingRooms.roomType', 'payment', 'guests']),
+                'data' => $booking,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -789,13 +808,6 @@ class BookingController extends Controller
         $guestPhone = $request->guest_phone ?: ($user->phone ?? $request->booker_phone);
         $isForOtherGuest = (bool) $request->is_for_other_guest
             || ($request->filled('guest_name') && (! $user || $request->guest_name !== $user->name));
-
-        if (! $guestName || ! $guestEmail) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Nama dan email pemesan wajib diisi.',
-            ], 422);
-        }
 
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);

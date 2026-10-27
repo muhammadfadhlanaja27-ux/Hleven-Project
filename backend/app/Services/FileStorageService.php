@@ -6,8 +6,8 @@ use App\Models\HotelPhoto;
 use App\Models\RoomPhoto;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class FileStorageService
 {
@@ -20,13 +20,13 @@ class FileStorageService
 
     protected function normalizeStoragePath(?string $url): ?string
     {
-        if (!$url) {
+        if (! $url) {
             return null;
         }
 
         // Ambil path dari URL (misal: /storage/hotel/1/foto.jpg)
         $path = parse_url($url, PHP_URL_PATH);
-        
+
         // Hapus prefix '/storage/' atau 'storage/'
         if (str_starts_with($path, '/storage/')) {
             $path = substr($path, 9);
@@ -39,7 +39,9 @@ class FileStorageService
 
     public function deleteFile(?string $url): void
     {
-        if (!$url) return;
+        if (! $url) {
+            return;
+        }
 
         try {
             $path = $this->normalizeStoragePath($url);
@@ -63,7 +65,7 @@ class FileStorageService
         HotelPhoto::create([
             'hotel_id' => $hotelId,
             'photo' => $path,
-            'is_thumbnail' => $isThumbnail
+            'is_thumbnail' => $isThumbnail,
         ]);
     }
 
@@ -86,7 +88,7 @@ class FileStorageService
         RoomPhoto::create([
             'room_type_id' => $roomId,
             'photo' => $path,
-            'is_thumbnail' => $isThumbnail
+            'is_thumbnail' => $isThumbnail,
         ]);
     }
 

@@ -11,10 +11,10 @@ return new class extends Migration
         Schema::create('partner_applications', function (Blueprint $table) {
             $table->id();
             $table->string('owner_name'); //
-            $table->string('hotel_name'); //[cite: 1]
-            $table->string('email'); //[cite: 1]
-            $table->string('phone'); //[cite: 1]
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending'); //[cite: 1]
+            $table->string('hotel_name'); // [cite: 1]
+            $table->string('email'); // [cite: 1]
+            $table->string('phone'); // [cite: 1]
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending'); // [cite: 1]
             $table->timestamps();
         });
     }

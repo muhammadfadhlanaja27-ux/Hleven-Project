@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
+use App\Mail\BookingConfirmedMail;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\Payment;
-use App\Mail\BookingConfirmedMail;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Transaction;
@@ -45,6 +45,12 @@ class MidtransService
         }
 
         $booking = $payment->booking;
+        if (! $booking) {
+            throw new \Exception("Booking terkait pembayaran #{$payment->id} tidak ditemukan.");
+        }
+
+        $customerName = $booking->user?->name ?? $booking->guest_name ?? 'Pelanggan';
+        $customerEmail = $booking->user?->email ?? $booking->guest_email ?? 'customer@hleven.test';
 
         $params = [
             'transaction_details' => [
@@ -52,12 +58,17 @@ class MidtransService
                 'gross_amount' => (int) $payment->gross_amount, // Sesuai aturan PAYMENT-003[cite: 1]
             ],
             'customer_details' => [
-                'first_name' => $booking->user->name,
-                'email' => $booking->user->email,
+                'first_name' => $customerName,
+                'email' => $customerEmail,
             ],
         ];
 
-        $snapToken = Snap::getSnapToken($params);
+        try {
+            $snapToken = Snap::getSnapToken($params);
+        } catch (\Exception $e) {
+            Log::error('Midtrans Snap Error: '.$e->getMessage(), ['params' => $params, 'serverKey' => substr(Config::$serverKey, 0, 10).'...']);
+            throw $e;
+        }
 
         // Simpan token ke database
         $payment->update(['snap_token' => $snapToken]);
@@ -218,7 +229,7 @@ class MidtransService
                 Mail::to($recipient)->send(new BookingConfirmedMail($booking));
             }
         } catch (\Exception $e) {
-            Log::error("Failed to send booking confirmation email for {$booking->booking_code}: " . $e->getMessage());
+            Log::error("Failed to send booking confirmation email for {$booking->booking_code}: ".$e->getMessage());
         }
     }
 }

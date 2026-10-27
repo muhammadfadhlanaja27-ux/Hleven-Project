@@ -3,11 +3,11 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Hotel;
+use App\Models\PartnerApplication;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
-use App\Models\Hotel;
-use App\Models\PartnerApplication;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
@@ -34,10 +34,10 @@ class ReportService
         }
 
         // REPORT-003: Filter tanggal opsional[cite: 1]
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+        if (! empty($filters['start_date']) && ! empty($filters['end_date'])) {
             $query->whereBetween($dateColumn, [
-                $filters['start_date'] . ' 00:00:00',
-                $filters['end_date'] . ' 23:59:59'
+                $filters['start_date'].' 00:00:00',
+                $filters['end_date'].' 23:59:59',
             ]);
         }
 
@@ -76,7 +76,7 @@ class ReportService
         return [
             'total_revenue' => (float) $totalRevenue,
             'average_daily' => (float) ($totalRevenue / 30), // Simplifikasi
-            'trend' => $trend // Data untuk grafik Recharts
+            'trend' => $trend, // Data untuk grafik Recharts
         ];
     }
 
@@ -90,7 +90,7 @@ class ReportService
 
         return [
             'total_refund' => $query->count(),
-            'refund_amount' => (float) $totalAmount
+            'refund_amount' => (float) $totalAmount,
         ];
     }
 
@@ -98,7 +98,7 @@ class ReportService
     {
         $query = User::query();
 
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+        if (! empty($filters['start_date']) && ! empty($filters['end_date'])) {
             $query->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
         }
 
@@ -138,13 +138,13 @@ class ReportService
 
         // Logika pembuatan file PDF/Excel diletakkan di sini (bisa menggunakan dompdf atau laravel-excel)[cite: 1]
         // Sebagai contoh simulasi untuk merespons pembuatan file URL[cite: 1]:
-        $fileName = "report-{$type}-" . now()->format('Ym') . "-" . Str::random(5) . ".{$format}";
+        $fileName = "report-{$type}-".now()->format('Ym').'-'.Str::random(5).".{$format}";
 
         // Simpan logika *generate* di *storage*
         // return path download
         return [
             'message' => 'Report berhasil dibuat.',
-            'download_url' => "/storage/reports/{$fileName}"
+            'download_url' => "/storage/reports/{$fileName}",
         ];
     }
 }

@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Refund;
-use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\Notification;
+use App\Models\Refund;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class RefundService
@@ -21,7 +21,7 @@ class RefundService
             $refund->update([
                 'status' => 'Completed',
                 'approved_by' => $admin->id,
-                'approved_at' => now()
+                'approved_at' => now(),
             ]);
 
             // Update Booking status menjadi Refunded[cite: 1]
@@ -35,7 +35,7 @@ class RefundService
                 'user_id' => $admin->id,
                 'activity' => 'Approve Refund',
                 'description' => "Super Admin menyetujui refund untuk Booking {$refund->booking->booking_code}.",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
 
             // Kirim Notifikasi ke User[cite: 1]
@@ -44,7 +44,7 @@ class RefundService
                 'title' => 'Refund Disetujui',
                 'message' => "Pengajuan refund untuk booking {$refund->booking->booking_code} telah disetujui.",
                 'type' => 'refund',
-                'is_read' => false
+                'is_read' => false,
             ]);
         });
     }
@@ -59,14 +59,14 @@ class RefundService
             $refund->update([
                 'status' => 'Rejected',
                 'approved_by' => $admin->id,
-                'approved_at' => now()
+                'approved_at' => now(),
             ]);
 
             ActivityLog::create([
                 'user_id' => $admin->id,
                 'activity' => 'Reject Refund',
                 'description' => "Super Admin menolak refund untuk Booking {$refund->booking->booking_code}. Alasan: {$reason}",
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
             ]);
 
             Notification::create([
@@ -74,7 +74,7 @@ class RefundService
                 'title' => 'Refund Ditolak',
                 'message' => "Pengajuan refund untuk booking {$refund->booking->booking_code} ditolak. Alasan: {$reason}",
                 'type' => 'refund',
-                'is_read' => false
+                'is_read' => false,
             ]);
         });
     }

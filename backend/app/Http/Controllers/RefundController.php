@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Refund;
 use App\Services\RefundService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class RefundController extends Controller
 {
@@ -28,13 +28,13 @@ class RefundController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Refund berhasil disetujui.'
+                'message' => 'Refund berhasil disetujui.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyetujui refund.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -53,12 +53,12 @@ class RefundController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Refund berhasil ditolak.'
+                'message' => 'Refund berhasil ditolak.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menolak refund.'
+                'message' => 'Gagal menolak refund.',
             ], 500);
         }
     }

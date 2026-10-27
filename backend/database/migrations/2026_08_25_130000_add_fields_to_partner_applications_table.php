@@ -58,7 +58,7 @@ return new class extends Migration
                 'owner_id_number',
                 'bank_name', 'bank_account_number', 'bank_account_name',
                 'rejection_reason', 'revision_notes',
-                'status'
+                'status',
             ]);
         });
 

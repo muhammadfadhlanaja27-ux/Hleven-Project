@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\ActivityLog;
 use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
@@ -36,7 +36,7 @@ class ActivityLogController extends Controller
                     'description' => $log->description,
                     'created_at' => $log->created_at instanceof \DateTimeInterface
                         ? $log->created_at->format('Y-m-d H:i:s')
-                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s'))
+                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s')),
                 ];
             });
 
@@ -48,14 +48,14 @@ class ActivityLogController extends Controller
                     'current_page' => $logs->currentPage(),
                     'last_page' => $logs->lastPage(),
                     'per_page' => $logs->perPage(),
-                    'total' => $logs->total()
-                ]
+                    'total' => $logs->total(),
+                ],
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada server.'
+                'message' => 'Terjadi kesalahan pada server.',
             ], 500);
         }
     }
@@ -85,14 +85,14 @@ class ActivityLogController extends Controller
                     'ip_address' => $log->ip_address,
                     'created_at' => $log->created_at instanceof \DateTimeInterface
                         ? $log->created_at->format('Y-m-d H:i:s')
-                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s'))
-                ]
+                        : ($log->created_at ? (string) $log->created_at : now()->format('Y-m-d H:i:s')),
+                ],
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Activity tidak ditemukan.'
+                'message' => 'Activity tidak ditemukan.',
             ], 404);
         }
     }

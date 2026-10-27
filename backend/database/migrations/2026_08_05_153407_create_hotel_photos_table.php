@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete(); // Cascade delete jika hotel dihapus permanen[cite: 1]
             $table->string('photo'); // Path gambar[cite: 1]
             $table->boolean('is_thumbnail')->default(false); // Penanda foto utama[cite: 1]
-            $table->timestamps(); //[cite: 1]
+            $table->timestamps(); // [cite: 1]
         });
     }
 

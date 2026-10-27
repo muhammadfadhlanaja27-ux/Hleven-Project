@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('activity_logs', function (Blueprint $table) {
-            $table->id(); //[cite: 1]
+            $table->id(); // [cite: 1]
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete(); // User yang melakukan aktivitas[cite: 1]
             $table->string('activity'); // Nama aktivitas[cite: 1]
             $table->text('description')->nullable(); // Detail aktivitas[cite: 1]

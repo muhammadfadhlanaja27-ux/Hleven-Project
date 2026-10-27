@@ -28,9 +28,15 @@ const BookingPage = () => {
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [bookerContact, setBookerContact] = useState({ name: '', email: '', phone: '' });
 
-  // Form States
+  // Synchronous submission locks
+  const isSubmittingRef = useRef(false);
+  const submitLockRef = useRef(false);
+  const pollRef = useRef(null);
+  const idempotencyKeyRef = useRef(null);
+
+  // Form State: Pemesan Utama
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -77,10 +83,14 @@ const BookingPage = () => {
     }
   }, [navigate, location.pathname, location.search]);
 
-  // Autofill Data User dari LocalStorage dan API Profil
-  useEffect(() => {
-    const fetchAndAutofillUser = async () => {
-      let userData = null;
+  const handleBookingForSomeoneElseChange = (checked) => {
+    setBookingFor(checked ? "someone_else" : "me");
+    if (checked) {
+      setFullName("");
+      setEmail("");
+      setPhone("");
+      return;
+    }
 
       // 1. Ambil data awal dari localStorage jika ada
       const savedUser = localStorage.getItem("user");

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table) {
-            $table->id(); //[cite: 1]
+            $table->id(); // [cite: 1]
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete(); // Pemilik notifikasi
             $table->string('title'); // Judul notifikasi
             $table->text('message'); // Isi notifikasi
