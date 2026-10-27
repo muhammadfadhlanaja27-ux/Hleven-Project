@@ -60,8 +60,12 @@ class ReviewController extends Controller
     public function eligibleBookings(Request $request, $hotelId)
     {
         $user = $request->user();
+
         if (! $user) {
-            return response()->json(['status' => 'success', 'data' => []]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Silakan login untuk melihat pesanan yang dapat diulas.',
+            ], 401);
         }
 
         $bookings = Booking::where('user_id', $user->id)

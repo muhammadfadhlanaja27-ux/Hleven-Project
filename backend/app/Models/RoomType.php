@@ -11,6 +11,7 @@ class RoomType extends Model
     use HasFactory, SoftDeletes;
 
     protected $attributes = [
+        'bed_count' => 1,
         'breakfast' => false,
         'smoking_area' => false,
         'is_refundable' => true,
@@ -18,9 +19,13 @@ class RoomType extends Model
     ];
 
     protected $fillable = [
-        'hotel_id', 'bed_type_id', 'room_type_category_id', 'name', 'type', 'bed', 'description',
+        'hotel_id', 'bed_type_id', 'bed_count', 'room_type_category_id', 'name', 'type', 'bed', 'description',
         'weekday_price', 'weekend_price', 'stock', 'capacity_adult', 'capacity_child', 'breakfast',
         'smoking_area', 'is_refundable', 'policies',
+    ];
+
+    protected $casts = [
+        'bed_count' => 'integer',
     ];
 
     public function hotel()
