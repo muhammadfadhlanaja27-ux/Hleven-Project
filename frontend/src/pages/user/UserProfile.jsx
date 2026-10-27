@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -11,17 +11,16 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 // Helper untuk format tanggal dari ISO string menjadi "06 Okt 2026"
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
+  const datePart = String(dateStr).match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  const date = datePart
+    ? new Date(`${datePart}T00:00:00`)
+    : new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 };
 
 const getInitialUser = () => {
@@ -121,8 +120,8 @@ const UserProfile = () => {
     }
   };
 
-  const fetchUserBookings = async (forceRefresh = false) => {
-    setBookingsLoading(true);
+  const fetchUserBookings = useCallback(async (forceRefresh = false, silent = false) => {
+    if (!silent) setBookingsLoading(true);
     try {
       const TTL_30DETIK = 30 * 1000;
       const { data: responseData } = await cachedGet(
@@ -135,11 +134,13 @@ const UserProfile = () => {
       setBookings(Array.isArray(result) ? result : []);
     } catch (err) {
       console.warn("Gagal memuat riwayat pemesanan:", err);
-      setBookings([]);
+      if (!silent) {
+        toast.error("Gagal memuat riwayat pemesanan. Coba muat ulang halaman.");
+      }
     } finally {
-      setBookingsLoading(false);
+      if (!silent) setBookingsLoading(false);
     }
-  };
+  }, []);
 
   const fetchPartnerStatus = async () => {
     setPartnerLoading(true);
@@ -243,6 +244,27 @@ const UserProfile = () => {
     const notificationInterval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(notificationInterval);
   }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab !== "history") return undefined;
+
+    const refreshBookings = (silent = false) => fetchUserBookings(true, silent);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshBookings(true);
+    };
+    const refreshOnFocus = () => refreshBookings(true);
+
+    refreshBookings();
+    const refreshInterval = setInterval(() => refreshBookings(true), 30000);
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [activeTab, fetchUserBookings]);
 
   // Reset error avatar setiap kali data user atau foto berubah
   useEffect(() => {
@@ -848,12 +870,14 @@ const UserProfile = () => {
                                 ? "block"
                                 : "notifications"}
                             </span>
-                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
-                              if (notif.type === "review_request") {
-                                setActiveTab("history");
-                                fetchUserBookings();
-                              }
-                            }}>
+                            <div
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => {
+                                if (notif.type === "review_request") {
+                                  setActiveTab("history");
+                                }
+                              }}
+                            >
                               <div className="flex items-center gap-2 mb-1">
                                 <h4 className="font-label-md text-sm font-bold text-[#2D332C]">
                                   {notif.title}
@@ -1080,7 +1104,7 @@ const UserProfile = () => {
                                 {b.hotel?.name || "Hotel"}
                               </span>
                               <span className="text-[#747871] text-xs ml-2">
-                                {b.booking_code} • Check-out {b.check_out}
+                                {b.booking_code} • Check-out {formatDate(b.check_out)}
                               </span>
                             </div>
                             <button

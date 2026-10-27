@@ -426,6 +426,19 @@ export default function HotelInformation() {
       newErrors.location = "Location is required.";
     }
 
+    const latitude = formValues.latitude;
+    const longitude = formValues.longitude;
+    if ((latitude === "" || latitude == null) !== (longitude === "" || longitude == null)) {
+      newErrors.latitude = "Isi latitude dan longitude bersama-sama.";
+      newErrors.longitude = "Isi latitude dan longitude bersama-sama.";
+    }
+    if (latitude !== "" && latitude != null && (!Number.isFinite(Number(latitude)) || Number(latitude) < -90 || Number(latitude) > 90)) {
+      newErrors.latitude = "Latitude harus antara -90 dan 90.";
+    }
+    if (longitude !== "" && longitude != null && (!Number.isFinite(Number(longitude)) || Number(longitude) < -180 || Number(longitude) > 180)) {
+      newErrors.longitude = "Longitude harus antara -180 dan 180.";
+    }
+
     const taxRate = Number(formValues.tax_rate);
     if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
       newErrors.tax_rate = "Tax rate must be between 0 and 100.";
@@ -450,6 +463,8 @@ export default function HotelInformation() {
         description: formValues.description.trim(),
         address: formValues.address.trim(),
         city: formValues.city.trim(),
+        latitude: formValues.latitude === "" || formValues.latitude == null ? null : Number(formValues.latitude),
+        longitude: formValues.longitude === "" || formValues.longitude == null ? null : Number(formValues.longitude),
         phone: formValues.phone.trim(),
         email: formValues.email.trim(),
         policies: (formValues.policies || "").trim(),
@@ -1138,6 +1153,65 @@ export default function HotelInformation() {
                   {errors.location}
                 </span>
               )}
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-[#E5E0D8] bg-[#F6F3EF] p-4">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[#434842]">
+                  Koordinat Hotel
+                </h3>
+                <p className="mt-1 text-xs text-[#6B6E6A]">
+                  Koordinat diperlukan untuk menghitung jarak ke hotel lain. Buka alamat di Google Maps, klik kanan titik hotel, lalu salin koordinat.
+                </p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${formValues.name} ${formValues.address} ${formValues.city}`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex text-xs font-semibold text-[#506147] underline"
+                >
+                  Buka alamat di Google Maps
+                </a>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="latitude" className="text-xs font-semibold text-[#434842]">
+                    Latitude
+                  </label>
+                  <input
+                    id="latitude"
+                    name="latitude"
+                    type="number"
+                    step="any"
+                    min="-90"
+                    max="90"
+                    value={formValues.latitude ?? ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="-6.914744"
+                    className="h-11 w-full rounded-lg border border-[#E5E0D8] bg-white px-4 text-sm text-[#2D312C] focus:border-[#506147] focus:outline-none focus:ring-2 focus:ring-[#506147]/20"
+                  />
+                  {errors.latitude && <span className="text-xs font-medium text-[#ba1a1a]">{errors.latitude}</span>}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="longitude" className="text-xs font-semibold text-[#434842]">
+                    Longitude
+                  </label>
+                  <input
+                    id="longitude"
+                    name="longitude"
+                    type="number"
+                    step="any"
+                    min="-180"
+                    max="180"
+                    value={formValues.longitude ?? ""}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    placeholder="107.609810"
+                    className="h-11 w-full rounded-lg border border-[#E5E0D8] bg-white px-4 text-sm text-[#2D312C] focus:border-[#506147] focus:outline-none focus:ring-2 focus:ring-[#506147]/20"
+                  />
+                  {errors.longitude && <span className="text-xs font-medium text-[#ba1a1a]">{errors.longitude}</span>}
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1.5">

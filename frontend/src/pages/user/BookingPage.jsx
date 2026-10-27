@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { cachedGet, invalidateCache } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
 import { getInitialSearchValues, fmtDateStr } from "../../services/searchStorage";
+import { getFacilityDisplayName } from "../../utils/facilities";
 
 const SNAP_URL = "https://app.sandbox.midtrans.com/snap/snap.js";
 const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
@@ -91,6 +92,7 @@ const BookingPage = () => {
   const [, setOrderId] = useState("");
   const [, setPaymentId] = useState(null);
   const [successModalData, setSuccessModalData] = useState(null);
+  const [expandedSuggestionId, setExpandedSuggestionId] = useState(null);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -546,6 +548,7 @@ const BookingPage = () => {
             type: responseData.suggestions.type,
             rooms: responseData.suggestions.rooms || [],
           });
+          setExpandedSuggestionId(null);
         }
       } else {
         const errorMessage = responseData?.message || "Terjadi kesalahan saat memproses pesanan.";
@@ -1024,30 +1027,89 @@ const BookingPage = () => {
             </p>
 
             {suggestionData.rooms && suggestionData.rooms.length > 0 && (
-              <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto p-1">
+              <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto p-1">
                 {suggestionData.rooms.map((altRoom) => (
                   <div
                     key={altRoom.id}
-                    className="p-4 border border-[#DCCFC0] rounded-xl flex justify-between items-center bg-[#faf3ea] hover:border-[#778873] transition-colors"
+                    className="overflow-hidden border border-[#DCCFC0] rounded-xl bg-[#faf3ea] hover:border-[#778873] transition-colors"
                   >
-                    <div className="space-y-1">
-                      <p className="font-headline-sm text-sm font-bold text-[#2D332C]">{altRoom.name}</p>
-                      <p className="font-label-sm text-xs text-[#444842]">
-                        Kapasitas: {altRoom.capacity_adult} Dewasa, {altRoom.capacity_child || 0} Anak
-                      </p>
-                      <p className="font-label-md text-xs font-bold text-[#778873]">
-                        Rp {Number(altRoom.weekday_price || altRoom.price || 0).toLocaleString("id-ID")} / malam
-                      </p>
+                    <div className="flex items-center gap-3 p-3 sm:p-4">
+                      {altRoom.photos?.[0] && (
+                        <img
+                          src={getStorageUrl(altRoom.photos.find((photo) => photo.is_thumbnail)?.photo || altRoom.photos[0].photo || altRoom.photos[0].url)}
+                          alt={altRoom.name}
+                          className="h-16 w-20 shrink-0 rounded-lg object-cover sm:h-20 sm:w-28"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="truncate font-label-md text-xs font-bold text-[#50604d]">
+                          {altRoom.hotel?.name || "Hotel"}
+                          {suggestionData.type === "same_hotel" && " · Hotel ini"}
+                        </p>
+                        <p className="truncate font-headline-sm text-sm font-bold text-[#2D332C]">{altRoom.name}</p>
+                        <p className="truncate text-xs text-[#5b6058]">
+                          {altRoom.hotel?.address || altRoom.hotel?.city || "Lokasi tidak tersedia"}
+                        </p>
+                        {suggestionData.type === "other_hotels_in_city"
+                          && altRoom.distance_km != null
+                          && Number.isFinite(Number(altRoom.distance_km)) && (
+                          <p className="text-xs text-[#5b6058]">
+                            ±{Number(altRoom.distance_km).toLocaleString("id-ID")} km dari hotel pilihan
+                          </p>
+                        )}
+                        <p className="font-label-md text-xs font-bold text-[#778873]">
+                          Rp {Number(altRoom.weekday_price || altRoom.price || 0).toLocaleString("id-ID")} / malam
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSuggestionId((current) => current === altRoom.id ? null : altRoom.id)}
+                          aria-expanded={expandedSuggestionId === altRoom.id}
+                          className="rounded-lg border border-[#778873] px-3 py-2 text-[11px] font-bold text-[#50604d] transition-colors hover:bg-[#778873]/10"
+                        >
+                          {expandedSuggestionId === altRoom.id ? "Tutup Detail" : "Detail"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSuggestionData(null);
+                            navigate(`/booking/${altRoom.hotel_id || hotelId}/${altRoom.id}?check_in=${checkInDate}&check_out=${checkOutDate}&adults=${adults}&children=${children}`);
+                          }}
+                          className="rounded-lg bg-[#778873] px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-[#50604d]"
+                        >
+                          Pilih Kamar
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setSuggestionData(null);
-                        navigate(`/booking/${altRoom.hotel_id || hotelId}/${altRoom.id}?checkIn=${checkInDate}&checkOut=${checkOutDate}&adults=${adults}&children=${children}`);
-                      }}
-                      className="px-4 py-2 bg-[#778873] text-white rounded-xl text-xs font-bold hover:bg-[#50604d] transition-colors shadow-xs cursor-pointer"
-                    >
-                      Pilih Kamar
-                    </button>
+
+                    {expandedSuggestionId === altRoom.id && (
+                      <div className="space-y-3 border-t border-[#DCCFC0] p-3 sm:p-4">
+                        {altRoom.description && (
+                          <p className="text-xs leading-relaxed text-[#5b6058]">{altRoom.description}</p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2 text-xs text-[#444842]">
+                          <p>Kapasitas: {altRoom.capacity_adult} dewasa, {altRoom.capacity_child || 0} anak</p>
+                          <p>Tempat tidur: {altRoom.bed || "Tidak disebutkan"} · {Number(altRoom.bed_count || 1)} kasur</p>
+                        </div>
+                        {Array.isArray(altRoom.facilities) && altRoom.facilities.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {altRoom.facilities.map((facility) => (
+                              <span
+                                key={facility.id || facility.name || facility}
+                                className="rounded-full border border-[#DCCFC0] bg-white px-2.5 py-1 text-[11px] text-[#444842]"
+                              >
+                                {getFacilityDisplayName(facility.name || facility)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {altRoom.hotel?.address && (
+                          <p className="text-xs text-[#5b6058]">{altRoom.hotel.address}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
