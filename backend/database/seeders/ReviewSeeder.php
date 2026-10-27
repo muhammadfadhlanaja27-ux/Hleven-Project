@@ -17,7 +17,8 @@ class ReviewSeeder extends Seeder
     public function run(): void
     {
         $faker = Faker::create('id_ID');
-        $comments = [
+        
+        $goodComments = [
             "Mantap banget! Kamarnya bersih parah.",
             "Lokasinya juara, dekat ke mana-mana.",
             "Stafnya ramah banget, enak diajak ngobrol.",
@@ -30,20 +31,28 @@ class ReviewSeeder extends Seeder
             "View-nya bagus, kamar juga luas."
         ];
 
-        $featuredHotels = Hotel::where('name', 'like', '%Trans Luxury%')
-            ->orWhere('star_rating', 5)
-            ->limit(10)
-            ->get();
+        $badComments = [
+            "Jorok banget kamarnya, banyak debu.",
+            "AC panas, gak dingin sama sekali, kecewa.",
+            "Staf resepsionis judes, males banget.",
+            "Fasilitas tua dan gak terawat, rugi.",
+            "Berisik banget, gak bisa tidur.",
+            "Lokasi susah dicari, parkiran sempit.",
+            "Sarapan gak enak dan pilihannya dikit.",
+            "Toilet kotor, bau lagi.",
+            "Internet lemot, gak bisa kerja.",
+            "Gak sesuai ekspektasi, jangan tertipu foto."
+        ];
 
-        if ($featuredHotels->isEmpty()) {
-            $featuredHotels = Hotel::limit(5)->get();
-        }
+        // Ambil 400 hotel acak
+        $hotels = Hotel::inRandomOrder()->limit(400)->get();
 
-        foreach ($featuredHotels as $hotel) {
+        foreach ($hotels as $index => $hotel) {
             $roomTypes = $hotel->roomTypes;
             if ($roomTypes->isEmpty()) continue;
 
-            $reviewCount = rand(20, 30);
+            $reviewCount = rand(5, 8);
+            $reviewsData = [];
 
             for ($i = 0; $i < $reviewCount; $i++) {
                 $guest = User::create([
@@ -52,6 +61,11 @@ class ReviewSeeder extends Seeder
                     'password' => bcrypt('password'),
                     'role' => 'user',
                 ]);
+
+                // 20% hotel akan memiliki ulasan dominan buruk
+                $isBadHotel = ($index < 80);
+                $rating = $isBadHotel ? rand(1, 2) : rand(3, 5);
+                $comment = ($rating <= 2) ? $badComments[array_rand($badComments)] : $goodComments[array_rand($goodComments)];
 
                 $room = $roomTypes->random();
                 $booking = Booking::create([
@@ -75,14 +89,19 @@ class ReviewSeeder extends Seeder
                     'subtotal' => $room->weekday_price * 2,
                 ]);
 
-                Review::create([
+                $reviewsData[] = [
                     'booking_id' => $booking->id,
                     'hotel_id' => $hotel->id,
                     'user_id' => $guest->id,
-                    'rating' => rand(4, 5),
-                    'comment' => $comments[array_rand($comments)],
-                ]);
+                    'rating' => $rating,
+                    'comment' => $comment,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
             }
+
+            // Bulk insert review
+            Review::insert($reviewsData);
 
             $hotel->update([
                 'average_rating' => round(Review::where('hotel_id', $hotel->id)->avg('rating') ?? 5.0, 1),

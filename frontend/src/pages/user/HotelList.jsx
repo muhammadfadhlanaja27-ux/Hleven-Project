@@ -28,6 +28,7 @@ const HotelList = () => {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
+  const [selectedRatings, setSelectedRatings] = useState([]);
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [sortBy, setSortBy] = useState("recommendation");
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +46,7 @@ const HotelList = () => {
   // Reset ke halaman 1 setiap kali filter atau kata kunci berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy, checkInDate, checkOutDate, adults, children]);
+  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedRatings, selectedFacilities, sortBy, checkInDate, checkOutDate, adults, children]);
 
   useEffect(() => {
     const fetchHotels = async () => {
@@ -75,6 +76,12 @@ const HotelList = () => {
   const handleStarToggle = (star) => {
     setSelectedStars((prev) =>
       prev.includes(star) ? prev.filter((s) => s !== star) : [...prev, star]
+    );
+  };
+
+  const handleRatingToggle = (rating) => {
+    setSelectedRatings((prev) =>
+      prev.includes(rating) ? prev.filter((r) => r !== rating) : [...prev, rating]
     );
   };
 
@@ -125,6 +132,7 @@ const HotelList = () => {
     setMinPrice("");
     setMaxPrice("");
     setSelectedStars([]);
+    setSelectedRatings([]);
     setSelectedFacilities([]);
     setSortBy("recommendation");
     setCurrentPage(1);
@@ -162,35 +170,35 @@ const HotelList = () => {
         if (selectedStars.length > 0) {
           const starVal = Number(hotel.star_rating || hotel.stars || hotel.rating || hotel.average_rating || 0);
           const starInt = Math.floor(starVal);
-          const starRound = Math.round(starVal);
-          if (!selectedStars.includes(starInt) && !selectedStars.includes(starRound)) return false;
+          if (!selectedStars.includes(starInt)) return false;
         }
 
-        // Filter Fasilitas Populer (Dengan Keyword Matching yang Fleksibel)
+        // Filter Rating Ulasan
+        if (selectedRatings.length > 0) {
+          const ratingVal = Number(hotel.average_rating || hotel.rating || 0);
+          const ratingInt = Math.floor(ratingVal);
+          if (!selectedRatings.includes(ratingInt)) return false;
+        }
+
+        // Filter Fasilitas Populer (Logika OR)
         if (selectedFacilities.length > 0) {
           const hotelFacs = (hotel.facilities || []).map((f) =>
             (typeof f === "object" ? f.name : String(f)).toLowerCase()
           );
 
-          const matchesAll = selectedFacilities.every((fac) => {
+          const matchesAny = selectedFacilities.some((fac) => {
             const facLower = fac.toLowerCase();
-
-            // Variasi kata kunci dari opsi pilihan di UI ke penamaan backend
             let keywords = [facLower];
-            if (facLower.includes("wifi") || facLower.includes("wi-fi")) {
-              keywords = ["wifi", "wi-fi", "internet"];
-            } else if (facLower.includes("kolam") || facLower.includes("pool")) {
-              keywords = ["kolam", "pool", "swimming"];
-            } else if (facLower.includes("restoran") || facLower.includes("restaurant")) {
-              keywords = ["restoran", "restaurant", "dining", "bar"];
-            }
+            if (facLower.includes("wifi")) keywords = ["wifi", "wi-fi", "internet"];
+            else if (facLower.includes("kolam")) keywords = ["kolam", "pool", "swimming"];
+            else if (facLower.includes("restoran")) keywords = ["restoran", "restaurant", "dining", "bar"];
 
             return keywords.some((kw) =>
               hotelFacs.some((hf) => hf.includes(kw))
             );
           });
 
-          if (!matchesAll) return false;
+          if (!matchesAny) return false;
         }
 
         return true;
@@ -211,7 +219,7 @@ const HotelList = () => {
         }
         return 0;
       });
-  }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+  }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedRatings, selectedFacilities, sortBy]);
 
   const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -357,7 +365,7 @@ const HotelList = () => {
                 Bintang Hotel
               </h4>
               <div className="flex flex-col gap-2.5">
-                {[5, 4, 3].map((star) => (
+                {[5, 4, 3, 2, 1].map((star) => (
                   <label key={star} className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
@@ -367,13 +375,7 @@ const HotelList = () => {
                     />
                     <div className="flex text-[#D48C45]">
                       {Array.from({ length: star }).map((_, i) => (
-                        <span
-                          key={i}
-                          className="material-symbols-outlined text-sm"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          star
-                        </span>
+                        <span key={i} className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                       ))}
                     </div>
                   </label>
@@ -381,13 +383,55 @@ const HotelList = () => {
               </div>
             </div>
 
-            {/* Fasilitas Filter */}
-            <div>
+            {/* Rating Ulasan Filter */}
+            <div className="mb-6">
               <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Fasilitas Populer
+                Rating Ulasan
               </h4>
               <div className="flex flex-col gap-2.5">
-                {["WiFi Gratis", "Kolam Renang", "Restoran"].map((fac) => (
+                {[5, 4, 3, 2, 1].map((rating) => (
+                  <label key={rating} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedRatings.includes(rating)}
+                      onChange={() => handleRatingToggle(rating)}
+                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-sm text-[#1e1b16]">{rating} Bintang</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Fasilitas Hotel Filter */}
+            <div className="mb-6">
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Fasilitas Hotel
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                {["WiFi Gratis", "Kolam Renang", "Restoran", "Parkir", "Gym", "Spa", "Resepsionis 24 Jam", "Laundry"].map((fac) => (
+                  <label key={fac} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedFacilities.includes(fac)}
+                      onChange={() => handleFacilityToggle(fac)}
+                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
+                      {fac}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Fasilitas Kamar Filter */}
+            <div>
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Fasilitas Kamar
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                {["AC", "TV", "Kamar Mandi Pribadi", "Bathtub", "Meja Kerja"].map((fac) => (
                   <label key={fac} className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
