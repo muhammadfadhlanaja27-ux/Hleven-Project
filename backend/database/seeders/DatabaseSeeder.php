@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
             CitySeeder::class,
             FacilitySeeder::class,
             UserSeeder::class,
-            HotelSeeder::class,
+            HotelFromCsvSeeder::class,
             ReviewSeeder::class,
             BedTypeSeeder::class,
         ]);

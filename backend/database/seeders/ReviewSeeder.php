@@ -51,20 +51,20 @@ class ReviewSeeder extends Seeder
             $roomTypes = $hotel->roomTypes;
             if ($roomTypes->isEmpty()) continue;
 
-            $reviewCount = rand(5, 8);
+            $reviewCount = rand(10, 15);
             $reviewsData = [];
 
             for ($i = 0; $i < $reviewCount; $i++) {
                 $guest = User::create([
                     'name' => $faker->name,
-                    'email' => $faker->unique()->safeEmail,
+                    'email' => $faker->unique()->safeEmail . rand(1, 999999),
                     'password' => bcrypt('password'),
                     'role' => 'user',
+                    'status' => 'active',
                 ]);
 
-                // 20% hotel akan memiliki ulasan dominan buruk
-                $isBadHotel = ($index < 80);
-                $rating = $isBadHotel ? rand(1, 2) : rand(3, 5);
+                // Pastikan hotel mendapat ulasan yang beragam
+                $rating = rand(1, 5);
                 $comment = ($rating <= 2) ? $badComments[array_rand($badComments)] : $goodComments[array_rand($goodComments)];
 
                 $room = $roomTypes->random();
