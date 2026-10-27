@@ -83,6 +83,9 @@ const BookingPage = () => {
     }
   }, [navigate, location.pathname, location.search]);
 
+  const [bookingFor, setBookingFor] = useState("me");
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
+
   const handleBookingForSomeoneElseChange = (checked) => {
     setBookingFor(checked ? "someone_else" : "me");
     if (checked) {
@@ -91,6 +94,11 @@ const BookingPage = () => {
       setPhone("");
       return;
     }
+  };
+
+  useEffect(() => {
+    const fetchAndAutofillUser = async () => {
+      let userData = null;
 
       // 1. Ambil data awal dari localStorage jika ada
       const savedUser = localStorage.getItem("user");
@@ -103,7 +111,7 @@ const BookingPage = () => {
       }
 
       // 2. Ambil data profil terbaru dari API jika user sudah login (memiliki token)
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
       if (token) {
         try {
           const res = await api.get("/user/profile");
