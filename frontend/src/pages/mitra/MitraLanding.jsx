@@ -1,9 +1,23 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
 const MitraLanding = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
+  const [stats, setStats] = useState({ total_mitra: 0, total_mitra_diterima: 0, total_tamu: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await api.get("/public-stats");
+        setStats(response.data);
+      } catch (err) {
+        console.error("Gagal memuat stats:", err);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const handleDaftarClick = (e) => {
     e.preventDefault();
@@ -136,18 +150,14 @@ const MitraLanding = () => {
               </span>
             </a>
           </div>
-          <div className="mt-12 grid grid-cols-3 gap-6 max-w-xl mx-auto text-white">
+          <div className="mt-12 grid grid-cols-2 gap-6 max-w-xl mx-auto text-white">
             <div className="flex flex-col items-center gap-1">
-              <span className="font-headline-lg text-2xl md:text-3xl font-bold">10K+</span>
-              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Mitra Aktif</span>
+              <span className="font-headline-lg text-2xl md:text-3xl font-bold">{stats.total_mitra.toLocaleString('id-ID')}</span>
+              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Total Pendaftar</span>
             </div>
             <div className="flex flex-col items-center gap-1">
-              <span className="font-headline-lg text-2xl md:text-3xl font-bold">500K+</span>
-              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Tamu per Tahun</span>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <span className="font-headline-lg text-2xl md:text-3xl font-bold">4.8★</span>
-              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Rating Mitra</span>
+              <span className="font-headline-lg text-2xl md:text-3xl font-bold">{stats.total_mitra_diterima.toLocaleString('id-ID')}</span>
+              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Mitra Diterima</span>
             </div>
           </div>
         </div>

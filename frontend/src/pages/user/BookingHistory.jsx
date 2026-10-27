@@ -642,69 +642,81 @@ const BookingHistory = () => {
                           </div>
 
                           {/* Tombol Aksi */}
-                          <div className="flex flex-wrap gap-2.5 justify-end items-center pt-1">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedBooking(item)}
-                              className="px-4 py-2 rounded-xl border border-[#778873] text-[#778873] font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/20 transition-colors cursor-pointer"
-                            >
-                              Detail Pesanan
-                            </button>
-
-                            {["pending", "unpaid"].includes(item.status) && (
-                              <button
-                                type="button"
-                                onClick={() => setCancelModalBooking(item)}
-                                className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
-                              >
-                                Batalkan Pesanan
-                              </button>
+                          <div className="flex flex-col w-full">
+                            {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && item.payment && (
+                              <div className="w-full text-xs text-[#444842] flex flex-wrap gap-4 bg-[#fff8f0] px-3 py-2 rounded-xl border border-[#DCCFC0]/40 mb-3">
+                                <span>
+                                  <span className="font-bold text-[#778873]">Metode Pembayaran:</span> {item.payment.payment_method?.toUpperCase() || '-'}
+                                </span>
+                                <span>
+                                  <span className="font-bold text-[#778873]">Waktu Transaksi:</span> {formatDate(item.payment.paid_at || item.payment.created_at)}
+                                </span>
+                              </div>
                             )}
 
-                            {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && (
+                            <div className="flex flex-wrap gap-2.5 justify-end items-center pt-1">
                               <button
                                 type="button"
                                 onClick={() => setSelectedBooking(item)}
-                                className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                className="px-4 py-2 rounded-xl border border-[#778873] text-[#778873] font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/20 transition-colors cursor-pointer"
                               >
-                                <span className="material-symbols-outlined text-base">download</span>
-                                Download E-Ticket
+                                Detail Pesanan
                               </button>
-                            )}
 
-                            {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
-                              <button
-                                type="button"
-                                onClick={() => setCancelModalBooking(item)}
-                                className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
-                              >
-                                {refundPolicy.canRefund ? "Ajukan Refund" : "Batalkan (Hangus)"}
-                              </button>
-                            )}
+                              {["pending", "unpaid"].includes(item.status) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCancelModalBooking(item)}
+                                  className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
+                                >
+                                  Batalkan Pesanan
+                                </button>
+                              )}
 
-                            {item.status === "checked_out" && !item.review && (
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id}`)}
-                                className="px-4 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-base">rate_review</span>
-                                Tulis Ulasan
-                              </button>
-                            )}
+                              {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedBooking(item)}
+                                  className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">download</span>
+                                  Download E-Ticket
+                                </button>
+                              )}
 
-                            {!["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out", "pending", "unpaid"].includes(item.status) && (
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id || 1}`)}
-                                className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-base">autorenew</span>
-                                Pesan Lagi
-                              </button>
-                            )}
+                              {["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(item.status) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCancelModalBooking(item)}
+                                  className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
+                                >
+                                  {refundPolicy.canRefund ? "Ajukan Refund" : "Batalkan (Hangus)"}
+                                </button>
+                              )}
+
+                              {item.status === "checked_out" && !item.review && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id}`)}
+                                  className="px-4 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">rate_review</span>
+                                  Tulis Ulasan
+                                </button>
+                              )}
+
+                              {!["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out", "pending", "unpaid"].includes(item.status) && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id || 1}`)}
+                                  className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">autorenew</span>
+                                  Pesan Lagi
+                                </button>
+                              )}
+                            </div>
                           </div>
-
                         </div>
                       </article>
                     );

@@ -28,8 +28,14 @@ class BedTypeSeeder extends Seeder
                     $bedType->restore();
                 } elseif (! $bedType->exists) {
                     $bedType->status = 'active';
-                    $bedType->save();
                 }
+
+                if ($name === '1 Single Bed') {
+                    $bedType->fill(['max_adults' => 1, 'max_children' => 1, 'max_total' => 2]);
+                } else {
+                    $bedType->fill(['max_adults' => 2, 'max_children' => 2, 'max_total' => 4]);
+                }
+                $bedType->save();
             }
         });
     }
