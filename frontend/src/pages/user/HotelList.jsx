@@ -204,6 +204,11 @@ const HotelList = () => {
         if (sortBy === "price_asc") return priceA - priceB;
         if (sortBy === "price_desc") return priceB - priceA;
         if (sortBy === "rating_desc") return ratingB - ratingA;
+        if (sortBy === "recommendation") {
+            const scoreA = (ratingA * 0.7) + (Math.min(a.total_review || 0, 50) / 50 * 5 * 0.3);
+            const scoreB = (ratingB * 0.7) + (Math.min(b.total_review || 0, 50) / 50 * 5 * 0.3);
+            return scoreB - scoreA;
+        }
         return 0;
       });
   }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);

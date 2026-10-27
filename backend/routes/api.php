@@ -56,6 +56,7 @@ Route::prefix('v1')->group(function () {
     // Public booking (guest checkout — auto-creates a session token in controller)
     Route::post('/bookings/quote', [BookingController::class, 'quote']);
     Route::post('/bookings', [BookingController::class, 'store']);
+    Route::get('/hotels/{id}/eligible-bookings', [ReviewController::class, 'eligibleBookings']);
 
     // ==========================================
     // 2. PROTECTED ROUTES (Butuh Token Sanctum)

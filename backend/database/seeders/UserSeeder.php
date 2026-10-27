@@ -12,11 +12,11 @@ class UserSeeder extends Seeder
     {
         // 1. Super Admin
         User::updateOrCreate(
-            ['email' => 'superadmin@hleven.com'],
+            ['email' => 'superadmin1122@hleven.com'],
             [
                 'name' => 'Super Admin H\'Leven',
                 'role' => 'super_admin',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('adminselot123'),
                 'phone' => '081111111111',
                 'status' => 'active',
             ]
