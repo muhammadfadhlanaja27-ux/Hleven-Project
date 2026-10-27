@@ -32,19 +32,17 @@ class ProfileController extends Controller
             'phone' => $request->phone,
         ];
 
-        // 2. Upload Foto Profil
-        if ($request->hasFile('avatar')) {
-            // Hapus foto lama jika ada di storage
-            if ($user->avatar) {
-                app(FileStorageService::class)->deleteFile($user->avatar);
-            }
+        $previousAvatar = $user->avatar;
 
-            // Simpan foto baru ke Supabase
+        if ($request->hasFile('avatar')) {
             $updateData['avatar'] = app(FileStorageService::class)->uploadFile($request->file('avatar'), 'avatars');
         }
 
-        // 3. Simpan ke Database
         $user->update($updateData);
+
+        if ($request->hasFile('avatar') && $previousAvatar) {
+            app(FileStorageService::class)->deleteFile($previousAvatar);
+        }
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui',

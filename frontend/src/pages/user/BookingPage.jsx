@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet } from "../../services/apiCache";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
 import { getInitialSearchValues, fmtDateStr } from "../../services/searchStorage";
 
@@ -58,6 +58,7 @@ const BookingPage = () => {
   const [hotel, setHotel] = useState(null);
   const [room, setRoom] = useState(null);
   const [priceQuote, setPriceQuote] = useState(null);
+  const [priceQuoteError, setPriceQuoteError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [bookerContact, setBookerContact] = useState({ name: '', email: '', phone: '' });
@@ -272,10 +273,14 @@ const BookingPage = () => {
 
     const fetchPriceQuote = async () => {
       if (!hotelId || !room?.id || !checkInDate || !checkOutDate || !roomQty) {
-        if (active) setPriceQuote(null);
+        if (active) {
+          setPriceQuote(null);
+          setPriceQuoteError("");
+        }
         return;
       }
 
+      setPriceQuoteError("");
       try {
         const response = await api.post("/bookings/quote", {
           hotel_id: Number(hotelId),
@@ -284,9 +289,23 @@ const BookingPage = () => {
           check_out: checkOutDate,
           qty: Number(roomQty),
         });
-        if (active) setPriceQuote(response.data?.data || null);
-      } catch {
-        if (active) setPriceQuote(null);
+        if (active) {
+          setPriceQuote(response.data?.data || null);
+          setPriceQuoteError("");
+        }
+      } catch (error) {
+        if (active) {
+          setPriceQuote(null);
+          const responseData = error.response?.data;
+          const validationMessage = responseData?.errors
+            ? Object.values(responseData.errors).flat().find(Boolean)
+            : null;
+          setPriceQuoteError(
+            responseData?.message ||
+            validationMessage ||
+            "Gagal memeriksa harga dan ketersediaan kamar."
+          );
+        }
       }
     };
 
@@ -472,9 +491,10 @@ const BookingPage = () => {
     };
 
     try {
-      const res = await api.post("/bookings", payload);
+      const res = await api.post("/user/bookings", payload);
 
       if (res.data && res.data.data) {
+        invalidateCache("/user/bookings");
         const createdBooking = res.data.data.booking || res.data.data;
         const bookingCode = createdBooking.booking_code || createdBooking.order_id;
         const bookingId = createdBooking.id || null;
@@ -510,7 +530,10 @@ const BookingPage = () => {
         localStorage.removeItem("user");
         navigate("/login", { state: { from: location } });
       } else if (err.response?.status === 422) {
-        const errorMessage = responseData?.message || "Kamar tidak memenuhi kriteria pesanan.";
+        const validationMessage = responseData?.errors
+          ? Object.values(responseData.errors).flat().find(Boolean)
+          : null;
+        const errorMessage = responseData?.message || validationMessage || "Kamar tidak memenuhi kriteria pesanan.";
         toast.error(errorMessage);
 
         if (responseData?.suggestions) {
@@ -863,6 +886,11 @@ const BookingPage = () => {
               <hr className="border-t border-[#DCCFC0]/50" />
 
               <div className="space-y-3 font-body-md text-sm text-[#2D332C]">
+                {priceQuoteError && (
+                  <p role="alert" className="rounded-lg border border-[#ba1a1a]/20 bg-[#ba1a1a]/10 p-3 text-xs text-[#ba1a1a]">
+                    {priceQuoteError}
+                  </p>
+                )}
                 <div className="flex justify-between items-center">
                   <span>
                     Tarif Kamar ({nightsCount} Malam x {roomQty} Kamar)

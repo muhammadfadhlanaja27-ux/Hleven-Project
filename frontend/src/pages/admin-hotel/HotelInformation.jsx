@@ -119,6 +119,8 @@ const initialHotelData = {
   rating: "0.0",
   totalReviews: "0",
   location: "Bandung, Jawa Barat",
+  latitude: null,
+  longitude: null,
   propertyType: "Luxury Boutique Resort",
   yearBuilt: "2020",
   website: "www.hleven.com",
@@ -259,6 +261,8 @@ export default function HotelInformation() {
               typeof raw.location === "string"
                 ? raw.location
                 : `${cityName}, Indonesia`,
+            latitude: raw.latitude,
+            longitude: raw.longitude,
             propertyType: "Luxury Boutique Resort",
             yearBuilt: "2020",
             website: "www.hleven.com",
@@ -524,6 +528,14 @@ export default function HotelInformation() {
     }
   };
 
+  const mapLocation =
+    hotelData.latitude != null &&
+    hotelData.longitude != null &&
+    Number.isFinite(Number(hotelData.latitude)) &&
+    Number.isFinite(Number(hotelData.longitude))
+      ? `${hotelData.latitude},${hotelData.longitude}`
+      : `${hotelData.name} ${hotelData.address} ${hotelData.city} ${hotelData.location}`;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8faf8]">
@@ -576,7 +588,7 @@ export default function HotelInformation() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Overview Card */}
-            <div className="lg:col-span-2 bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 flex flex-col justify-between">
+            <div className="lg:col-span-2 self-start bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8">
               <div className="flex justify-between items-start mb-6 border-b border-[#E5E1DA] pb-4">
                 <div>
                   <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
@@ -763,19 +775,15 @@ export default function HotelInformation() {
               </div>
 
               {/* Map Container */}
-              <div className="md:w-2/3 min-h-[220px] bg-[#dcdad6] relative flex items-center justify-center p-6 text-center select-none overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#F2EBE1]/80 via-transparent to-transparent z-10 pointer-events-none" />
-                <div className="relative z-20 flex flex-col items-center gap-2 bg-white/85 backdrop-blur-sm p-5 rounded-xl border border-[#E5E1DA] shadow-sm max-w-sm">
-                  <span className="material-symbols-outlined text-[#506147] text-[36px]">
-                    map
-                  </span>
-                  <p className="font-semibold text-[#2D312C] text-sm">
-                    {hotelData.name}
-                  </p>
-                  <p className="text-xs text-[#6B6E6A]">
-                    {hotelData.address}, {hotelData.location}
-                  </p>
-                </div>
+              <div className="md:w-2/3 min-h-[220px] relative overflow-hidden">
+                <iframe
+                  title={`Google Maps lokasi ${hotelData.name}`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(mapLocation)}&z=15&output=embed`}
+                  className="absolute inset-0 w-full h-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
               </div>
             </div>
           </div>

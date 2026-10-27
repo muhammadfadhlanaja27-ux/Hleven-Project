@@ -26,6 +26,11 @@ const STATUS_CLASS = {
 };
 
 const rupiah = (v) => "Rp " + Number(v || 0).toLocaleString("id-ID");
+const formatAmountInput = (value) => {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits).toLocaleString("id-ID") : "";
+};
+const parseAmountInput = (value) => Number(value.replace(/\D/g, "")) || 0;
 
 const getErrorMessage = (error, fallback) => {
   const data = error.response?.data;
@@ -176,7 +181,8 @@ export default function Payouts() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!amount || Number(amount) <= 0) {
+    const numericAmount = parseAmountInput(amount);
+    if (!numericAmount) {
       toast.error("Masukkan nominal pencairan yang valid.");
       return;
     }
@@ -184,7 +190,7 @@ export default function Payouts() {
       toast.error("Simpan tujuan pencairan terlebih dahulu.");
       return;
     }
-    if (minPayout > 0 && Number(amount) < minPayout) {
+    if (minPayout > 0 && numericAmount < minPayout) {
       toast.error(`Minimal pencairan ${rupiah(minPayout)}.`);
       return;
     }
@@ -192,7 +198,7 @@ export default function Payouts() {
     setSubmitting(true);
     try {
       await api.post("/admin/payouts", {
-        amount: Number(amount),
+        amount: numericAmount,
         note,
         destination_id: selectedDestination?.id ?? undefined,
       });
@@ -426,10 +432,10 @@ export default function Payouts() {
                 Nominal (Rp)
               </label>
               <input
-                type="number"
-                min={minPayout || 1}
+                type="text"
+                inputMode="numeric"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(formatAmountInput(e.target.value))}
                 disabled={submitting || !hasDestination}
                 placeholder="0"
                 className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 disabled:bg-gray-50"
@@ -440,7 +446,7 @@ export default function Payouts() {
               {balance && balance.available_balance >= minPayout && (
                 <button
                   type="button"
-                  onClick={() => setAmount(String(Math.floor(balance.available_balance)))}
+                  onClick={() => setAmount(formatAmountInput(String(Math.floor(balance.available_balance))))}
                   disabled={submitting || !hasDestination}
                   className="self-start text-[11px] text-[#506147] font-semibold hover:underline disabled:opacity-50"
                 >

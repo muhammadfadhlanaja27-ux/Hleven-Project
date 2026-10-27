@@ -43,10 +43,12 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
   const fetchEligibleBookings = async () => {
     if (!isAuthenticated) return;
     try {
-      const res = await api.get(`/hotels/${hotelId}/eligible-bookings`);
+      const res = await api.get(`/hotels/${hotelId}/eligible-bookings`, {
+        skipAuthRedirect: true,
+      });
       setEligibleBookings(res.data.data || []);
     } catch (err) {
-      if (err.response?.status !== 404) {
+      if (err.response?.status !== 401 && err.response?.status !== 404) {
         console.error(err);
       }
     }

@@ -79,6 +79,10 @@ const FACILITY_ICON_MAP = {
   "Free Toiletries": "bathtub",
 };
 
+const formatPriceInput = (value) =>
+  value === "" ? "" : Number(value).toLocaleString("id-ID");
+const parsePriceInput = (value) => value.replace(/\D/g, "");
+
 const resolveFacilityIcon = (name) => {
   if (!name) return "bed";
   if (FACILITY_ICON_MAP[name]) return FACILITY_ICON_MAP[name];
@@ -139,6 +143,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
     room_type_category_id: "",
     bed: "",
     bed_type_id: "",
+    bed_count: "1",
     description: "",
     weekday_price: "",
     weekend_price: "",
@@ -198,7 +203,11 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox"
+        ? checked
+        : name === "weekday_price" || name === "weekend_price"
+          ? parsePriceInput(value)
+          : value,
     }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -321,10 +330,11 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
       payload.append("room_type_category_id", formData.room_type_category_id);
       payload.append("type", formData.type || "Standard");
       payload.append("description", formData.description.trim());
-      payload.append("weekday_price", formData.weekday_price);
-      payload.append("weekend_price", formData.weekend_price);
+      payload.append("weekday_price", Number(formData.weekday_price));
+      payload.append("weekend_price", Number(formData.weekend_price));
       payload.append("bed", formData.bed || "");
       payload.append("bed_type_id", formData.bed_type_id || "");
+      payload.append("bed_count", Number(formData.bed_count) || 1);
       payload.append("stock", formData.stock);
       payload.append("is_refundable", formData.is_refundable ? "1" : "0");
       payload.append("policies", (formData.policies || "").trim());
@@ -524,6 +534,26 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
               );
             })()}
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="bed_count" className="text-xs font-semibold text-[#434842] uppercase tracking-wider">
+              Jumlah Kasur
+            </label>
+            <input
+              id="bed_count"
+              name="bed_count"
+              type="number"
+              min="1"
+              max="50"
+              value={formData.bed_count}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              className="w-full h-11 px-4 bg-white border border-[#E5E0D8] rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all"
+            />
+            <span className="text-[11px] text-[#6B6E6A]">
+              Jumlah kasur fisik di setiap kamar; tidak mengubah kapasitas tamu.
+            </span>
+          </div>
         </div>
 
         {/* SECTION 2: ROOM PRICING */}
@@ -549,9 +579,10 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
                 </span>
                 <input
                   id="weekday_price"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="weekday_price"
-                  value={formData.weekday_price}
+                  value={formatPriceInput(formData.weekday_price)}
                   onChange={handleChange}
                   disabled={isSubmitting}
                   placeholder="500000"
@@ -578,9 +609,10 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
                 </span>
                 <input
                   id="weekend_price"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="weekend_price"
-                  value={formData.weekend_price}
+                  value={formatPriceInput(formData.weekend_price)}
                   onChange={handleChange}
                   disabled={isSubmitting}
                   placeholder="650000"
@@ -784,6 +816,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
               return (
                 <label
                   key={fac.id}
+                  title={getFacilityDisplayName(fac)}
                   className={`flex items-center gap-2.5 p-3 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
                     isChecked
                       ? "border-[#506147] bg-[#E4EBE0] text-[#4A5D43]"
@@ -800,7 +833,9 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
                   <span className="material-symbols-outlined text-[18px] text-[#506147]">
                     {getFacilityIcon(fac.name, fac.icon, "bed")}
                   </span>
-                  <span className="truncate">{getFacilityDisplayName(fac)}</span>
+                  <span className="truncate" title={getFacilityDisplayName(fac)}>
+                    {getFacilityDisplayName(fac)}
+                  </span>
                   {fac.category && (
                     <span className="text-[9px] text-[#757870] ml-auto px-1.5 py-0.5 bg-[#E5E1DA] rounded-full">
                       {fac.category === "Room" ? "Room" : "Bath"}

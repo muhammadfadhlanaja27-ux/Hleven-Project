@@ -207,6 +207,7 @@ const mappedRoom = {
   capacity_child: matchedRoomType.capacity_child,
   description: matchedRoomType.description,
   bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
+  bed_count: Number(matchedRoomType.bed_count || 1),
   breakfast: matchedRoomType.breakfast,
   smoking_area: matchedRoomType.smoking_area,
   is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
@@ -370,7 +371,9 @@ const mappedRoom = {
                 <div className="w-1.5 h-1.5 rounded-full bg-[#DCCFC0]"></div>
                 <div className="flex items-center gap-1.5 font-medium">
                   <span className="material-symbols-outlined text-lg text-[#778873]">bed</span>
-                  {room?.bed || "1 King Bed"}
+                  {room?.bed_count > 1
+                    ? `${room.bed_count} × ${(room.bed || "King Bed").replace(/^1\s+/, "")}`
+                    : room?.bed || "1 King Bed"}
                 </div>
                 <div className="w-1.5 h-1.5 rounded-full bg-[#DCCFC0]"></div>
                 <div className="flex items-center gap-1.5 font-medium">

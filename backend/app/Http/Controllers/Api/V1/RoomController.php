@@ -136,6 +136,7 @@ class RoomController extends Controller
                 'integer',
                 Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id)->whereNull('deleted_at'),
             ],
+            'bed_count' => 'nullable|integer|min:1|max:50',
             'description' => 'nullable|string',
             'policies' => 'nullable|string|max:5000',
             'weekday_price' => 'required|numeric|min:0',
@@ -173,6 +174,7 @@ class RoomController extends Controller
         $room = RoomType::create([
             'hotel_id' => $hotel->id,
             'bed_type_id' => $bedType?->id,
+            'bed_count' => $request->input('bed_count') ?? 1,
             'room_type_category_id' => $category?->id,
             'name' => $request->name,
             'type' => $category?->name ?? $request->type ?? 'Standard',
@@ -282,6 +284,7 @@ class RoomController extends Controller
                 'integer',
                 Rule::exists('bed_types', 'id')->where('hotel_id', $hotel->id)->whereNull('deleted_at'),
             ],
+            'bed_count' => 'sometimes|integer|min:1|max:50',
             'description' => 'nullable|string',
             'policies' => 'nullable|string|max:5000',
             'weekday_price' => 'sometimes|required|numeric|min:0',
@@ -307,7 +310,7 @@ class RoomController extends Controller
 
         $updateData = $request->only([
             'name', 'type', 'bed', 'description', 'policies', 'weekday_price', 'weekend_price',
-            'stock', 'breakfast', 'smoking_area',
+            'stock', 'breakfast', 'smoking_area', 'bed_count',
         ]);
 
         if ($request->exists('room_type_category_id')) {

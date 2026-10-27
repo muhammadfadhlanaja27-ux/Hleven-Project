@@ -156,6 +156,7 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
               capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
               description: rt.description,
               bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
+              bed_count: Number(rt.bed_count || 1),
               breakfast: Boolean(rt.breakfast),
               smoking_area: Boolean(rt.smoking_area),
               is_refundable: rt.is_refundable !== undefined ? Boolean(rt.is_refundable) : true,
@@ -840,7 +841,9 @@ const mappedRooms = (apiData.room_types || []).map((rt) => {
                           {Boolean(room.bed) && (
                             <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
                               <span className="material-symbols-outlined text-[14px]">bed</span>
-                              {room.bed}
+                              {room.bed_count > 1
+                                ? `${room.bed_count} × ${(room.bed || "").replace(/^1\s+/, "")}`
+                                : room.bed}
                             </div>
                           )}
 

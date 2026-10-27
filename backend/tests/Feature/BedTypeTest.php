@@ -23,9 +23,17 @@ class BedTypeTest extends TestCase
         $create = $this->postJson('/api/v1/admin/bed-types', [
             'name' => '2 Queen Beds',
             'description' => 'Dua kasur queen',
+            'size' => 'Queen',
+            'max_adults' => 2,
+            'max_children' => 1,
+            'max_total' => 3,
         ])->assertCreated()
             ->assertJsonPath('data.name', '2 Queen Beds')
-            ->assertJsonPath('data.hotel_id', $hotel->id);
+            ->assertJsonPath('data.hotel_id', $hotel->id)
+            ->assertJsonPath('data.size', 'Queen')
+            ->assertJsonPath('data.max_adults', 2)
+            ->assertJsonPath('data.max_children', 1)
+            ->assertJsonPath('data.max_total', 3);
 
         $bedTypeId = $create->json('data.id');
 
@@ -90,6 +98,7 @@ class BedTypeTest extends TestCase
                 'name' => 'Deluxe Twin',
                 'type' => 'Deluxe',
                 'bed_type_id' => $bedType->id,
+                'bed_count' => 2,
                 'weekday_price' => 250000,
                 'weekend_price' => 300000,
                 'stock' => 2,
@@ -99,13 +108,25 @@ class BedTypeTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.bed_type_id', $bedType->id)
             ->assertJsonPath('data.bed_type.name', '2 Queen Beds')
-            ->assertJsonPath('data.bed', '2 Queen Beds');
+            ->assertJsonPath('data.bed', '2 Queen Beds')
+            ->assertJsonPath('data.bed_count', 2);
 
         $this->assertDatabaseHas('room_types', [
             'hotel_id' => $hotel->id,
             'name' => 'Deluxe Twin',
             'bed_type_id' => $bedType->id,
+            'bed_count' => 2,
             'bed' => '2 Queen Beds',
+        ]);
+
+        $this->putJson("/api/v1/admin/rooms/{$response->json('data.id')}", [
+            'bed_count' => 3,
+        ])->assertOk()
+            ->assertJsonPath('data.bed_count', 3);
+
+        $this->assertDatabaseHas('room_types', [
+            'id' => $response->json('data.id'),
+            'bed_count' => 3,
         ]);
     }
 
