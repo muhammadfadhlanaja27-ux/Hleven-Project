@@ -178,7 +178,7 @@ const BookingPage = () => {
 
         if (responseData && responseData.data && isMounted) {
           const apiHotel = responseData.data;
-          const apiRooms = (apiHotel.room_types || []).filter((r) => r.is_active !== false);
+          const apiRooms = (apiHotel.room_types || apiHotel.roomTypes || []).filter((r) => r.is_active !== false);
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(roomId));
 
           if (matchedRoomType) {
@@ -1018,8 +1018,8 @@ const BookingPage = () => {
             <p className="font-body-md text-xs text-[#444842]">
               {suggestionData.rooms && suggestionData.rooms.length > 0
                 ? (suggestionData.type === "same_hotel"
-                    ? "Pilihan kamar lain yang muat dan tersedia di hotel ini:"
-                    : "Semua kamar di hotel ini penuh. Berikut opsi kamar di hotel lain sekitar kota ini:")
+                  ? "Pilihan kamar lain yang muat dan tersedia di hotel ini:"
+                  : "Semua kamar di hotel ini penuh. Berikut opsi kamar di hotel lain sekitar kota ini:")
                 : "Tidak ada opsi kamar alternatif yang tersedia untuk tanggal dan kapasitas tamu yang Anda pilih."}
             </p>
 

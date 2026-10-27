@@ -845,8 +845,7 @@ const HotelDetail = () => {
 
                         <p className="font-body-md text-sm text-[#5A625B] mb-4 line-clamp-3 leading-relaxed">
                           {room.description ||
-                            `Kamar seluas 45 meter persegi dengan ${
-                              room.bed || "1 King Bed"
+                            `Kamar seluas 45 meter persegi dengan ${room.bed || "1 King Bed"
                             }, pemandangan memukau, dan kamar mandi marmer yang luas.`}
                         </p>
 
@@ -977,11 +976,10 @@ const HotelDetail = () => {
                         key={idx + 1}
                         type="button"
                         onClick={() => setRoomPage(idx + 1)}
-                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                          roomPage === idx + 1
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${roomPage === idx + 1
                             ? "bg-[#5F7161] text-white shadow-xs"
                             : "border border-[#E8E2D9] text-[#5F7161] hover:bg-[#F7F6F2]"
-                        }`}
+                          }`}
                       >
                         {idx + 1}
                       </button>

@@ -84,7 +84,7 @@ const MainLayout = () => (
 // ---------------------------------------------------------
 const UserProtectedRoute = () => {
   const location = useLocation();
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
   const userString = localStorage.getItem("user");
 
   const isValidToken =
@@ -104,7 +104,7 @@ const UserProtectedRoute = () => {
 // 3. SATPAM AMAN: Protected Route untuk Admin Hotel
 // ---------------------------------------------------------
 const AdminHotelProtectedRoute = () => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
   const userString = localStorage.getItem("user");
 
   if (!token || !userString) {
@@ -136,7 +136,7 @@ const AdminHotelProtectedRoute = () => {
 // 4. SATPAM AMAN: Protected Route untuk Super Admin
 // ---------------------------------------------------------
 const SuperAdminProtectedRoute = () => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
   const userString = localStorage.getItem("user");
 
   if (
