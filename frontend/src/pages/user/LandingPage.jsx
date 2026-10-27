@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import HotelCard from "../../components/landing/HotelCard";
+import CityTopHotelsCarousel from "../../components/landing/CityTopHotelsCarousel";
+import TrendingDestinations from "../../components/landing/TrendingDestinations";
 import Pagination from "../../components/common/Pagination";
 import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
@@ -18,10 +20,10 @@ const LandingPage = () => {
   const tomorrow = useMemo(() => new Date(Date.now() + 86400000), []);
   const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
 
-  const [hotels, setHotels] = useState([]);
+  const [allHotels, setAllHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState(init.searchTerm);
+  const [searchTerm, setSearchTerm] = useState(init.searchTerm || "");
   const [checkInDate, setCheckInDate] = useState(init.checkInDate);
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
   const [adults, setAdults] = useState(init.adults);
@@ -39,42 +41,31 @@ const LandingPage = () => {
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedFacilities, setSelectedFacilities] = useState([]);
-
-  const [sortBy, setSortBy] = useState("recommendation");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, checkInDate, checkOutDate, adults, children, rooms, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+  }, [searchTerm, checkInDate, checkOutDate, adults, children, rooms, minPrice, maxPrice, selectedStars, selectedFacilities]);
 
+  // Pengambilan seluruh data hotel murni dari API untuk Carousel & Rekomendasi
   useEffect(() => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams();
-
-        if (searchTerm.trim()) params.append("search", searchTerm.trim());
-        if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
-        if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
-        if (adults) params.append("adults", adults);
-        if (children) params.append("children", children);
-        if (rooms) params.append("rooms", rooms);
-
-        const url = `/hotels${params.toString() ? `?${params.toString()}` : ""}`;
-        const { data: responseData, fromCache } = await cachedGet(url);
+        const { data: responseData, fromCache } = await cachedGet("/hotels");
 
         if (responseData && (responseData.data || Array.isArray(responseData))) {
           const apiHotels = responseData.data || responseData;
-          setHotels(apiHotels);
+          setAllHotels(apiHotels);
         } else {
-          setHotels([]);
+          setAllHotels([]);
         }
         if (fromCache) {
           console.debug("[Cache Hit] LandingPage hotels loaded from cache");
         }
       } catch (err) {
         console.error("Backend API Error:", err);
-        setHotels([]);
+        setAllHotels([]);
       } finally {
         setLoading(false);
       }
@@ -109,7 +100,6 @@ const LandingPage = () => {
     setMaxPrice("");
     setSelectedStars([]);
     setSelectedFacilities([]);
-    setSortBy("recommendation");
     setCheckInDate(today);
     setCheckOutDate(tomorrow);
   };
@@ -131,8 +121,18 @@ const LandingPage = () => {
   };
 
   const filteredHotels = useMemo(() => {
-    return hotels
+    const query = searchTerm.trim().toLowerCase();
+
+    return allHotels
       .filter((hotel) => {
+        if (query) {
+          const matchName = hotel.name?.toLowerCase().includes(query);
+          const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
+          const matchCity = cityStr?.toLowerCase().includes(query);
+          const matchAddress = hotel.address?.toLowerCase().includes(query);
+          if (!matchName && !matchCity && !matchAddress) return false;
+        }
+
         const price = Number(hotel.starting_price || hotel.price || 0);
         if (minPrice && price < Number(minPrice)) return false;
         if (maxPrice && price > Number(maxPrice)) return false;
@@ -155,17 +155,22 @@ const LandingPage = () => {
         return true;
       })
       .sort((a, b) => {
-        const priceA = Number(a.starting_price || a.price || 0);
-        const priceB = Number(b.starting_price || b.price || 0);
-        const ratingA = Number(a.rating || a.average_rating || 0);
-        const ratingB = Number(b.rating || b.average_rating || 0);
+        // 1. Pemesanan Terbanyak
+        const bookingsA = Number(a.total_bookings || a.bookings_count || a.total_booked || a.total_booking || 0);
+        const bookingsB = Number(b.total_bookings || b.bookings_count || b.total_booked || b.total_booking || 0);
+        if (bookingsB !== bookingsA) return bookingsB - bookingsA;
 
-        if (sortBy === "price_asc") return priceA - priceB;
-        if (sortBy === "price_desc") return priceB - priceA;
-        if (sortBy === "rating_desc") return ratingB - ratingA;
-        return 0;
+        // 2. Rating Ulasan Terbaik
+        const reviewRatingA = Number(a.average_rating || a.rating || a.reviews_avg_rating || 0);
+        const reviewRatingB = Number(b.average_rating || b.rating || b.reviews_avg_rating || 0);
+        if (reviewRatingB !== reviewRatingA) return reviewRatingB - reviewRatingA;
+
+        // 3. Bintang Klasifikasi Hotel Tertinggi
+        const starA = Number(a.star_rating || a.stars || a.star || 0);
+        const starB = Number(b.star_rating || b.stars || b.star || 0);
+        return starB - starA;
       });
-  }, [hotels, minPrice, maxPrice, selectedStars, selectedFacilities, sortBy]);
+  }, [allHotels, searchTerm, minPrice, maxPrice, selectedStars, selectedFacilities]);
 
   const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -239,7 +244,6 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Guest Selector Component */}
             <div className="w-full lg:w-1/3">
               <GuestSelector
                 adults={adults}
@@ -263,30 +267,20 @@ const LandingPage = () => {
       </section>
 
       <main className="w-full max-w-[1280px] px-4 md:px-10 mx-auto py-16">
-        <div className="w-full">
-          <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
-            <div>
-              <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-                Rekomendasi Hotel
-              </h2>
-              <p className="font-body-md text-sm text-[#444842]">
-                Properti terbaik yang dipilih khusus untuk kenyamanan Anda. ({filteredHotels.length} ditemukan)
-              </p>
-            </div>
+        {/* Destinasi Populer Grid */}
+        <TrendingDestinations />
 
-            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3.5 py-2 rounded-xl border border-[#DCCFC0]/60 shrink-0">
-              <span className="text-[#444842] text-xs font-semibold">Urutkan:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent border-none font-label-md text-xs font-semibold text-[#778873] focus:ring-0 cursor-pointer outline-none p-0"
-              >
-                <option value="recommendation">Rekomendasi</option>
-                <option value="price_asc">Harga Terendah</option>
-                <option value="price_desc">Harga Tertinggi</option>
-                <option value="rating_desc">Rating Tertinggi</option>
-              </select>
-            </div>
+        {/* Carousel Hotel Terbaik Per Kota (Menggunakan allHotels murni tanpa filter) */}
+        {!loading && <CityTopHotelsCarousel hotels={allHotels} />}
+
+        <div className="w-full">
+          <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 text-left">
+            <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
+              Rekomendasi Hotel
+            </h2>
+            <p className="font-body-md text-sm text-[#444842]">
+              Properti pilihan utama berdasarkan pemesanan terbanyak, ulasan terbaik, serta bintang tertinggi. ({filteredHotels.length} ditemukan)
+            </p>
           </div>
 
           {loading ? (
