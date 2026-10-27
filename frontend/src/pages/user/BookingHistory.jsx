@@ -124,6 +124,74 @@ const BookingHistory = () => {
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
+  // Payment Modal States for Unpaid Bookings
+  const [paymentModalBooking, setPaymentModalBooking] = useState(null);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [qrisTimer, setQrisTimer] = useState(15 * 60 - 1);
+
+  useEffect(() => {
+    let timer = null;
+    if (paymentModalBooking && qrisTimer > 0) {
+      timer = setInterval(() => {
+        setQrisTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [paymentModalBooking, qrisTimer]);
+
+  const formattedTimer = useMemo(() => {
+    if (qrisTimer <= 0) return "Waktu Habis";
+    const minutes = Math.floor(qrisTimer / 60);
+    const seconds = qrisTimer % 60;
+    const mStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
+    const sStr = seconds < 10 ? `0${seconds}` : `${seconds}`;
+    return `${mStr}:${sStr}`;
+  }, [qrisTimer]);
+
+  const dynamicQrUrl = useMemo(() => {
+    if (!paymentModalBooking) return "";
+    const orderId = paymentModalBooking.booking_code || paymentModalBooking.id;
+    const total = paymentModalBooking.grand_total || paymentModalBooking.total_price || 0;
+    const qrisPayload = `00020101021226670016ID.CO.QRIS.WWW01189360091100000000005204581253033605802ID5913HLEVEN HOTEL6007BANDUNG61054011562070703A016304|ORDER:${orderId}|TOTAL:${total}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrisPayload)}`;
+  }, [paymentModalBooking]);
+
+  const handleOpenPayment = (booking) => {
+    setQrisTimer(15 * 60 - 1);
+    setPaymentModalBooking(booking);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!paymentModalBooking) return;
+    setIsSubmittingPayment(true);
+    try {
+      let paymentId = paymentModalBooking.payment?.id || paymentModalBooking.payment_id;
+      if (!paymentId) {
+        const checkRes = await api.get(`/bookings/${paymentModalBooking.id}`);
+        paymentId = checkRes.data?.data?.payment?.id;
+      }
+
+      if (paymentId) {
+        await api.post(`/payments/${paymentId}/mark-paid`, { payment_method: "QRIS" });
+      }
+
+      invalidateCache("/user/bookings");
+      toast.success("Pembayaran berhasil dikonfirmasi!");
+      setPaymentModalBooking(null);
+      if (selectedBooking && selectedBooking.id === paymentModalBooking.id) {
+        setSelectedBooking(null);
+      }
+      fetchApiBookings(true);
+    } catch (err) {
+      console.error("Gagal konfirmasi pembayaran:", err);
+      toast.error(err.response?.data?.message || "Gagal mengonfirmasi pembayaran.");
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
   const handleDownloadPdf = async (bookingId, bookingCode) => {
     try {
       const response = await api.get(`/user/bookings/${bookingId}/e-ticket`, {
@@ -652,13 +720,23 @@ const BookingHistory = () => {
                             </button>
 
                             {["pending", "unpaid"].includes(item.status) && (
-                              <button
-                                type="button"
-                                onClick={() => setCancelModalBooking(item)}
-                                className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
-                              >
-                                Batalkan Pesanan
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPayment(item)}
+                                  className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">payments</span>
+                                  Lanjutkan Pembayaran
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCancelModalBooking(item)}
+                                  className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
+                                >
+                                  Batalkan Pesanan
+                                </button>
+                              </>
                             )}
 
                             {["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out"].includes(item.status) && (
@@ -715,6 +793,73 @@ const BookingHistory = () => {
           </div>
         </div>
       </main>
+
+      {/* Modal Pembayaran QRIS untuk Booking Pending */}
+      {paymentModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden text-left border border-[#DCCFC0]/60 animate-in zoom-in-95 duration-200">
+            <div className="bg-[#778873] text-white p-4 flex justify-between items-center">
+              <div>
+                <h3 className="font-label-md text-sm font-bold">H'Leven Hospitality</h3>
+                <p className="font-label-sm text-xs opacity-80">
+                  Order ID: {paymentModalBooking.booking_code || paymentModalBooking.id}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentModalBooking(null)}
+                className="text-white hover:text-[#DCCFC0] transition-colors p-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <div className="p-4 bg-[#f4ede4] text-center border-b border-[#DCCFC0]/40">
+              <p className="font-label-sm text-xs text-[#444842] uppercase tracking-wide mb-1">
+                Total Pembayaran
+              </p>
+              <p className="font-headline-md text-2xl font-bold text-[#2D332C]">
+                Rp {Number(paymentModalBooking.grand_total || paymentModalBooking.total_price || 0).toLocaleString("id-ID")}
+              </p>
+            </div>
+
+            <div className="p-6 flex flex-col items-center justify-center bg-[#FDF6ED] text-center">
+              <p className="font-label-md text-xs text-[#2D332C] mb-4">
+                Buka aplikasi e-wallet (GoPay, OVO, m-BCA, dll) dan scan QR Code di bawah.
+              </p>
+
+              <div className="bg-white border-2 border-[#778873] p-4 rounded-2xl shadow-sm mb-6 flex flex-col items-center">
+                <div className="w-48 h-48 bg-white border border-[#DCCFC0]/40 p-2 rounded-xl flex items-center justify-center">
+                  <img
+                    src={dynamicQrUrl}
+                    alt={`QR Code QRIS - ${paymentModalBooking.booking_code}`}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <p className="font-headline-md text-lg text-[#778873] font-bold tracking-widest mt-3">
+                  QRIS
+                </p>
+              </div>
+
+              <div className="w-full bg-[#f4ede4] rounded-xl p-4 flex items-center justify-between border border-[#DCCFC0]/40 mb-4">
+                <span className="font-label-sm text-xs text-[#444842]">Sisa Waktu Pembayaran</span>
+                <span className="font-label-md text-sm font-bold text-[#ba1a1a] font-mono">
+                  {formattedTimer}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                disabled={isSubmittingPayment}
+                onClick={handleConfirmPayment}
+                className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingPayment ? "Memproses..." : "Saya Sudah Bayar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL REFUND / CANCEL */}
       {cancelModalBooking && (() => {
@@ -808,12 +953,16 @@ const BookingHistory = () => {
                 className="absolute inset-0 opacity-10"
                 style={{ backgroundImage: "radial-gradient(circle at 50% 120%, white, transparent)" }}
               ></div>
-              <span className="material-symbols-outlined text-5xl mb-2 text-white">check_circle</span>
+              <span className="material-symbols-outlined text-5xl mb-2 text-white">
+                {["pending", "unpaid"].includes(selectedBooking.status) ? "schedule" : "check_circle"}
+              </span>
               <h2 className="font-headline-lg text-2xl md:text-3xl font-bold mb-1">
-                Payment Successful
+                {["pending", "unpaid"].includes(selectedBooking.status) ? "Menunggu Pembayaran" : "Payment Successful"}
               </h2>
               <p className="font-body-lg text-sm md:text-base opacity-90">
-                Your journey with H'Leven has begun.
+                {["pending", "unpaid"].includes(selectedBooking.status)
+                  ? "Selesaikan pembayaran untuk mengonfirmasi reservasi Anda."
+                  : "Your journey with H'Leven has begun."}
               </p>
             </div>
 
@@ -842,33 +991,71 @@ const BookingHistory = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
                 <div className="flex flex-col items-center justify-center order-2 md:order-1 border-t md:border-t-0 md:border-r border-[#DCCFC0]/60 pt-6 md:pt-0 md:pr-8 text-center">
-                  <div className="bg-[#FDF6ED] p-4 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm">
-                    <img
-                      src={QR_CODE_PLACEHOLDER}
-                      alt="QR Code Tiket"
-                      className="w-44 h-44 object-contain mix-blend-multiply"
-                    />
-                  </div>
-                  <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px] leading-relaxed">
-                    Tunjukkan QR code ini di resepsionis saat check-in untuk proses yang cepat dan mudah.
-                  </p>
-                  <div className="w-full flex flex-col gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code)}
-                      className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-lg">download</span>
-                      Unduh E-Tiket (PDF)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedBooking(null)}
-                      className="w-full text-center font-label-md text-xs font-semibold text-[#778873] hover:underline cursor-pointer py-1"
-                    >
-                      Tutup Pratinjau Tiket
-                    </button>
-                  </div>
+                  {["pending", "unpaid"].includes(selectedBooking.status) ? (
+                    <div className="w-full flex flex-col items-center">
+                      <div className="bg-[#FDF6ED] p-6 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm flex flex-col items-center justify-center w-full max-w-[240px]">
+                        <span className="material-symbols-outlined text-5xl text-[#778873] mb-2">payments</span>
+                        <p className="font-headline-md text-base font-bold text-[#2D332C]">Total Tagihan</p>
+                        <p className="font-headline-lg text-lg font-bold text-[#778873] mt-1">
+                          Rp {Number(selectedBooking.grand_total || selectedBooking.total_price || 0).toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                      <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px] leading-relaxed">
+                        Pesanan ini belum dibayar. Klik tombol di bawah untuk melanjutkan pembayaran via QRIS.
+                      </p>
+                      <div className="w-full flex flex-col gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const b = selectedBooking;
+                            setSelectedBooking(null);
+                            handleOpenPayment(b);
+                          }}
+                          className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-lg">qr_code_scanner</span>
+                          Lanjutkan Pembayaran
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBooking(null)}
+                          className="w-full text-center font-label-md text-xs font-semibold text-[#778873] hover:underline cursor-pointer py-1"
+                        >
+                          Tutup
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-[#FDF6ED] p-4 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm">
+                        <img
+                          src={QR_CODE_PLACEHOLDER}
+                          alt="QR Code Tiket"
+                          className="w-44 h-44 object-contain mix-blend-multiply"
+                        />
+                      </div>
+                      <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px] leading-relaxed">
+                        Tunjukkan QR code ini di resepsionis saat check-in untuk proses yang cepat dan mudah.
+                      </p>
+                      <div className="w-full flex flex-col gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code)}
+                          className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-lg">download</span>
+                          Unduh E-Tiket (PDF)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBooking(null)}
+                          className="w-full text-center font-label-md text-xs font-semibold text-[#778873] hover:underline cursor-pointer py-1"
+                        >
+                          Tutup Pratinjau Tiket
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-6 order-1 md:order-2">

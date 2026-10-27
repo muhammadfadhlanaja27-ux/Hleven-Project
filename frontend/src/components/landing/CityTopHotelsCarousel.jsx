@@ -7,7 +7,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
   const [isHovered, setIsHovered] = useState(false);
   const animFrameRef = useRef(null);
 
-  // Filter 1 hotel terbaik per kota & urutkan dari bintang/skor tertinggi ke terendah
+  // Filter 1 hotel terbaik per kota & urutkan dari skor/bintang tertinggi ke terendah
   const topHotelsPerCity = useMemo(() => {
     if (!hotels || hotels.length === 0) return [];
 
@@ -24,6 +24,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
         hotel.average_rating || hotel.rating || hotel.reviews_avg_rating || 0
       );
 
+      // Perhitungan skor komposit
       const compositeScore = starVal * 2 + reviewRatingVal;
 
       if (!cityMap.has(cityName)) {
@@ -36,21 +37,24 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
       }
     });
 
+    // Urutkan berdasarkan Bintang terbanyak terlebih dahulu, lalu Skor Ulasan
     return Array.from(cityMap.values())
       .sort((a, b) => {
         if (b.starVal !== a.starVal) {
-          return b.starVal - a.starVal;
+          return b.starVal - a.starVal; // Prioritaskan Bintang tertinggi (5 -> 4 -> 3)
         }
-        return b.score - a.score;
+        return b.score - a.score; // Jika bintang sama, urutkan ulasan tertinggi
       })
       .map((item) => item.hotel);
   }, [hotels]);
 
+  // Dual array untuk Seamless Infinite Continuous Smooth Scroll
   const displayHotels = useMemo(() => {
     if (topHotelsPerCity.length === 0) return [];
     return [...topHotelsPerCity, ...topHotelsPerCity];
   }, [topHotelsPerCity]);
 
+  // Continuous Smooth Animation menggunakan requestAnimationFrame
   useEffect(() => {
     const container = scrollRef.current;
     if (!container || topHotelsPerCity.length === 0) return;
@@ -82,16 +86,13 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
   return (
     <section className="w-full my-10 text-left">
-      {/* Header Card disesuaikan dengan Color Palette Rekomendasi Hotel */}
-      <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
-        <div>
-          <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-            Hotel Terbaik di Setiap Kota
-          </h2>
-          <p className="font-body-md text-sm text-[#444842]">
-            Destinasi pilihan berdasarkan akomodasi dengan bintang dan ulasan tertinggi.
-          </p>
-        </div>
+      <div className="mb-6 px-1">
+        <span className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider block mb-1">
+          Destinasi Pilihan
+        </span>
+        <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#2D332C]">
+          Hotel Terbaik di Setiap Kota
+        </h2>
       </div>
 
       {/* Container Carousel Horizontal */}
@@ -148,10 +149,12 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                   </div>
                 )}
 
+                {/* Badge Nama Kota */}
                 <div className="absolute top-3 left-3 bg-[#778873] text-white text-xs font-bold px-3 py-1 rounded-full shadow-xs">
                   {cityName}
                 </div>
 
+                {/* Badge Bintang Klasifikasi Hotel */}
                 <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
                   <span
                     className="material-symbols-outlined text-[#D97706] text-xs"
@@ -171,6 +174,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                     {hotel.name}
                   </h3>
 
+                  {/* Rating Ulasan */}
                   <div className="flex items-center gap-1.5 mb-2">
                     <div className="flex items-center gap-0.5 bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded font-bold text-[11px] border border-[#FDE68A]">
                       <span

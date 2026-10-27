@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -54,6 +54,8 @@ const BookingPage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentScreen, setPaymentScreen] = useState("methods");
   const [orderId, setOrderId] = useState("HLVN-98234-AX");
+  const [currentPaymentId, setCurrentPaymentId] = useState(null);
+  const [currentBookingId, setCurrentBookingId] = useState(null);
   const [qrisTimer, setQrisTimer] = useState(15 * 60 - 1);
   const [successModalData, setSuccessModalData] = useState(null);
 
@@ -162,7 +164,7 @@ const BookingPage = () => {
         );
         if (responseData && responseData.data) {
           const apiHotel = responseData.data;
-          const apiRooms = (apiHotel.room_types || []).filter((r) => r.is_active !== false);
+          const apiRooms = (apiHotel.room_types || apiHotel.roomTypes || []).filter((r) => r.is_active !== false);
           const matchedRoomType = apiRooms.find((r) => String(r.id) === String(roomId));
 
           if (matchedRoomType) {
@@ -295,7 +297,12 @@ const BookingPage = () => {
         const createdBooking = res.data.data.booking || res.data.data;
         // Riwayat memakai cache 30 detik; hapus agar booking baru langsung tampak
         invalidateCache("/user/bookings");
+        const paymentData = res.data.data.payment || createdBooking?.payment;
         setOrderId(createdBooking.booking_code || `HLVN-${Math.floor(10000 + Math.random() * 90000)}-AX`);
+        setCurrentBookingId(createdBooking.id || null);
+        if (paymentData?.id) {
+          setCurrentPaymentId(paymentData.id);
+        }
         setPaymentScreen("methods");
         setShowPaymentModal(true);
       }
@@ -331,10 +338,25 @@ const BookingPage = () => {
     }
   };
 
-  const confirmPaymentSuccess = (methodName = "QRIS") => {
+  const confirmPaymentSuccess = async (methodName = "QRIS") => {
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      let paymentIdToMark = currentPaymentId;
+
+      if (!paymentIdToMark && currentBookingId) {
+        try {
+          const checkRes = await api.get(`/bookings/${currentBookingId}`);
+          paymentIdToMark = checkRes.data?.data?.payment?.id;
+        } catch (_) {}
+      }
+
+      if (paymentIdToMark) {
+        await api.post(`/payments/${paymentIdToMark}/mark-paid`, {
+          payment_method: methodName,
+        });
+      }
+
+      invalidateCache("/user/bookings");
       setShowPaymentModal(false);
       setSuccessModalData({
         orderId,
@@ -345,7 +367,13 @@ const BookingPage = () => {
         methodName,
         totalPrice,
       });
-    }, 600);
+      toast.success("Pembayaran berhasil dikonfirmasi!");
+    } catch (err) {
+      console.error("Gagal mengonfirmasi pembayaran:", err);
+      toast.error(err.response?.data?.message || "Gagal mengonfirmasi pembayaran. Silakan coba lagi.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const formattedTimer = useMemo(() => {
