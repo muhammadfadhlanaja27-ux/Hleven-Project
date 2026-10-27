@@ -41,7 +41,11 @@ Route::prefix('v1')->group(function () {
     // 1. PUBLIC ROUTES (Tanpa Token)
     // ==========================================
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register/send-otp', [AuthController::class, 'sendRegisterOtp']);
+    Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/auth/google', [AuthController::class, 'redirectToGoogle']);
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
