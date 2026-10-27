@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api";
-import { cachedGet } from "../../services/apiCache";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
 import { getStorageUrl } from "../../services/imageUrl";
 import { formatRefundDeadline, getRefundPolicy } from "../../utils/refundPolicy";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -57,6 +57,57 @@ const formatDate = (dateStr) => {
   }
 };
 
+// Helper universal untuk mengekstrak Nama Kamar dari berbagai struktur API Backend
+const getRoomName = (item) => {
+  if (!item) return "Tipe Kamar";
+
+  // 1. Cek relasi booking_rooms / bookingRooms (array)
+  const bookingRoom = item.booking_rooms?.[0] || item.bookingRooms?.[0];
+  if (bookingRoom) {
+    const name =
+      bookingRoom.room_type?.name ||
+      bookingRoom.roomType?.name ||
+      bookingRoom.room_name ||
+      bookingRoom.name;
+    if (name) return name;
+  }
+
+  // 2. Cek relasi room_type / roomType / room langsung di objek item
+  const directRoomType = item.room_type || item.roomType || item.room;
+  if (directRoomType?.name) return directRoomType.name;
+
+  // 3. Cek properti string langsung
+  return (
+    item.room_name ||
+    item.room_type_name ||
+    item.roomTypeName ||
+    "Tipe Kamar"
+  );
+};
+
+// Helper universal untuk mengambil Gambar Foto Hotel / Kamar
+const getItemImage = (item) => {
+  if (!item) return null;
+  const bookingRoom = item.booking_rooms?.[0] || item.bookingRooms?.[0];
+  const roomType =
+    item.room_type ||
+    item.roomType ||
+    item.room ||
+    bookingRoom?.room_type ||
+    bookingRoom?.roomType;
+
+  const imgPath =
+    item.hotel?.thumbnail ||
+    item.image ||
+    roomType?.photos?.[0]?.photo ||
+    roomType?.photos?.[0]?.url ||
+    roomType?.thumbnail ||
+    item.room?.photos?.[0]?.url ||
+    item.room?.photos?.[0]?.photo;
+
+  return imgPath ? getStorageUrl(imgPath) : null;
+};
+
 const BookingHistory = () => {
   const navigate = useNavigate();
 
@@ -109,7 +160,7 @@ const BookingHistory = () => {
     setBookingsLoading(true);
     try {
       const TTL_30DETIK = 30 * 1000;
-      const { data: responseData, fromCache } = await cachedGet(
+      const { data: responseData } = await cachedGet(
         "/user/bookings",
         {},
         forceRefresh,
@@ -137,7 +188,9 @@ const BookingHistory = () => {
       toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
       setCancelModalBooking(null);
       setCancelReason("");
-      fetchApiBookings();
+      // hapus cache agar status terbaru langsung muncul
+      invalidateCache("/user/bookings");
+      fetchApiBookings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
     } finally {
@@ -306,18 +359,6 @@ const BookingHistory = () => {
   })();
 
   const userAvatar = getAvatarUrl();
-
-  // Helper Ambil URL Gambar Foto Hotel / Kamar
-  const getItemImage = (item) => {
-    const imgPath =
-      item.hotel?.thumbnail ||
-      item.image ||
-      item.booking_rooms?.[0]?.room_type?.photos?.[0]?.photo ||
-      item.booking_rooms?.[0]?.room_type?.photos?.[0]?.url ||
-      item.room?.photos?.[0]?.url ||
-      item.room?.photos?.[0]?.photo;
-    return imgPath ? getStorageUrl(imgPath) : null;
-  };
 
   return (
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
@@ -491,7 +532,7 @@ const BookingHistory = () => {
                 ) : (
                   filteredBookings.map((item) => {
                     const hotelName = item.hotel?.name || item.hotel_name || "H'Leven Resort";
-                    const roomName = item.booking_rooms?.[0]?.room_type?.name || item.room_name || item.room?.name || "Tipe Kamar";
+                    const roomName = getRoomName(item);
                     const grandTotal = Number(item.grand_total || item.total_price || item.subtotal || 0);
                     const imageUrl = getItemImage(item);
                     const isCancelled = ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system"].includes(item.status);
@@ -503,7 +544,7 @@ const BookingHistory = () => {
                         className={`bg-white rounded-2xl border border-[#DCCFC0]/60 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col md:flex-row overflow-hidden relative ${isCancelled ? "opacity-75" : ""
                           }`}
                       >
-                        {/* 1. CONTAINER FOTO (Proporsional dengan Lebar md:w-64) */}
+                        {/* 1. CONTAINER FOTO */}
                         <div className="relative md:w-64 lg:w-72 shrink-0 h-48 md:h-auto bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] overflow-hidden">
                           {imageUrl ? (
                             <img
@@ -523,7 +564,7 @@ const BookingHistory = () => {
                             </div>
                           )}
 
-                          {/* Badge Status diletakkan rapi di atas gambar */}
+                          {/* Badge Status */}
                           <div className="absolute top-3 left-3 z-10">
                             {getStatusBadge(item.status)}
                           </div>
@@ -571,7 +612,7 @@ const BookingHistory = () => {
                             </div>
                           </div>
 
-                          {/* Tanggal Check-In & Check-Out (Format Bersih) */}
+                          {/* Tanggal Check-In & Check-Out */}
                           <div className="bg-[#FAF6F0] rounded-xl p-3.5 border border-[#DCCFC0]/50 flex items-center justify-around gap-4">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center text-[#778873] shrink-0">
@@ -849,7 +890,7 @@ const BookingHistory = () => {
                       Accommodation
                     </p>
                     <p className="font-headline-sm text-sm font-bold text-[#2D332C]">
-                      {selectedBooking.booking_rooms?.[0]?.room_type?.name || selectedBooking.room_name || selectedBooking.room?.name || "Executive Suite"}
+                      {getRoomName(selectedBooking)}
                     </p>
                     <p className="font-body-md text-xs text-[#444842] mt-1">
                       1 Kamar • 2 Tamu • Termasuk Sarapan Pagi

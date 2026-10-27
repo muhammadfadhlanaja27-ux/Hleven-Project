@@ -28,6 +28,7 @@ class Booking extends Model
         'grand_total',
         'special_request',
         'status',
+        'payment_method',
     ];
 
     protected $casts = [
