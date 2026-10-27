@@ -87,6 +87,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
         });
 
+        // --- Reviews ---
+        Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
+
         // --- Admin Hotel Management (legacy prefix, tetap dipakai frontend) ---
         Route::middleware(['role:admin_hotel', 'hotel_suspended'])->group(function () {
             // Profil Hotel Management
