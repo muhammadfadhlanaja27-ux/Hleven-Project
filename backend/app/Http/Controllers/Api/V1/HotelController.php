@@ -26,6 +26,18 @@ class HotelController extends Controller
             $query->where('name', 'like', '%'.$request->search.'%');
         }
 
+        if ($request->has(['adults', 'children', 'rooms'])) {
+            $adults = (int) $request->adults;
+            $children = (int) $request->children;
+            $rooms = (int) $request->rooms;
+
+            $query->whereHas('roomTypes', function ($q) use ($adults, $children, $rooms) {
+                // Sederhanakan: setidaknya ada tipe kamar yang kapasitasnya cukup untuk jumlah tamu per kamar
+                $q->where('capacity_adult', '>=', ceil($adults / $rooms))
+                  ->where('capacity_child', '>=', floor($children / $rooms));
+            });
+        }
+
         $hotels = $query->get();
 
         return response()->json([

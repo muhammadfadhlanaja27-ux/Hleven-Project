@@ -39,6 +39,14 @@ const HotelDetail = () => {
   const [filterCheckIn, setFilterCheckIn] = useState(init.checkInDate);
   const [filterCheckOut, setFilterCheckOut] = useState(init.checkOutDate);
   const [rooms, setRooms] = useState(init.rooms);
+  
+  // Ekstraksi opsi filter unik dari data kamar
+  const { filterOptionsRoomTypes, filterOptionsBedTypes } = useMemo(() => {
+    if (!hotel || !hotel.rooms) return { filterOptionsRoomTypes: [], filterOptionsBedTypes: [] };
+    const roomTypes = [...new Set(hotel.rooms.map((r) => r.type || "Standard"))];
+    const bedTypes = [...new Set(hotel.rooms.map((r) => r.bed || "1 King Bed"))];
+    return { filterOptionsRoomTypes: roomTypes, filterOptionsBedTypes: bedTypes };
+  }, [hotel]);
 
   useEffect(() => {
     saveSearchState({
@@ -731,9 +739,9 @@ const HotelDetail = () => {
                     className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
                   >
                     <option value="all">Semua Tipe</option>
-                    <option value="standard">Standar</option>
-                    <option value="deluxe">Deluxe</option>
-                    <option value="suite">Suite</option>
+                    {filterOptionsRoomTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -750,10 +758,9 @@ const HotelDetail = () => {
                     className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
                   >
                     <option value="all">Semua Jenis Kasur</option>
-                    <option value="king">King Bed</option>
-                    <option value="queen">Queen Bed</option>
-                    <option value="twin">Twin Bed</option>
-                    <option value="single">Single Bed</option>
+                    {filterOptionsBedTypes.map((bed) => (
+                      <option key={bed} value={bed}>{bed}</option>
+                    ))}
                   </select>
                 </div>
               </div>
