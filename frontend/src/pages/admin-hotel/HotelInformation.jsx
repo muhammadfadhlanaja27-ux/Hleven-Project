@@ -603,7 +603,7 @@ export default function HotelInformation() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Overview Card */}
-            <div className="lg:col-span-2 self-start bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8">
+            <div className="lg:col-span-2 lg:flex lg:flex-col bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8">
               <div className="flex justify-between items-start mb-6 border-b border-[#E5E1DA] pb-4">
                 <div>
                   <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
@@ -618,8 +618,8 @@ export default function HotelInformation() {
                 </span>
               </div>
 
-              <div className="space-y-6">
-                <div>
+              <div className="flex min-h-0 flex-1 flex-col gap-6">
+                <div className="shrink-0">
                   <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider mb-1">
                     Hotel Name
                   </h4>
@@ -628,16 +628,16 @@ export default function HotelInformation() {
                   </p>
                 </div>
 
-                <div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                   <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider mb-1">
                     Description
                   </h4>
-                  <p className="text-sm text-[#444840] leading-relaxed">
+                  <p className="line-clamp-5 text-sm text-[#444840] leading-relaxed">
                     {hotelData.description}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-[#E5E1DA]">
+                <div className="grid shrink-0 grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-[#E5E1DA]">
                   <div>
                     <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider mb-1">
                       Property Type

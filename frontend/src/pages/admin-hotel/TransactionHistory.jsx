@@ -140,7 +140,7 @@ const TransactionHistory = () => {
       } catch {}
       finally { tickingRef.current = false; }
     };
-    pollRef.current = setInterval(tick, 2000);
+    pollRef.current = setInterval(tick, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [currentPage, filterStatus, startDate, endDate, searchDebounced]);
 
@@ -196,84 +196,116 @@ const TransactionHistory = () => {
   };
 
   return (
-    <div className="p-6 min-h-screen bg-[#F8F9F8]">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1C251D] font-['Newsreader',serif]">Riwayat Transaksi</h1>
-          <p className="text-sm text-[#5F7161]">Lihat dan kelola semua pembayaran tamu dan status transaksi. Auto-refresh setiap 5s.</p>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E8E2D9] mb-6 flex flex-wrap items-end gap-4">
-        <div className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Cari</label>
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757870] text-[20px]">search</span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari pesanan, pelanggan..."
-              className="w-full pl-10 pr-4 py-2 bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none"
-            />
+    <div className="min-h-full bg-[#fcf9f5] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px]">
+        <div className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E4EBE0] text-[#506147]">
+              <span className="material-symbols-outlined text-[25px]">receipt_long</span>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#778873]">Keuangan & pembayaran</p>
+              <h1 className="font-['Newsreader',serif] text-3xl font-semibold leading-tight text-[#2D312C] sm:text-[2rem]">Riwayat Transaksi</h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#6B6E6A]">Pantau pembayaran tamu dan kelola status transaksi hotel Anda.</p>
+            </div>
+          </div>
+          <div className="flex w-fit items-center gap-2 rounded-full border border-[#DCE5D7] bg-white px-3.5 py-2 text-xs font-medium text-[#506147] shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#778873] opacity-40"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#687965]"></span>
+            </span>
+            Diperbarui otomatis tiap 5 detik
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Status Pembayaran</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-4 py-2 text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none min-w-[160px]"
-          >
-            <option value="">Semua Status</option>
-            <option value="success">Berhasil</option>
-            <option value="pending">Menunggu</option>
-            <option value="expired">Kedaluwarsa</option>
-            <option value="failed">Gagal</option>
-            <option value="cancelled">Dibatalkan</option>
-          </select>
+        <section aria-label="Filter transaksi" className="mb-6 rounded-2xl border border-[#E5E1DA] bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[20px] text-[#687965]">tune</span>
+            <h2 className="text-sm font-semibold text-[#2D312C]">Cari dan filter transaksi</h2>
+          </div>
+          <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_minmax(170px,1fr)_minmax(155px,1fr)_minmax(155px,1fr)_auto]">
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <label htmlFor="transaction-search" className="text-xs font-semibold text-[#5F7161]">Cari transaksi</label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#778873] text-[20px]">search</span>
+                <input
+                  id="transaction-search"
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari pesanan, pelanggan..."
+                  className="h-11 w-full rounded-xl border border-[#E2DDD3] bg-[#FCFBF8] py-2 pl-10 pr-4 text-sm text-[#2D312C] outline-none transition focus:border-[#778873] focus:ring-4 focus:ring-[#778873]/10"
+                />
+              </div>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <label htmlFor="transaction-status" className="text-xs font-semibold text-[#5F7161]">Status pembayaran</label>
+              <select
+                id="transaction-status"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-11 w-full rounded-xl border border-[#E2DDD3] bg-[#FCFBF8] px-3 text-sm text-[#2D312C] outline-none transition focus:border-[#778873] focus:ring-4 focus:ring-[#778873]/10"
+              >
+                <option value="">Semua Status</option>
+                <option value="success">Berhasil</option>
+                <option value="pending">Menunggu</option>
+                <option value="expired">Kedaluwarsa</option>
+                <option value="failed">Gagal</option>
+                <option value="cancelled">Dibatalkan</option>
+              </select>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <label htmlFor="transaction-start-date" className="text-xs font-semibold text-[#5F7161]">Dari tanggal</label>
+              <input
+                id="transaction-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-11 w-full min-w-0 rounded-xl border border-[#E2DDD3] bg-[#FCFBF8] px-3 text-sm text-[#2D312C] outline-none transition focus:border-[#778873] focus:ring-4 focus:ring-[#778873]/10"
+              />
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <label htmlFor="transaction-end-date" className="text-xs font-semibold text-[#5F7161]">Sampai tanggal</label>
+              <input
+                id="transaction-end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-11 w-full min-w-0 rounded-xl border border-[#E2DDD3] bg-[#FCFBF8] px-3 text-sm text-[#2D312C] outline-none transition focus:border-[#778873] focus:ring-4 focus:ring-[#778873]/10"
+              />
+            </div>
+
+            <button
+              onClick={() => { setFilterStatus(""); setStartDate(""); setEndDate(""); setSearch(""); }}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#E2DDD3] px-4 text-sm font-semibold text-[#5F7161] transition hover:border-[#778873] hover:bg-[#F7F8F5]"
+            >
+              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+              Reset
+            </button>
+          </div>
+        </section>
+
+      <section aria-label="Daftar transaksi" className="overflow-hidden rounded-2xl border border-[#E5E1DA] bg-white shadow-sm">
+        <div className="flex flex-col gap-1 border-b border-[#EEEAE3] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div>
+            <h2 className="text-base font-semibold text-[#2D312C]">Daftar transaksi</h2>
+            <p className="mt-0.5 text-xs text-[#7A7D77]">Detail pembayaran dan status pesanan tamu</p>
+          </div>
+          <span className="text-xs font-medium text-[#778873]">Maksimal 10 transaksi per halaman</span>
         </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Tanggal Mulai</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-4 py-2 text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-[#5F7161] uppercase tracking-wider">Tanggal Selesai</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-4 py-2 text-sm text-[#1C251D] focus:ring-2 focus:ring-[#5F7161]/20 outline-none"
-          />
-        </div>
-
-        <button
-          onClick={() => { setFilterStatus(""); setStartDate(""); setEndDate(""); setSearch(""); }}
-          className="px-4 py-2 text-sm font-bold text-[#5F7161] hover:bg-[#5F7161]/5 transition-colors rounded-xl underline"
-        >
-          Reset Filter
-        </button>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-[#E8E2D9] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-[#F7F6F2] border-b border-[#E8E2D9]">
+          <table className="w-full min-w-[980px] border-collapse text-left">
+            <thead className="border-b border-[#EEEAE3] bg-[#FAF9F6]">
               <tr>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Info Pesanan</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Pelanggan</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Total Pembayaran</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Metode Pembayaran</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider">Status</th>
-                <th className="p-4 text-xs font-bold text-[#5F7161] uppercase tracking-wider text-center">Aksi</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#737970]">Info pesanan</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#737970]">Pelanggan</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#737970]">Total pembayaran</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#737970]">Metode pembayaran</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#737970]">Status</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-[#737970]">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0EBE1]">
@@ -285,45 +317,47 @@ const TransactionHistory = () => {
                 ))
               ) : payments.length > 0 ? (
                 payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#FDFCFB] transition-colors">
-                    <td className="p-4">
-                      <div className="font-bold text-[#1C251D] text-sm">{p.order_id}</div>
-                      <div className="text-[10px] text-[#5F7161] mt-0.5">
-                        Dibuat: {new Date(p.created_at).toLocaleString("id-ID", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  <tr key={p.id} className="transition-colors hover:bg-[#FAFBF8]">
+                  <td className="px-5 py-4">
+                    <div className="text-sm font-semibold text-[#2D312C]">{p.order_id}</div>
+                    <div className="mt-1 text-xs text-[#7A7D77]">
+                      {new Date(p.created_at).toLocaleString("id-ID", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      {p.transaction_id && <div className="text-[10px] text-gray-400 truncate max-w-[160px]">Trx: {p.transaction_id}</div>}
+                    {p.transaction_id && <div className="mt-1 max-w-[180px] truncate text-[11px] text-[#969991]" title={p.transaction_id}>ID: {p.transaction_id}</div>}
                     </td>
-                    <td className="p-4">
-                      <div className="font-medium text-[#1C251D] text-sm">{p.booking?.guests?.[0]?.name || p.booking?.user?.name || "N/A"}</div>
-                      <div className="text-xs text-[#5F7161]">{p.booking?.guests?.[0]?.email || p.booking?.user?.email || "-"}</div>
-                      {p.booking?.guests?.[0]?.phone && <div className="text-[11px] text-gray-400">{p.booking.guests[0].phone}</div>}
+                  <td className="px-5 py-4">
+                    <div className="text-sm font-medium text-[#2D312C]">{p.booking?.guests?.[0]?.name || p.booking?.user?.name || "N/A"}</div>
+                    <div className="mt-1 text-xs text-[#737970]">{p.booking?.guests?.[0]?.email || p.booking?.user?.email || "-"}</div>
+                    {p.booking?.guests?.[0]?.phone && <div className="mt-0.5 text-xs text-[#969991]">{p.booking.guests[0].phone}</div>}
                     </td>
-                    <td className="p-4">
-                      <div className="font-bold text-[#5F7161] text-sm">{fmtRupiah(p.gross_amount)}</div>
+                  <td className="px-5 py-4">
+                    <div className="whitespace-nowrap text-sm font-semibold text-[#506147]">{fmtRupiah(p.gross_amount)}</div>
                     </td>
-                    <td className="p-4">
+                  <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-gray-400 text-lg">payments</span>
-                        <span className="text-sm text-[#1C251D] font-medium">{fmtPaymentMethod(p.payment_method)}</span>
+                      <span className="material-symbols-outlined text-[19px] text-[#8A9085]">payments</span>
+                      <span className="text-sm font-medium text-[#41463F]">{fmtPaymentMethod(p.payment_method)}</span>
                       </div>
                     </td>
-                    <td className="p-4">
+                  <td className="px-5 py-4">
                       {getStatusBadge(p.payment_status)}
                     </td>
-                    <td className="p-4">
+                  <td className="px-5 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => setSelected(p)}
-                          className="inline-flex items-center justify-center p-2 rounded-xl border border-[#E2DDD3] hover:bg-[#5F7161] hover:text-white hover:border-[#5F7161] transition-all"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2DDD3] text-[#5F7161] transition hover:border-[#506147] hover:bg-[#506147] hover:text-white"
                           title="Lihat Detail"
+                          aria-label={`Lihat detail transaksi ${p.order_id}`}
                         >
                           <span className="material-symbols-outlined text-[18px]">visibility</span>
                         </button>
                         <button
                           onClick={() => handleSync(p.order_id)}
                           disabled={syncing === p.order_id}
-                          className={`inline-flex items-center justify-center p-2 rounded-xl border border-[#E2DDD3] hover:bg-[#5F7161] hover:text-white hover:border-[#5F7161] transition-all ${syncing === p.order_id ? 'animate-spin opacity-50' : ''}`}
+                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2DDD3] text-[#5F7161] transition hover:border-[#506147] hover:bg-[#506147] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${syncing === p.order_id ? 'animate-spin' : ''}`}
                           title="Sinkronisasi"
+                          aria-label={`Sinkronisasi transaksi ${p.order_id}`}
                         >
                           <span className="material-symbols-outlined text-[18px]">sync</span>
                         </button>
@@ -333,9 +367,12 @@ const TransactionHistory = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="p-12 text-center">
-                    <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">receipt_long</span>
-                    <p className="text-gray-400 text-sm italic">Tidak ada transaksi ditemukan.</p>
+                  <td colSpan="6" className="px-6 py-16 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3F5F0] text-[#778873]">
+                      <span className="material-symbols-outlined text-[28px]">receipt_long</span>
+                    </div>
+                    <p className="mt-4 text-sm font-semibold text-[#41463F]">Belum ada transaksi</p>
+                    <p className="mt-1 text-xs text-[#858980]">Coba ubah kata kunci atau filter tanggal yang dipilih.</p>
                   </td>
                 </tr>
               )}
@@ -344,29 +381,29 @@ const TransactionHistory = () => {
         </div>
 
         {totalPages > 1 && (
-          <div className="p-4 bg-[#F7F6F2] border-t border-[#E8E2D9] flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-[#EEEAE3] bg-[#FAF9F6] px-4 py-3 sm:px-6">
             <button
               disabled={currentPage === 1 || loading}
               onClick={() => fetchPayments(currentPage - 1)}
-              className="px-4 py-2 text-sm font-bold text-[#5F7161] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[#506147] transition hover:bg-[#E9EEE5] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-lg">chevron_left</span> Sebelumnya
             </button>
-            <span className="text-xs font-bold text-[#5F7161] uppercase tracking-widest">Halaman {currentPage} dari {totalPages}</span>
+            <span className="text-xs font-medium text-[#737970]">Halaman <span className="font-semibold text-[#2D312C]">{currentPage}</span> dari {totalPages}</span>
             <button
               disabled={currentPage === totalPages || loading}
               onClick={() => fetchPayments(currentPage + 1)}
-              className="px-4 py-2 text-sm font-bold text-[#5F7161] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[#506147] transition hover:bg-[#E9EEE5] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Selanjutnya <span className="material-symbols-outlined text-lg">chevron_right</span>
             </button>
           </div>
         )}
-      </div>
+      </section>
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/40 backdrop-blur-sm" onClick={() => setSelected(null)}>
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#DCCFC0]/60 bg-white text-left shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="bg-[#2D312C] text-white p-5 flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-base">Rincian Transaksi</h3>
@@ -410,6 +447,7 @@ const TransactionHistory = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
