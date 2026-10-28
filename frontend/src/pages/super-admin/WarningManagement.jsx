@@ -30,6 +30,13 @@ const WarningManagement = () => {
     title: "",
     message: "",
   });
+  const [hotelSearch, setHotelSearch] = useState("");
+  const [showHotelDropdown, setShowHotelDropdown] = useState(false);
+
+  // Filtered Hotels
+  const filteredHotels = hotels.filter(h =>
+    h.name.toLowerCase().includes(hotelSearch.toLowerCase())
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State Modal Detail Warning
@@ -97,6 +104,7 @@ const WarningManagement = () => {
       toast.success("Peringatan kepatuhan berhasil dikirim ke hotel!");
       setIsModalOpen(false);
       setNewWarning({ hotel_id: "", title: "", message: "" });
+      setHotelSearch("");
       fetchWarnings(true);
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal membuat surat peringatan.");
@@ -161,9 +169,9 @@ const WarningManagement = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-            Warning Management
-          </h2>
+            <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+              Manajemen Peringatan
+            </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Manage and monitor formal compliance warnings issued to hotel partners.
           </p>
@@ -612,21 +620,42 @@ const WarningManagement = () => {
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
                   Pilih Hotel Mitra <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <select
-                  required
-                  value={newWarning.hotel_id}
-                  onChange={(e) =>
-                    setNewWarning({ ...newWarning, hotel_id: e.target.value })
-                  }
-                  className="w-full px-3.5 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[13.5px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all cursor-pointer"
-                >
-                  <option value="">-- Pilih Hotel --</option>
-                  {hotels.map((hotel) => (
-                    <option key={hotel.id} value={hotel.id}>
-                      {hotel.name} {hotel.city?.name ? `(${hotel.city.name})` : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Cari nama hotel..."
+                    value={hotelSearch}
+                    onChange={(e) => {
+                      setHotelSearch(e.target.value);
+                      setShowHotelDropdown(true);
+                      if (e.target.value === "") setNewWarning({ ...newWarning, hotel_id: "" });
+                    }}
+                    onFocus={() => setShowHotelDropdown(true)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[13.5px] text-[#191c1b] placeholder-[#747872] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all"
+                  />
+                  {showHotelDropdown && hotelSearch && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-[#E5E0D8] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredHotels.length > 0 ? (
+                        filteredHotels.map((hotel) => (
+                          <div
+                            key={hotel.id}
+                            className="px-4 py-2 hover:bg-[#F9F6F1] cursor-pointer text-[13.5px]"
+                            onClick={() => {
+                              setNewWarning({ ...newWarning, hotel_id: hotel.id });
+                              setHotelSearch(hotel.name);
+                              setShowHotelDropdown(false);
+                            }}
+                          >
+                            {hotel.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-[13px] text-[#747872]">Hotel tidak ditemukan</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>

@@ -22,46 +22,52 @@ export default function WalletOverview() {
   const withdrawals = wallet.withdrawals?.data || [];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-md">
       <header>
-        <h1 className="text-3xl font-semibold text-stone-900">Saldo & Komisi</h1>
-        <p className="mt-1 text-stone-600">Ringkasan komisi platform dan status penarikan hotel.</p>
+        <h1 className="font-headline-lg text-on-surface">Saldo & Komisi</h1>
+        <p className="font-body-md text-on-surface-variant mt-xs">Ringkasan komisi platform dan status penarikan hotel.</p>
       </header>
-      <div className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="text-sm text-stone-500">Total komisi tercatat</p>
-          <p className="mt-2 text-2xl font-semibold">{rupiah(wallet.commission_total)}</p>
+      <div className="grid gap-sm md:grid-cols-3">
+        <article className="rounded-lg border border-outline-variant bg-surface-container-low p-md shadow-card">
+          <p className="font-label-md text-on-surface-variant uppercase tracking-widest">Total komisi tercatat</p>
+          <p className="font-headline-md mt-sm text-primary">{rupiah(wallet.commission_total)}</p>
         </article>
-        <article className="rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="text-sm text-stone-500">Komisi tertahan</p>
-          <p className="mt-2 text-2xl font-semibold">{rupiah(wallet.commission_held)}</p>
+        <article className="rounded-lg border border-outline-variant bg-surface-container-low p-md shadow-card">
+          <p className="font-label-md text-on-surface-variant uppercase tracking-widest">Komisi tertahan</p>
+          <p className="font-headline-md mt-sm text-tertiary">{rupiah(wallet.commission_held)}</p>
         </article>
-        <article className="rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="text-sm text-stone-500">Komisi tersedia</p>
-          <p className="mt-2 text-2xl font-semibold">{rupiah(wallet.commission_available)}</p>
+        <article className="rounded-lg border border-outline-variant bg-surface-container-low p-md shadow-card">
+          <p className="font-label-md text-on-surface-variant uppercase tracking-widest">Komisi tersedia</p>
+          <p className="font-headline-md mt-sm text-primary">{rupiah(wallet.commission_available)}</p>
         </article>
       </div>
-      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="rounded-md border border-tertiary-container bg-error-container p-sm font-body-sm text-on-error-container">
         Saldo ini adalah pembukuan internal. Payout dan pencocokan dana provider belum aktif sampai XenPlatform dikonfigurasi.
       </div>
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Penarikan hotel</h2>
+      <section className="rounded-lg border border-outline-variant bg-surface-container-lowest p-lg shadow-card">
+        <h2 className="font-headline-md text-on-surface">Penarikan hotel</h2>
         {withdrawals.length === 0 ? (
-          <p className="mt-4 text-sm text-stone-500">Belum ada riwayat penarikan.</p>
+          <p className="font-body-md mt-md text-on-surface-variant">Belum ada riwayat penarikan.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b text-stone-500">
-                <tr><th className="py-2">Hotel</th><th>Nominal</th><th>Diterima</th><th>Status</th><th>Tanggal</th></tr>
+          <div className="mt-md overflow-x-auto">
+            <table className="w-full text-left font-body-md">
+              <thead className="border-b border-outline-variant text-on-surface-variant">
+                <tr>
+                  <th className="py-sm font-label-lg">Hotel</th>
+                  <th className="py-sm font-label-lg">Nominal</th>
+                  <th className="py-sm font-label-lg">Diterima</th>
+                  <th className="py-sm font-label-lg">Status</th>
+                  <th className="py-sm font-label-lg">Tanggal</th>
+                </tr>
               </thead>
               <tbody>
                 {withdrawals.map((withdrawal) => (
-                  <tr key={withdrawal.id} className="border-b last:border-0">
-                    <td className="py-3">{withdrawal.hotel?.name || `Hotel #${withdrawal.hotel_id}`}</td>
-                    <td>{rupiah(withdrawal.amount)}</td>
-                    <td>{rupiah(withdrawal.net_amount)}</td>
-                    <td className="capitalize">{withdrawal.status}</td>
-                    <td>{new Date(withdrawal.requested_at).toLocaleDateString("id-ID")}</td>
+                  <tr key={withdrawal.id} className="border-b border-outline-variant last:border-0 h-[56px]">
+                    <td className="py-sm">{withdrawal.hotel?.name || `Hotel #${withdrawal.hotel_id}`}</td>
+                    <td className="py-sm">{rupiah(withdrawal.amount)}</td>
+                    <td className="py-sm">{rupiah(withdrawal.net_amount)}</td>
+                    <td className="py-sm capitalize">{withdrawal.status}</td>
+                    <td className="py-sm">{new Date(withdrawal.requested_at).toLocaleDateString("id-ID")}</td>
                   </tr>
                 ))}
               </tbody>

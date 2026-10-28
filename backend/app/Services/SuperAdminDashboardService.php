@@ -148,15 +148,25 @@ class SuperAdminDashboardService
 
     public function getHotelHealthReport(): array
     {
-        return Hotel::with(['reviews:hotel_id,rating'])
-            ->withCount(['bookings', 'bookings as cancelled_bookings_count' => function ($q) {
-                $q->where('status', 'cancelled');
-            }])
+        return Hotel::query()
+            ->withAvg('reviews', 'rating')
+            ->withCount([
+                'bookings',
+                'bookings as cancelled_bookings_count' => function ($q) {
+                    $q->where('status', 'cancelled');
+                }
+            ])
             ->get()
             ->map(function ($hotel) {
-                $avgRating = $hotel->reviews->avg('rating') ?? 5.0;
+                $avgRating = $hotel->reviews_avg_rating ?? 5.0;
                 $totalBookings = $hotel->bookings_count ?: 1;
                 $cancelRate = $hotel->cancelled_bookings_count / $totalBookings;
+                
+                // Lost Revenue subquery
+                $lostRevenue = \App\Models\Booking::where('hotel_id', $hotel->id)
+                    ->where('status', 'cancelled')
+                    ->join('payments', 'bookings.id', '=', 'payments.booking_id')
+                    ->sum('payments.gross_amount');
 
                 // Score: 0 - 100
                 $ratingScore = min(100, max(0, ($avgRating / 5) * 100));
@@ -169,6 +179,7 @@ class SuperAdminDashboardService
                     'health_score' => round($healthScore, 1),
                     'average_rating' => round($avgRating, 1),
                     'cancellation_rate' => round($cancelRate * 100, 1).'%',
+                    'lost_revenue' => (float) $lostRevenue,
                     'status' => $healthScore < 60 ? 'critical' : ($healthScore < 80 ? 'warning' : 'healthy'),
                 ];
             })
