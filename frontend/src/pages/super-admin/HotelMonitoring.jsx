@@ -20,9 +20,9 @@ const HotelMonitoring = () => {
   const [selectedHotel, setSelectedHotel] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // State untuk Pagination
+  // State untuk Pagination (Diatur tepat 10 baris per halaman)
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 10;
 
   const [pendingToggle, setPendingToggle] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -57,7 +57,6 @@ const HotelMonitoring = () => {
         forceRefresh
       );
 
-      // Handle data array
       const resData = response.data?.data || response.data || [];
       setHotels(Array.isArray(resData) ? resData : []);
     } catch (err) {
@@ -75,6 +74,11 @@ const HotelMonitoring = () => {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
+  }, [search, statusFilter]);
+
+  // Reset halaman ke 1 setiap kali filter/pencarian berubah
+  useEffect(() => {
+    setCurrentPage(1);
   }, [search, statusFilter]);
 
   const handleToggleStatus = (id, currentStatus) => {
@@ -142,19 +146,31 @@ const HotelMonitoring = () => {
     setStarReason(hotel.star_verified_reason || "");
     setModalOpen(true);
   };
+
   const handleSaveStar = async () => {
     if (!selectedHotel) return;
     setSavingStar(true);
     try {
-      await api.patch(`/super-admin/hotels/${selectedHotel.id}/star`, { star_rating: starRating ? Number(starRating) : null, star_verified_reason: starReason || null });
+      await api.patch(`/super-admin/hotels/${selectedHotel.id}/star`, { 
+        star_rating: starRating ? Number(starRating) : null, 
+        star_verified_reason: starReason || null 
+      });
       invalidateCache("/super-admin/hotels");
       toast.success("Bintang hotel diperbarui");
       fetchHotels(true);
-      setSelectedHotel((p) => ({ ...p, star_rating: starRating ? Number(starRating) : null, star_verified_reason: starReason || null }));
-    } catch (e) { toast.error(e.response?.data?.message || "Gagal simpan bintang"); } finally { setSavingStar(false); }
+      setSelectedHotel((p) => ({ 
+        ...p, 
+        star_rating: starRating ? Number(starRating) : null, 
+        star_verified_reason: starReason || null 
+      }));
+    } catch (e) { 
+      toast.error(e.response?.data?.message || "Gagal simpan bintang"); 
+    } finally { 
+      setSavingStar(false); 
+    }
   };
 
-  // Pagination helper
+  // Logika Pemotongan Data per 10 Baris
   const totalItems = hotels.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const paginatedHotels = hotels.slice(
@@ -162,14 +178,29 @@ const HotelMonitoring = () => {
     currentPage * itemsPerPage
   );
 
+  // Perhitungan Maksimal 10 Tombol Navigasi Angka
+  const maxVisiblePages = 10;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = startPage + maxVisiblePages - 1;
+
+  if (endPage > totalPages) {
+    endPage = totalPages;
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  const visiblePages = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, i) => startPage + i
+  );
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
-      {/* Page Header & Filter Controls */}
+      {/* Header & Filter Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Pemantauan Hotel
-            </h2>
+          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+            Pemantauan Hotel
+          </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Kelola dan pantau seluruh properti hotel mitra dalam jaringan H'Leven.
           </p>
@@ -227,7 +258,7 @@ const HotelMonitoring = () => {
               Terjadi kesalahan saat memuat data hotel.
             </p>
             <button
-              onClick={fetchHotels}
+              onClick={() => fetchHotels(true)}
               className="px-4 py-2 bg-[#768875] text-white rounded-lg font-hanken text-[13px] font-semibold hover:opacity-90 transition-opacity"
             >
               Coba Lagi
@@ -242,7 +273,7 @@ const HotelMonitoring = () => {
                     <th className="py-4 px-6">Hotel Name &amp; ID</th>
                     <th className="py-4 px-6">Location</th>
                     <th className="py-4 px-6">Admin Contact</th>
-                    <th className="py-4 px-6">Bintang</th>
+                    <th className="py-4 px-6 text-center">Bintang</th>
                     <th className="py-4 px-6">Status</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
@@ -279,7 +310,6 @@ const HotelMonitoring = () => {
                           key={hotel.id}
                           className="hover:bg-[#F9F6F1]/50 transition-colors"
                         >
-                          {/* Hotel Name & ID */}
                           <td className="py-4 px-6">
                             <div className="font-medium text-[#191c1b] font-hanken">
                               {hotel.name}
@@ -289,7 +319,6 @@ const HotelMonitoring = () => {
                             </div>
                           </td>
 
-                          {/* Location */}
                           <td className="py-4 px-6 text-[#434842]">
                             {hotel.city?.name ||
                               hotel.city?.city_name ||
@@ -300,10 +329,11 @@ const HotelMonitoring = () => {
                           <td className="py-4 px-6 text-[#434842]">
                             {hotel.admin?.email || hotel.email || "-"}
                           </td>
-                          <td className="py-4 px-6 text-[#434842] text-center">{hotel.star_rating ? `★ ${hotel.star_rating}` : <span className="text-[#747872] text-xs">-</span>}</td>
+                          <td className="py-4 px-6 text-[#434842] text-center">
+                            {hotel.star_rating ? `★ ${hotel.star_rating}` : <span className="text-[#747872] text-xs">-</span>}
+                          </td>
                           <td className="py-4 px-6">{statusBadge}</td>
 
-                          {/* Actions */}
                           <td className="py-4 px-6 text-right space-x-2 whitespace-nowrap">
                             <button
                               onClick={() => handleOpenDetail(hotel)}
@@ -349,9 +379,9 @@ const HotelMonitoring = () => {
               </table>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-body-sm text-[#747872] font-hanken">
-              <span className="text-[13px]">
+            {/* Controls Pagination (Konsisten 10 Baris) */}
+            <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col md:flex-row justify-between items-center gap-4 text-[#747872] font-hanken">
+              <span className="text-[13px] shrink-0">
                 Menampilkan{" "}
                 {totalItems > 0
                   ? (currentPage - 1) * itemsPerPage + 1
@@ -360,7 +390,8 @@ const HotelMonitoring = () => {
                 {totalItems} hotel
               </span>
 
-              <div className="flex items-center gap-1.5">
+              {/* Tombol Navigasi Terpusat */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-full">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                   disabled={currentPage === 1}
@@ -369,21 +400,19 @@ const HotelMonitoring = () => {
                   Prev
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (pageNum) => (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 border rounded-md text-[13px] font-medium transition-colors ${
-                        currentPage === pageNum
-                          ? "bg-[#768875] text-white border-[#768875]"
-                          : "bg-white border-[#E5E0D8] text-[#434842] hover:bg-[#F9F6F1]"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                )}
+                {visiblePages.map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1 border rounded-md text-[13px] font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? "bg-[#768875] text-white border-[#768875]"
+                        : "bg-white border-[#E5E0D8] text-[#434842] hover:bg-[#F9F6F1]"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
 
                 <button
                   onClick={() =>
@@ -400,18 +429,15 @@ const HotelMonitoring = () => {
         )}
       </div>
 
-      {/* Modal: Hotel Details (matching hotels.html) */}
+      {/* Modal: Hotel Details */}
       {modalOpen && selectedHotel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm transition-opacity"
             onClick={() => setModalOpen(false)}
           ></div>
 
-          {/* Modal Content */}
           <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-[0_12px_40px_rgba(47,50,49,0.12)] p-7 border border-[#E5E0D8] z-10 font-hanken animate-fadeIn">
-            {/* Modal Header */}
             <div className="flex justify-between items-start mb-6 pb-4 border-b border-[#E5E0D8]">
               <div>
                 <h3 className="font-newsreader text-[24px] font-semibold text-[#4f604f] font-['Newsreader',serif]">
@@ -434,7 +460,6 @@ const HotelMonitoring = () => {
               </button>
             </div>
 
-            {/* Grid Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
@@ -485,7 +510,6 @@ const HotelMonitoring = () => {
               </div>
             </div>
 
-            {/* Description or Facilities */}
             {selectedHotel.description && (
               <div className="mb-6">
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
