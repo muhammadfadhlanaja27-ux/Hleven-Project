@@ -5,17 +5,26 @@ const GuestSelector = ({ adults, children, rooms, onGuestChange, onAddRoomReques
 
   const handleAdultsChange = (delta) => {
     const newAdults = Math.max(1, adults + delta);
-    onGuestChange({ adults: newAdults, children, rooms });
-
-    // Check if adults >= 5 and request room addition
-    if (newAdults >= 5 && adults < 5) {
-      onAddRoomRequest?.();
+    let newRooms = rooms;
+    
+    // Jika jumlah dewasa > 2 * kamar, secara otomatis tambah kamar
+    if (newAdults > rooms * 2) {
+      newRooms = Math.ceil(newAdults / 2);
     }
+    
+    onGuestChange({ adults: newAdults, children, rooms: newRooms });
   };
 
   const handleChildrenChange = (delta) => {
     const newChildren = Math.max(0, children + delta);
-    onGuestChange({ adults, children: newChildren, rooms });
+    let newRooms = rooms;
+    
+    // Jika total tamu (adults + children) > rooms * 2, secara otomatis tambah kamar
+    if ((adults + newChildren) > rooms * 2) {
+      newRooms = Math.ceil((adults + newChildren) / 2);
+    }
+    
+    onGuestChange({ adults, children: newChildren, rooms: newRooms });
   };
 
   const handleRoomsChange = (delta) => {

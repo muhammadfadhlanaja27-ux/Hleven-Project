@@ -156,8 +156,17 @@ class HotelFromCsvSeeder extends Seeder
                 ),
             ];
 
-            // Create rooms (3-4 per hotel)
-            foreach ($roomNames as $rIndex => $rInfo) {
+            // Create rooms (3-6 per hotel)
+            $selectedRoomNames = collect([
+                ['name' => 'Standard Room', 'level' => 'standard', 'bed' => 'single', 'cap' => [1, 0, 1]],
+                ['name' => 'Superior Room', 'level' => 'standard', 'bed' => 'twin', 'cap' => [2, 0, 2]],
+                ['name' => 'Deluxe Room', 'level' => 'deluxe', 'bed' => 'queen', 'cap' => [2, 0, 2]],
+                ['name' => 'Executive Suite', 'level' => 'deluxe', 'bed' => 'king', 'cap' => [2, 1, 3]],
+                ['name' => 'Family Room', 'level' => 'luxury', 'bed' => 'king', 'cap' => [3, 2, 5]],
+                ['name' => 'Presidential Suite', 'level' => 'luxury', 'bed' => 'super_king', 'cap' => [2, 2, 4]],
+            ])->random(rand(3, 6));
+
+            foreach ($selectedRoomNames as $rIndex => $rInfo) {
                 $roomName = $rInfo['name'];
                 $basePrice = match ($starRating) {
                     5 => rand(1500000, 3000000),
@@ -165,30 +174,27 @@ class HotelFromCsvSeeder extends Seeder
                     3 => rand(450000, 750000),
                     default => rand(250000, 400000),
                 };
-                $price = $basePrice + ($rIndex * 150000);
+                $price = (int) ($basePrice * (1 + ($rIndex * 0.2)));
 
-                $bedType = match ($roomName) {
-                    'Superior Room' => $bedTypes['single'],
-                    'Deluxe Room' => $bedTypes['twin'],
-                    'Executive Suite' => $bedTypes['queen'],
-                    'Junior Suite' => $bedTypes['king'],
-                    default => $bedTypes['queen'],
+                // Resolve Bed Type
+                $bedTypeName = match ($rInfo['bed']) {
+                    'single' => '1 Single Bed',
+                    'twin' => '1 Twin Bed',
+                    'queen' => '1 Queen Bed',
+                    'king' => '1 King Bed',
+                    'super_king' => '1 Super King Bed',
                 };
-
-                // Markup harga berdasarkan tipe bed
-                $markup = match ($bedType->name) {
-                    '1 King Bed' => 1.5,
-                    '1 Queen Bed' => 1.3,
-                    '1 Twin Bed' => 1.2,
-                    default => 1.0,
-                };
-                $price = (int) ($basePrice * $markup);
+                
+                $bedType = BedType::firstOrCreate(
+                    ['hotel_id' => $hotel->id, 'name' => $bedTypeName],
+                    ['max_adults' => $rInfo['cap'][0], 'max_children' => $rInfo['cap'][1], 'max_total' => $rInfo['cap'][2], 'status' => 'active']
+                );
 
                 $roomType = RoomType::create([
                     'hotel_id' => $hotel->id,
                     'bed_type_id' => $bedType->id,
                     'name' => $roomName,
-                    'description' => "Kamar {$roomName} yang nyaman dengan {$bedType->name} di {$hotelName}.",
+                    'description' => "Kamar {$roomName} yang nyaman di {$hotelName}.",
                     'weekday_price' => $price,
                     'weekend_price' => (int) ($price * 1.2),
                     'stock' => rand(5, 10),
@@ -201,16 +207,14 @@ class HotelFromCsvSeeder extends Seeder
                     'is_manual_capacity' => false,
                 ]);
 
-                // Fasilitas premium jika tipe kamar/bed lebih tinggi
-                $facilityCount = ($markup > 1.2) ? rand(5, 8) : rand(2, 4);
-                $roomType->facilities()->sync($roomFacilities->random(min($facilityCount, $roomFacilities->count()))->pluck('id')
-                    ->merge($bathroomFacilities->random(min(2, $bathroomFacilities->count()))->pluck('id')));
-
-                RoomPhoto::create([
-                    'room_type_id' => $roomType->id,
-                    'photo' => $this->getPhotoFromPool('room', $roomType->id),
-                    'is_thumbnail' => true,
-                ]);
+                // Create 3-4 photos for each room
+                for ($p = 0; $p < rand(3, 4); $p++) {
+                    RoomPhoto::create([
+                        'room_type_id' => $roomType->id,
+                        'photo' => $this->getPhotoFromPool('room', $roomType->id . $p),
+                        'is_thumbnail' => ($p === 0),
+                    ]);
+                }
             }
 
             HotelPhoto::create([

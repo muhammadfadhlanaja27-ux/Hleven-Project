@@ -140,9 +140,9 @@ const ApplicationRevenue = () => {
     <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-            App Revenue
-          </h2>
+            <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+              Pendapatan Aplikasi
+            </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Komisi platform {commissionPct}% dari setiap hotel mitra.
           </p>

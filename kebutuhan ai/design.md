@@ -1,204 +1,177 @@
 ---
-name: H'Leven Authority
+name: H'leven
 colors:
-  surface: '#f8faf8'
-  surface-dim: '#d9dad9'
-  surface-bright: '#f8faf8'
+  surface: '#fcf9f4'
+  surface-dim: '#dcdad5'
+  surface-bright: '#fcf9f4'
   surface-container-lowest: '#ffffff'
-  surface-container-low: '#f2f4f2'
-  surface-container: '#edeeec'
-  surface-container-high: '#e7e8e7'
-  surface-container-highest: '#e1e3e1'
-  on-surface: '#191c1b'
+  surface-container-low: '#f6f3ee'
+  surface-container: '#f0ede9'
+  surface-container-high: '#ebe8e3'
+  surface-container-highest: '#e5e2dd'
+  on-surface: '#1c1c19'
   on-surface-variant: '#434842'
-  inverse-surface: '#2e3130'
-  inverse-on-surface: '#eff1ef'
-  outline: '#747872'
-  outline-variant: '#c4c8c0'
-  surface-tint: '#526351'
-  primary: '#4f604f'
+  inverse-surface: '#31302d'
+  inverse-on-surface: '#f3f0eb'
+  outline: '#747871'
+  outline-variant: '#c4c8bf'
+  surface-tint: '#526350'
+  primary: '#4f604d'
   on-primary: '#ffffff'
-  primary-container: '#677967'
-  on-primary-container: '#f7fff2'
-  inverse-primary: '#b9ccb6'
-  secondary: '#4e644b'
+  primary-container: '#687965'
+  on-primary-container: '#f7fff1'
+  inverse-primary: '#b9ccb4'
+  secondary: '#4c6549'
   on-secondary: '#ffffff'
-  secondary-container: '#d1eac9'
-  on-secondary-container: '#546a50'
-  tertiary: '#625b51'
+  secondary-container: '#cce7c4'
+  on-secondary-container: '#50694d'
+  tertiary: '#8b4b2a'
   on-tertiary: '#ffffff'
-  tertiary-container: '#7c7369'
+  tertiary-container: '#a96240'
   on-tertiary-container: '#fffbff'
   error: '#ba1a1a'
   on-error: '#ffffff'
   error-container: '#ffdad6'
   on-error-container: '#93000a'
-  primary-fixed: '#d4e8d2'
-  primary-fixed-dim: '#b9ccb6'
-  on-primary-fixed: '#101f11'
-  on-primary-fixed-variant: '#3a4b3b'
-  secondary-fixed: '#d1eac9'
-  secondary-fixed-dim: '#b5cdae'
-  on-secondary-fixed: '#0c200c'
-  on-secondary-fixed-variant: '#374c34'
-  tertiary-fixed: '#ece1d4'
-  tertiary-fixed-dim: '#cfc5b9'
-  on-tertiary-fixed: '#201b13'
-  on-tertiary-fixed-variant: '#4d463d'
-  background: '#f8faf8'
-  on-background: '#191c1b'
-  surface-variant: '#e1e3e1'
-  surface-warm: '#F9F6F1'
-  surface-white: '#FFFFFF'
-  status-pending: '#DED3C7'
-  status-active: '#768875'
-  status-error: '#A65A3D'
-  border-subtle: '#E5E0D8'
+  primary-fixed: '#d5e8cf'
+  primary-fixed-dim: '#b9ccb4'
+  on-primary-fixed: '#101f10'
+  on-primary-fixed-variant: '#3a4b39'
+  secondary-fixed: '#ceeac7'
+  secondary-fixed-dim: '#b3ceac'
+  on-secondary-fixed: '#0a200a'
+  on-secondary-fixed-variant: '#354d33'
+  tertiary-fixed: '#ffdbcc'
+  tertiary-fixed-dim: '#ffb694'
+  on-tertiary-fixed: '#351000'
+  on-tertiary-fixed-variant: '#713618'
+  background: '#fcf9f4'
+  on-background: '#1c1c19'
+  surface-variant: '#e5e2dd'
 typography:
-  headline-lg:
-    fontFamily: Newsreader
-    fontSize: 32px
-    fontWeight: '600'
+  display-lg:
+    fontFamily: Libre Caslon Text
+    fontSize: 36px
+    fontWeight: '700'
     lineHeight: '1.2'
     letterSpacing: -0.02em
+  headline-lg:
+    fontFamily: Libre Caslon Text
+    fontSize: 28px
+    fontWeight: '600'
+    lineHeight: '1.3'
   headline-lg-mobile:
-    fontFamily: Newsreader
+    fontFamily: Libre Caslon Text
     fontSize: 24px
     fontWeight: '600'
-    lineHeight: '1.2'
-  headline-md:
-    fontFamily: Newsreader
-    fontSize: 24px
-    fontWeight: '500'
     lineHeight: '1.3'
-  headline-sm:
-    fontFamily: Newsreader
+  headline-md:
+    fontFamily: Libre Caslon Text
     fontSize: 20px
-    fontWeight: '500'
+    fontWeight: '600'
     lineHeight: '1.4'
   body-lg:
-    fontFamily: Hanken Grotesk
+    fontFamily: Work Sans
     fontSize: 18px
     fontWeight: '400'
     lineHeight: '1.6'
   body-md:
-    fontFamily: Hanken Grotesk
+    fontFamily: Work Sans
     fontSize: 16px
     fontWeight: '400'
     lineHeight: '1.5'
   body-sm:
-    fontFamily: Hanken Grotesk
+    fontFamily: Work Sans
     fontSize: 14px
     fontWeight: '400'
     lineHeight: '1.5'
-  label-md:
-    fontFamily: Hanken Grotesk
-    fontSize: 12px
+  label-lg:
+    fontFamily: Work Sans
+    fontSize: 13px
     fontWeight: '600'
-    lineHeight: '1'
+    lineHeight: '1.2'
     letterSpacing: 0.05em
-  button-text:
-    fontFamily: Hanken Grotesk
-    fontSize: 14px
+  label-md:
+    fontFamily: Work Sans
+    fontSize: 11px
     fontWeight: '600'
-    lineHeight: '1'
-    letterSpacing: 0.01em
+    lineHeight: '1.2'
+    letterSpacing: 0.08em
 rounded:
-  sm: 0.25rem
-  DEFAULT: 0.5rem
-  md: 0.75rem
-  lg: 1rem
-  xl: 1.5rem
+  sm: 0.125rem
+  DEFAULT: 0.25rem
+  md: 0.375rem
+  lg: 0.5rem
+  xl: 0.75rem
   full: 9999px
 spacing:
-  container-margin: 24px
+  base: 4px
+  xs: 8px
+  sm: 16px
+  md: 24px
+  lg: 32px
+  xl: 48px
+  container-margin: 40px
   gutter: 24px
-  card-padding: 24px
-  sidebar-width: 260px
-  header-height: 72px
-  section-gap: 32px
-  component-gap: 16px
 ---
 
 ## Brand & Style
 
-This design system is engineered for the **H'Leven Super Admin portal**, targeting high-level hospitality executives and system administrators. The brand personality is **distinguished, architectural, and authoritative**. It balances the premium nature of luxury hospitality with the rigorous organizational needs of enterprise management.
+This design system embodies a **Modern-Classical** aesthetic, blending the authority and timelessness of luxury hospitality with the functional efficiency of a professional SaaS platform. It is designed for internal super-admins who manage high-value hospitality partnerships, requiring a UI that feels calm, trustworthy, and sophisticated.
 
-The visual style is a hybrid of **Corporate Modern** and **Minimalist Editorial**. It utilizes a sophisticated "Quiet Luxury" aesthetic—relying on generous whitespace, high-quality serif typography, and a nature-inspired palette to evoke a sense of calm control. The interface should feel less like a dense software tool and more like a digital concierge for the entire hotel network.
-
-Key pillars include:
-- **Trust:** Established through sturdy serif headings and a grounded charcoal foundation.
-- **Clarity:** Achieved via strict grid alignment and prioritized information density.
-- **Sophistication:** Conveyed through muted, harmonious color transitions and soft elevation.
+The style leverages **Minimalism** with a touch of **Tactile** warmth. It avoids the coldness of standard enterprise tools by utilizing a rich, organic color palette and high-contrast typography. The visual mood is editorial yet functional, prioritizing clarity and ease of use through generous whitespace and a clear structural hierarchy.
 
 ## Colors
 
-The palette is derived from natural, organic tones that suggest stability and premium quality.
-
-- **Primary (#768875):** A muted sage green used for primary actions, success states, and brand reinforcement.
-- **Secondary (#A2BA9C):** A softer green for supportive UI elements, hover states, and iconography backgrounds.
-- **Tertiary/Accents (#DED3C7):** A warm taupe used for subtle badges, secondary surfaces, and non-critical status indicators.
-- **Neutral (#2F3231):** A deep charcoal for high-contrast typography and navigation backgrounds.
-- **Backgrounds:** The interface uses an off-white warm wash (`#F9F6F1`) to reduce eye strain and provide a more "literary" feel than pure white. Content resides on pure white cards.
+The palette is rooted in earth-toned sophistication:
+- **Primary (Sage):** Used for key actions, brand elements, and primary buttons. It evokes growth and stability.
+- **Secondary (Soft Mint):** Used for subtle backgrounds, secondary container states, and hover effects.
+- **Tertiary (Terracotta):** Reserved for warning states, critical alerts, and specific "Issue" actions to provide warmth without the aggression of pure red.
+- **Neutral (Cream/Stone):** The foundation of the UI. `F9F6F1` serves as the primary page background, while slightly darker tones are used for cards and dividers.
+- **Text:** Deep charcoal (`2D312C`) ensures high legibility against cream backgrounds, avoiding the harshness of pure black.
 
 ## Typography
 
-This system employs a high-contrast typographic pairing to signal the "Super Admin" hierarchy.
+This system uses a pairing of a literary serif for headers and a functional sans-serif for utility.
 
-- **Headlines:** Use **Newsreader**. This serif font provides a literary, authoritative feel to the dashboard. Headlines should have tighter letter-spacing to maintain a modern editorial look.
-- **Body & UI:** Use **Hanken Grotesk**. A sharp, contemporary sans-serif that ensures maximum legibility for data tables, form inputs, and small labels.
-- **Utility:** Use uppercase labels with increased tracking (letter spacing) for table headers and section overlines to differentiate them from interactive body text.
+- **Libre Caslon Text (Headings):** Provides a premium, editorial feel. Use for page titles, section headers, and major numerical data (stats).
+- **Work Sans (Body & Labels):** Offers exceptional legibility at small sizes. Used for all data tables, inputs, descriptions, and navigation elements.
+- **Hierarchy:** Maintain a strong contrast between serif titles and sans-serif metadata. Labels should often use uppercase with increased tracking to differentiate from body text.
 
 ## Layout & Spacing
 
-The layout uses a **fixed-fluid hybrid grid** model optimized for high-resolution administrative workflows.
+The layout follows a **Fluid Grid** model with strict side margins to maintain a centered, professional focus.
 
-- **Structure:** A fixed left sidebar (deep charcoal) and a fixed top header (warm taupe/white) frame the content area.
-- **Grid:** A 12-column system is used within the main content area. Standard dashboard cards should span 3 columns (quarter-width) or 6 columns (half-width). Large data tables and charts span the full 12 columns.
-- **Spacing Rhythm:** A base-8 unit is used. Standard padding for cards and sections is **24px** (3 units), ensuring a generous, airy feel that prevents information overload.
-- **Responsive Behavior:** 
-  - **Desktop (1200px+):** Full 12-column grid.
-  - **Tablet (768px - 1199px):** Sidebar collapses to icons only; 24px margins remain.
-  - **Mobile (<767px):** Sidebar moves to a hidden "hamburger" menu; layout becomes a single-column stack with 16px horizontal margins.
+- **Grid:** 12-column system for desktop, 8-column for tablet, and 4-column for mobile.
+- **Rhythm:** An 8px linear scale (base 4px for fine-tuning) governs all padding and margins. 
+- **Card Spacing:** Use `md` (24px) or `lg` (32px) padding within cards to maintain the sense of "luxury" through whitespace.
+- **Sectioning:** Vertical gaps between major dashboard blocks should use `xl` (48px) to allow the UI to breathe.
 
 ## Elevation & Depth
 
-Hierarchy is established through **Tonal Layering** and **Ambient Shadows**.
+Hierarchy is achieved primarily through **Tonal Layers** and extremely subtle **Ambient Shadows**.
 
-- **Level 0 (Background):** `#F9F6F1` (Warm wash).
-- **Level 1 (Main Cards):** Pure `#FFFFFF` surfaces. These utilize a very soft, diffused shadow: `0 4px 20px rgba(47, 50, 49, 0.06)`.
-- **Level 2 (Modals/Overlays):** Pure `#FFFFFF` surfaces with a more pronounced shadow: `0 12px 40px rgba(47, 50, 49, 0.12)`.
-- **Interactions:** Buttons shift elevation on hover, increasing shadow depth slightly or darkening the primary color by 10%.
-
-Avoid heavy borders; use light shadows or the `#E5E0D8` border color for separation between data table rows and input fields.
+- **Surface Tiers:** The main page background is the lowest level (`Neutral`). Cards and containers sit on top of this, often sharing a similar hue but distinguished by a thin 1px border.
+- **Shadows:** Use a "Soft Diffused" shadow: `0 4px 20px rgba(45, 49, 44, 0.04)`. Shadows should be almost imperceptible, felt rather than seen.
+- **Interactivity:** On hover, cards may increase their shadow slightly or shift border color to the `Primary` sage tone.
+- **Dividers:** Use 1px solid lines in the `Border` color for table rows and list items, ensuring horizontal rhythm without adding visual weight.
 
 ## Shapes
 
-The shape language is **refined and approachable**.
+The design system utilizes **Soft** roundedness to balance professional rigor with approachability.
 
-- **Cards & Containers:** Use a consistent `0.5rem` (8px) radius for a professional, "modern corporate" look.
-- **Buttons & Inputs:** Align with the `0.5rem` radius for a cohesive rectangular language.
-- **Badges/Chips:** Use **Pill-shaped** (fully rounded) corners. This distinguishes them as non-structural, purely informational status indicators.
-- **Icon Containers:** Use `rounded-lg` (16px) or circles to soften the technical nature of data cards.
+- **Standard Elements:** 4px (0.25rem) radius for buttons, input fields, and small tags.
+- **Large Containers:** 8px (0.5rem) radius for main dashboard cards and modals.
+- **Contextual Radii:** Status badges and "pills" may use a fully rounded (pill-shaped) radius to distinguish them from functional buttons.
 
 ## Components
 
-### Buttons
-- **Primary:** Background `#768875`, text `#FFFFFF`, 8px radius. High-emphasis actions.
-- **Secondary:** Transparent background, Border `1px solid #768875`, text `#768875`.
-- **Ghost/Tertiary:** No border, text `#2F3231` with subtle grey hover state.
-
-### Cards
-- **Structure:** White background, 24px padding, 8px radius, subtle shadow.
-- **Header:** Include a Newsreader Headline (sm) and often a small icon in the top right for summary cards.
-
-### Badges (Status)
-- **Pill-shaped.** Use background tints of the status color (e.g., light green background with dark green text for "Active").
-- **Font:** `label-md` (All caps, small).
-
-### Inputs & Tables
-- **Inputs:** 1px border (`#E5E0D8`), white background, 8px radius. Labels in `label-md` placed above the input.
-- **Tables:** No vertical borders. Horizontal dividers only (`#E5E0D8`). Header row uses `label-md` typography and a light taupe background (`#F9F6F1`).
-
-### Navigation
-- **Sidebar:** Deep charcoal (`#2F3231`) background. Active links use a left-edge green accent line and white text. Inactive links use 60% opacity white.
+- **Buttons:** 
+    - *Primary:* Solid Sage background with white text.
+    - *Secondary/Ghost:* Border only (1px Sage) or Transparent background with Sage text.
+    - *Warning:* Solid Terracotta background for destructive or critical actions.
+- **Input Fields:** Use a subtle Cream background with a 1px border. On focus, the border transitions to Sage. Use `Work Sans` for placeholder and input text.
+- **Cards:** White or very light Cream background, 1px border (`E5E0D8`), and 8px corner radius. Headlines inside cards should be Serif.
+- **Status Badges:** Use low-saturation background tints (e.g., light sage for "Approve", light amber for "Pending") with darker text of the same hue.
+- **Data Tables:** Clear headers in `Label-MD` style. Row height should be generous (min 56px) with 1px dividers.
+- **Activity Log:** Uses vertical lines and bullet points to show chronological flow, with a clear distinction between the "actor" (bold) and the "action" (regular).

@@ -204,9 +204,9 @@ const PartnerApproval = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-            Partner Approvals
-          </h2>
+            <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+              Persetujuan Mitra
+            </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Review and manage new hotel partner applications and compliance documents.
           </p>

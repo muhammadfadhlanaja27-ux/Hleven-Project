@@ -88,6 +88,7 @@ class RoomCalendarTest extends TestCase
             $t->boolean('smoking_area')->default(false);
             $t->boolean('is_refundable')->default(true);
             $t->boolean('is_active')->default(true);
+            $t->integer('bed_count')->default(1);
             $t->timestamps();
             $t->softDeletes();
         });
