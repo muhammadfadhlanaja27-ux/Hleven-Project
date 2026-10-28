@@ -4,27 +4,32 @@ import { useNavigate } from "react-router-dom";
 const DESTINATIONS = [
   {
     name: "Jakarta",
-    image: "https://images.unsplash.com/photo-1555899434-94d1368aa7af?auto=format&fit=crop&w=800&q=80",
+    // Gambar Monas / Skyline Jakarta
+    image: "https://images.unsplash.com/photo-1555899434-94d1368aa7af?auto=format&fit=crop&w=1200&q=80",
     isLarge: true,
   },
   {
     name: "Yogyakarta",
-    image: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=800&q=80",
+    // Gambar Candi Prambanan / Landmark Jogja
+    image: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=1200&q=80",
     isLarge: true,
   },
   {
     name: "Bandung",
-    image: "https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=600&q=80",
+    // Gambar Gedung Sate / Suasana Kota Bandung
+    image: "https://images.unsplash.com/photo-1611638281871-1063d3e76e1f?q=80&w=1133&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDA%3D",
     isLarge: false,
   },
   {
     name: "Surabaya",
-    image: "https://images.unsplash.com/photo-1601058268499-e52658b8bb88?auto=format&fit=crop&w=600&q=80",
+    // Gambar Skyline Kota Surabaya / Suramadu
+    image: "https://plus.unsplash.com/premium_photo-1690959214934-802fdf410b3e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=NHwxMjA3fDA%3D",
     isLarge: false,
   },
   {
     name: "Bali",
-    image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80",
+    // Gambar Pura Ulun Danu Bedugul / Lanskap Bali
+    image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
     isLarge: false,
   },
 ];
@@ -65,6 +70,7 @@ const TrendingDestinations = () => {
                 src={item.image}
                 alt={item.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
               <div className="absolute top-4 left-4 flex items-center gap-2">
@@ -89,6 +95,7 @@ const TrendingDestinations = () => {
                 src={item.image}
                 alt={item.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
               <div className="absolute top-4 left-4 flex items-center gap-2">

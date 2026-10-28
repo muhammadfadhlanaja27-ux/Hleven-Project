@@ -383,8 +383,19 @@ const HotelDetail = () => {
   return (
     <div className="bg-[#FAF8F5] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-8 pb-20 text-left">
-        {/* Photo Gallery */}
-        <section className="mb-10">
+        
+        {/* Photo Gallery with Floating Back Button */}
+        <section className="mb-10 relative">
+          {/* Tombol X Kembali ke Halaman Sebelumnya */}
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
+            title="Kembali"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+
           {hasHotelPhotos ? (
             photosList.length === 1 ? (
               <div
@@ -606,7 +617,7 @@ const HotelDetail = () => {
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Waktu Check-in &amp; Check-out</h4>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Waktu Check-in & Check-out</h4>
                     <p className="text-xs text-[#5A625B] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
                   </div>
                   <div>
@@ -709,7 +720,7 @@ const HotelDetail = () => {
                   <span className="material-symbols-outlined text-xl">calendar_month</span>
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
-                  <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in &amp; Check-out</label>
+                  <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in & Check-out</label>
                   <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Pilih Tanggal" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
                 </div>
               </div>
@@ -976,10 +987,11 @@ const HotelDetail = () => {
                         key={idx + 1}
                         type="button"
                         onClick={() => setRoomPage(idx + 1)}
-                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${roomPage === idx + 1
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                          roomPage === idx + 1
                             ? "bg-[#5F7161] text-white shadow-xs"
                             : "border border-[#E8E2D9] text-[#5F7161] hover:bg-[#F7F6F2]"
-                          }`}
+                        }`}
                       >
                         {idx + 1}
                       </button>
@@ -1036,7 +1048,7 @@ const HotelDetail = () => {
             onPointerUp={handlePointerUp}
           >
             <button
-              className="absolute top-4 right-4 text-white text-3xl z-10 hover:text-gray-300 cursor-pointer"
+              className="absolute top-4 left-4 text-white text-3xl z-10 hover:text-gray-300 cursor-pointer"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => setLightboxOpen(false)}
             >

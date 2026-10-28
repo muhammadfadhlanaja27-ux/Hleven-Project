@@ -41,9 +41,9 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
         return Array.from(cityMap.values())
             .sort((a, b) => {
                 if (b.starVal !== a.starVal) {
-                    return b.starVal - a.starVal; // Prioritaskan Bintang tertinggi (5 -> 4 -> 3)
+                    return b.starVal - a.starVal;
                 }
-                return b.score - a.score; // Jika bintang sama, urutkan ulasan tertinggi
+                return b.score - a.score;
             })
             .map((item) => item.hotel);
     }, [hotels]);
@@ -86,13 +86,14 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
     return (
         <section className="w-full my-10 text-left">
+            {/* Header dengan background putih */}
             <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-6 text-left">
-                <span className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider block mb-1">
-                    Destinasi Pilihan
-                </span>
-                <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#2D332C]">
+                <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
                     Hotel Terbaik di Setiap Kota
                 </h2>
+                <p className="font-body-md text-sm text-[#444842]">
+                    Rekomendasi akomodasi pilihan dengan ulasan tertinggi di berbagai kota destinasi.
+                </p>
             </div>
 
             {/* Container Carousel Horizontal */}
