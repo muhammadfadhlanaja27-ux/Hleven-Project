@@ -22,6 +22,7 @@ const HotelList = () => {
   const [searchTerm, setSearchTerm] = useState(init.searchTerm || "");
   const [adults, setAdults] = useState(init.adults || 2);
   const [children, setChildren] = useState(init.children || 0);
+  const [rooms, setRooms] = useState(init.rooms || 1);
   const [checkInDate, setCheckInDate] = useState(init.checkInDate || today);
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate || null);
 
@@ -52,7 +53,8 @@ const HotelList = () => {
     const fetchHotels = async () => {
       setLoading(true);
       try {
-        const { data: responseData, fromCache } = await cachedGet("/hotels");
+        const params = new URLSearchParams({ adults, children, rooms });
+        const { data: responseData, fromCache } = await cachedGet(`/hotels?${params.toString()}`);
         if (responseData && (responseData.data || Array.isArray(responseData))) {
           const apiHotels = responseData.data || responseData;
           setHotels(apiHotels);
@@ -71,7 +73,7 @@ const HotelList = () => {
     };
 
     fetchHotels();
-  }, []);
+  }, [adults, children, rooms]);
 
   const handleStarToggle = (star) => {
     setSelectedStars((prev) =>
@@ -96,6 +98,7 @@ const HotelList = () => {
       search: searchTerm,
       adults,
       children,
+      rooms,
       checkInDate,
       checkOutDate,
       ...overrides,
@@ -106,6 +109,7 @@ const HotelList = () => {
     if (next.checkOutDate) params.append("check_out_date", fmtDateStr(next.checkOutDate));
     if (next.adults) params.append("adults", next.adults);
     if (next.children) params.append("children", next.children);
+    if (next.rooms) params.append("rooms", next.rooms);
     setSearchParams(params, { replace: true });
   };
 
@@ -116,10 +120,11 @@ const HotelList = () => {
     syncUrlParams({ checkInDate: start, checkOutDate: end });
   };
 
-  const handleGuestChange = ({ adults: newAdults, children: newChildren }) => {
+  const handleGuestChange = ({ adults: newAdults, children: newChildren, rooms: newRooms }) => {
     setAdults(newAdults);
     setChildren(newChildren);
-    syncUrlParams({ adults: newAdults, children: newChildren });
+    setRooms(newRooms);
+    syncUrlParams({ adults: newAdults, children: newChildren, rooms: newRooms });
   };
 
   const handleSearchSubmit = () => {
@@ -299,7 +304,7 @@ const HotelList = () => {
               <GuestSelector
                 adults={adults}
                 children={children}
-                rooms={1}
+                rooms={rooms}
                 onGuestChange={handleGuestChange}
               />
             </div>

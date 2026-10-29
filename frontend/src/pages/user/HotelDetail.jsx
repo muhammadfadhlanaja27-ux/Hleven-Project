@@ -11,6 +11,7 @@ import {
 } from "../../utils/facilities";
 import GuestSelector from "../../components/common/GuestSelector";
 import ReviewSection from "../../components/ReviewSection";
+import Modal from "../../components/common/Modal";
 import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HotelDetail = () => {
@@ -20,6 +21,49 @@ const HotelDetail = () => {
 
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionType, setActionType] = useState(null);
+  const [showRoomAlert, setShowRoomAlert] = useState(false);
+  const [alertData, setAlertData] = useState({
+    minRooms: 0,
+    finalRooms: 0,
+    totalTamu: 0,
+    targetHotelId: null,
+    targetRoomId: null,
+  });
+
+  const handleRoomNavigation = (room, isBooking) => {
+    const totalTamu = Number(filterAdults) + Number(filterChildren);
+    const kapasitasPerKamar = Number(room.capacity_adult || 2) + Number(room.capacity_child || 0);
+    const minRoomsNeeded = Math.ceil(totalTamu / Math.max(1, kapasitasPerKamar));
+    const finalRooms = Math.max(rooms, minRoomsNeeded);
+    if (minRoomsNeeded > rooms) {
+      setAlertData({
+        minRooms: minRoomsNeeded,
+        finalRooms,
+        totalTamu,
+        targetHotelId: hotel?.id || id || 1,
+        targetRoomId: room?.id || 101,
+      });
+      setActionType(isBooking ? "book" : "detail");
+      setShowRoomAlert(true);
+      return;
+    }
+    const targetHotelId = hotel?.id || id || 1;
+    const targetRoomId = room?.id || 101;
+    const qs = new URLSearchParams();
+    if (filterAdults) qs.set("adults", String(filterAdults));
+    if (filterChildren) qs.set("children", String(filterChildren));
+    if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
+    if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+    qs.set("rooms", String(isBooking ? rooms : finalRooms));
+    const q = qs.toString();
+    if (isBooking) {
+      navigate(`/booking/${targetHotelId}/${targetRoomId}${q ? `?${q}` : ""}`);
+    } else {
+      navigate(`/hotels/${targetHotelId}/rooms/${targetRoomId}${q ? `?${q}` : ""}`);
+    }
+  };
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [scale, setScale] = useState(1);
@@ -39,6 +83,14 @@ const HotelDetail = () => {
   const [filterCheckIn, setFilterCheckIn] = useState(init.checkInDate);
   const [filterCheckOut, setFilterCheckOut] = useState(init.checkOutDate);
   const [rooms, setRooms] = useState(init.rooms);
+  
+  // Ekstraksi opsi filter unik dari data kamar
+  const { filterOptionsRoomTypes, filterOptionsBedTypes } = useMemo(() => {
+    if (!hotel || !hotel.rooms) return { filterOptionsRoomTypes: [], filterOptionsBedTypes: [] };
+    const roomTypes = [...new Set(hotel.rooms.map((r) => r.type || "Standard"))];
+    const bedTypes = [...new Set(hotel.rooms.map((r) => r.bed || "1 King Bed"))];
+    return { filterOptionsRoomTypes: roomTypes, filterOptionsBedTypes: bedTypes };
+  }, [hotel]);
 
   useEffect(() => {
     saveSearchState({
@@ -205,8 +257,8 @@ const HotelDetail = () => {
     if (!hotel || !hotel.rooms) return [];
 
     return hotel.rooms.filter((room) => {
-      if (filterAdults && Number(room.capacity_adult) < Number(filterAdults)) return false;
-      if (filterChildren && Number(room.capacity_child) < Number(filterChildren)) return false;
+      // Kita hapus pengecekan return false untuk kapasitas, 
+      // supaya semua kamar muncul di hasil pencarian.
       if (filterRoomType !== "all" && room.type?.toLowerCase() !== filterRoomType.toLowerCase()) return false;
       if (filterRoomName.trim() && !room.name.toLowerCase().includes(filterRoomName.toLowerCase())) return false;
       if (filterBedType !== "all") {
@@ -370,8 +422,9 @@ const HotelDetail = () => {
     if (filterChildren) qs.set("children", String(filterChildren));
     if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
     if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+    qs.set("rooms", String(rooms));
     const q = qs.toString();
-    navigate(`/booking/${targetHotelId}/${targetRoomId}${q ? `?${q}` : ""}`);
+    navigate(`/hotels/${targetHotelId}/rooms/${targetRoomId}${q ? `?${q}` : ""}`);
   };
 
   const hasActiveFilters =
@@ -389,8 +442,19 @@ const HotelDetail = () => {
   return (
     <div className="bg-[#FAF8F5] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-8 pb-20 text-left">
-        {/* Photo Gallery */}
-        <section className="mb-10">
+        
+        {/* Photo Gallery with Floating Back Button */}
+        <section className="mb-10 relative">
+          {/* Tombol X Kembali ke Halaman Sebelumnya */}
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
+            title="Kembali"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+
           {hasHotelPhotos ? (
             photosList.length === 1 ? (
               <div
@@ -643,7 +707,7 @@ const HotelDetail = () => {
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Waktu Check-in &amp; Check-out</h4>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Waktu Check-in & Check-out</h4>
                     <p className="text-xs text-[#5A625B] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
                   </div>
                   <div>
@@ -746,11 +810,22 @@ const HotelDetail = () => {
                   <span className="material-symbols-outlined text-xl">calendar_month</span>
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
-                  <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in &amp; Check-out</label>
+                  <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in & Check-out</label>
                   <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Pilih Tanggal" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
                 </div>
               </div>
-              <GuestSelector adults={Number(filterAdults) || 2} children={Number(filterChildren) || 0} rooms={rooms} onGuestChange={handleGuestChange} />
+              <GuestSelector 
+                adults={Number(filterAdults) || 2} 
+                children={Number(filterChildren) || 0} 
+                rooms={rooms} 
+                onGuestChange={(g) => {
+                  setFilterAdults(g.adults);
+                  setFilterChildren(g.children);
+                  setRooms(g.rooms);
+                }}
+                capacityAdult={Math.max(...(hotel?.room_types?.map(r => r.capacity_adult) || [4]))} 
+                capacityChild={Math.max(...(hotel?.room_types?.map(r => r.capacity_child) || [2]))} 
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
@@ -768,9 +843,9 @@ const HotelDetail = () => {
                     className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
                   >
                     <option value="all">Semua Tipe</option>
-                    <option value="standard">Standar</option>
-                    <option value="deluxe">Deluxe</option>
-                    <option value="suite">Suite</option>
+                    {filterOptionsRoomTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -787,10 +862,9 @@ const HotelDetail = () => {
                     className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
                   >
                     <option value="all">Semua Jenis Kasur</option>
-                    <option value="king">King Bed</option>
-                    <option value="queen">Queen Bed</option>
-                    <option value="twin">Twin Bed</option>
-                    <option value="single">Single Bed</option>
+                    {filterOptionsBedTypes.map((bed) => (
+                      <option key={bed} value={bed}>{bed}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -933,7 +1007,24 @@ const HotelDetail = () => {
                         </div>
                       </div>
 
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#F0EBE1] gap-4">
+                        {/* Peringatan Kapasitas */}
+                        {(() => {
+                          const totalTamu = Number(filterAdults) + Number(filterChildren);
+    const kapasitasPerKamar = Number(room.capacity_adult || 0) + Number(room.capacity_child || 0);
+    // Jika kapasitas 0, fallback ke 1 agar tidak division by zero
+    const effectiveCapacity = Math.max(1, kapasitasPerKamar);
+    const minRoomsNeeded = Math.ceil(totalTamu / effectiveCapacity);
+                          if (minRoomsNeeded > rooms) {
+                            return (
+                              <p className="text-xs text-amber-600 font-bold mt-2 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                ⚠️ Minimal perlu {minRoomsNeeded} kamar untuk jumlah tamu ini.
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#F0EBE1] gap-4">
                         <div>
                           <p className="text-xs text-[#8A948C] line-through">
                             Rp {weekendPrice.toLocaleString("id-ID")} (Weekend)
@@ -967,17 +1058,7 @@ const HotelDetail = () => {
                         <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
                           <button
                             type="button"
-                            onClick={() => {
-                              const targetHotelId = hotel?.id || id || 1;
-                              const targetRoomId = room?.id || 101;
-                              const qs = new URLSearchParams();
-                              if (filterAdults) qs.set("adults", String(filterAdults));
-                              if (filterChildren) qs.set("children", String(filterChildren));
-                              if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
-                              if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
-                              const q = qs.toString();
-                              navigate(`/hotels/${targetHotelId}/rooms/${targetRoomId}${q ? `?${q}` : ""}`);
-                            }}
+onClick={() => handleRoomNavigation(room, false)}
                             className="w-full sm:w-auto border border-[#5F7161] text-[#5F7161] font-label-md text-xs font-bold px-5 py-3 rounded-2xl hover:bg-[#5F7161]/10 transition-colors cursor-pointer text-center"
                           >
                             Detail Kamar
@@ -1028,10 +1109,11 @@ const HotelDetail = () => {
                         key={idx + 1}
                         type="button"
                         onClick={() => setRoomPage(idx + 1)}
-                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${roomPage === idx + 1
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                          roomPage === idx + 1
                             ? "bg-[#5F7161] text-white shadow-xs"
                             : "border border-[#E8E2D9] text-[#5F7161] hover:bg-[#F7F6F2]"
-                          }`}
+                        }`}
                       >
                         {idx + 1}
                       </button>
@@ -1071,7 +1153,30 @@ const HotelDetail = () => {
         <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} onReviewSubmitted={handleReviewSubmitted} />
       </main>
 
-      {/* Lightbox */}
+              {showRoomAlert && (
+          <Modal
+            isOpen={showRoomAlert}
+            onClose={() => setShowRoomAlert(false)}
+            title="Kapasitas Kamar"
+            message={`Kamar ini membutuhkan ${alertData.minRooms} kamar untuk menampung ${alertData.totalTamu} tamu. Lanjutkan dengan ${alertData.finalRooms} kamar?`}
+            onConfirm={() => {
+              const qs = new URLSearchParams();
+              if (filterAdults) qs.set('adults', String(filterAdults));
+              if (filterChildren) qs.set('children', String(filterChildren));
+              if (filterCheckIn) qs.set('check_in', fmtDateParam(filterCheckIn));
+              if (filterCheckOut) qs.set('check_out', fmtDateParam(filterCheckOut));
+              qs.set('rooms', String(alertData.finalRooms));
+              const q = qs.toString();
+              if (actionType === 'book') {
+                navigate(`/booking/${alertData.targetHotelId}/${alertData.targetRoomId}${q ? `?${q}` : ''}`);
+              } else {
+                navigate(`/hotels/${alertData.targetHotelId}/rooms/${alertData.targetRoomId}${q ? `?${q}` : ''}`);
+              }
+              setShowRoomAlert(false);
+            }}
+            onCancel={() => setShowRoomAlert(false)}
+          />
+        )}
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
@@ -1088,7 +1193,7 @@ const HotelDetail = () => {
             onPointerUp={handlePointerUp}
           >
             <button
-              className="absolute top-4 right-4 text-white text-3xl z-10 hover:text-gray-300 cursor-pointer"
+              className="absolute top-4 left-4 text-white text-3xl z-10 hover:text-gray-300 cursor-pointer"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => setLightboxOpen(false)}
             >

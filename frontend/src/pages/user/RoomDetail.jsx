@@ -149,10 +149,14 @@ const RoomDetail = () => {
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
   const [adults, setAdults] = useState(init.adults);
   const [children, setChildren] = useState(init.children);
+  const [rooms, setRooms] = useState(() => {
+    const r = searchParams.get("rooms");
+    return r ? Math.max(1, Number(r)) : init.rooms;
+  });
 
   useEffect(() => {
-    saveSearchState({ checkIn: checkInDate, checkOut: checkOutDate, adults, children });
-  }, [checkInDate, checkOutDate, adults, children]);
+    saveSearchState({ checkIn: checkInDate, checkOut: checkOutDate, adults, children, rooms });
+  }, [checkInDate, checkOutDate, adults, children, rooms]);
 
   const handleDateRangeChange = (dates) => {
     const [start, end] = dates;
@@ -160,10 +164,12 @@ const RoomDetail = () => {
     setCheckOutDate(end);
   };
 
-  const handleGuestChange = ({ adults: a, children: c }) => {
+  const handleGuestChange = ({ adults: a, children: c, rooms: r }) => {
     setAdults(a);
     setChildren(c);
+    setRooms(r);
   };
+
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
@@ -185,37 +191,37 @@ const RoomDetail = () => {
             const roomImage = photoPath ? getStorageUrl(photoPath) : null;
 
             const facilities = matchedRoomType.facilities || [];
-const policies = matchedRoomType.policies || "";
-let liveRooms = [];
-if (checkInDate && checkOutDate) {
-  const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
-  const { data: liveResponse } = await cachedGet(`/hotels/${targetHotelId}/rooms`, {
-    params: { check_in: fmtDateParam(checkInDate), check_out: fmtDateParam(checkOutDate) },
-  });
-  liveRooms = liveResponse?.data || [];
-}
-const liveStock = (liveRooms.find(r=>Number(r.id)===Number(matchedRoomType.id))||{}).available_stock;
-const mappedRoom = {
-  id: matchedRoomType.id,
-  name: matchedRoomType.name,
-  price: matchedRoomType.weekday_price,
-  weekday_price: matchedRoomType.weekday_price,
-  weekend_price: matchedRoomType.weekend_price,
-  thumbnail: roomImage,
-  capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
-  capacity_adult: matchedRoomType.capacity_adult,
-  capacity_child: matchedRoomType.capacity_child,
-  description: matchedRoomType.description,
-  bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
-  bed_count: Number(matchedRoomType.bed_count || 1),
-  breakfast: matchedRoomType.breakfast,
-  smoking_area: matchedRoomType.smoking_area,
-  is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
-  stock: liveStock ?? matchedRoomType.stock,
-  policies,
-  facilities,
-  photos: matchedRoomType.photos || [],
-};
+            const policies = matchedRoomType.policies || "";
+            let liveRooms = [];
+            if (checkInDate && checkOutDate) {
+              const fmtDateParam = (d) => { if (!d || isNaN(d.getTime())) return ""; const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; };
+              const { data: liveResponse } = await cachedGet(`/hotels/${targetHotelId}/rooms`, {
+                params: { check_in: fmtDateParam(checkInDate), check_out: fmtDateParam(checkOutDate) },
+              });
+              liveRooms = liveResponse?.data || [];
+            }
+            const liveStock = (liveRooms.find(r=>Number(r.id)===Number(matchedRoomType.id))||{}).available_stock;
+            const mappedRoom = {
+              id: matchedRoomType.id,
+              name: matchedRoomType.name,
+              price: matchedRoomType.weekday_price,
+              weekday_price: matchedRoomType.weekday_price,
+              weekend_price: matchedRoomType.weekend_price,
+              thumbnail: roomImage,
+              capacity: `${matchedRoomType.capacity_adult} Dewasa, ${matchedRoomType.capacity_child} Anak`,
+              capacity_adult: matchedRoomType.capacity_adult,
+              capacity_child: matchedRoomType.capacity_child,
+              description: matchedRoomType.description,
+              bed: matchedRoomType.bed || (matchedRoomType.description?.includes("Bed") ? matchedRoomType.description : "1 King Bed"),
+              bed_count: Number(matchedRoomType.bed_count || 1),
+              breakfast: matchedRoomType.breakfast,
+              smoking_area: matchedRoomType.smoking_area,
+              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
+              stock: liveStock ?? matchedRoomType.stock,
+              policies,
+              facilities,
+              photos: matchedRoomType.photos || [],
+            };
 
             setHotel(apiHotel);
             setRoom(mappedRoom);
@@ -413,9 +419,19 @@ const mappedRoom = {
           </div>
         </section>
 
-        {/* Hero Photo Mosaic Gallery */}
+        {/* Hero Photo Mosaic Gallery with Floating Back Button */}
         {photosList.length > 0 ? (
-          <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm">
+          <section className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[400px] md:h-[550px] rounded-2xl overflow-hidden shadow-sm relative">
+            {/* Tombol X Kembali ke Halaman Sebelumnya */}
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
+              title="Kembali"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
             <div
               className="md:col-span-2 md:row-span-2 relative group overflow-hidden bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] cursor-pointer"
               onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
@@ -460,7 +476,17 @@ const mappedRoom = {
             )}
           </section>
         ) : (
-          <section className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm">
+          <section className="h-[350px] md:h-[450px] rounded-2xl bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] border-2 border-dashed border-[#c4c8be] flex flex-col items-center justify-center text-center p-8 shadow-sm relative">
+            {/* Tombol X Kembali ke Halaman Sebelumnya */}
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
+              title="Kembali"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
             <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">image_not_supported</span>
             <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">Belum Ada Foto Kamar</h3>
             <p className="font-body-md text-sm text-[#444842] max-w-md">
@@ -538,7 +564,7 @@ const mappedRoom = {
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-semibold text-[#1e1b16] text-sm">Waktu Check-in &amp; Check-out</h4>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Waktu Check-in & Check-out</h4>
                     <p className="text-xs text-[#444842] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
                   </div>
                   <div>
@@ -602,7 +628,7 @@ const mappedRoom = {
                 </div>
               )}
 
-              {/* Date Range + GuestSelector — mirror LandingPage L228 */}
+              {/* Date Range + GuestSelector */}
               <div className="flex flex-col gap-4 mb-6">
                 <div className="w-full group flex items-center gap-3 bg-[#FDF6ED] hover:bg-[#EFECE6] px-4 py-3 rounded-xl border border-[#DCCFC0] focus-within:bg-white focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873]/20 transition-all text-left relative z-40">
                   <div className="w-10 h-10 rounded-xl bg-[#778873]/10 group-hover:bg-[#778873] text-[#778873] group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
@@ -610,7 +636,7 @@ const mappedRoom = {
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">
-                      Check-in &amp; Check-out
+                      Check-in & Check-out
                     </label>
                     <DatePicker
                       selectsRange={true}
@@ -627,17 +653,29 @@ const mappedRoom = {
                   </div>
                 </div>
 
-                <GuestSelector adults={adults} children={children} rooms={1} onGuestChange={handleGuestChange} />
+                <GuestSelector 
+                  adults={adults} 
+                  children={children} 
+                  rooms={rooms} 
+                  onGuestChange={handleGuestChange} 
+                  capacityAdult={room?.capacity_adult || 2}
+                  capacityChild={room?.capacity_child || 2}
+                />
               </div>
 
               {/* Dynamic Price Breakdown */}
               <div className="space-y-3 mb-6 font-body-md text-xs text-[#444842]">
                 <div className="flex justify-between">
-                  <span>Rp {Math.round(subtotalPrice / nightsCount).toLocaleString("id-ID")} x {nightsCount} malam</span>
+                  <span>
+                    Tarif Kamar
+                    <span className="text-[#444842] text-xs block">
+                      Rp {Math.round(subtotalPrice / nightsCount / rooms).toLocaleString("id-ID")} x {nightsCount} malam x {rooms} kamar
+                    </span>
+                  </span>
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Pajak &amp; Biaya Layanan ({taxRate}%)</span>
+                  <span>Pajak & Biaya Layanan ({taxRate}%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
                 <hr className="border-[#DCCFC0]/50 my-2" />
@@ -684,24 +722,24 @@ const mappedRoom = {
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           >
-              <button
-                className="absolute top-4 right-4 text-white text-3xl z-20 hover:text-gray-300 bg-black/20 p-2 rounded-full transition-colors"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => setLightboxOpen(false)}
-              >
-                ✕
-              </button>
+            <button
+              className="absolute top-4 left-4 text-white text-3xl z-20 hover:text-gray-300 bg-black/20 p-2 rounded-full transition-colors cursor-pointer"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => setLightboxOpen(false)}
+            >
+              ✕
+            </button>
             {photosList.length > 1 && (
               <>
                 <button
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300 cursor-pointer"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => setLightboxIndex((i) => (i - 1 + photosList.length) % photosList.length)}
                 >
                   ‹
                 </button>
                 <button
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300 cursor-pointer"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => setLightboxIndex((i) => (i + 1) % photosList.length)}
                 >

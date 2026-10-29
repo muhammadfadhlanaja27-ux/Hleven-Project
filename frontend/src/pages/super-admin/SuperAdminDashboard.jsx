@@ -231,7 +231,7 @@ const SuperAdminDashboard = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl md:text-4xl font-semibold text-[#4f604f] tracking-tight">
-            Ringkasan Sistem
+            Dashboard
           </h2>
           <p className="text-sm text-[#434842] mt-1">
             Terakhir diperbarui: Hari ini pukul {lastUpdatedTime} WIB

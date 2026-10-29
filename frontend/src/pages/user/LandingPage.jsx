@@ -250,7 +250,8 @@ const LandingPage = () => {
                 children={children}
                 rooms={rooms}
                 onGuestChange={handleGuestChange}
-                onAddRoomRequest={handleAddRoomRequest}
+                capacityAdult={2}
+                capacityChild={2}
               />
             </div>
 

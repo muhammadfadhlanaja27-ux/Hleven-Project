@@ -28,6 +28,18 @@ class HotelController extends Controller
             $query->where('name', 'like', '%'.$request->search.'%');
         }
 
+        if ($request->has(['adults', 'children', 'rooms'])) {
+            $adults = (int) $request->adults;
+            $children = (int) $request->children;
+
+            $query->whereHas('roomTypes', function ($q) use ($adults, $children) {
+                // Jangan membatasi hasil pencarian berdasarkan kapasitas per kamar secara kaku.
+                // Selama kamar aktif, tampilkan saja. Validasi jumlah kamar/kapasitas 
+                // akan dilakukan di detail kamar (saran otomatis) dan saat booking (validasi akhir).
+                $q->where('is_active', true);
+            });
+        }
+
         $hotels = $query->get();
 
         return response()->json([

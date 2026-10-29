@@ -28,11 +28,10 @@ return new class extends Migration
 
         if (! Schema::hasColumn('room_types', 'bed_type_id')) {
             Schema::table('room_types', function (Blueprint $table) {
-                $table->foreignId('bed_type_id')
-                    ->nullable()
-                    ->after('bed')
-                    ->constrained('bed_types')
-                    ->nullOnDelete();
+$table->foreignId('bed_type_id')
+                ->nullable()
+                ->constrained('bed_types')
+                ->nullOnDelete();
             });
         }
 

@@ -14,6 +14,7 @@ export default function AdminHotelLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const [loadingNotif, setLoadingNotif] = useState(false);
+  const [showSuspendPopup, setShowSuspendPopup] = useState(false);
   const notifRef = useRef(null);
   const [avatarErrored, setAvatarErrored] = useState(false);
 
@@ -292,7 +293,38 @@ export default function AdminHotelLayout() {
         </header>
 
         {/* Page Content Canvas */}
-        <main className="flex-1 overflow-y-auto bg-[#fcf9f5]">
+        <main className="flex-1 overflow-y-auto bg-[#fcf9f5] relative">
+          {showSuspendPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border border-red-100">
+                <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-5 shadow-inner">
+                  <span className="material-symbols-outlined text-3xl">gpp_bad</span>
+                </div>
+                <h2 className="font-['Newsreader',serif] text-2xl font-bold text-[#1C251D] mb-2">Hotel Anda Disuspen / Diblokir</h2>
+                <p className="text-sm text-[#6B6E6A] mb-6 leading-relaxed">
+                  Akun hotel Anda saat ini berstatus diblokir oleh Super Admin karena beberapa peringatan atau kebijakan operasional. Seluruh operasional manajemen kamar ditangguhkan.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      setShowSuspendPopup(false);
+                      navigate('/admin/suspended');
+                    }}
+                    className="w-full py-3 px-4 rounded-xl bg-[#506147] hover:bg-[#425039] text-white font-semibold text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">gavel</span>
+                    Buka Halaman Banding & Pemulihan
+                  </button>
+                  <button
+                    onClick={() => setShowSuspendPopup(false)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-[#DCCFC0] text-[#6B6E6A] hover:bg-[#FDF6ED] font-semibold text-xs transition-colors"
+                  >
+                    Tutup Sementara
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

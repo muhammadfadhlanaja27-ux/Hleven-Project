@@ -273,6 +273,15 @@ const BookingPage = () => {
     return diffDays > 0 ? diffDays : 1;
   }, [checkInDate, checkOutDate]);
 
+  // Update roomQty saat load pertama kali berdasarkan URL params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const roomsFromUrl = params.get('rooms');
+    if (roomsFromUrl) {
+      setRoomQty(Number(roomsFromUrl));
+    }
+  }, [location.search]);
+
   useEffect(() => {
     let active = true;
 
@@ -326,6 +335,10 @@ const BookingPage = () => {
   const subtotalPrice = Number(priceQuote?.subtotal ?? roomPrice * nightsCount * roomQty);
   const taxAndFees = Number(priceQuote?.tax ?? (subtotalPrice * taxRate) / 100);
   const totalPrice = Number(priceQuote?.grand_total ?? subtotalPrice + taxAndFees);
+
+  // Formatted price string for info
+  const pricePerNight = Number(room?.price || room?.weekday_price || 350000);
+  const priceInfoText = `Rp ${pricePerNight.toLocaleString("id-ID")} x ${nightsCount} malam x ${roomQty} kamar`;
 
   const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -934,8 +947,8 @@ const BookingPage = () => {
                 )}
                 <div className="flex justify-between items-center">
                   <span>
-                    Tarif Kamar ({nightsCount} Malam x {roomQty} Kamar)
-                    <span className="text-[#444842] text-xs block">Rp {Math.round(subtotalPrice / Math.max(1, nightsCount * roomQty)).toLocaleString("id-ID")} / malam</span>
+                    Tarif Kamar
+                    <span className="text-[#444842] text-xs block">{priceInfoText}</span>
                   </span>
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>

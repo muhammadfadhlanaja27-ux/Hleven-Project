@@ -24,7 +24,7 @@ export default function WalletOverview() {
   return (
     <section className="space-y-6">
       <header>
-        <h1 className="text-3xl font-semibold text-stone-900">Saldo & Komisi</h1>
+        <h1 className="text-3xl font-semibold text-stone-900">Manajemen Saldo & Komisi Hotel</h1>
         <p className="mt-1 text-stone-600">Ringkasan komisi platform dan status penarikan hotel.</p>
       </header>
       <div className="grid gap-4 md:grid-cols-3">

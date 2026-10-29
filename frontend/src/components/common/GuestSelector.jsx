@@ -1,20 +1,37 @@
 import React, { useState } from "react";
 
-const GuestSelector = ({ adults, children, rooms, onGuestChange, onAddRoomRequest }) => {
+const GuestSelector = ({ adults, children, rooms, onGuestChange, capacityAdult, capacityChild }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [pendingGuests, setPendingGuests] = useState({ adults, children, rooms });
+
+  // Gunakan kapasitas default jika tidak disediakan
+  const capA = capacityAdult || 2;
+  const capC = capacityChild || 2;
 
   const handleAdultsChange = (delta) => {
     const newAdults = Math.max(1, adults + delta);
-    onGuestChange({ adults: newAdults, children, rooms });
-
-    // Check if adults >= 5 and request room addition
-    if (newAdults >= 5 && adults < 5) {
-      onAddRoomRequest?.();
+    
+    // Validasi: Hanya pemicu modal jika total tamu melebihi kapasitas total kamar yang dipilih
+    if ((newAdults + children) > (rooms * (capA + capC))) {
+      setPendingGuests({ adults: newAdults, children, rooms: rooms + 1 });
+      setShowRoomModal(true);
+      return;
     }
+    
+    onGuestChange({ adults: newAdults, children, rooms });
   };
 
   const handleChildrenChange = (delta) => {
     const newChildren = Math.max(0, children + delta);
+    
+    // Validasi: Hanya pemicu modal jika total tamu melebihi kapasitas total kamar
+    if ((adults + newChildren) > (rooms * (capA + capC))) {
+      setPendingGuests({ adults, children: newChildren, rooms: rooms + 1 });
+      setShowRoomModal(true);
+      return;
+    }
+    
     onGuestChange({ adults, children: newChildren, rooms });
   };
 
@@ -23,8 +40,46 @@ const GuestSelector = ({ adults, children, rooms, onGuestChange, onAddRoomReques
     onGuestChange({ adults, children, rooms: newRooms });
   };
 
+  const confirmAddRoom = (addRoom) => {
+    const targetRooms = addRoom ? pendingGuests.rooms : rooms;
+    onGuestChange({
+      adults: pendingGuests.adults,
+      children: pendingGuests.children,
+      rooms: targetRooms
+    });
+    setShowRoomModal(false);
+  };
+
   return (
     <div className="relative w-full">
+      {/* Modal Peringatan Tambah Kamar - Fixed Fullscreen di atas segalanya */}
+      {showRoomModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-200 border border-[#DCCFC0]">
+            <div className="w-12 h-12 rounded-full bg-[#778873]/10 text-[#778873] flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-2xl">meeting_room</span>
+            </div>
+            <h3 className="font-bold text-lg text-[#1C251D] mb-2">Tambah Kamar?</h3>
+            <p className="text-sm text-[#444842] mb-6 leading-relaxed">
+              Total tamu melebihi kapasitas standar per kamar (maksimal 4 orang per kamar). Apakah Anda ingin menambah 1 kamar lagi agar lebih nyaman?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => confirmAddRoom(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#DCCFC0] text-[#444842] hover:bg-[#FDF6ED] font-semibold text-sm transition-colors"
+              >
+                Tetap Saja
+              </button>
+              <button
+                onClick={() => confirmAddRoom(true)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[#778873] text-white hover:bg-[#50604d] font-semibold text-sm transition-colors shadow-sm"
+              >
+                Ya, Tambah Kamar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Display Button — same size as Check-in box (px-4 py-3, rounded-xl, w-10 icon) */}
       <div
         onClick={() => setIsOpen(!isOpen)}

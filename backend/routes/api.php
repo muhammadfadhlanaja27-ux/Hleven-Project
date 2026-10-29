@@ -24,6 +24,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdminPayoutController;
+use App\Http\Controllers\SuperAdminPlatformPayoutController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\WarningController;
@@ -263,6 +264,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
     Route::prefix('payouts')->group(function () {
         Route::get('/', [SuperAdminPayoutController::class, 'index']);
         Route::patch('/{id}/status', [SuperAdminPayoutController::class, 'updateStatus']);
+    });
+
+    // --- Platform Commission Payouts (Super Admin) ---
+    Route::prefix('platform-payouts')->group(function () {
+        Route::get('/', [SuperAdminPlatformPayoutController::class, 'index']);
+        Route::post('/', [SuperAdminPlatformPayoutController::class, 'store']);
+        Route::put('/settings', [SuperAdminPlatformPayoutController::class, 'updateSettings']);
     });
 
     // --- Partner Application (Super Admin) ---
