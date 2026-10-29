@@ -7,8 +7,10 @@ use App\Models\City;
 use App\Models\Hotel;
 use App\Models\HotelPhoto;
 use App\Services\FileStorageService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -79,6 +81,87 @@ class HotelController extends Controller
             'message' => 'Profil hotel berhasil dimuat',
             'data' => $hotel,
         ], 200);
+    }
+
+    public function locationArea(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+
+        if (! $hotel) {
+            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+        }
+
+        $hasCoordinates = is_numeric($hotel->latitude) && is_numeric($hotel->longitude);
+        $endpoint = $hasCoordinates
+            ? 'https://nominatim.openstreetmap.org/reverse'
+            : 'https://nominatim.openstreetmap.org/search';
+        $params = $hasCoordinates
+            ? [
+                'lat' => $hotel->latitude,
+                'lon' => $hotel->longitude,
+                'zoom' => 10,
+                'format' => 'jsonv2',
+                'addressdetails' => 1,
+            ]
+            : [
+                'q' => $hotel->name.', Indonesia',
+                'format' => 'jsonv2',
+                'addressdetails' => 1,
+                'limit' => 1,
+            ];
+
+        try {
+            $response = Http::acceptJson()
+                ->withUserAgent('HLevenHotelPlatform/1.0')
+                ->timeout(8)
+                ->get($endpoint, $params);
+        } catch (ConnectionException $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Layanan pencarian lokasi OpenStreetMap sedang tidak dapat diakses.',
+            ], 503);
+        }
+
+        if (! $response->successful()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Layanan pencarian lokasi OpenStreetMap mengembalikan kesalahan.',
+            ], 502);
+        }
+
+        $result = $hasCoordinates ? $response->json() : $response->json('0');
+        $address = is_array($result) ? ($result['address'] ?? []) : [];
+        $locality = $address['city']
+            ?? $address['town']
+            ?? $address['village']
+            ?? $address['municipality']
+            ?? $address['county']
+            ?? $address['state_district']
+            ?? null;
+        $region = $address['state'] ?? $address['province'] ?? $address['region'] ?? null;
+        $country = $address['country'] ?? null;
+        $locationArea = collect([$locality, $region, $country])
+            ->filter(fn ($part) => is_string($part) && trim($part) !== '')
+            ->unique(fn ($part) => mb_strtolower(trim($part)))
+            ->implode(', ');
+
+        if ($locationArea === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lokasi hotel tidak ditemukan di OpenStreetMap. Pastikan nama hotel atau koordinatnya benar.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'location_area' => $locationArea,
+                'source' => 'OpenStreetMap',
+            ],
+        ]);
     }
 
     public function uploadLogo(Request $request): JsonResponse
@@ -178,6 +261,8 @@ class HotelController extends Controller
 
         $request->validate([
             'name' => 'sometimes|string|max:255',
+            'property_type' => 'nullable|string|max:100',
+            'year_built' => 'nullable|integer|min:1800|max:'.now()->year,
             'description' => 'nullable|string',
             'address' => 'sometimes|string',
             'policies' => 'nullable|string|max:5000',
@@ -204,7 +289,7 @@ class HotelController extends Controller
         }
 
         $hotel->update($request->only([
-            'name', 'description', 'address', 'latitude', 'longitude', 'policies', 'tax_rate',
+            'name', 'property_type', 'year_built', 'description', 'address', 'latitude', 'longitude', 'policies', 'tax_rate',
             'bank_name', 'bank_account_number', 'bank_account_name',
         ]));
 

@@ -8,7 +8,7 @@ import TrendingDestinations from "../../components/landing/TrendingDestinations"
 import Pagination from "../../components/common/Pagination";
 import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
-import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
+import { fmtDateStr, getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
 const ITEMS_PER_PAGE = 9;
@@ -83,8 +83,8 @@ const LandingPage = () => {
   const buildSearchUrl = () => {
     const params = new URLSearchParams();
     if (searchTerm.trim()) params.append("search", searchTerm.trim());
-    if (checkInDate) params.append("check_in_date", checkInDate.toISOString().split("T")[0]);
-    if (checkOutDate) params.append("check_out_date", checkOutDate.toISOString().split("T")[0]);
+    if (checkInDate) params.append("check_in_date", fmtDateStr(checkInDate));
+    if (checkOutDate) params.append("check_out_date", fmtDateStr(checkOutDate));
     if (adults) params.append("adults", adults);
     if (children) params.append("children", children);
     return `/hotels${params.toString() ? `?${params.toString()}` : ""}`;

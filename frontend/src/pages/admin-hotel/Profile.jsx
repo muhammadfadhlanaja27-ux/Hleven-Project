@@ -236,33 +236,51 @@ export default function Profile() {
   // ─── Image Handlers ─────────────────────────────────────────────────────────
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Avatar image size must be under 5MB.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfile((prev) => normalizeProfile({ ...prev, avatar: reader.result }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
 
-      try {
-        const formData = new FormData();
-        formData.append("avatar", file);
-        const safeName = String(profile?.name || "").trim();
-        const nameParts = safeName ? safeName.split(/\s+/) : ["Admin"];
-        formData.append("first_name", nameParts[0]);
-        formData.append("last_name", nameParts.slice(1).join(" ") || "");
-        formData.append("email", profile?.email || "");
-        await api.put("/user/profile", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        toast.success("Profile photo updated successfully.");
-      } catch (err) {
-        console.error(err);
-        toast.error("Gagal mengunggah foto profil ke server.");
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Avatar image size must be under 2MB.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("_method", "PUT");
+      formData.append("avatar", file);
+      const safeName = String(profile?.name || "").trim();
+      const nameParts = safeName ? safeName.split(/\s+/) : ["Admin"];
+      formData.append("first_name", nameParts[0]);
+      formData.append("last_name", nameParts.slice(1).join(" ") || "");
+      formData.append("email", profile?.email || "");
+
+      const response = await api.post("/user/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const updatedUser = response.data?.user || response.data?.data;
+      if (!updatedUser?.avatar) {
+        throw new Error("Respons server tidak berisi foto profil yang tersimpan.");
       }
+
+      const avatarUrl = updatedUser.avatar_url || getStorageUrl(updatedUser.avatar);
+      setProfile((prev) => normalizeProfile({
+        ...prev,
+        avatar: avatarUrl,
+      }));
+
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      localStorage.setItem("user", JSON.stringify({
+        ...storedUser,
+        avatar: updatedUser.avatar,
+        avatar_url: updatedUser.avatar_url || avatarUrl,
+      }));
+      window.dispatchEvent(new Event("userUpdated"));
+      toast.success("Profile photo updated successfully.");
+    } catch (err) {
+      console.error("Gagal mengunggah foto profil:", err);
+      toast.error(err.response?.data?.message || err.message || "Gagal mengunggah foto profil ke server.");
+    } finally {
+      e.target.value = "";
     }
   };
 

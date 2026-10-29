@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { cachedGet, invalidateCache } from '../../services/apiCache';
 import toast from 'react-hot-toast';
 import AdminHotelSidebar from './AdminHotelSidebar';
+import { getStorageUrl } from '../../services/imageUrl';
 
 export default function AdminHotelLayout() {
   const navigate = useNavigate();
@@ -14,17 +15,32 @@ export default function AdminHotelLayout() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [loadingNotif, setLoadingNotif] = useState(false);
   const notifRef = useRef(null);
+  const [avatarErrored, setAvatarErrored] = useState(false);
 
   useEffect(() => {
-    try {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        setCurrentUser(JSON.parse(userStr));
+    const syncCurrentUser = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const nextUser = JSON.parse(userStr);
+          setCurrentUser(nextUser);
+          setAvatarErrored(false);
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (e) {
+        console.error('Failed to parse user from localStorage', e);
       }
-    } catch (e) {
-      console.error('Failed to parse user from localStorage', e);
-    }
-  }, [location]);
+    };
+
+    syncCurrentUser();
+    window.addEventListener('storage', syncCurrentUser);
+    window.addEventListener('userUpdated', syncCurrentUser);
+    return () => {
+      window.removeEventListener('storage', syncCurrentUser);
+      window.removeEventListener('userUpdated', syncCurrentUser);
+    };
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -252,8 +268,13 @@ export default function AdminHotelLayout() {
               className="flex items-center gap-3 pl-3 border-l border-[#E5E1DA] hover:opacity-80 transition-opacity"
             >
               <div className="w-8 h-8 rounded-full bg-[#F2EBE1] border border-[#E5E1DA] text-[#506147] font-semibold text-xs flex items-center justify-center shadow-sm uppercase overflow-hidden">
-                {currentUser?.avatar ? (
-                  <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                {(currentUser?.avatar_url || currentUser?.avatar) && !avatarErrored ? (
+                  <img
+                    src={getStorageUrl(currentUser.avatar_url || currentUser.avatar)}
+                    alt="Avatar"
+                    onError={() => setAvatarErrored(true)}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   currentUser?.name ? currentUser.name.slice(0, 2) : 'AH'
                 )}

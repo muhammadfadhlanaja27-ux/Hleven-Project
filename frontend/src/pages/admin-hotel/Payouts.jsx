@@ -113,6 +113,10 @@ export default function Payouts() {
   const commissionRate = limits?.commission_rate ?? 0.05;
   const commissionPct = Math.round(commissionRate * 100);
   const netPct = 100 - commissionPct;
+  const availableBalance = Number(balance?.available_balance || 0);
+  const numericAmount = parseAmountInput(amount);
+  const isExceedingBalance = numericAmount > availableBalance;
+  const isBelowMinPayout = minPayout > 0 && numericAmount > 0 && numericAmount < minPayout;
 
   const openNewDestination = () => {
     setEditingDestination({ ...payoutChannels[0], id: null, isNew: true });
@@ -190,6 +194,10 @@ export default function Payouts() {
       toast.error("Simpan tujuan pencairan terlebih dahulu.");
       return;
     }
+    if (numericAmount > availableBalance) {
+      toast.error(`Nominal pencairan melebihi saldo tersedia (${rupiah(availableBalance)}).`);
+      return;
+    }
     if (minPayout > 0 && numericAmount < minPayout) {
       toast.error(`Minimal pencairan ${rupiah(minPayout)}.`);
       return;
@@ -241,24 +249,38 @@ export default function Payouts() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Saldo Tersedia", value: balance?.available_balance, highlight: true },
-          { label: `Pendapatan Bersih (${netPct}%)`, value: balance?.net_revenue },
-          { label: "Sudah Dicairkan", value: balance?.total_paid_out },
-          { label: `Komisi Platform (${commissionPct}%)`, value: balance?.platform_commission },
-        ].map((c) => (
-          <div
-            key={c.label}
-            className={`rounded-xl border p-5 shadow-sm ${
-              c.highlight ? "bg-[#506147] text-white border-[#506147]" : "bg-white border-[#E5E1DA] text-[#2D312C]"
-            }`}
-          >
-            <p className={`text-xs font-semibold uppercase tracking-wider ${c.highlight ? "text-white/80" : "text-[#6B6E6A]"}`}>
-              {c.label}
+        {/* Saldo Tersedia — highlighted */}
+        <div className="rounded-xl border p-5 shadow-sm bg-[#506147] text-white border-[#506147]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-white/80">Saldo Tersedia</p>
+          <p className="text-xl font-bold mt-2">{loading ? "..." : rupiah(balance?.available_balance)}</p>
+          {!loading && balance?.pending_amount > 0 && (
+            <p className="text-xs text-white/70 mt-1.5 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">schedule</span>
+              {rupiah(balance.pending_amount)} dalam proses
             </p>
-            <p className="text-xl font-bold mt-2">{loading ? "..." : rupiah(c.value)}</p>
-          </div>
-        ))}
+          )}
+        </div>
+
+        {/* Pendapatan Bersih */}
+        <div className="rounded-xl border p-5 shadow-sm bg-white border-[#E5E1DA] text-[#2D312C]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#6B6E6A]">Pendapatan Bersih ({netPct}%)</p>
+          <p className="text-xl font-bold mt-2">{loading ? "..." : rupiah(balance?.net_revenue)}</p>
+          <p className="text-xs text-[#6B6E6A] mt-1.5">Setelah komisi platform</p>
+        </div>
+
+        {/* Sudah Dicairkan */}
+        <div className="rounded-xl border p-5 shadow-sm bg-white border-[#E5E1DA] text-[#2D312C]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#6B6E6A]">Sudah Dicairkan</p>
+          <p className="text-xl font-bold mt-2">{loading ? "..." : rupiah(balance?.total_paid_out)}</p>
+          <p className="text-xs text-[#6B6E6A] mt-1.5">Transfer selesai</p>
+        </div>
+
+        {/* Komisi Platform */}
+        <div className="rounded-xl border p-5 shadow-sm bg-white border-[#E5E1DA] text-[#2D312C]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#6B6E6A]">Komisi Platform ({commissionPct}%)</p>
+          <p className="text-xl font-bold mt-2">{loading ? "..." : rupiah(balance?.platform_commission)}</p>
+          <p className="text-xs text-[#6B6E6A] mt-1.5">Dari pendapatan kotor</p>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 mb-6">
@@ -438,19 +460,35 @@ export default function Payouts() {
                 onChange={(e) => setAmount(formatAmountInput(e.target.value))}
                 disabled={submitting || !hasDestination}
                 placeholder="0"
-                className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 disabled:bg-gray-50"
+                className={`w-full p-3 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${
+                  isExceedingBalance
+                    ? "border-red-500 text-red-600 focus:border-red-500 focus:ring-red-200"
+                    : isBelowMinPayout
+                    ? "border-amber-500 text-amber-700 focus:border-amber-500 focus:ring-amber-200"
+                    : "border-[#E5E0D8] focus:border-[#506147] focus:ring-[#506147]/20"
+                } disabled:bg-gray-50`}
               />
-              {minPayout > 0 && (
+              {isExceedingBalance ? (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 mt-0.5 animate-in fade-in duration-200">
+                  <span className="material-symbols-outlined text-base shrink-0">error</span>
+                  <span>Nominal melebihi saldo tersedia ({rupiah(availableBalance)})</span>
+                </div>
+              ) : isBelowMinPayout ? (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 mt-0.5">
+                  <span className="material-symbols-outlined text-base shrink-0">warning</span>
+                  <span>Minimal pencairan {rupiah(minPayout)}</span>
+                </div>
+              ) : minPayout > 0 ? (
                 <span className="text-[11px] text-[#6B6E6A]">Minimal {rupiah(minPayout)}.</span>
-              )}
-              {balance && balance.available_balance >= minPayout && (
+              ) : null}
+              {balance && availableBalance >= minPayout && (
                 <button
                   type="button"
-                  onClick={() => setAmount(formatAmountInput(String(Math.floor(balance.available_balance))))}
+                  onClick={() => setAmount(formatAmountInput(String(Math.floor(availableBalance))))}
                   disabled={submitting || !hasDestination}
-                  className="self-start text-[11px] text-[#506147] font-semibold hover:underline disabled:opacity-50"
+                  className="self-start text-[11px] text-[#506147] font-semibold hover:underline disabled:opacity-50 cursor-pointer"
                 >
-                  Cairkan semua ({rupiah(balance.available_balance)})
+                  Cairkan semua ({rupiah(availableBalance)})
                 </button>
               )}
             </div>
@@ -468,10 +506,14 @@ export default function Payouts() {
             </div>
             <button
               type="submit"
-              disabled={submitting || !hasDestination}
-              className="w-full bg-[#506147] text-white text-sm font-semibold py-3 rounded-lg hover:bg-[#3b4b33] transition-all disabled:opacity-50"
+              disabled={submitting || !hasDestination || isExceedingBalance || numericAmount <= 0 || isBelowMinPayout}
+              className="w-full bg-[#506147] text-white text-sm font-semibold py-3 rounded-lg hover:bg-[#3b4b33] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {submitting ? "Mengirim..." : "Ajukan Pencairan"}
+              {submitting
+                ? "Mengirim..."
+                : isExceedingBalance
+                ? "Saldo Tidak Cukup"
+                : "Ajukan Pencairan"}
             </button>
           </form>
         </div>

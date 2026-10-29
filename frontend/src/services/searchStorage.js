@@ -43,13 +43,17 @@ export const saveSearchState = (state) => {
 export const getInitialSearchValues = (searchParams) => {
   const stored = getSearchState() || {};
   const today = new Date();
-  const tomorrow = new Date(Date.now() + 86400000);
+  today.setHours(0, 0, 0, 0);
 
   const rawCheckIn = searchParams?.get('check_in') || searchParams?.get('check_in_date') || searchParams?.get('checkIn') || stored.checkIn;
   const rawCheckOut = searchParams?.get('check_out') || searchParams?.get('check_out_date') || searchParams?.get('checkOut') || stored.checkOut;
 
-  const checkInDate = parseDateStr(rawCheckIn) || today;
-  const checkOutDate = parseDateStr(rawCheckOut) || tomorrow;
+  const parsedCheckIn = parseDateStr(rawCheckIn);
+  const checkInDate = parsedCheckIn && parsedCheckIn >= today ? parsedCheckIn : today;
+  const defaultCheckOut = new Date(checkInDate);
+  defaultCheckOut.setDate(defaultCheckOut.getDate() + 1);
+  const parsedCheckOut = parseDateStr(rawCheckOut);
+  const checkOutDate = parsedCheckOut && parsedCheckOut > checkInDate ? parsedCheckOut : defaultCheckOut;
 
   const adults = Number(searchParams?.get('adults')) || Number(stored.adults) || 2;
   const children = Number(searchParams?.get('children')) || Number(stored.children) || 0;

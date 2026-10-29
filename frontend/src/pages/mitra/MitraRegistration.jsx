@@ -26,6 +26,8 @@ const isValidPostal = (v) => /^\d{4,10}$/.test(v);
 
 const emptyForm = {
   hotel_name: "",
+  property_type: "",
+  year_built: "",
   hotel_description: "",
   hotel_phone: "",
   hotel_email: "",
@@ -262,6 +264,33 @@ const MitraRegistration = () => {
             className={`${INPUT_BASE} ${errors.hotel_name ? INPUT_ERROR : ""}`}
           />
           {errors.hotel_name && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_name}</span>}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className={LABEL} htmlFor="property_type">Property Type</label>
+          <input
+            id="property_type"
+            type="text"
+            maxLength={100}
+            value={form.property_type}
+            onChange={(e) => update("property_type", e.target.value)}
+            placeholder="Contoh: Hotel Bisnis, Resort, Boutique Hotel"
+            className={INPUT_BASE}
+          />
+          <span className={HELPER}>Opsional. Isi jenis properti hotel Anda.</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className={LABEL} htmlFor="year_built">Year Built</label>
+          <input
+            id="year_built"
+            type="number"
+            min="1800"
+            max={new Date().getFullYear()}
+            value={form.year_built}
+            onChange={(e) => update("year_built", e.target.value)}
+            placeholder="Contoh: 2018"
+            className={INPUT_BASE}
+          />
+          <span className={HELPER}>Opsional. Kosongkan jika tahun dibangun belum diketahui.</span>
         </div>
         <div className="flex flex-col gap-2 md:col-span-2">
           <label className={LABEL} htmlFor="hotel_description">Deskripsi Hotel *</label>
@@ -622,6 +651,8 @@ const MitraRegistration = () => {
 
       <ReviewCard title="Informasi Hotel" icon="domain" step={1}>
         <Row label="Nama Properti" value={form.hotel_name} />
+        <Row label="Property Type" value={form.property_type} />
+        <Row label="Year Built" value={form.year_built} />
         <div className="md:col-span-2">
           <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Deskripsi</span>
           <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">{form.hotel_description}</p>

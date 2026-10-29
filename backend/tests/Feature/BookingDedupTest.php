@@ -72,6 +72,7 @@ class BookingDedupTest extends TestCase
             $t->boolean('smoking_area')->default(false);
             $t->boolean('is_refundable')->default(true);
             $t->boolean('is_active')->default(true);
+            $t->integer('bed_count')->default(1);
             $t->string('type')->nullable();
             $t->string('bed')->nullable();
             $t->text('description')->nullable();
@@ -191,6 +192,46 @@ class BookingDedupTest extends TestCase
         $p2 = $this->payload($hotel->id, $room->id, now()->addDays(3)->toDateString(), now()->addDays(4)->toDateString());
 
         $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p1)->assertCreated();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p2)->assertCreated();
+        $this->assertEquals(2, Booking::count());
+    }
+
+    public function test_booking_for_someone_else_blocked_when_stock_exhausted(): void
+    {
+        [$hotel, $room] = $this->makeHotelRoom();
+        $room->update(['stock' => 1]);
+        $user = User::create(['name' => 'Buyer', 'email' => 'buyer3@x.com', 'password' => 'x', 'role' => 'user', 'status' => 'active']);
+
+        $p1 = $this->payload($hotel->id, $room->id);
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p1)->assertCreated();
+
+        $p2 = array_merge($p1, [
+            'is_for_other_guest' => true,
+            'guest_name' => 'Friend Guest',
+            'guest_email' => 'friend@x.com',
+            'guest_phone' => '0899999999',
+        ]);
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p2);
+        $response->assertStatus(422);
+        $this->assertStringContainsString('habis', strtolower($response->json('message')));
+        $this->assertEquals(1, Booking::count());
+    }
+
+    public function test_booking_for_someone_else_allowed_when_stock_available(): void
+    {
+        [$hotel, $room] = $this->makeHotelRoom();
+        $room->update(['stock' => 2]);
+        $user = User::create(['name' => 'Buyer', 'email' => 'buyer4@x.com', 'password' => 'x', 'role' => 'user', 'status' => 'active']);
+
+        $p1 = $this->payload($hotel->id, $room->id);
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p1)->assertCreated();
+
+        $p2 = array_merge($p1, [
+            'is_for_other_guest' => true,
+            'guest_name' => 'Friend Guest',
+            'guest_email' => 'friend@x.com',
+            'guest_phone' => '0899999999',
+        ]);
         $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p2)->assertCreated();
         $this->assertEquals(2, Booking::count());
     }

@@ -25,7 +25,8 @@ class ProfileAvatarPersistenceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->actingAs($user, 'sanctum')->put('/api/v1/user/profile', [
+        $response = $this->actingAs($user, 'sanctum')->post('/api/v1/user/profile', [
+            '_method' => 'PUT',
             'first_name' => 'Profile',
             'last_name' => 'Owner',
             'email' => 'profile-owner@example.com',

@@ -157,6 +157,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel', 'hotel_suspended'])->pref
 
     // --- Profil Hotel Admin ---
     Route::get('/hotel/profile', [HotelController::class, 'showProfile']);
+    Route::get('/hotel/location-area', [HotelController::class, 'locationArea']);
     Route::post('/hotel/profile', [HotelController::class, 'update']);
     Route::post('/hotel/profile/logo', [HotelController::class, 'uploadLogo']);
     Route::delete('/hotel/profile/logo', [HotelController::class, 'deleteLogo']);

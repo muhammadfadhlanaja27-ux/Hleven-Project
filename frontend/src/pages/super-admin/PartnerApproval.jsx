@@ -562,6 +562,22 @@ const PartnerApproval = () => {
                         {selectedPartner.hotel_name || "-"}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">
+                        Property Type
+                      </p>
+                      <p className="font-medium text-[#191c1b] mt-0.5">
+                        {selectedPartner.property_type || "Belum diisi"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">
+                        Year Built
+                      </p>
+                      <p className="font-medium text-[#191c1b] mt-0.5">
+                        {selectedPartner.year_built || "Belum diisi"}
+                      </p>
+                    </div>
                     <div className="col-span-2">
                       <p className="text-[11px] uppercase tracking-wider text-[#747872]">
                         Address &amp; Location

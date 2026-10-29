@@ -100,6 +100,8 @@ class PartnerApplicationService
                 'admin_id' => $hotelAdmin->id,
                 'city_id' => $city->id,
                 'name' => $application->hotel_name,
+                'property_type' => $application->property_type,
+                'year_built' => $application->year_built,
                 'slug' => $slug,
                 'description' => $application->hotel_description ?: 'Deskripsi hotel untuk '.$application->hotel_name,
                 'address' => $fullAddress,

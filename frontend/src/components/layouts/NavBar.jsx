@@ -64,7 +64,11 @@ const Navbar = () => {
 
     checkUser();
     window.addEventListener("storage", checkUser);
-    return () => window.removeEventListener("storage", checkUser);
+    window.addEventListener("userUpdated", checkUser);
+    return () => {
+      window.removeEventListener("storage", checkUser);
+      window.removeEventListener("userUpdated", checkUser);
+    };
   }, []);
 
   const handleConfirmLogout = () => {

@@ -316,6 +316,10 @@ const mappedRoom = {
 
   const handleReserve = (e) => {
     e.preventDefault();
+    if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
+      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
+      return;
+    }
     const hId = hotel?.id || hotelId || 1;
     const rId = room?.id || roomId || 101;
     const checkInStr = formatDateForUrl(checkInDate);
@@ -644,13 +648,23 @@ const mappedRoom = {
               </div>
 
               {/* Reserve Action Button */}
-              <button
-                type="button"
-                onClick={handleReserve}
-                className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md active:scale-95 cursor-pointer"
-              >
-                Pesan Sekarang
-              </button>
+              {room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0 ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-[#E5E0D8] text-[#8A948C] py-3.5 rounded-xl font-label-md text-sm font-semibold cursor-not-allowed shadow-none"
+                >
+                  Kamar Habis
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReserve}
+                  className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Pesan Sekarang
+                </button>
+              )}
               <p className="text-center font-body-md text-[11px] text-[#444842] mt-3">
                 Anda belum dikenakan biaya pada tahap ini
               </p>
