@@ -54,12 +54,17 @@ class MidtransService
 
         $params = [
             'transaction_details' => [
-                'order_id' => $booking->booking_code, // Sesuai aturan PAYMENT-002[cite: 1]
-                'gross_amount' => (int) $payment->gross_amount, // Sesuai aturan PAYMENT-003[cite: 1]
+                'order_id' => $booking->booking_code,
+                'gross_amount' => (int) $payment->gross_amount,
             ],
             'customer_details' => [
                 'first_name' => $customerName,
                 'email' => $customerEmail,
+            ],
+            'expiry' => [
+                'start_time' => now()->format('Y-m-d H:i:s O'),
+                'unit' => 'minute',
+                'duration' => 15,
             ],
         ];
 

@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 // Menjalankan pengecekan batas waktu pembayaran setiap menit
 Schedule::command('booking:check-expired')->everyMinute();
+Schedule::command('payment:sync-pending')->everyFiveMinutes();

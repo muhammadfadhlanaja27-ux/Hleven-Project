@@ -107,6 +107,11 @@ const normalizeBooking = (b) => {
       identityNumber: guest.identity_number || b.user?.identity_number || "-",
       gender: guest.gender || b.user?.gender || "Male",
     },
+    booker: {
+      name: b.booker_name || b.user?.name || "-",
+      email: b.booker_email || b.user?.email || "-",
+      phone: b.booker_phone || b.user?.phone || "-",
+    },
     room: {
       id: firstRoom.id || 1,
       name: firstRoom.name || "Room",
@@ -1232,34 +1237,40 @@ export default function BookingList() {
                   <div className="flex items-center gap-2 text-[#506147]">
                     <span className="material-symbols-outlined text-[20px]">person</span>
                     <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                      Guest Information
+                      Guest & Booker Information
                     </h4>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-[#6B6E6A]">Guest Name:</span>
-                      <p className="font-semibold text-[#2D312C] text-sm mt-0.5">
-                        {viewingBooking.guest.name}
-                      </p>
+                  <div className="grid grid-cols-1 gap-4 text-xs">
+                    <div className="p-3 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA]">
+                      <span className="text-[#6B6E6A] font-semibold">Tamu (Guest):</span>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <span className="text-[#6B6E6A]">Name:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.guest?.name || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[#6B6E6A]">Phone:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.guest?.phone || "N/A"}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[#6B6E6A]">Contact Phone:</span>
-                      <p className="font-semibold text-[#2D312C] text-sm mt-0.5">
-                        {viewingBooking.guest.phone}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[#6B6E6A]">Email Address:</span>
-                      <p className="font-semibold text-[#2D312C] mt-0.5">
-                        {viewingBooking.guest.email}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[#6B6E6A]">Jumlah Anak:</span>
-                      <p className="font-semibold text-[#2D312C] mt-0.5">
-                        {viewingBooking.childrenCount}
-                      </p>
+                    <div className="p-3 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA]">
+                      <span className="text-[#6B6E6A] font-semibold">Pemesan (Booker):</span>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <span className="text-[#6B6E6A]">Name:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.booker?.name || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[#6B6E6A]">Phone:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.booker?.phone || "N/A"}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-[#6B6E6A]">Email:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.booker?.email || "N/A"}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

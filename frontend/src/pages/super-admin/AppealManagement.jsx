@@ -63,12 +63,14 @@ export default function AppealManagement() {
   };
 
   return (
-    <div className="space-y-6 font-['Hanken_Grotesk',sans-serif]">
+    <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="font-['Newsreader',serif] text-3xl font-semibold text-[#2D312C]">Manajemen Aju Banding</h2>
-          <p className="text-sm text-[#6B6E6A] mt-1">
+          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+            Manajemen Aju Banding
+          </h2>
+          <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Review dan putuskan permohonan banding atas surat peringatan maupun pemulihan akun suspend hotel.
           </p>
         </div>
@@ -79,7 +81,7 @@ export default function AppealManagement() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-4 py-2 border border-[#E5E1DA] rounded-xl text-sm bg-white font-medium focus:outline-none focus:border-[#506147]"
+            className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
             <option value="">Semua Status</option>
             <option value="pending">Pending</option>
@@ -88,75 +90,76 @@ export default function AppealManagement() {
           </select>
           <button
             onClick={fetchAppeals}
-            className="px-3 py-2 border border-[#E5E1DA] rounded-xl bg-white text-[#434842] hover:bg-[#F9F6F1] text-xs font-semibold"
+            className="flex items-center gap-1.5 px-3 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
             title="Refresh Data"
           >
             <span className="material-symbols-outlined text-[18px]">refresh</span>
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#E5E1DA] shadow-sm overflow-hidden">
+      {/* Table Card */}
+      <div className="bg-white rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA] text-xs uppercase tracking-wider text-[#6B6E6A]">
-                <th className="p-4">Hotel</th>
-                <th className="p-4">Tipe Banding</th>
-                <th className="p-4">Pemohon</th>
-                <th className="p-4">Alasan</th>
-                <th className="p-4">Tanggal</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Aksi</th>
+              <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
+                <th className="py-4 px-6">Hotel</th>
+                <th className="py-4 px-6">Tipe Banding</th>
+                <th className="py-4 px-6">Pemohon</th>
+                <th className="py-4 px-6">Alasan</th>
+                <th className="py-4 px-6">Tanggal</th>
+                <th className="py-4 px-6">Status</th>
+                <th className="py-4 px-6 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E1DA]">
+            <tbody className="font-hanken text-[14px] text-[#191c1b] divide-y divide-[#E5E0D8]">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-[#6B6E6A]">Memuat data banding...</td>
+                  <td colSpan="7" className="py-12 text-center text-[#747872]">Memuat data banding...</td>
                 </tr>
               ) : appeals.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-[#6B6E6A]">Tidak ada data permohonan banding.</td>
+                  <td colSpan="7" className="py-12 text-center text-[#747872]">Tidak ada data permohonan banding.</td>
                 </tr>
               ) : (
                 appeals.map((a) => {
                   const isWarningAppeal = !!a.warning_id;
                   return (
-                    <tr key={a.id} className="hover:bg-[#fcf9f5] transition-colors">
-                      <td className="p-4 font-semibold text-[#2D312C]">{a.hotel?.name || "-"}</td>
-                      <td className="p-4">
+                    <tr key={a.id} className="hover:bg-[#F9F6F1]/50 transition-colors">
+                      <td className="py-4 px-6 font-medium text-[#191c1b]">{a.hotel?.name || "-"}</td>
+                      <td className="py-4 px-6">
                         {isWarningAppeal ? (
                           <div className="space-y-0.5">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-amber-50 text-amber-900 border border-amber-200">
                               <span className="material-symbols-outlined text-[13px]">warning</span>
                               <span>Peringatan #{String(a.warning_id).padStart(4, "0")}</span>
                             </span>
                             {a.warning?.title && (
-                              <p className="text-[11px] text-[#6B6E6A] truncate max-w-[180px]">{a.warning.title}</p>
+                              <p className="text-[11px] text-[#747872] truncate max-w-[180px]">{a.warning.title}</p>
                             )}
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-900 border border-red-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-red-50 text-red-900 border border-red-200">
                             <span className="material-symbols-outlined text-[13px]">lock_reset</span>
                             <span>Pemulihan Akun</span>
                           </span>
                         )}
                       </td>
-                      <td className="p-4 text-xs text-[#6B6E6A]">{a.requester?.name || a.requester?.email || "-"}</td>
-                      <td className="p-4 text-xs max-w-xs truncate">{a.reason}</td>
-                      <td className="p-4 text-xs whitespace-nowrap text-[#6B6E6A]">
+                      <td className="py-4 px-6 text-xs text-[#747872]">{a.requester?.name || a.requester?.email || "-"}</td>
+                      <td className="py-4 px-6 text-xs max-w-xs truncate text-[#434842]">{a.reason}</td>
+                      <td className="py-4 px-6 text-xs whitespace-nowrap text-[#747872]">
                         {a.created_at ? new Date(a.created_at).toLocaleDateString("id-ID") : "-"}
                       </td>
-                      <td className="p-4">{badge(a.status)}</td>
-                      <td className="p-4 text-right whitespace-nowrap">
+                      <td className="py-4 px-6">{badge(a.status)}</td>
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
                         <button
                           onClick={() => {
                             setSelectedAppeal(a);
                             setAdminNote(a.admin_note || "");
                           }}
-                          className="px-3.5 py-1.5 border border-[#506147] text-[#506147] hover:bg-[#506147] hover:text-white rounded-lg text-xs font-semibold transition-colors"
+                          className="font-hanken text-[13px] font-semibold text-[#768875] hover:text-[#4f604f] transition-colors border border-[#768875] px-3 py-1.5 rounded-lg hover:bg-[#768875]/5 active:scale-95"
                         >
                           {a.status === "pending" ? "Proses" : "Detail"}
                         </button>
@@ -170,7 +173,7 @@ export default function AppealManagement() {
         </div>
 
         {/* Pagination Controls */}
-        <div className="bg-[#F9F6F1] border-t border-[#E5E1DA] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#6B6E6A]">
+        <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#747872] font-hanken">
           <span>
             Menampilkan {totalItems > 0 ? (page - 1) * 10 + 1 : 0} hingga {Math.min(page * 10, totalItems)} dari {totalItems} banding
           </span>
@@ -178,7 +181,7 @@ export default function AppealManagement() {
             <button
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
               disabled={page === 1}
-              className="px-3 py-1 border border-[#E5E1DA] rounded-md bg-white hover:bg-[#F2EBE1] disabled:opacity-40 font-medium text-[#434842]"
+              className="px-3 py-1 border border-[#E5E0D8] rounded-md bg-white hover:bg-[#F9F6F1] disabled:opacity-40 font-medium text-[#434842]"
             >
               Prev
             </button>
@@ -188,8 +191,8 @@ export default function AppealManagement() {
                 onClick={() => setPage(pNum)}
                 className={`px-3 py-1 border rounded-md font-medium transition-colors ${
                   page === pNum
-                    ? "bg-[#506147] text-white border-[#506147]"
-                    : "bg-white border-[#E5E1DA] text-[#434842] hover:bg-[#F2EBE1]"
+                    ? "bg-[#768875] text-white border-[#768875]"
+                    : "bg-white border-[#E5E0D8] text-[#434842] hover:bg-[#F9F6F1]"
                 }`}
               >
                 {pNum}
@@ -198,7 +201,7 @@ export default function AppealManagement() {
             <button
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page === totalPages || totalPages === 0}
-              className="px-3 py-1 border border-[#E5E1DA] rounded-md bg-white hover:bg-[#F2EBE1] disabled:opacity-40 font-medium text-[#434842]"
+              className="px-3 py-1 border border-[#E5E0D8] rounded-md bg-white hover:bg-[#F9F6F1] disabled:opacity-40 font-medium text-[#434842]"
             >
               Next
             </button>

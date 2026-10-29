@@ -90,6 +90,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+            Route::get('/user/bookings/{id}/sync-payment', [BookingController::class, 'syncPayment']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
         });

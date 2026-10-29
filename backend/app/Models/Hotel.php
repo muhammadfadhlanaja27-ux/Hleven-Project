@@ -25,7 +25,7 @@ class Hotel extends Model
         'allow_pay_at_hotel' => 'boolean',
     ];
 
-    protected $appends = ['starting_price', 'thumbnail'];
+    protected $appends = ['starting_price', 'thumbnail', 'reviews_avg_rating', 'reviews_count'];
 
     public function getStartingPriceAttribute()
     {
@@ -64,6 +64,16 @@ class Hotel extends Model
         }
 
         return $this->admin()->value('email');
+    }
+
+    public function getReviewsAvgRatingAttribute()
+    {
+        return (float) ($this->attributes['reviews_avg_rating'] ?? $this->reviews()->avg('rating') ?? 0);
+    }
+
+    public function getReviewsCountAttribute()
+    {
+        return (int) ($this->attributes['reviews_count'] ?? $this->reviews()->count());
     }
 
     public function admin()

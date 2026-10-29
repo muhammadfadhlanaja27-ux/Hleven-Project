@@ -33,9 +33,9 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   };
 
   // Ekstraksi Rating & Ulasan dari Data Backend
-  const rawRating = Number(hotel.average_rating || hotel.rating || hotel.reviews_avg_rating || 0);
+  const rawRating = Number(hotel.reviews_avg_rating || hotel.average_rating || hotel.rating || 0);
   const averageRating = rawRating > 0 ? rawRating.toFixed(1) : null;
-  const totalReviews = hotel.total_review || hotel.reviews_count || hotel.total_reviews || 0;
+  const totalReviews = hotel.reviews_count || hotel.total_review || hotel.total_reviews || 0;
 
   const renderFacilityIcon = (fac, idx) => {
     const facObj = typeof fac === 'object' ? fac : null;
@@ -134,7 +134,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
                 <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
                   star
                 </span>
-                <span>{averageRating ? averageRating : "Baru"}</span>
+            <span>{averageRating ? averageRating : "0.0"}</span>
               </div>
               {totalReviews > 0 ? (
                 <span className="text-xs text-[#747871] font-medium">

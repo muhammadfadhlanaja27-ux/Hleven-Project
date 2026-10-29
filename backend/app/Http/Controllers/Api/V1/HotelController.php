@@ -20,6 +20,8 @@ class HotelController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Hotel::with(['city', 'photos', 'facilities', 'roomTypes'])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
             ->where('status', 'active');
 
         if ($request->has('search')) {

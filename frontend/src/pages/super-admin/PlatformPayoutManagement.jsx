@@ -8,9 +8,10 @@ const PlatformPayoutManagement = () => {
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
   
-  // Form states
   const [payoutForm, setPayoutForm] = useState({ amount: "", reference: "", admin_note: "" });
   const [settingForm, setSettingForm] = useState({ payout_day: 1, is_active: false, target_email: "" });
+
+  const rupiah = (n) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 
   const fetchData = async () => {
     try {
@@ -51,85 +52,92 @@ const PlatformPayoutManagement = () => {
     }
   };
 
-  if (loading) return <p className="p-6">Memuat...</p>;
+  if (loading) return <div className="flex flex-col items-center justify-center py-20"><div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div></div>;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Pencairan Komisi Platform</h2>
-        <div className="space-x-2">
-          <button onClick={() => setIsSettingModalOpen(true)} className="px-4 py-2 bg-gray-200 rounded">Pengaturan</button>
-          <button onClick={() => setIsPayoutModalOpen(true)} className="px-4 py-2 bg-blue-600 text-white rounded">Cairkan Komisi</button>
+    <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+            Pencairan Komisi Platform
+          </h2>
+          <p className="font-hanken text-[14px] text-[#747872] mt-1">Kelola dan pantau pencairan komisi platform.</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => setIsSettingModalOpen(true)} className="px-4 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] font-semibold text-[13px]">Pengaturan</button>
+          <button onClick={() => setIsPayoutModalOpen(true)} className="px-5 py-2 rounded-lg bg-[#768875] text-white font-semibold text-[13px] hover:bg-[#4f604f] transition-all">Cairkan Komisi</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="p-4 bg-white shadow rounded-lg border">
-          <p className="text-gray-500">Total Komisi</p>
-          <p className="text-2xl font-bold">Rp{data.summary.total_commission.toLocaleString()}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
+          <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Total Komisi</p>
+          <p className="font-newsreader text-[32px] font-semibold text-[#191c1b] mt-2 leading-none">{rupiah(data.summary.total_commission)}</p>
         </div>
-        <div className="p-4 bg-white shadow rounded-lg border">
-          <p className="text-gray-500">Sudah Dicairkan</p>
-          <p className="text-2xl font-bold text-green-600">Rp{data.summary.paid_commission.toLocaleString()}</p>
+        <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
+          <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Sudah Dicairkan</p>
+          <p className="font-newsreader text-[32px] font-semibold text-[#4f604f] mt-2 leading-none">{rupiah(data.summary.paid_commission)}</p>
         </div>
-        <div className="p-4 bg-white shadow rounded-lg border">
-          <p className="text-gray-500">Saldo Tersedia</p>
-          <p className="text-2xl font-bold text-blue-600">Rp{data.summary.available_commission.toLocaleString()}</p>
+        <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
+          <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Saldo Tersedia</p>
+          <p className="font-newsreader text-[32px] font-semibold text-[#191c1b] mt-2 leading-none">{rupiah(data.summary.available_commission)}</p>
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-xl overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3">Tanggal</th>
-              <th className="p-3">Jumlah</th>
-              <th className="p-3">Referensi</th>
-              <th className="p-3">Catatan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.payouts.data.map(p => (
-              <tr key={p.id} className="border-t">
-                <td className="p-3">{new Date(p.created_at).toLocaleDateString()}</td>
-                <td className="p-3">Rp{p.amount.toLocaleString()}</td>
-                <td className="p-3">{p.reference || "-"}</td>
-                <td className="p-3">{p.admin_note || "-"}</td>
+      <div className="bg-white rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
+                <th className="py-4 px-6">Tanggal</th>
+                <th className="py-4 px-6">Jumlah</th>
+                <th className="py-4 px-6">Referensi</th>
+                <th className="py-4 px-6">Catatan</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="font-hanken text-[14px] text-[#191c1b] divide-y divide-[#E5E0D8]">
+              {data.payouts.data.map(p => (
+                <tr key={p.id} className="hover:bg-[#F9F6F1]/50 transition-colors">
+                  <td className="py-4 px-6">{new Date(p.created_at).toLocaleDateString("id-ID")}</td>
+                  <td className="py-4 px-6 font-semibold">{rupiah(p.amount)}</td>
+                  <td className="py-4 px-6 text-[#434842]">{p.reference || "-"}</td>
+                  <td className="py-4 px-6 text-[#747872]">{p.admin_note || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Payout Modal */}
       {isPayoutModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <form onSubmit={handlePayout} className="bg-white p-6 rounded-lg w-full max-w-sm">
-            <h3 className="font-bold mb-4">Cairkan Komisi</h3>
-            <input type="number" placeholder="Jumlah" className="w-full p-2 border rounded mb-2" value={payoutForm.amount} onChange={e => setPayoutForm({...payoutForm, amount: e.target.value})} />
-            <input type="text" placeholder="Referensi Transfer" className="w-full p-2 border rounded mb-2" value={payoutForm.reference} onChange={e => setPayoutForm({...payoutForm, reference: e.target.value})} />
-            <textarea placeholder="Catatan" className="w-full p-2 border rounded mb-4" value={payoutForm.admin_note} onChange={e => setPayoutForm({...payoutForm, admin_note: e.target.value})} />
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setIsPayoutModalOpen(false)} className="flex-1 p-2 bg-gray-200 rounded">Batal</button>
-              <button type="submit" className="flex-1 p-2 bg-blue-600 text-white rounded">Cairkan</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => setIsPayoutModalOpen(false)}></div>
+          <form onSubmit={handlePayout} className="relative w-full max-w-lg bg-white rounded-xl shadow-[0_12px_40px_rgba(47,50,49,0.12)] p-7 border border-[#E5E0D8] z-10 font-hanken space-y-4">
+            <h3 className="font-newsreader text-[24px] font-semibold text-[#4f604f] pb-4 border-b border-[#E5E0D8]">Cairkan Komisi</h3>
+            <input type="number" placeholder="Jumlah" className="w-full h-10 px-3.5 rounded-lg border border-[#E5E0D8] text-[13.5px]" value={payoutForm.amount} onChange={e => setPayoutForm({...payoutForm, amount: e.target.value})} required />
+            <input type="text" placeholder="Referensi Transfer" className="w-full h-10 px-3.5 rounded-lg border border-[#E5E0D8] text-[13.5px]" value={payoutForm.reference} onChange={e => setPayoutForm({...payoutForm, reference: e.target.value})} />
+            <textarea placeholder="Catatan" className="w-full p-3.5 rounded-lg border border-[#E5E0D8] text-[13.5px]" value={payoutForm.admin_note} onChange={e => setPayoutForm({...payoutForm, admin_note: e.target.value})} rows={3} />
+            <div className="flex gap-3 pt-4 border-t border-[#E5E0D8]">
+              <button type="button" onClick={() => setIsPayoutModalOpen(false)} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-[13px] font-semibold text-[#434842]">Batal</button>
+              <button type="submit" className="px-5 py-2 bg-[#768875] text-white rounded-lg text-[13px] font-semibold">Cairkan</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Settings Modal */}
       {isSettingModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <form onSubmit={handleUpdateSettings} className="bg-white p-6 rounded-lg w-full max-w-sm">
-            <h3 className="font-bold mb-4">Pengaturan Otomatis</h3>
-            <label className="block mb-2">Tanggal Pencairan (1-28)</label>
-            <input type="number" className="w-full p-2 border rounded mb-2" value={settingForm.payout_day} onChange={e => setSettingForm({...settingForm, payout_day: e.target.value})} />
-            <label className="flex items-center gap-2 mb-4">
-              <input type="checkbox" checked={settingForm.is_active} onChange={e => setSettingForm({...settingForm, is_active: e.target.checked})} /> Aktifkan Otomatis
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => setIsSettingModalOpen(false)}></div>
+          <form onSubmit={handleUpdateSettings} className="relative w-full max-w-lg bg-white rounded-xl shadow-[0_12px_40px_rgba(47,50,49,0.12)] p-7 border border-[#E5E0D8] z-10 font-hanken space-y-4">
+            <h3 className="font-newsreader text-[24px] font-semibold text-[#4f604f] pb-4 border-b border-[#E5E0D8]">Pengaturan Otomatis</h3>
+            <label className="block text-xs font-semibold text-[#747872] uppercase">Tanggal Pencairan (1-28)</label>
+            <input type="number" className="w-full h-10 px-3.5 rounded-lg border border-[#E5E0D8] text-[13.5px]" value={settingForm.payout_day} onChange={e => setSettingForm({...settingForm, payout_day: e.target.value})} />
+            <label className="flex items-center gap-2 text-[13px] text-[#191c1b]">
+              <input type="checkbox" checked={settingForm.is_active} onChange={e => setSettingForm({...settingForm, is_active: e.target.checked})} className="accent-[#768875]" /> Aktifkan Otomatis
             </label>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setIsSettingModalOpen(false)} className="flex-1 p-2 bg-gray-200 rounded">Batal</button>
-              <button type="submit" className="flex-1 p-2 bg-blue-600 text-white rounded">Simpan</button>
+            <div className="flex gap-3 pt-4 border-t border-[#E5E0D8]">
+              <button type="button" onClick={() => setIsSettingModalOpen(false)} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-[13px] font-semibold text-[#434842]">Batal</button>
+              <button type="submit" className="px-5 py-2 bg-[#768875] text-white rounded-lg text-[13px] font-semibold">Simpan</button>
             </div>
           </form>
         </div>

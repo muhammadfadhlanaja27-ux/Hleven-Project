@@ -50,6 +50,35 @@ class BookingController extends Controller
         return $query->first();
     }
 
+    public function syncPayment(Request $request, $id)
+    {
+        $booking = $this->findBookingForActor($request, $id, ['payment']);
+
+        if (! $booking || ! $booking->payment) {
+            return response()->json(['status' => 'error', 'message' => 'Booking atau data pembayaran tidak ditemukan'], 404);
+        }
+
+        if ($booking->status !== 'pending' && $booking->status !== 'unpaid') {
+            return response()->json([
+                'status' => 'success', 
+                'message' => 'Pembayaran sudah memiliki status final: ' . $booking->status,
+                'data' => $booking
+            ]);
+        }
+
+        try {
+            app(\App\Services\MidtransService::class)->syncPaymentStatus($booking->payment);
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Status pembayaran berhasil disinkronkan',
+                'data' => $booking->fresh(['payment', 'bookingRooms.roomType', 'guests']),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Gagal sinkronisasi: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -801,11 +830,15 @@ class BookingController extends Controller
         $children = (int) ($request->children ?? 0);
         $specialNotes = $request->special_requests ?? $request->special_request ?? null;
 
-        // Guest checkout: data pemesan diambil dari payload, sedangkan user login
-        // tetap boleh memesan untuk orang lain.
-        $guestName = $request->guest_name ?: ($user->name ?? $request->booker_name);
-        $guestEmail = $request->guest_email ?: ($user->email ?? $request->booker_email);
-        $guestPhone = $request->guest_phone ?: ($user->phone ?? $request->booker_phone);
+        // Guest checkout: data pemesan diambil dari payload
+        $guestName = $request->guest_name;
+        $guestEmail = $request->guest_email;
+        $guestPhone = $request->guest_phone;
+        
+        $bookerName = $request->booker_name ?: ($user->name ?? $guestName);
+        $bookerEmail = $request->booker_email ?: ($user->email ?? $guestEmail);
+        $bookerPhone = $request->booker_phone ?: ($user->phone ?? $guestPhone);
+        
         $isForOtherGuest = (bool) $request->is_for_other_guest
             || ($request->filled('guest_name') && (! $user || $request->guest_name !== $user->name));
 
@@ -941,6 +974,9 @@ class BookingController extends Controller
                 'user_id' => $user?->id,
                 'hotel_id' => $request->hotel_id,
                 'is_for_other_guest' => $isForOtherGuest,
+                'booker_name' => $bookerName,
+                'booker_email' => $bookerEmail,
+                'booker_phone' => $bookerPhone,
                 'guest_name' => $guestName,
                 'guest_email' => $guestEmail,
                 'guest_phone' => $guestPhone,

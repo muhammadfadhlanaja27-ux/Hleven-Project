@@ -138,31 +138,34 @@ const ApplicationRevenue = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+      {/* Header Controls */}
+      <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
               Pendapatan Aplikasi
             </h2>
-          <p className="font-hanken text-[14px] text-[#747872] mt-1">
-            Komisi platform {commissionPct}% dari setiap hotel mitra.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={fetchData}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[18px]">refresh</span>
-            <span>Refresh</span>
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting || hotels.length === 0}
-            className="px-5 py-2 rounded-lg bg-transparent border border-[#768875] text-[#768875] font-hanken text-[13px] font-semibold flex items-center gap-2 hover:bg-[#768875]/10 transition-all active:scale-95 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">table_view</span>
-            <span>Export Excel</span>
-          </button>
+            <p className="font-hanken text-[14px] text-[#747872] mt-1">
+              Komisi platform {commissionPct}% dari setiap hotel mitra.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={fetchData}
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">refresh</span>
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || hotels.length === 0}
+              className="px-5 py-2 rounded-lg bg-transparent border border-[#768875] text-[#768875] font-hanken text-[13px] font-semibold flex items-center gap-2 hover:bg-[#768875]/10 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">table_view</span>
+              <span>Export Excel</span>
+            </button>
+          </div>
         </div>
       </div>
 

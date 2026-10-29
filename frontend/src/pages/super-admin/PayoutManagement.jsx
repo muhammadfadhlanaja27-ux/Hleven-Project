@@ -74,25 +74,33 @@ export default function PayoutManagement() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
+      {/* Header & Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="font-['Newsreader',serif] text-3xl font-semibold text-[#2D312C]">
+          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
             Pencairan Dana
-          </h1>
-          <p className="text-sm text-[#6B6E6A] mt-1">Kelola permintaan pencairan dana dari hotel mitra.</p>
+          </h2>
+          <p className="font-hanken text-[14px] text-[#747872] mt-1">
+            Kelola permintaan pencairan dana dari hotel mitra.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Cari hotel..."
-            className="px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm focus:outline-none focus:border-[#506147]"
-          />
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-72">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747872] text-[20px] pointer-events-none">
+              search
+            </span>
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Cari hotel..."
+              className="w-full pl-10 pr-4 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] placeholder-[#747872] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm"
+            />
+          </div>
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm focus:outline-none focus:border-[#506147]"
+            className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
             <option value="">Semua Status</option>
             <option value="pending">Menunggu</option>
@@ -103,61 +111,74 @@ export default function PayoutManagement() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm overflow-hidden">
+      {/* Card Table */}
+      <div className="bg-white rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] overflow-hidden">
         {loading ? (
-          <p className="p-6 text-sm text-[#6B6E6A]">Memuat...</p>
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
+            <p className="font-hanken text-[14px] text-[#747872]">Memuat data pencairan...</p>
+          </div>
         ) : payouts.length === 0 ? (
-          <p className="p-6 text-sm text-[#6B6E6A]">Belum ada data pencairan.</p>
+          <p className="py-12 text-center text-[#747872] font-hanken text-[14px]">Belum ada data pencairan.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-[#6B6E6A] bg-[#F6F3EF]">
-                  <th className="px-4 py-3">Hotel</th>
-                  <th className="px-4 py-3">Nominal</th>
-                  <th className="px-4 py-3">Rekening</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Tanggal</th>
-                  <th className="px-4 py-3 text-right">Aksi</th>
+                <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
+                  <th className="py-4 px-6">Hotel</th>
+                  <th className="py-4 px-6">Nominal</th>
+                  <th className="py-4 px-6">Rekening</th>
+                  <th className="py-4 px-6">Status</th>
+                  <th className="py-4 px-6">Tanggal</th>
+                  <th className="py-4 px-6 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="font-hanken text-[14px] text-[#191c1b] divide-y divide-[#E5E0D8]">
                 {payouts.map((p) => (
-                  <tr key={p.id} className="border-t border-[#F0EDE8]">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-[#2D312C]">{p.hotel?.name || "-"}</div>
-                      <div className="text-[11px] text-[#6B6E6A]">{p.requester?.email || "-"}</div>
+                  <tr key={p.id} className="hover:bg-[#F9F6F1]/50 transition-colors">
+                    <td className="py-4 px-6">
+                      <div className="font-medium text-[#191c1b]">{p.hotel?.name || "-"}</div>
+                      <div className="text-[12px] text-[#747872]">{p.requester?.email || "-"}</div>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-[#2D312C]">{rupiah(p.amount)}</td>
-                    <td className="px-4 py-3 text-[#434842]">
+                    <td className="py-4 px-6 font-semibold text-[#191c1b]">{rupiah(p.amount)}</td>
+                    <td className="py-4 px-6 text-[#434842]">
                       <div>{p.bank_name}</div>
-                      <div className="text-[11px] text-[#6B6E6A]">{p.bank_account_number} — {p.bank_account_name}</div>
+                      <div className="text-[11px] text-[#747872]">{p.bank_account_number} — {p.bank_account_name}</div>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_CLASS[p.status] || "bg-gray-100 text-gray-700"}`}>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase ${STATUS_CLASS[p.status] || "bg-gray-100 text-gray-700"}`}>
                         {STATUS_LABEL[p.status] || p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[#6B6E6A]">
+                    <td className="py-4 px-6 text-[#747872]">
                       {p.requested_at ? new Date(p.requested_at).toLocaleDateString("id-ID") : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <td className="py-4 px-6 text-right whitespace-nowrap">
                       {p.status === "pending" && (
-                        <>
-                          <button onClick={() => openModal(p, "approved")} className="text-blue-700 text-xs font-semibold hover:underline mr-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => openModal(p, "approved")}
+                            className="font-hanken text-[13px] font-semibold text-[#768875] border border-[#768875] px-3 py-1.5 rounded-lg hover:bg-[#768875]/5 active:scale-95"
+                          >
                             Setujui
                           </button>
-                          <button onClick={() => openModal(p, "rejected")} className="text-red-700 text-xs font-semibold hover:underline">
+                          <button
+                            onClick={() => openModal(p, "rejected")}
+                            className="font-hanken text-[13px] font-medium text-[#ba1a1a] border border-[#ffdad6] hover:bg-[#ffdad6]/40 px-3 py-1.5 rounded-lg active:scale-95"
+                          >
                             Tolak
                           </button>
-                        </>
+                        </div>
                       )}
                       {p.status === "approved" && (
-                        <button onClick={() => openModal(p, "paid")} className="text-emerald-700 text-xs font-semibold hover:underline">
+                        <button
+                          onClick={() => openModal(p, "paid")}
+                          className="font-hanken text-[13px] font-semibold text-[#768875] border border-[#768875] px-3 py-1.5 rounded-lg hover:bg-[#768875]/5 active:scale-95"
+                        >
                           Tandai Ditransfer
                         </button>
                       )}
-                      {p.status === "paid" && <span className="text-[#6B6E6A] text-xs">{p.reference || "-"}</span>}
+                      {p.status === "paid" && <span className="text-[#747872] text-xs">{p.reference || "-"}</span>}
                     </td>
                   </tr>
                 ))}
@@ -165,26 +186,27 @@ export default function PayoutManagement() {
             </table>
           </div>
         )}
-      </div>
 
-      <div className="flex items-center justify-between mt-4 text-sm text-[#6B6E6A]">
-        <span>{total} pengajuan</span>
-        <div className="flex items-center gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-3 py-1.5 border border-[#E5E0D8] rounded-lg disabled:opacity-40"
-          >
-            Sebelumnya
-          </button>
-          <span>{page} / {lastPage}</span>
-          <button
-            disabled={page >= lastPage}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-3 py-1.5 border border-[#E5E0D8] rounded-lg disabled:opacity-40"
-          >
-            Berikutnya
-          </button>
+        {/* Pagination */}
+        <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-[#747872] font-hanken">
+          <span>{total} pengajuan total</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1 border border-[#E5E0D8] rounded-md bg-white hover:bg-[#F9F6F1] disabled:opacity-40 font-medium text-[#434842]"
+            >
+              Prev
+            </button>
+            <span className="font-medium text-[#191c1b] px-2">{page} / {lastPage}</span>
+            <button
+              disabled={page >= lastPage}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1 border border-[#E5E0D8] rounded-md bg-white hover:bg-[#F9F6F1] disabled:opacity-40 font-medium text-[#434842]"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
