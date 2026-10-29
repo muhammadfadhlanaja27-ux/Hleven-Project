@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const navItems = [
-  { name: "Ringkasan Sistem", to: "/super-admin/dashboard", icon: "dashboard" },
+  { name: "Dashboard", to: "/super-admin/dashboard", icon: "dashboard" },
   { name: "Pemantauan Hotel", to: "/super-admin/hotels", icon: "hotel" },
   { name: "Manajemen Pengguna", to: "/super-admin/users", icon: "group" },
   { name: "Persetujuan Mitra", to: "/super-admin/partners", icon: "handshake" },
@@ -12,7 +12,7 @@ const navItems = [
   { name: "Kesehatan Hotel", to: "/super-admin/hotel-health", icon: "monitor_heart" },
   { name: "Manajemen Payout", to: "/super-admin/payouts", icon: "account_balance_wallet" },
   { name: "Pencairan Komisi", to: "/super-admin/platform-payouts", icon: "request_quote" },
-  { name: "Saldo & Komisi", to: "/super-admin/wallet", icon: "payments" },
+  { name: "Manajemen Saldo & Komisi Hotel", to: "/super-admin/wallet", icon: "payments" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {
