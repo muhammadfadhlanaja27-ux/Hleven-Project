@@ -149,10 +149,14 @@ const RoomDetail = () => {
   const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate);
   const [adults, setAdults] = useState(init.adults);
   const [children, setChildren] = useState(init.children);
+  const [rooms, setRooms] = useState(() => {
+    const r = searchParams.get("rooms");
+    return r ? Math.max(1, Number(r)) : init.rooms;
+  });
 
   useEffect(() => {
-    saveSearchState({ checkIn: checkInDate, checkOut: checkOutDate, adults, children });
-  }, [checkInDate, checkOutDate, adults, children]);
+    saveSearchState({ checkIn: checkInDate, checkOut: checkOutDate, adults, children, rooms });
+  }, [checkInDate, checkOutDate, adults, children, rooms]);
 
   const handleDateRangeChange = (dates) => {
     const [start, end] = dates;
@@ -160,9 +164,10 @@ const RoomDetail = () => {
     setCheckOutDate(end);
   };
 
-  const handleGuestChange = ({ adults: a, children: c }) => {
+  const handleGuestChange = ({ adults: a, children: c, rooms: r }) => {
     setAdults(a);
     setChildren(c);
+    setRooms(r);
   };
 
   useEffect(() => {
@@ -644,13 +649,25 @@ const RoomDetail = () => {
                   </div>
                 </div>
 
-                <GuestSelector adults={adults} children={children} rooms={1} onGuestChange={handleGuestChange} />
+                <GuestSelector 
+                  adults={adults} 
+                  children={children} 
+                  rooms={rooms} 
+                  onGuestChange={handleGuestChange} 
+                  capacityAdult={room?.capacity_adult || 2}
+                  capacityChild={room?.capacity_child || 2}
+                />
               </div>
 
               {/* Dynamic Price Breakdown */}
               <div className="space-y-3 mb-6 font-body-md text-xs text-[#444842]">
                 <div className="flex justify-between">
-                  <span>Rp {Math.round(subtotalPrice / nightsCount).toLocaleString("id-ID")} x {nightsCount} malam</span>
+                  <span>
+                    Tarif Kamar
+                    <span className="text-[#444842] text-xs block">
+                      Rp {Math.round(subtotalPrice / nightsCount / rooms).toLocaleString("id-ID")} x {nightsCount} malam x {rooms} kamar
+                    </span>
+                  </span>
                   <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
                 </div>
                 <div className="flex justify-between">

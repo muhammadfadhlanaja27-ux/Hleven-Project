@@ -57,7 +57,7 @@ export default function AdminHotelSidebar() {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 dashboard
               </span>
-              <span>Dasbor</span>
+              <span>Dasboard</span>
             </Link>
           </li>
 

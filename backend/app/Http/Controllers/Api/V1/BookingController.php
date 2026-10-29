@@ -876,16 +876,19 @@ class BookingController extends Controller
             }
 
             $capacityAdult = max(1, (int) ($roomType->capacity_adult ?? 2));
+            $capacityChild = max(0, (int) ($roomType->capacity_child ?? 2));
+            
             $maxAdultAllowed = $capacityAdult * $qty;
+            $maxTotalAllowed = ($capacityAdult + $capacityChild) * $qty;
 
-            if ($adults > $maxAdultAllowed) {
+            if ($adults > $maxAdultAllowed || ($adults + $children) > $maxTotalAllowed) {
                 DB::rollBack();
-                $minQtyNeeded = (int) ceil($adults / $capacityAdult);
+                $minQtyNeeded = (int) ceil(($adults + $children) / max(1, ($capacityAdult + $capacityChild)));
                 $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
 
                 return response()->json([
                     'status' => 'error',
-                    'message' => "Untuk {$adults} dewasa, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
+                    'message' => "Untuk {$adults} dewasa dan {$children} anak, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
                     'suggestions' => $suggestions,
                 ], 422);
             }

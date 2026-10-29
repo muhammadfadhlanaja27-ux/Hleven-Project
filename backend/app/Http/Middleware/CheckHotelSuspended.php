@@ -13,7 +13,7 @@ class CheckHotelSuspended
         $user = $request->user();
         if ($user && $user->role === 'admin_hotel') {
             $status = $user->hotel?->status ?? $user->hotels()->first()?->status;
-            if ($status === 'blocked') {
+            if (in_array($status, ['blocked', 'inactive'])) {
                 $path = $request->path();
                 $allowed = [
                     'api/v1/admin/appeals',

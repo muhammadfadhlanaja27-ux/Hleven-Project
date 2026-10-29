@@ -29,12 +29,12 @@ class HotelController extends Controller
         if ($request->has(['adults', 'children', 'rooms'])) {
             $adults = (int) $request->adults;
             $children = (int) $request->children;
-            $rooms = (int) $request->rooms;
 
-            $query->whereHas('roomTypes', function ($q) use ($adults, $children, $rooms) {
-                // Sederhanakan: setidaknya ada tipe kamar yang kapasitasnya cukup untuk jumlah tamu per kamar
-                $q->where('capacity_adult', '>=', ceil($adults / $rooms))
-                  ->where('capacity_child', '>=', floor($children / $rooms));
+            $query->whereHas('roomTypes', function ($q) use ($adults, $children) {
+                // Jangan membatasi hasil pencarian berdasarkan kapasitas per kamar secara kaku.
+                // Selama kamar aktif, tampilkan saja. Validasi jumlah kamar/kapasitas 
+                // akan dilakukan di detail kamar (saran otomatis) dan saat booking (validasi akhir).
+                $q->where('is_active', true);
             });
         }
 
