@@ -6,7 +6,7 @@ import HotelCard from "../../components/landing/HotelCard";
 import Pagination from "../../components/common/Pagination";
 import GuestSelector from "../../components/common/GuestSelector";
 import { cachedGet } from "../../services/apiCache";
-import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
+import { fmtDateStr, getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
 const ITEMS_PER_PAGE = 9;
@@ -105,8 +105,8 @@ const HotelList = () => {
     };
     const params = new URLSearchParams();
     if (next.search.trim()) params.append("search", next.search.trim());
-    if (next.checkInDate) params.append("check_in_date", next.checkInDate.toISOString().split("T")[0]);
-    if (next.checkOutDate) params.append("check_out_date", next.checkOutDate.toISOString().split("T")[0]);
+    if (next.checkInDate) params.append("check_in_date", fmtDateStr(next.checkInDate));
+    if (next.checkOutDate) params.append("check_out_date", fmtDateStr(next.checkOutDate));
     if (next.adults) params.append("adults", next.adults);
     if (next.children) params.append("children", next.children);
     if (next.rooms) params.append("rooms", next.rooms);

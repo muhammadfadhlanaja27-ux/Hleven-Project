@@ -94,6 +94,8 @@ class PartnerApplicationController extends Controller
     {
         $validated = $request->validate([
             'hotel_name' => 'required|string|max:255',
+            'property_type' => 'nullable|string|max:100',
+            'year_built' => 'nullable|integer|min:1800|max:'.now()->year,
             'hotel_description' => 'required|string',
             'hotel_phone' => 'required|string|max:30',
             'hotel_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->user()?->id)],
@@ -140,6 +142,8 @@ class PartnerApplicationController extends Controller
             $application = PartnerApplication::create([
                 'user_id' => $request->user()->id,
                 'hotel_name' => $validated['hotel_name'],
+                'property_type' => $validated['property_type'] ?? null,
+                'year_built' => $validated['year_built'] ?? null,
                 'hotel_description' => $validated['hotel_description'],
                 'hotel_phone' => $validated['hotel_phone'],
                 'hotel_email' => $validated['hotel_email'],

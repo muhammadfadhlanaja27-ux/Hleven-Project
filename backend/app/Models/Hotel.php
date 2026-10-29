@@ -14,12 +14,14 @@ class Hotel extends Model
         'admin_id', 'city_id', 'name', 'slug', 'description', 'address',
         'average_rating', 'total_review', 'latitude', 'longitude', 'status',
         'star_rating', 'star_verified_by', 'star_verified_at', 'star_verified_reason',
+        'property_type', 'year_built',
         'policies', 'tax_rate', 'logo', 'allow_pay_at_hotel',
         'bank_name', 'bank_account_number', 'bank_account_name',
     ];
 
     protected $casts = [
         'star_rating' => 'integer',
+        'year_built' => 'integer',
         'star_verified_at' => 'datetime',
         'tax_rate' => 'decimal:2',
         'allow_pay_at_hotel' => 'boolean',

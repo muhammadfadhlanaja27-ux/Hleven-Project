@@ -121,8 +121,8 @@ const initialHotelData = {
   location: "Bandung, Jawa Barat",
   latitude: null,
   longitude: null,
-  propertyType: "Luxury Boutique Resort",
-  yearBuilt: "2020",
+  propertyType: "",
+  yearBuilt: "",
   website: "www.hleven.com",
   photos: [],
   facilities: [],
@@ -141,6 +141,16 @@ const parseCityName = (cityVal) => {
   return String(cityVal);
 };
 
+const buildLocationArea = (cityName, provinceName) => {
+  const parts = [cityName, provinceName, "Indonesia"]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter((part) => part && !/belum (diisi|ditentukan)/i.test(part));
+
+  return parts.filter((part, index) =>
+    parts.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index
+  ).join(", ");
+};
+
 export default function HotelInformation() {
   const [loading, setLoading] = useState(true);
   const [hotelId, setHotelId] = useState(null);
@@ -157,12 +167,75 @@ export default function HotelInformation() {
   const [masterFacilities, setMasterFacilities] = useState([]);
   const [formFacilityIds, setFormFacilityIds] = useState([]);
   const [facilitySearch, setFacilitySearch] = useState("");
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
+  const INITIAL_FACILITY_COUNT = 10;
+  const [resolvedLocationArea, setResolvedLocationArea] = useState("");
+  const [locationAreaStatus, setLocationAreaStatus] = useState("idle");
 
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchHotelInfo();
   }, []);
+
+  useEffect(() => {
+    if (!hotelId || !hotelData.name) return undefined;
+
+    let active = true;
+    const cacheKey = `hleven_location_area_${hotelId}`;
+    const cacheFingerprint = `${hotelData.name}|${hotelData.latitude ?? ""}|${hotelData.longitude ?? ""}`;
+    setResolvedLocationArea("");
+    setLocationAreaStatus("loading");
+
+    const resolveLocationArea = async () => {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+        if (
+          cached?.fingerprint === cacheFingerprint &&
+          cached?.expiresAt > Date.now() &&
+          typeof cached?.locationArea === "string"
+        ) {
+          setResolvedLocationArea(cached.locationArea);
+          setLocationAreaStatus("resolved");
+          return;
+        }
+      } catch (error) {
+        console.warn("Gagal membaca cache lokasi hotel:", error);
+      }
+
+      try {
+        const response = await api.get("/admin/hotel/location-area");
+        const locationArea = response.data?.data?.location_area;
+        if (!locationArea) {
+          throw new Error("Respons geocoding tidak berisi area lokasi.");
+        }
+
+        if (!active) return;
+        setResolvedLocationArea(locationArea);
+        setLocationAreaStatus("resolved");
+
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            fingerprint: cacheFingerprint,
+            locationArea,
+            expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          }));
+        } catch (error) {
+          console.warn("Gagal menyimpan cache lokasi hotel:", error);
+        }
+      } catch (error) {
+        if (!active) return;
+        console.error("Gagal mencari area lokasi hotel:", error);
+        setLocationAreaStatus("error");
+      }
+    };
+
+    resolveLocationArea();
+
+    return () => {
+      active = false;
+    };
+  }, [hotelId, hotelData.name, hotelData.latitude, hotelData.longitude]);
 
   const fetchHotelInfo = async (forceRefresh = false) => {
     setLoading(true);
@@ -260,11 +333,11 @@ export default function HotelInformation() {
             location:
               typeof raw.location === "string"
                 ? raw.location
-                : `${cityName}, Indonesia`,
+                : buildLocationArea(cityName, raw.city?.province),
             latitude: raw.latitude,
             longitude: raw.longitude,
-            propertyType: "Luxury Boutique Resort",
-            yearBuilt: "2020",
+            propertyType: raw.property_type || "",
+            yearBuilt: raw.year_built ? String(raw.year_built) : "",
             website: "www.hleven.com",
             photos: mappedPhotos.length > 0 ? mappedPhotos : initialPhotos,
             facilities: uniqueAssignedFacilities,
@@ -439,6 +512,18 @@ export default function HotelInformation() {
       newErrors.longitude = "Longitude harus antara -180 dan 180.";
     }
 
+    if (formValues.propertyType.length > 100) {
+      newErrors.propertyType = "Property Type maksimal 100 karakter.";
+    }
+    if (
+      formValues.yearBuilt &&
+      (!Number.isInteger(Number(formValues.yearBuilt)) ||
+        Number(formValues.yearBuilt) < 1800 ||
+        Number(formValues.yearBuilt) > new Date().getFullYear())
+    ) {
+      newErrors.yearBuilt = `Year Built harus antara 1800 dan ${new Date().getFullYear()}.`;
+    }
+
     const taxRate = Number(formValues.tax_rate);
     if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
       newErrors.tax_rate = "Tax rate must be between 0 and 100.";
@@ -460,6 +545,8 @@ export default function HotelInformation() {
     try {
       const payload = {
         name: formValues.name.trim(),
+        property_type: formValues.propertyType.trim() || null,
+        year_built: formValues.yearBuilt ? Number(formValues.yearBuilt) : null,
         description: formValues.description.trim(),
         address: formValues.address.trim(),
         city: formValues.city.trim(),
@@ -643,7 +730,7 @@ export default function HotelInformation() {
                       Property Type
                     </h4>
                     <p className="text-sm font-semibold text-[#2D312C]">
-                      {hotelData.propertyType}
+                      {hotelData.propertyType || "Belum diisi"}
                     </p>
                   </div>
                   <div>
@@ -651,7 +738,7 @@ export default function HotelInformation() {
                       Year Built
                     </h4>
                     <p className="text-sm font-semibold text-[#2D312C]">
-                      {hotelData.yearBuilt}
+                      {hotelData.yearBuilt || "Belum diisi"}
                     </p>
                   </div>
                 </div>
@@ -783,8 +870,23 @@ export default function HotelInformation() {
                       Location Area
                     </h4>
                     <p className="font-semibold text-[#2D312C]">
-                      {hotelData.location}
+                      {locationAreaStatus === "loading"
+                        ? "Mencari lokasi hotel..."
+                        : resolvedLocationArea || hotelData.location}
                     </p>
+                    <a
+                      href="https://www.openstreetmap.org/copyright"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-block text-[10px] text-[#6B6E6A] underline"
+                    >
+                      Data lokasi © OpenStreetMap contributors
+                    </a>
+                    {locationAreaStatus === "error" && (
+                      <p role="status" className="mt-1 text-[11px] text-[#9A4D32]">
+                        Lokasi otomatis belum tersedia. Periksa nama hotel atau koordinatnya.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -838,24 +940,41 @@ export default function HotelInformation() {
             </div>
 
             {Array.isArray(hotelData.facilities) && hotelData.facilities.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {hotelData.facilities.map((fac) => (
-                  <div
-                    key={fac.id}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#fcf9f5] border border-[#E5E1DA] hover:border-[#A8BBA2] hover:shadow-sm transition-all"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center border border-[#d1dccc]">
-                      <span className="material-symbols-outlined text-[26px]">
-                        {getFacilityIcon(fac.name, fac.icon, "hotel")}
-                      </span>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-[#2D312C] leading-tight">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5">
+                  {(showAllFacilities
+                    ? hotelData.facilities
+                    : hotelData.facilities.slice(0, INITIAL_FACILITY_COUNT)
+                  ).map((fac) => (
+                    <div
+                      key={fac.id}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-[#fcf9f5] border border-[#E5E1DA] hover:border-[#A8BBA2] hover:bg-[#f0ede9] hover:shadow-sm transition-all group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center border border-[#d1dccc] shrink-0 group-hover:bg-[#d1dccc] transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">
+                          {getFacilityIcon(fac.name, fac.icon, "hotel")}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-[#2D312C] leading-snug truncate">
                         {getFacilityDisplayName(fac)}
                       </p>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                {hotelData.facilities.length > INITIAL_FACILITY_COUNT && (
+                  <button
+                    onClick={() => setShowAllFacilities((prev) => !prev)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#506147] hover:text-[#3b4b33] transition-colors group"
+                  >
+                    <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: showAllFacilities ? "rotate(180deg)" : "rotate(0deg)" }}>
+                      expand_more
+                    </span>
+                    {showAllFacilities
+                      ? "Sembunyikan"
+                      : `Lihat ${hotelData.facilities.length - INITIAL_FACILITY_COUNT} fasilitas lainnya`}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="py-12 flex flex-col items-center justify-center gap-3 text-center border-2 border-dashed border-[#E5E1DA] rounded-xl bg-[#fcf9f5]/50">
@@ -1070,6 +1189,62 @@ export default function HotelInformation() {
                 {errors.city && (
                   <span className="text-xs text-[#ba1a1a] font-medium">
                     {errors.city}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="propertyType"
+                  className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
+                >
+                  Property Type
+                </label>
+                <input
+                  id="propertyType"
+                  name="propertyType"
+                  type="text"
+                  maxLength={100}
+                  value={formValues.propertyType}
+                  onChange={handleChange}
+                  disabled={isSaving}
+                  placeholder="Contoh: Hotel Bisnis, Resort, Boutique Hotel"
+                  className={`w-full h-11 px-4 bg-white border ${
+                    errors.propertyType ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+                {errors.propertyType && (
+                  <span className="text-xs text-[#ba1a1a] font-medium">
+                    {errors.propertyType}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="yearBuilt"
+                  className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
+                >
+                  Year Built
+                </label>
+                <input
+                  id="yearBuilt"
+                  name="yearBuilt"
+                  type="number"
+                  min="1800"
+                  max={new Date().getFullYear()}
+                  value={formValues.yearBuilt}
+                  onChange={handleChange}
+                  disabled={isSaving}
+                  placeholder="Contoh: 2018"
+                  className={`w-full h-11 px-4 bg-white border ${
+                    errors.yearBuilt ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
+                  } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
+                />
+                {errors.yearBuilt && (
+                  <span className="text-xs text-[#ba1a1a] font-medium">
+                    {errors.yearBuilt}
                   </span>
                 )}
               </div>

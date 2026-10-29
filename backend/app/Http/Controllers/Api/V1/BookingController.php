@@ -99,8 +99,30 @@ class BookingController extends Controller
 
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
+        $checkInStr = $checkIn->toDateString();
+        $checkOutStr = $checkOut->toDateString();
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $qty = (int) $request->qty;
+
+        $totalPhysicalStock = max(0, (int) ($roomType->stock ?? 0));
+        $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
+            ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
+                    ->where('check_in', '<', $checkOutStr)
+                    ->where('check_out', '>', $checkInStr);
+            })
+            ->sum('qty');
+
+        $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
+        if ($remainingStockDirect < $qty) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $remainingStockDirect === 0
+                    ? 'Kamar ini sudah habis untuk tanggal yang dipilih.'
+                    : "Jumlah kamar yang dipilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                'available_stock' => $remainingStockDirect,
+            ], 422);
+        }
 
         $quote = app(PricingService::class)->quote($roomType, $period, $qty);
 
@@ -839,6 +861,15 @@ class BookingController extends Controller
             $duplicateQuery->whereNull('user_id')->where('guest_email', $guestEmail);
         }
 
+        if ($isForOtherGuest) {
+            $duplicateQuery->where('is_for_other_guest', true)
+                ->where('guest_email', $guestEmail);
+        } else {
+            $duplicateQuery->where(function ($q) {
+                $q->whereNull('is_for_other_guest')->orWhere('is_for_other_guest', false);
+            });
+        }
+
         $duplicate = $duplicateQuery
             ->whereHas('bookingRooms', function ($query) use ($request, $qty) {
                 $query->where('room_type_id', $request->room_type_id)->where('qty', $qty);
@@ -893,7 +924,7 @@ class BookingController extends Controller
                 ], 422);
             }
 
-            $totalPhysicalStock = max(1, (int) ($roomType->stock ?? 10));
+            $totalPhysicalStock = max(0, (int) ($roomType->stock ?? 0));
 
             $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
                 ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
@@ -911,7 +942,9 @@ class BookingController extends Controller
 
                 return response()->json([
                     'status' => 'error',
-                    'message' => "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                    'message' => $remainingStockDirect === 0
+                        ? 'Kamar ini sudah habis untuk tanggal yang dipilih.'
+                        : "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
                     'suggestions' => $suggestions,
                 ], 422);
             }
