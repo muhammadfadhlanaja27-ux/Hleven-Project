@@ -100,7 +100,8 @@ const BookingPage = () => {
   }, [adults, room]);
 
   const maxAvailableStock = useMemo(() => {
-    return Math.max(1, room?.stock ?? 10);
+    if (room?.stock === undefined || room?.stock === null) return 10;
+    return Math.max(0, Number(room.stock));
   }, [room]);
 
   // PROTEKSI HALAMAN ON-MOUNT: Jika guest, langsung alihkan ke login
@@ -112,7 +113,9 @@ const BookingPage = () => {
   }, [navigate, location]);
 
   useEffect(() => {
-    if (roomQty < minRequiredRooms) {
+    if (maxAvailableStock <= 0) {
+      setRoomQty(0);
+    } else if (roomQty < minRequiredRooms) {
       setRoomQty(minRequiredRooms);
     } else if (roomQty > maxAvailableStock) {
       setRoomQty(maxAvailableStock);
@@ -448,6 +451,11 @@ const BookingPage = () => {
       return;
     }
 
+    if (maxAvailableStock <= 0 || Number(roomQty) <= 0) {
+      toast.error("Maaf, kamar ini sudah habis untuk tanggal yang Anda pilih.");
+      return;
+    }
+
     if (bookingFor === "someone_else" && (!guestName || !guestEmail || !guestPhone)) {
       toast.error("Harap lengkapi Data Tamu Menginap (Nama, Email, dan No. Telepon).");
       return;
@@ -512,6 +520,12 @@ const BookingPage = () => {
 
     try {
       const res = await api.post("/user/bookings", payload);
+
+      if (res.data?.duplicate) {
+        toast.error(res.data.message || "Anda sudah memiliki reservasi aktif untuk kamar dan tanggal ini.");
+        releaseSubmitLock();
+        return;
+      }
 
       if (res.data && res.data.data) {
         invalidateCache("/user/bookings");
@@ -627,6 +641,18 @@ const BookingPage = () => {
                 <span className="material-symbols-outlined text-[#A1BC98]">person</span>
                 Data Pemesan &amp; Tamu
               </h2>
+
+              {maxAvailableStock <= 0 && (
+                <div className="mb-6 p-4 bg-[#ba1a1a]/10 border border-[#ba1a1a]/30 rounded-xl flex items-center gap-3 text-[#ba1a1a]">
+                  <span className="material-symbols-outlined text-2xl shrink-0">block</span>
+                  <div>
+                    <p className="font-bold text-sm">Kamar Tidak Tersedia</p>
+                    <p className="text-xs mt-0.5">
+                      Kamar ini sudah habis untuk tanggal yang Anda pilih. Silakan ganti tanggal atau cari tipe kamar lain.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleOpenPaymentModal} className="space-y-5">
                 {/* DATA PEMESAN UTAMA */}
@@ -775,14 +801,18 @@ const BookingPage = () => {
                       Jumlah Kamar
                     </span>
                     <span className="font-label-sm text-xs text-[#778873]">
-                      Minimal {minRequiredRooms} kamar untuk {adults} dewasa (Tersedia: {maxAvailableStock})
+                      {maxAvailableStock <= 0 ? (
+                        <span className="text-[#ba1a1a] font-semibold">Stok Habis (Tersedia: 0)</span>
+                      ) : (
+                        `Minimal ${minRequiredRooms} kamar untuk ${adults} dewasa (Tersedia: ${maxAvailableStock})`
+                      )}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      disabled={Number(roomQty) <= minRequiredRooms}
+                      disabled={maxAvailableStock <= 0 || Number(roomQty) <= minRequiredRooms}
                       onClick={() => setRoomQty((prev) => Math.max(minRequiredRooms, Number(prev) - 1))}
                       className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
@@ -793,7 +823,7 @@ const BookingPage = () => {
                     </span>
                     <button
                       type="button"
-                      disabled={Number(roomQty) >= maxAvailableStock}
+                      disabled={maxAvailableStock <= 0 || Number(roomQty) >= maxAvailableStock}
                       onClick={() => setRoomQty((prev) => Math.min(maxAvailableStock, Number(prev) + 1))}
                       className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
@@ -819,10 +849,14 @@ const BookingPage = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={submitting}
-                    className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
+                    className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {submitting ? "Memeriksa Ketersediaan..." : "Bayar Sekarang"}
+                    {maxAvailableStock <= 0
+                      ? "Kamar Tidak Tersedia"
+                      : submitting
+                      ? "Memeriksa Ketersediaan..."
+                      : "Bayar Sekarang"}
                     <span className="material-symbols-outlined text-base">payments</span>
                   </button>
                 </div>
@@ -940,10 +974,14 @@ const BookingPage = () => {
               <button
                 type="button"
                 onClick={handleOpenPaymentModal}
-                disabled={submitting}
-                className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
+                className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Memproses..." : "Bayar Sekarang"}
+                {maxAvailableStock <= 0
+                  ? "Kamar Tidak Tersedia"
+                  : submitting
+                  ? "Memproses..."
+                  : "Bayar Sekarang"}
                 <span className="material-symbols-outlined text-base">payments</span>
               </button>
 

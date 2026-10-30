@@ -108,6 +108,8 @@ const HotelDetail = () => {
   const [filterBreakfast, setFilterBreakfast] = useState(false);
   const [filterSmoking, setFilterSmoking] = useState(false);
   const [filterRefundable, setFilterRefundable] = useState(false);
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
+  const INITIAL_FACILITIES_COUNT = 9;
 
   const today = useMemo(() => new Date(), []);
   const handleDateRangeChange = (dates) => {
@@ -409,22 +411,10 @@ const HotelDetail = () => {
 
   const handleBookRoom = (e, room) => {
     e.preventDefault();
-    const totalTamu = Number(filterAdults) + Number(filterChildren);
-    const kapasitasPerKamar = Number(room.capacity_adult || 2) + Number(room.capacity_child || 0);
-    const minRoomsNeeded = Math.ceil(totalTamu / Math.max(1, kapasitasPerKamar));
-    const finalRooms = Math.max(rooms, minRoomsNeeded);
-    if (minRoomsNeeded > rooms) {
-      setAlertData({
-        minRooms: minRoomsNeeded,
-        finalRooms,
-        totalTamu,
-        targetHotelId: hotel?.id || id || 1,
-        targetRoomId: room?.id || 101,
-      });
-      setShowRoomAlert(true);
+    if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
+      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
       return;
     }
-    // proceed normally
     const targetHotelId = hotel?.id || id || 1;
     const targetRoomId = room?.id || 101;
     const qs = new URLSearchParams();
@@ -639,28 +629,59 @@ const HotelDetail = () => {
 
             {/* Card 2: Fasilitas Hotel */}
             <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
-              <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] mb-6 flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-[#5F7161] text-2xl">home_repair_service</span>
-                Fasilitas Hotel
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[#5F7161] text-2xl">home_repair_service</span>
+                  Fasilitas Hotel
+                </h2>
+                {facilitiesList.length > 0 && (
+                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#5F7161]/10 text-[#5F7161] border border-[#5F7161]/20">
+                    {facilitiesList.length} Fasilitas
+                  </span>
+                )}
+              </div>
               {facilitiesList.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                  {facilitiesList.map((fac, idx) => {
-                    const facName = getFacilityDisplayName(fac);
-                    const iconName = getFacilityIcon(fac);
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#F7F6F2] hover:bg-[#EFECE6] border border-[#E2DDD3] transition-all"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-xl">{iconName}</span>
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                    {(showAllFacilities
+                      ? facilitiesList
+                      : facilitiesList.slice(0, INITIAL_FACILITIES_COUNT)
+                    ).map((fac, idx) => {
+                      const facName = getFacilityDisplayName(fac);
+                      const iconName = getFacilityIcon(fac);
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#F7F6F2] hover:bg-[#EFECE6] border border-[#E2DDD3] transition-all"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-xl">{iconName}</span>
+                          </div>
+                          <span className="font-label-md text-xs font-bold text-[#1C251D] truncate" title={facName}>
+                            {facName}
+                          </span>
                         </div>
-                        <span className="font-label-md text-xs font-bold text-[#1C251D] truncate">{facName}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+
+                  {facilitiesList.length > INITIAL_FACILITIES_COUNT && (
+                    <div className="mt-5 pt-4 border-t border-[#F0EBE1] flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllFacilities((prev) => !prev)}
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl border border-[#5F7161] text-[#5F7161] hover:bg-[#5F7161]/10 font-label-md text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          {showAllFacilities ? "expand_less" : "expand_more"}
+                        </span>
+                        {showAllFacilities
+                          ? "Tampilkan Lebih Sedikit"
+                          : `Lihat Semua Fasilitas (${facilitiesList.length})`}
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
                   Belum ada fasilitas khusus yang terdaftar untuk hotel ini.
@@ -1013,7 +1034,12 @@ const HotelDetail = () => {
                             <span className="text-xs font-normal text-[#5A625B]">/ malam (Weekday)</span>
                           </p>
                           {room.stock !== undefined && room.stock !== null ? (
-                            room.stock <= 3 ? (
+                            Number(room.stock) <= 0 ? (
+                              <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">block</span>
+                                Kamar Habis
+                              </p>
+                            ) : Number(room.stock) <= 3 ? (
                               <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">
                                   local_fire_department
@@ -1037,13 +1063,23 @@ onClick={() => handleRoomNavigation(room, false)}
                           >
                             Detail Kamar
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRoomNavigation(room, true)}
-                            className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
-                          >
-                            Pesan Sekarang
-                          </button>
+                          {room.stock !== undefined && room.stock !== null && Number(room.stock) <= 0 ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full sm:w-auto bg-[#E5E0D8] text-[#8A948C] font-label-md text-xs font-bold px-6 py-3 rounded-2xl cursor-not-allowed shadow-none text-center"
+                            >
+                              Kamar Habis
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => handleBookRoom(e, room)}
+                              className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
+                            >
+                              Pilih Kamar
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
