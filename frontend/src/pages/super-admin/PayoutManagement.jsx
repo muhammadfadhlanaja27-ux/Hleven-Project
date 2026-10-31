@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 
 const STATUS_LABEL = {
-  pending: "Menunggu",
+  pending: "Pending",
   approved: "Disetujui",
   rejected: "Ditolak",
   paid: "Ditransfer",
@@ -40,7 +40,7 @@ export default function PayoutManagement() {
       setLastPage(paginator.last_page || 1);
       setTotal(paginator.total || 0);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memuat daftar pencairan.");
+      toast.error(err.response?.data?.message || "Failed to load payout list.");
     } finally {
       setLoading(false);
     }
@@ -63,11 +63,11 @@ export default function PayoutManagement() {
         admin_note: modal.admin_note || undefined,
         reference: modal.reference || undefined,
       });
-      toast.success("Status pencairan berhasil diperbarui.");
+      toast.success("Payout status updated successfully.");
       setModal(null);
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memperbarui status.");
+      toast.error(err.response?.data?.message || "Failed to update status.");
     } finally {
       setSubmitting(false);
     }
@@ -102,8 +102,8 @@ export default function PayoutManagement() {
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
             className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
-            <option value="">Semua Status</option>
-            <option value="pending">Menunggu</option>
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
             <option value="approved">Disetujui</option>
             <option value="paid">Ditransfer</option>
             <option value="rejected">Ditolak</option>
@@ -128,8 +128,8 @@ export default function PayoutManagement() {
                   <th className="py-4 px-6">Hotel</th>
                   <th className="py-4 px-6">Nominal</th>
                   <th className="py-4 px-6">Rekening</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6">Tanggal</th>
+                   <th className="py-4 px-6">Status</th>
+                   <th className="py-4 px-6">Date</th>
                   <th className="py-4 px-6 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -251,7 +251,7 @@ export default function PayoutManagement() {
                 disabled={submitting}
                 className="px-4 py-2 text-sm rounded-lg bg-[#506147] text-white font-semibold hover:bg-[#3b4b33] disabled:opacity-50"
               >
-                {submitting ? "Menyimpan..." : "Konfirmasi"}
+                 {submitting ? "Saving..." : "Confirm"}
               </button>
             </div>
           </div>

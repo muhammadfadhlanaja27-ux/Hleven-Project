@@ -26,19 +26,12 @@ class AuthController extends Controller
     public function sendRegisterOtp(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email|unique:users,email'], [
-            'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain atau login.'
+            'email.unique' => 'This email is already registered. Please use another email or log in.'
         ]);
-
-        $otp = rand(100000, 999999);
-        $cacheKey = 'register_otp_'.$request->email;
-
-        Cache::put($cacheKey, $otp, now()->addMinutes(10));
-
-        Notification::route('mail', $request->email)->notify(new RegisterOTPNotification((string) $otp));
-
+// ...
         return response()->json([
-            'success' => true,
-            'message' => 'Kode OTP telah dikirim ke email Anda',
+            'status' => 'success',
+            'message' => 'OTP code has been sent to your email',
         ]);
     }
 
@@ -57,14 +50,14 @@ class AuthController extends Controller
 
         if (! $storedOtp || $storedOtp != $request->otp) {
             return response()->json([
-                'success' => false,
-                'message' => 'Kode OTP tidak valid atau sudah kadaluarsa',
+                'status' => 'error',
+                'message' => 'Invalid or expired OTP code',
             ], 422);
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Kode OTP valid',
+            'status' => 'success',
+            'message' => 'Valid OTP code',
         ]);
     }
 
@@ -80,8 +73,8 @@ class AuthController extends Controller
 
         if (! $storedOtp || $storedOtp != $request->otp) {
             return response()->json([
-                'success' => false,
-                'message' => 'Verifikasi email gagal. Kode OTP tidak valid atau sudah kadaluarsa.',
+                'status' => 'error',
+                'message' => 'Email verification failed. Invalid or expired OTP code.',
             ], 422);
         }
 
@@ -99,8 +92,8 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'success' => true,
-            'message' => 'Registrasi berhasil',
+            'status' => 'success',
+            'message' => 'Registration successful',
             'data' => [
                 'user' => $user,
                 'access_token' => $token,
@@ -116,8 +109,8 @@ class AuthController extends Controller
     {
         if (! Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
-                'success' => false,
-                'message' => 'Email atau password salah',
+                'status' => 'error',
+                'message' => 'Incorrect email or password',
             ], 401);
         }
 
@@ -126,8 +119,8 @@ class AuthController extends Controller
         // Cek status akun aktif atau diblokir
         if ($user->status !== 'active') {
             return response()->json([
-                'success' => false,
-                'message' => 'Akun anda sedang tidak aktif atau diblokir.',
+                'status' => 'error',
+                'message' => 'Your account is currently inactive or blocked.',
             ], 403);
         }
 
@@ -143,8 +136,8 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil',
+            'status' => 'success',
+            'message' => 'Login successful',
             'data' => [
                 'user' => $userArr,
                 'access_token' => $token,
@@ -159,8 +152,8 @@ class AuthController extends Controller
     public function profile(Request $request): JsonResponse
     {
         return response()->json([
-            'success' => true,
-            'message' => 'Detail profil berhasil dimuat',
+            'status' => 'success',
+            'message' => 'Profile details loaded successfully',
             'data' => $request->user(),
         ], 200);
     }
@@ -194,8 +187,8 @@ class AuthController extends Controller
         $user->update($data);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Profil berhasil diperbarui',
+            'status' => 'success',
+            'message' => 'Profile updated successfully',
             'data' => $user,
         ], 200);
     }
@@ -213,8 +206,8 @@ class AuthController extends Controller
 
         if (! $currentPwd || ! Hash::check($currentPwd, $user->password)) {
             return response()->json([
-                'success' => false,
-                'message' => 'Password saat ini tidak cocok',
+                'status' => 'error',
+                'message' => 'Current password does not match',
             ], 422);
         }
 
@@ -223,8 +216,8 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Password berhasil diperbarui',
+            'status' => 'success',
+            'message' => 'Password updated successfully',
         ], 200);
     }
 
@@ -236,8 +229,8 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'success' => true,
-            'message' => 'Logout berhasil',
+            'status' => 'success',
+            'message' => 'Logout successful',
         ], 200);
     }
 
@@ -257,8 +250,8 @@ class AuthController extends Controller
         $user->notify(new PasswordResetNotification($otp));
 
         return response()->json([
-            'success' => true,
-            'message' => 'Kode OTP telah dikirim ke email Anda',
+            'status' => 'success',
+            'message' => 'OTP code has been sent to your email',
         ]);
     }
 
@@ -277,14 +270,14 @@ class AuthController extends Controller
 
         if (! $storedOtp || $storedOtp != $request->otp) {
             return response()->json([
-                'success' => false,
-                'message' => 'Kode OTP tidak valid atau sudah kadaluarsa',
+                'status' => 'error',
+                'message' => 'Invalid or expired OTP code',
             ], 422);
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Kode OTP valid',
+            'status' => 'success',
+            'message' => 'Valid OTP code',
         ]);
     }
 
@@ -304,8 +297,8 @@ class AuthController extends Controller
 
         if (! $storedOtp || $storedOtp != $request->otp) {
             return response()->json([
-                'success' => false,
-                'message' => 'Kode OTP tidak valid atau sudah kadaluarsa',
+                'status' => 'error',
+                'message' => 'Invalid or expired OTP code',
             ], 422);
         }
 
@@ -315,8 +308,8 @@ class AuthController extends Controller
         Cache::forget($cacheKey);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Password berhasil diperbarui',
+            'status' => 'success',
+            'message' => 'Password updated successfully',
         ]);
     }
 

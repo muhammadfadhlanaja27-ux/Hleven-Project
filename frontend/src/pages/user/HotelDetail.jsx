@@ -239,7 +239,7 @@ const HotelDetail = () => {
           console.debug(`[Cache Hit] HotelDetail id=${id} loaded from cache`);
         }
       } catch (err) {
-        console.error("Backend Error / Gagal memuat data hotel:", err);
+        console.error("Backend Error / Failed to load hotel data:", err);
         setHotel(null);
       }
       setLoading(false);
@@ -352,12 +352,12 @@ const HotelDetail = () => {
   if (!hotel) {
     return (
       <div className="w-full max-w-[1280px] mx-auto py-20 text-center">
-        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1C251D]">Hotel Tidak Ditemukan</h2>
+        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1C251D]">Hotel Not Found</h2>
         <button
           onClick={() => navigate("/")}
           className="bg-[#5F7161] text-white px-6 py-3 rounded-2xl font-bold hover:bg-[#4D5E4F] transition-colors"
         >
-          Kembali ke Beranda
+          Back to Home
         </button>
       </div>
     );
@@ -412,7 +412,7 @@ const HotelDetail = () => {
   const handleBookRoom = (e, room) => {
     e.preventDefault();
     if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
-      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
+              toast.error("This room is already fully booked for the selected dates.");
       return;
     }
     const targetHotelId = hotel?.id || id || 1;
@@ -450,7 +450,7 @@ const HotelDetail = () => {
             type="button"
             onClick={() => navigate(-1)}
             className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
-            title="Kembali"
+            title="Back"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
@@ -542,7 +542,7 @@ const HotelDetail = () => {
                     <div className="absolute inset-0 bg-black/45 flex items-center justify-center hover:bg-black/55 transition-colors">
                       <span className="text-white font-label-md text-sm font-bold flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">grid_view</span>
-                        Lihat Semua Foto ({photosList.length})
+                        View All Photos ({photosList.length})
                       </span>
                     </div>
                   </div>
@@ -556,7 +556,7 @@ const HotelDetail = () => {
               </span>
               <h3 className="font-headline-md text-2xl font-bold text-[#1C251D] mb-2">Belum Ada Foto Hotel</h3>
               <p className="font-body-md text-sm text-[#5A625B] max-w-md">
-                Pihak hotel belum mengunggah foto galeri. Lihat bagian Pilihan Kamar di bawah untuk melihat foto tipe kamar.
+                The hotel has not uploaded gallery photos yet. See the Room Options section below for room type photos.
               </p>
             </div>
           )}
@@ -583,7 +583,7 @@ const HotelDetail = () => {
                     ))}
                   </div>
                   <span className="font-label-sm text-xs font-bold">
-                    Bintang {starCount || 4}
+                    {starCount || 4}-Star
                   </span>
                 </div>
 
@@ -600,7 +600,7 @@ const HotelDetail = () => {
                     </span>
                     {reviewCount > 0 && (
                       <span className="text-xs text-[#5A625B]">
-                        ({reviewCount} Ulasan)
+                        ({reviewCount} Reviews)
                       </span>
                     )}
                   </div>
@@ -619,10 +619,10 @@ const HotelDetail = () => {
               <hr className="border-[#F0EBE1] my-6" />
 
               <div>
-                <h3 className="font-headline-md text-lg font-bold text-[#1C251D] mb-3">Tentang Hotel</h3>
+                <h3 className="font-headline-md text-lg font-bold text-[#1C251D] mb-3">About the Hotel</h3>
                 <p className="font-body-md text-sm md:text-base text-[#5A625B] leading-relaxed">
                   {hotel.description ||
-                    `Terletak di lokasi strategis ${hotelCityName}, ${hotel.name} menawarkan perpaduan sempurna antara kemewahan modern dan kenyamanan alam yang menenangkan.`}
+                    `Strategically located in ${hotelCityName}, ${hotel.name} offers the perfect blend of modern luxury and tranquil natural comfort.`}
                 </p>
               </div>
             </div>
@@ -632,11 +632,11 @@ const HotelDetail = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-[#5F7161] text-2xl">home_repair_service</span>
-                  Fasilitas Hotel
+                  Hotel Amenities
                 </h2>
                 {facilitiesList.length > 0 && (
                   <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#5F7161]/10 text-[#5F7161] border border-[#5F7161]/20">
-                    {facilitiesList.length} Fasilitas
+                    {facilitiesList.length} Amenities
                   </span>
                 )}
               </div>
@@ -676,15 +676,15 @@ const HotelDetail = () => {
                           {showAllFacilities ? "expand_less" : "expand_more"}
                         </span>
                         {showAllFacilities
-                          ? "Tampilkan Lebih Sedikit"
-                          : `Lihat Semua Fasilitas (${facilitiesList.length})`}
+                          ? "Show Less"
+                          : `View All Amenities (${facilitiesList.length})`}
                       </button>
                     </div>
                   )}
                 </>
               ) : (
                 <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
-                  Belum ada fasilitas khusus yang terdaftar untuk hotel ini.
+                  No specific amenities listed for this hotel.
                 </p>
               )}
             </div>
@@ -692,7 +692,7 @@ const HotelDetail = () => {
             {/* Card 3: Kebijakan Hotel */}
             <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
               <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] mb-4">
-                Kebijakan Hotel
+                Hotel Policies
               </h2>
               {hotel.policies ? (
                 <>
@@ -700,27 +700,27 @@ const HotelDetail = () => {
                     {hotel.policies}
                   </div>
                   <div className="mt-4 rounded-2xl border border-[#4F6F52]/20 bg-[#4F6F52]/10 p-4 text-left">
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Aturan Refund Sistem</h4>
-                    <p className="text-xs text-[#5A625B] mt-1">Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir sebelum check-in, dana tidak dapat dikembalikan.</p>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">System Refund Policy</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Automatic refund applies if canceled more than 24 hours before check-in. Within the last 24 hours before check-in, the funds are non-refundable.</p>
                   </div>
                 </>
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Waktu Check-in & Check-out</h4>
-                    <p className="text-xs text-[#5A625B] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Check-in &amp; Check-out Times</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Check-in starts from 14:00. Check-out is by 12:00.</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Kebijakan Bebas Asap Rokok</h4>
-                    <p className="text-xs text-[#5A625B] mt-1">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Smoke-Free Policy</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">All rooms are smoke-free. Designated smoking areas are available on the outdoor terrace.</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Hewan Peliharaan</h4>
-                    <p className="text-xs text-[#5A625B] mt-1">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Pets</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Pets are not allowed to maintain hygiene for all guests.</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#1C251D] text-sm">Pembatalan</h4>
-                    <p className="text-xs text-[#5A625B] mt-1">Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana tidak dapat dikembalikan.</p>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Cancellation</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Refundable: Automatic refund applies if canceled more than 24 hours before check-in. Within the last 24 hours, the funds are non-refundable.</p>
                   </div>
                 </div>
               )}
@@ -734,12 +734,12 @@ const HotelDetail = () => {
                 <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-xl">map</span>
                 </div>
-                <h2 className="font-headline-lg text-xl font-bold text-[#1C251D]">Lokasi Hotel</h2>
+                <h2 className="font-headline-lg text-xl font-bold text-[#1C251D]">Hotel Location</h2>
               </div>
 
               <div className="rounded-2xl overflow-hidden border border-[#E2DDD3] shadow-xs relative h-60 bg-[#F7F6F2]">
                 <iframe
-                  title={`Peta Lokasi ${hotel.name}`}
+                  title={`Location Map for ${hotel.name}`}
                   src={`https://maps.google.com/maps?q=${encodeURIComponent(
                     (hotel.name || "") + " " + (hotel.address || hotelCityName)
                   )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
@@ -764,7 +764,7 @@ const HotelDetail = () => {
                   className="w-full py-3 bg-[#5F7161] hover:bg-[#4D5E4F] text-white rounded-2xl font-label-md text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">open_in_new</span>
-                  Buka di Google Maps
+                  Open in Google Maps
                 </a>
               </div>
             </div>
@@ -775,33 +775,33 @@ const HotelDetail = () => {
         <section className="mt-16 pt-10 border-t border-[#E8E2D9]">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
             <div>
-              <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#5F7161] mb-1">
-                Pilihan Kamar
-              </h2>
-              <p className="font-body-md text-xs text-[#5A625B]">
-                Menampilkan {paginatedRooms.length} dari {(hotel.rooms || []).length} tipe kamar tersedia (hal.{" "}
-                {roomPage}/{totalRoomPages})
-              </p>
+                <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#5F7161] mb-1">
+                  Room Options
+                </h2>
+                <p className="font-body-md text-xs text-[#5A625B]">
+                  Displaying {paginatedRooms.length} of {(hotel.rooms || []).length} available room types (page{" "}
+                  {roomPage}/{totalRoomPages})
+                </p>
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetRoomFilters}
+                  className="text-xs text-[#5F7161] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">restart_alt</span>
+                  Reset Room Filters
+                </button>
+              )}
             </div>
 
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleResetRoomFilters}
-                className="text-xs text-[#5F7161] font-bold hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">restart_alt</span>
-                Reset Filter Kamar
-              </button>
-            )}
-          </div>
-
-          {/* Room Filter Box */}
-          <div className="bg-white border border-[#E8E2D9] rounded-3xl p-5 mb-8 shadow-xs">
-            <h3 className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">tune</span>
-              Filter Kamar Sesuai Kebutuhan
-            </h3>
+            {/* Room Filter Box */}
+            <div className="bg-white border border-[#E8E2D9] rounded-3xl p-5 mb-8 shadow-xs">
+              <h3 className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-base">tune</span>
+                Filter Rooms as Needed
+              </h3>
 
             {/* Prefill dari Landing: Tanggal + Tamu */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
@@ -811,7 +811,7 @@ const HotelDetail = () => {
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
                   <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in & Check-out</label>
-                  <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Pilih Tanggal" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
+                  <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Select Date" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
                 </div>
               </div>
               <GuestSelector 
@@ -831,7 +831,7 @@ const HotelDetail = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
               <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
                 <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
-                  Tipe Kamar
+                  Room Type
                 </label>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="material-symbols-outlined text-[#5F7161] text-base select-none">
@@ -869,8 +869,8 @@ const HotelDetail = () => {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5 justify-center">
-                <label className="font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider">Cari Nama Kamar</label>
-                <input type="text" placeholder="Nama kamar..." value={filterRoomName} onChange={(e) => setFilterRoomName(e.target.value)} className="w-full bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#1C251D] focus:outline-none focus:border-[#5F7161] placeholder:#8A948C" />
+                <label className="font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider">Search Room Name</label>
+                <input type="text" placeholder="Room name..." value={filterRoomName} onChange={(e) => setFilterRoomName(e.target.value)} className="w-full bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#1C251D] focus:outline-none focus:border-[#5F7161] placeholder:#8A948C" />
               </div>
             </div>
 
@@ -933,10 +933,10 @@ const HotelDetail = () => {
                             no_photography
                           </span>
                           <p className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider">
-                            Belum Ada Foto Kamar
+                            No Room Photos Yet
                           </p>
                           <p className="font-body-md text-[11px] text-[#5A625B] mt-1 opacity-80">
-                            Admin hotel belum mengunggah foto untuk tipe kamar ini.
+                            The hotel admin has not uploaded photos for this room type.
                           </p>
                         </div>
                       )}
@@ -1017,7 +1017,7 @@ const HotelDetail = () => {
                           if (minRoomsNeeded > rooms) {
                             return (
                               <p className="text-xs text-amber-600 font-bold mt-2 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                                ⚠️ Minimal perlu {minRoomsNeeded} kamar untuk jumlah tamu ini.
+                                ⚠️ A minimum of {minRoomsNeeded} rooms is required for this number of guests.
                               </p>
                             );
                           }
@@ -1031,13 +1031,13 @@ const HotelDetail = () => {
                           </p>
                           <p className="font-headline-lg text-2xl font-extrabold text-[#5F7161]">
                             Rp {roomPrice.toLocaleString("id-ID")}{" "}
-                            <span className="text-xs font-normal text-[#5A625B]">/ malam (Weekday)</span>
+                            <span className="text-xs font-normal text-[#5A625B]">/ night (Weekday)</span>
                           </p>
                           {room.stock !== undefined && room.stock !== null ? (
                             Number(room.stock) <= 0 ? (
                               <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">block</span>
-                                Kamar Habis
+                                Room Sold Out
                               </p>
                             ) : Number(room.stock) <= 3 ? (
                               <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
@@ -1049,7 +1049,7 @@ const HotelDetail = () => {
                             ) : (
                               <p className="text-xs text-[#4F6F52] font-bold mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
-                                Tersedia ({room.stock} kamar)
+                                Available ({room.stock} rooms)
                               </p>
                             )
                           ) : null}
@@ -1077,7 +1077,7 @@ onClick={() => handleRoomNavigation(room, false)}
                               onClick={(e) => handleBookRoom(e, room)}
                               className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
                             >
-                              Pilih Kamar
+                              Select Room
                             </button>
                           )}
                         </div>
@@ -1090,10 +1090,10 @@ onClick={() => handleRoomNavigation(room, false)}
               {totalRoomPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                   <p className="text-xs text-[#5A625B]">
-                    Halaman <span className="font-bold text-[#5F7161]">{roomPage}</span> dari {totalRoomPages}{" "}
-                    — menampilkan {(roomPage - 1) * ROOMS_PER_PAGE + 1}–
-                    {Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} dari {filteredRooms.length}{" "}
-                    kamar
+                    Page <span className="font-bold text-[#5F7161]">{roomPage}</span> of {totalRoomPages}{" "}
+                    — showing {(roomPage - 1) * ROOMS_PER_PAGE + 1}–
+                    {Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} of {filteredRooms.length}{" "}
+                    rooms
                   </p>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -1102,7 +1102,7 @@ onClick={() => handleRoomNavigation(room, false)}
                       disabled={roomPage === 1}
                       className="px-4 py-2 border border-[#E8E2D9] text-[#5F7161] rounded-xl text-xs font-bold hover:bg-[#F7F6F2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      ‹ Sebelumnya
+                      ‹ Previous
                     </button>
                     {Array.from({ length: totalRoomPages }).map((_, idx) => (
                       <button
@@ -1124,7 +1124,7 @@ onClick={() => handleRoomNavigation(room, false)}
                       disabled={roomPage === totalRoomPages}
                       className="px-4 py-2 border border-[#E8E2D9] text-[#5F7161] rounded-xl text-xs font-bold hover:bg-[#F7F6F2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      Berikutnya ›
+                      Next ›
                     </button>
                   </div>
                 </div>
@@ -1133,19 +1133,19 @@ onClick={() => handleRoomNavigation(room, false)}
           ) : (
             <div className="p-12 text-center bg-white rounded-3xl border border-[#E8E2D9] shadow-xs">
               <span className="material-symbols-outlined text-4xl text-[#8A948C] mb-2">filter_alt_off</span>
-              <h4 className="font-headline-md text-lg font-bold text-[#1C251D] mb-1">
-                Kamar Tidak Ditemukan
-              </h4>
-              <p className="text-[#5A625B] text-sm mb-4">
-                Tidak ada tipe kamar yang cocok dengan kriteria filter yang Anda pilih.
-              </p>
-              <button
-                type="button"
-                onClick={handleResetRoomFilters}
-                className="bg-[#5F7161] text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-[#4D5E4F] transition-colors"
-              >
-                Reset Filter Kamar
-              </button>
+                  <h4 className="font-headline-md text-lg font-bold text-[#1C251D] mb-1">
+                    Room Not Found
+                  </h4>
+                <p className="text-[#5A625B] text-sm mb-4">
+                  No matching room types found for the selected filters.
+                </p>
+                  <button
+                    type="button"
+                    onClick={handleResetRoomFilters}
+                    className="bg-[#5F7161] text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-[#4D5E4F] transition-colors"
+                  >
+                    Reset Room Filters
+                  </button>
             </div>
           )}
         </section>
@@ -1157,8 +1157,8 @@ onClick={() => handleRoomNavigation(room, false)}
           <Modal
             isOpen={showRoomAlert}
             onClose={() => setShowRoomAlert(false)}
-            title="Kapasitas Kamar"
-            message={`Kamar ini membutuhkan ${alertData.minRooms} kamar untuk menampung ${alertData.totalTamu} tamu. Lanjutkan dengan ${alertData.finalRooms} kamar?`}
+            title="Room Capacity"
+            message={`This room type requires ${alertData.minRooms} rooms to accommodate ${alertData.totalTamu} guests. Continue with ${alertData.finalRooms} rooms?`}
             onConfirm={() => {
               const qs = new URLSearchParams();
               if (filterAdults) qs.set('adults', String(filterAdults));

@@ -292,7 +292,7 @@ const HotelList = () => {
                   minDate={today}
                   monthsShown={window.innerWidth > 640 ? 2 : 1}
                   dateFormat="dd/MM/yyyy"
-                  placeholderText="Pilih Check-in - Check-out"
+                  placeholderText="Select Check-in - Check-out"
                   popperPlacement="bottom-start"
                   popperContainer={({ children }) => <div style={{ zIndex: 9999 }}>{children}</div>}
                   className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
@@ -315,7 +315,7 @@ const HotelList = () => {
               className="w-full lg:w-auto h-full bg-[#778873] text-white px-8 py-4 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined text-xl">search</span>
-              Cari
+              Search
             </button>
           </div>
         </div>
@@ -343,7 +343,7 @@ const HotelList = () => {
             {/* Rentang Harga Filter */}
             <div className="mb-6">
               <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Rentang Harga (per malam)
+                Price Range (per night)
               </h4>
               <div className="flex gap-2 items-center">
                 <input
@@ -436,7 +436,7 @@ const HotelList = () => {
                 Fasilitas Kamar
               </h4>
               <div className="flex flex-col gap-2.5">
-                {["AC", "TV", "Kamar Mandi Pribadi", "Bathtub", "Meja Kerja"].map((fac) => (
+                {["AC", "TV", "Private Bathroom", "Bathtub", "Work Desk"].map((fac) => (
                   <label key={fac} className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
@@ -463,21 +463,21 @@ const HotelList = () => {
                 Hasil Pencarian ({filteredHotels.length})
               </h2>
               <p className="font-body-md text-sm text-[#444842]">
-                Pilihan akomodasi siap huni untuk perjalanan bisnis maupun liburan Anda.
+                Ready-to-stay accommodation options for your business or vacation.
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3.5 py-2 rounded-xl border border-[#DCCFC0]/60 shrink-0">
-              <span className="text-[#444842] text-xs font-semibold">Urutkan:</span>
+              <span className="text-[#444842] text-xs font-semibold">Sort by:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="bg-transparent border-none font-label-md text-xs font-semibold text-[#778873] focus:ring-0 cursor-pointer outline-none p-0"
               >
-                <option value="recommendation">Rekomendasi</option>
-                <option value="price_asc">Harga Terendah</option>
-                <option value="price_desc">Harga Tertinggi</option>
-                <option value="rating_desc">Rating Tertinggi</option>
+                <option value="recommendation">Recommendation</option>
+                <option value="price_asc">Lowest Price</option>
+                <option value="price_desc">Highest Price</option>
+                <option value="rating_desc">Highest Rating</option>
               </select>
             </div>
           </div>
@@ -494,17 +494,17 @@ const HotelList = () => {
               <span className="material-symbols-outlined text-4xl text-[#747871] mb-3">
                 search_off
               </span>
-              <h3 className="font-headline-md text-lg text-[#2D332C] mb-2 font-semibold">
-                Tidak Ada Hotel Ditemukan
-              </h3>
-              <p className="text-sm text-[#444842] mb-6 max-w-md mx-auto">
-                Cobalah mengubah kata kunci atau atur ulang filter pencarian Anda.
-              </p>
+                <h3 className="font-headline-md text-lg text-[#2D332C] mb-2 font-semibold">
+                  No Hotels Found
+                </h3>
+                <p className="text-sm text-[#444842] mb-6 max-w-md mx-auto">
+                  Try adjusting the keywords or resetting the search filters.
+                </p>
               <button
                 onClick={handleResetFilters}
                 className="bg-[#778873] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#50604d] transition-colors cursor-pointer"
               >
-                Reset Semua Filter
+                Reset All Filters
               </button>
             </div>
           ) : (

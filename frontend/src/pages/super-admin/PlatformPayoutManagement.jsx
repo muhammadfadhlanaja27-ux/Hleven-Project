@@ -19,7 +19,7 @@ const PlatformPayoutManagement = () => {
       setData(res.data.data);
       setSettingForm(res.data.data.settings);
     } catch (e) {
-      toast.error("Gagal memuat data komisi.");
+       toast.error("Failed to load commission data.");
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ const PlatformPayoutManagement = () => {
       setPayoutForm({ amount: "", reference: "", admin_note: "" });
       fetchData();
     } catch (e) {
-      toast.error(e.response?.data?.message || "Gagal mencairkan komisi.");
+       toast.error(e.response?.data?.message || "Failed to disburse commission.");
     }
   };
 
@@ -48,7 +48,7 @@ const PlatformPayoutManagement = () => {
       setIsSettingModalOpen(false);
       fetchData();
     } catch (e) {
-      toast.error("Gagal menyimpan pengaturan.");
+       toast.error("Failed to save settings.");
     }
   };
 
@@ -71,7 +71,7 @@ const PlatformPayoutManagement = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
-          <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Total Komisi</p>
+           <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Total Commission</p>
           <p className="font-newsreader text-[32px] font-semibold text-[#191c1b] mt-2 leading-none">{rupiah(data.summary.total_commission)}</p>
         </div>
         <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
@@ -89,7 +89,7 @@ const PlatformPayoutManagement = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
-                <th className="py-4 px-6">Tanggal</th>
+                 <th className="py-4 px-6">Date</th>
                 <th className="py-4 px-6">Jumlah</th>
                 <th className="py-4 px-6">Referensi</th>
                 <th className="py-4 px-6">Catatan</th>
@@ -130,14 +130,14 @@ const PlatformPayoutManagement = () => {
           <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => setIsSettingModalOpen(false)}></div>
           <form onSubmit={handleUpdateSettings} className="relative w-full max-w-lg bg-white rounded-xl shadow-[0_12px_40px_rgba(47,50,49,0.12)] p-7 border border-[#E5E0D8] z-10 font-hanken space-y-4">
             <h3 className="font-newsreader text-[24px] font-semibold text-[#4f604f] pb-4 border-b border-[#E5E0D8]">Pengaturan Otomatis</h3>
-            <label className="block text-xs font-semibold text-[#747872] uppercase">Tanggal Pencairan (1-28)</label>
+            <label className="block text-xs font-semibold text-[#747872] uppercase">Payout Date (1-28)</label>
             <input type="number" className="w-full h-10 px-3.5 rounded-lg border border-[#E5E0D8] text-[13.5px]" value={settingForm.payout_day} onChange={e => setSettingForm({...settingForm, payout_day: e.target.value})} />
             <label className="flex items-center gap-2 text-[13px] text-[#191c1b]">
               <input type="checkbox" checked={settingForm.is_active} onChange={e => setSettingForm({...settingForm, is_active: e.target.checked})} className="accent-[#768875]" /> Aktifkan Otomatis
             </label>
             <div className="flex gap-3 pt-4 border-t border-[#E5E0D8]">
               <button type="button" onClick={() => setIsSettingModalOpen(false)} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-[13px] font-semibold text-[#434842]">Batal</button>
-              <button type="submit" className="px-5 py-2 bg-[#768875] text-white rounded-lg text-[13px] font-semibold">Simpan</button>
+               <button type="submit" className="px-5 py-2 bg-[#768875] text-white rounded-lg text-[13px] font-semibold">Save</button>
             </div>
           </form>
         </div>

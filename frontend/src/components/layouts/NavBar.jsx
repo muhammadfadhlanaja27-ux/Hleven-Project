@@ -53,7 +53,7 @@ const Navbar = () => {
         try {
           setUser(JSON.parse(savedUser));
         } catch (e) {
-          console.error("Gagal membaca data user:", e);
+          console.error("Failed to read user data:", e);
           setUser(null);
         }
       } else {
@@ -78,7 +78,7 @@ const Navbar = () => {
     setDropdownOpen(false);
     setShowLogoutModal(false);
     window.dispatchEvent(new Event("storage"));
-    toast.success("Berhasil keluar dari akun.");
+    toast.success("Successfully logged out.");
     navigate("/login");
   };
 
@@ -190,7 +190,7 @@ const Navbar = () => {
         setUnreadCount((current) => Math.max(0, current - 1));
       } catch (error) {
         console.error("Gagal menandai notifikasi dibaca:", error);
-        toast.error("Notifikasi gagal diperbarui.");
+        toast.error("Notification update failed.");
         return;
       }
     }
@@ -211,13 +211,13 @@ const Navbar = () => {
           {/* Nav Menu Center */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[#444842]">
             <Link to="/" className="hover:text-[#5F7161] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
-              Beranda
+              Home
             </Link>
             <Link to="/hotels" className="hover:text-[#5F7161] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
               Hotels
             </Link>
             <Link to="/mitra" className="hover:text-[#5F7161] hover:bg-[#DCCFC0]/10 px-3 py-1.5 rounded-lg transition-colors">
-              Mitra Hotel
+              Hotel Partners
             </Link>
           </nav>
 
@@ -250,7 +250,7 @@ const Navbar = () => {
                         setDropdownOpen(false);
                       }}
                       className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#DCCFC0]/60 text-[#5F7161] transition-colors hover:bg-[#DCCFC0]/20"
-                      aria-label={unreadCount > 0 ? `Notifikasi, ${unreadCount} belum dibaca` : "Notifikasi"}
+                      aria-label={unreadCount > 0 ? `Notification, ${unreadCount} unread` : "Notification"}
                       aria-expanded={notificationsOpen}
                       title="Notifikasi"
                     >
@@ -265,10 +265,10 @@ const Navbar = () => {
                     {notificationsOpen && (
                       <div className="absolute right-0 z-50 mt-3 w-[min(90vw,360px)] overflow-hidden rounded-2xl border border-[#DCCFC0]/50 bg-white text-left shadow-[0_10px_40px_rgba(0,0,0,0.12)]">
                         <div className="flex items-center justify-between border-b border-[#DCCFC0]/30 bg-[#FDF6ED]/60 px-4 py-3">
-                          <h2 className="text-sm font-bold text-[#2D332C]">Notifikasi</h2>
+                          <h2 className="text-sm font-bold text-[#2D332C]">Notifications</h2>
                           {unreadCount > 0 && (
                             <span className="text-xs font-semibold text-[#778873]">
-                              {unreadCount} belum dibaca
+                              {unreadCount} unread
                             </span>
                           )}
                         </div>
@@ -276,11 +276,11 @@ const Navbar = () => {
                         {notificationsLoading ? (
                           <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[#747871]">
                             <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                            Memuat notifikasi...
+                            Loading notifications...
                           </div>
                         ) : unreadNotifications.length === 0 ? (
                           <p className="px-4 py-8 text-center text-sm text-[#747871]">
-                            Tidak ada notifikasi baru.
+                            No new notifications.
                           </p>
                         ) : (
                           <div className="max-h-[min(60vh,380px)] overflow-y-auto">
@@ -320,7 +320,7 @@ const Navbar = () => {
                           onClick={() => setNotificationsOpen(false)}
                           className="block border-t border-[#DCCFC0]/30 px-4 py-3 text-center text-xs font-bold text-[#5F7161] transition-colors hover:bg-[#FDF6ED]"
                         >
-                          Lihat semua notifikasi
+                          View all notifications
                         </Link>
                       </div>
                     )}
@@ -384,7 +384,7 @@ const Navbar = () => {
                       {/* Menu Admin di Dropdown */}
                       {(user.role === "admin_hotel" || user.role === "super_admin") && (
                         <>
-                          <Link
+                       <Link
                             to={user.role === "super_admin" ? "/super-admin/dashboard" : "/admin/dashboard"}
                             onClick={() => setDropdownOpen(false)}
                             className="flex items-center gap-2.5 px-5 py-3 text-sm font-semibold text-[#4D5E4F] hover:bg-[#E8EFE9]/40 transition-colors border-b border-[#DCCFC0]/20"
@@ -395,8 +395,8 @@ const Navbar = () => {
                               </span>
                             </span>
                             <div className="flex flex-col">
-                              <span>{user.role === "super_admin" ? "Dashboard Super Admin" : "Dashboard Admin Hotel"}</span>
-                              <span className="text-[11px] font-normal text-[#747871]">Kelola operasional hotel</span>
+                              <span>{user.role === "super_admin" ? "Super Admin Dashboard" : "Hotel Admin Dashboard"}</span>
+                              <span className="text-[11px] font-normal text-[#747871]">Manage hotel operations</span>
                             </div>
                           </Link>
                           <div className="md:hidden">
@@ -410,7 +410,7 @@ const Navbar = () => {
                                   {user.role === "super_admin" ? "admin_panel_settings" : "dashboard"}
                                 </span>
                               </span>
-                              <span>Buka Admin Panel</span>
+                              <span>Open Admin Panel</span>
                             </Link>
                           </div>
                         </>
@@ -425,8 +425,8 @@ const Navbar = () => {
                           <span className="material-symbols-outlined text-[18px] text-[#615b54]">person</span>
                         </span>
                         <div className="flex flex-col">
-                          <span className="font-semibold">Detail Profil Saya</span>
-                          <span className="text-[11px] font-normal text-[#747871]">Ubah data &amp; avatar</span>
+                          <span className="font-semibold">My Profile Details</span>
+                          <span className="text-[11px] font-normal text-[#747871]">Update data & avatar</span>
                         </div>
                       </Link>
 
@@ -442,8 +442,8 @@ const Navbar = () => {
                           <span className="material-symbols-outlined text-[18px] text-[#ba1a1a]">logout</span>
                         </span>
                         <div className="flex flex-col">
-                          <span className="font-bold">Keluar (Logout)</span>
-                          <span className="text-[11px] font-normal text-[#ba1a1a]/70">Akhiri sesi Anda</span>
+                          <span className="font-bold">Logout</span>
+                          <span className="text-[11px] font-normal text-[#ba1a1a]/70">End your session</span>
                         </div>
                       </button>
                     </div>
@@ -456,14 +456,14 @@ const Navbar = () => {
                   to="/login"
                   className="text-sm font-semibold text-[#444842] hover:text-[#5F7161] px-3 md:px-4 py-2 rounded-lg hover:bg-[#DCCFC0]/10 transition-colors"
                 >
-                  Masuk
+                  Sign In
                 </Link>
                 <Link
                   to="/register"
                   className="bg-[#5F7161] text-white text-sm font-semibold px-4 md:px-5 py-2 rounded-xl hover:bg-[#4D5E4F] transition-all shadow-sm shadow-[#5F7161]/20 active:scale-[0.98] flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px] hidden sm:inline">person_add</span>
-                  Daftar
+                  Sign Up
                 </Link>
               </div>
             )}
@@ -474,13 +474,13 @@ const Navbar = () => {
       {/* MODAL KONFIRMASI LOGOUT KUSTOM */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 text-center space-y-4 animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-2xl">logout</span>
             </div>
             <div>
-              <h3 className="font-headline-md text-lg font-bold text-[#2D332C]">Konfirmasi Keluar</h3>
-              <p className="font-body-md text-xs text-[#444842] mt-1">Apakah Anda yakin ingin keluar dari akun H'Leven Anda?</p>
+              <h3 className="font-headline-md text-lg font-bold text-[#2D332C]">Confirm Logout</h3>
+              <p className="font-body-md text-xs text-[#444842] mt-1">Are you sure you want to log out from your H'Leven account?</p>
             </div>
             <div className="flex gap-3 pt-2">
               <button
@@ -488,14 +488,14 @@ const Navbar = () => {
                 onClick={() => setShowLogoutModal(false)}
                 className="flex-1 py-2.5 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20 transition-colors cursor-pointer"
               >
-                Batal
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmLogout}
                 className="flex-1 py-2.5 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors shadow-xs cursor-pointer"
               >
-                Ya, Keluar
+                Yes, Logout
               </button>
             </div>
           </div>

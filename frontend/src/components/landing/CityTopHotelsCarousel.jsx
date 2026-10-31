@@ -89,10 +89,10 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
             {/* Header dengan background putih */}
             <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-6 text-left">
                 <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-                    Hotel Terbaik di Setiap Kota
+                    Best Hotels in Each City
                 </h2>
                 <p className="font-body-md text-sm text-[#444842]">
-                    Rekomendasi akomodasi pilihan dengan ulasan tertinggi di berbagai kota destinasi.
+                    Recommended accommodations with the highest reviews across various destination cities.
                 </p>
             </div>
 
@@ -164,7 +164,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                         star
                                     </span>
                                     <span className="font-label-sm text-xs font-bold text-[#1C251D]">
-                                        {starCount} Bintang
+                                        {starCount} Star(s)
                                     </span>
                                 </div>
                             </div>
@@ -184,10 +184,10 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                             >
                                                 star
                                             </span>
-                                            <span>{reviewRating > 0 ? reviewRating : "Baru"}</span>
+                                            <span>{reviewRating > 0 ? reviewRating : "New"}</span>
                                         </div>
                                         <span className="text-[11px] text-[#747871] truncate">
-                                            Rating Ulasan
+                                            Review Rating
                                         </span>
                                     </div>
 
@@ -201,13 +201,13 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
                                 <div className="flex items-end justify-between pt-3 border-t border-[#E8E2D9]">
                                     <div>
-                                        <span className="text-[10px] text-[#444842] block">Mulai dari</span>
+                                        <span className="text-[10px] text-[#444842] block">Starting from</span>
                                         <span className="font-headline-sm text-base font-bold text-[#778873]">
-                                            Rp {price} <span className="text-[10px] font-normal text-[#444842]">/malam</span>
+                                            Rp {price} <span className="text-[10px] font-normal text-[#444842]">/night</span>
                                         </span>
                                     </div>
                                     <span className="text-xs font-bold text-[#778873] group-hover:translate-x-1 transition-transform flex items-center">
-                                        Detail <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                        Details <span className="material-symbols-outlined text-sm">chevron_right</span>
                                     </span>
                                 </div>
                             </div>

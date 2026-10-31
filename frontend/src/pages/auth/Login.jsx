@@ -45,7 +45,7 @@ const Login = () => {
       toast.success(response.data?.message || 'Kode OTP dikirim ke email');
       setForgotStep(2);
     } catch (err) {
-      setForgotError(err.response?.data?.message || 'Gagal mengirim OTP. Pastikan email terdaftar.');
+                  setForgotError(err.response?.data?.message || 'Failed to send OTP. Ensure the email is registered.');
     } finally {
       setForgotLoading(false);
     }
@@ -75,7 +75,7 @@ const Login = () => {
     setForgotError('');
 
     if (newPassword !== confirmPassword) {
-      setForgotError('Konfirmasi password tidak cocok');
+      setForgotError('Password confirmation does not match');
       return;
     }
 
@@ -87,7 +87,7 @@ const Login = () => {
         password: newPassword,
         password_confirmation: confirmPassword,
       });
-      toast.success(response.data?.message || 'Password berhasil diperbarui');
+      toast.success(response.data?.message || 'Password updated successfully');
       resetForgotState();
     } catch (err) {
       setForgotError(err.response?.data?.message || 'Reset password gagal. Periksa kembali kode OTP.');
@@ -124,7 +124,7 @@ const Login = () => {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
-        setError(err.message || 'Email atau password salah.');
+        setError(err.message || 'Incorrect email or password.');
       }
     } finally {
       setLoading(false);
@@ -239,13 +239,13 @@ const Login = () => {
 
             {/* Submit Button */}
             <div className="pt-[1rem]">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#778873] transition-colors duration-200 font-label-md text-[14px] shadow-[0_2px_4px_rgba(119,136,115,0.08)] hover:shadow-[0_4px_8px_rgba(119,136,115,0.12)] hover:-translate-y-[1px] disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? 'Memproses...' : 'Login'}
-              </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#778873] transition-colors duration-200 font-label-md text-[14px] shadow-[0_2px_4px_rgba(119,136,115,0.08)] hover:shadow-[0_4px_8px_rgba(119,136,115,0.12)] hover:-translate-y-[1px] disabled:opacity-50 cursor-pointer"
+                >
+                  {loading ? 'Processing...' : 'Login'}
+                </button>
             </div>
           </form>
 
@@ -300,19 +300,19 @@ const Login = () => {
             </button>
 
             <h2 className="font-headline-md text-[22px] font-bold text-[#1e1b16] mb-1">
-              {forgotStep === 1
-                ? 'Lupa Password'
-                : forgotStep === 2
-                ? 'Verifikasi Kode OTP'
-                : 'Reset Password'}
-            </h2>
-            <p className="font-body-md text-[14px] text-[#444842] mb-4">
-              {forgotStep === 1
-                ? 'Masukkan email akun Anda untuk menerima kode OTP verifikasi.'
-                : forgotStep === 2
-                ? `Masukkan 6 digit kode OTP yang dikirim ke ${forgotEmail}.`
-                : 'Buat password baru untuk akun Anda.'}
-            </p>
+                  {forgotStep === 1
+                    ? 'Forgot Password'
+                    : forgotStep === 2
+                    ? 'Verify OTP Code'
+                    : 'Reset Password'}
+                </h2>
+                <p className="font-body-md text-[14px] text-[#444842] mb-4">
+                  {forgotStep === 1
+                    ? 'Enter your account email to receive a verification OTP code.'
+                    : forgotStep === 2
+                    ? `Enter the 6-digit OTP code sent to ${forgotEmail}.`
+                    : 'Create a new password for your account.'}
+                </p>
 
             {forgotError && (
               <div className="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm font-medium flex items-center gap-2 border border-red-200">
@@ -341,7 +341,7 @@ const Login = () => {
                   disabled={forgotLoading}
                   className="w-full py-2.5 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] font-medium text-sm disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  {forgotLoading ? 'Mengirim OTP...' : 'Kirim Kode OTP'}
+                  {forgotLoading ? 'Sending OTP...' : 'Send OTP Code'}
                 </button>
               </form>
             )}
@@ -372,7 +372,7 @@ const Login = () => {
                     }}
                     className="hover:underline text-[#778873] cursor-pointer"
                   >
-                    Ganti Email
+                    Change Email
                   </button>
                   <button
                     type="button"
@@ -380,7 +380,7 @@ const Login = () => {
                     onClick={handleRequestOtp}
                     className="hover:underline text-[#778873] disabled:opacity-50 cursor-pointer"
                   >
-                    Kirim Ulang OTP
+                    Resend OTP
                   </button>
                 </div>
 
@@ -389,7 +389,7 @@ const Login = () => {
                   disabled={forgotLoading || forgotOtp.length < 6}
                   className="w-full py-2.5 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] font-medium text-sm disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  {forgotLoading ? 'Memverifikasi...' : 'Lanjut Isi Password Baru'}
+                  {forgotLoading ? 'Verifying...' : 'Continue to New Password'}
                 </button>
               </form>
             )}
@@ -398,7 +398,7 @@ const Login = () => {
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#747871] mb-1">
-                    Password Baru (min 8 karakter)
+                    New Password (min 8 chars)
                   </label>
                   <div className="relative flex items-center">
                     <input
@@ -425,7 +425,7 @@ const Login = () => {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#747871] mb-1">
-                    Konfirmasi Password Baru
+                    Confirm New Password
                   </label>
                   <input
                     type={showNewPassword ? 'text' : 'password'}
@@ -443,7 +443,7 @@ const Login = () => {
                   disabled={forgotLoading}
                   className="w-full py-2.5 px-4 rounded text-white bg-[#778873] hover:bg-[#4c6546] font-medium text-sm disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  {forgotLoading ? 'Menyimpan...' : 'Simpan Password Baru'}
+                  {forgotLoading ? 'Saving...' : 'Save New Password'}
                 </button>
               </form>
             )}

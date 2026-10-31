@@ -65,9 +65,9 @@ const WarningManagement = () => {
       const data = response.data?.data || response.data || [];
       setWarnings(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Gagal mengambil data warning:", err);
+      console.error("Failed to fetch warning data:", err);
       if (warnings.length === 0) setError(true);
-      toast.error("Gagal memuat data peringatan.");
+      toast.error("Failed to load warning data.");
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ const WarningManagement = () => {
       const data = response.data?.data || response.data || [];
       setHotels(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Gagal memuat daftar hotel:", err);
+      console.error("Failed to load hotel list:", err);
     }
   };
 
@@ -92,7 +92,7 @@ const WarningManagement = () => {
   const handleCreateWarning = async (e) => {
     e.preventDefault();
     if (!newWarning.hotel_id || !newWarning.title || !newWarning.message) {
-      toast.error("Semua kolom formulir wajib diisi!");
+       toast.error("All form fields are required!");
       return;
     }
 
@@ -101,13 +101,13 @@ const WarningManagement = () => {
       await api.post("/super-admin/warnings", newWarning);
       invalidateCache("/super-admin/warnings");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Peringatan kepatuhan berhasil dikirim ke hotel!");
+      toast.success("Compliance warning sent successfully to hotel!");
       setIsModalOpen(false);
       setNewWarning({ hotel_id: "", title: "", message: "" });
       setHotelSearch("");
       fetchWarnings(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal membuat surat peringatan.");
+      toast.error(err.response?.data?.message || "Failed to create warning letter.");
     } finally {
       setIsSubmitting(false);
     }
@@ -126,14 +126,14 @@ const WarningManagement = () => {
       await api.patch(`/super-admin/warnings/${id}/status`, { status: "closed" });
       invalidateCache("/super-admin/warnings");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Status peringatan berhasil diubah menjadi Selesai!");
+      toast.success("Warning status successfully changed to Completed!");
       if (selectedWarning && selectedWarning.id === id) {
         setSelectedWarning((prev) => ({ ...prev, status: "closed" }));
       }
       setPendingResolve(null);
       fetchWarnings(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memperbarui status.");
+      toast.error(err.response?.data?.message || "Failed to update status.");
     } finally {
       setIsResolving(false);
     }
@@ -170,7 +170,7 @@ const WarningManagement = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Manajemen Peringatan
+              Warning Management
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Manage and monitor formal compliance warnings issued to hotel partners.
@@ -489,7 +489,7 @@ const WarningManagement = () => {
 
               <div>
                 <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
-                  Pesan Peringatan
+                  Warning Message
                 </label>
                 <div className="p-3.5 bg-[#F9F6F1] rounded-lg border border-[#E5E0D8] text-[#191c1b] whitespace-pre-wrap leading-relaxed">
                   {selectedWarning.message}
@@ -499,7 +499,7 @@ const WarningManagement = () => {
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
-                    Tanggal Penerbitan
+                    Issue Date
                   </label>
                   <p className="text-[#434842]">
                     {selectedWarning.created_at
@@ -510,7 +510,7 @@ const WarningManagement = () => {
 
                 <div>
                   <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
-                    Status Peringatan
+                    Warning Status
                   </label>
                   {(() => {
                     const s = (selectedWarning.status || "unread").toLowerCase();
@@ -557,7 +557,7 @@ const WarningManagement = () => {
               {Array.isArray(selectedWarning.appeals) && selectedWarning.appeals.length > 0 && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-900">Permohonan Banding Masuk:</span>
+                    <span className="font-bold text-amber-900">Incoming Appeal Request:</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                       {selectedWarning.appeals[selectedWarning.appeals.length - 1].status}
                     </span>
@@ -618,7 +618,7 @@ const WarningManagement = () => {
             <form onSubmit={handleCreateWarning} className="space-y-4 pt-4">
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Pilih Hotel Mitra <span className="text-[#ba1a1a]">*</span>
+                  Select Partner Hotel <span className="text-[#ba1a1a]">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -660,7 +660,7 @@ const WarningManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Judul / Perihal Peringatan <span className="text-[#ba1a1a]">*</span>
+                  Warning Subject / Title <span className="text-[#ba1a1a]">*</span>
                 </label>
                 <input
                   type="text"
@@ -676,7 +676,7 @@ const WarningManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Pesan &amp; Uraian Peringatan <span className="text-[#ba1a1a]">*</span>
+                  Warning Message &amp; Description <span className="text-[#ba1a1a]">*</span>
                 </label>
                 <textarea
                   required
@@ -705,7 +705,7 @@ const WarningManagement = () => {
                     isSubmitting ? "opacity-60 cursor-not-allowed" : "active:scale-95"
                   }`}
                 >
-                  {isSubmitting ? "Mengirim..." : "Terbitkan Peringatan"}
+                   {isSubmitting ? "Sending..." : "Issue Warning"}
                 </button>
               </div>
             </form>
@@ -717,7 +717,7 @@ const WarningManagement = () => {
       <ConfirmDialog
         open={!!pendingResolve}
         type="success"
-        title="Tandai Peringatan Selesai"
+         title="Mark Warning Resolved"
         message="Tandai peringatan kepatuhan ini sebagai Selesai (Resolved)?"
         confirmText="Ya, Tandai Resolved"
         processing={isResolving}

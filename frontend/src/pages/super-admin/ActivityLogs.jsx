@@ -62,9 +62,9 @@ const ActivityLogs = () => {
         });
       }
     } catch (err) {
-      console.error("Gagal mengambil data log aktivitas:", err);
+      console.error("Failed to fetch activity log data:", err);
       if (logs.length === 0) setError(true);
-      toast.error("Gagal memuat log aktivitas. Pastikan server backend berjalan.");
+      toast.error("Failed to load activity logs. Ensure the backend server is running.");
     } finally {
       setLoading(false);
     }
@@ -158,7 +158,7 @@ const ActivityLogs = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Riwayat Aktivitas
+               Activity History
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Track and audit all administrative actions and system events across the platform.
@@ -179,7 +179,7 @@ const ActivityLogs = () => {
         {/* Search Activity */}
         <div className="flex-1">
           <label className="block font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872] mb-1.5">
-            Cari Aktivitas
+             Search Activity
           </label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747872] text-[20px] pointer-events-none">
@@ -198,7 +198,7 @@ const ActivityLogs = () => {
         {/* Date Range Start */}
         <div className="w-full md:w-52">
           <label className="block font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872] mb-1.5">
-            Tanggal Mulai
+             Start Date
           </label>
           <input
             type="date"
@@ -211,7 +211,7 @@ const ActivityLogs = () => {
         {/* Date Range End */}
         <div className="w-full md:w-52">
           <label className="block font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872] mb-1.5">
-            Tanggal Akhir
+             End Date
           </label>
           <input
             type="date"
@@ -348,7 +348,7 @@ const ActivityLogs = () => {
               <span className="text-[13px]">
                 Menampilkan halaman <strong className="text-[#191c1b]">{meta.current_page}</strong> dari{" "}
                 <strong className="text-[#191c1b]">{meta.last_page}</strong>{" "}
-                {meta.total ? `(Total: ${meta.total} aktivitas)` : ""}
+                {meta.total ? `(Total: ${meta.total} activities)` : ""}
               </span>
 
               <div className="flex items-center gap-2">

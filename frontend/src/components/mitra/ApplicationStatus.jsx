@@ -6,37 +6,37 @@ const STATUS_MESSAGES = {
   pending: {
     color: "bg-[#eae1d8]/50 border-[#eae1d8]",
     iconColor: "text-[#615b54]",
-    title: "Menunggu Verifikasi",
+    title: "Pending Verification",
     message:
-      "Tim kami sedang memeriksa kelengkapan dokumen dan data yang Anda kirimkan. Proses ini membutuhkan waktu 3-7 hari kerja.",
+      "Our team is checking the completeness of the documents and data you submitted. This process takes 3-7 business days.",
   },
   under_review: {
     color: "bg-[#ceeac7]/40 border-[#ceeac7]",
     iconColor: "text-[#4c6549]",
-    title: "Sedang Ditinjau",
+    title: "Under Review",
     message:
-      "Pengajuan Anda sedang dalam tahap peninjauan lebih lanjut. Silakan pantau email dan halaman ini secara berkala.",
+      "Your application is under further review. Please monitor your email and this page periodically.",
   },
   needs_revision: {
     color: "bg-[#ffdad6]/30 border-[#ffdad6]",
     iconColor: "text-[#ba1a1a]",
-    title: "Membutuhkan Perbaikan",
+    title: "Needs Revision",
     message:
-      "Tim verifikasi meminta perbaikan data atau dokumen. Silakan perbaiki sesuai catatan di bawah lalu kirim ulang.",
+      "The verification team has requested data or document revisions. Please correct them according to the notes below and resubmit.",
   },
   approved: {
     color: "bg-[#d5e8cf]/50 border-[#d5e8cf]",
     iconColor: "text-[#3b4b39]",
-    title: "Hotel Anda Telah Disetujui! 🎉",
+    title: "Your Hotel Has Been Approved! 🎉",
     message:
-      "Selamat! Pengajuan kemitraan Anda telah disetujui. Sekarang Anda dapat mengelola hotel Anda melalui Dashboard Admin Hotel.",
+      "Congratulations! Your partnership application has been approved. You can now manage your hotel through the Hotel Admin Dashboard.",
   },
   rejected: {
     color: "bg-[#ffdad6]/50 border-[#ffdad6]",
     iconColor: "text-[#93000a]",
-    title: "Pengajuan Ditolak",
+    title: "Application Rejected",
     message:
-      "Kami mohon maaf, pengajuan kemitraan Anda belum dapat kami setujui. Silakan perbaiki kekurangan berikut dan ajukan kembali di lain waktu.",
+      "We apologize, but your partnership application could not be approved. Please address the following issues and reapply another time.",
   },
 };
 
@@ -60,9 +60,9 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
             <span className="material-symbols-outlined text-2xl text-[#615b54]">apartment</span>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-headline-md text-xl font-bold text-[#2D332C] mb-1">Status Mitra Hotel</h3>
+            <h3 className="font-headline-md text-xl font-bold text-[#2D332C] mb-1">Hotel Partner Status</h3>
             <p className="font-body-md text-sm text-[#444842]">
-              Informasi status pengajuan kemitraan hotel Anda di platform H'Leven.
+              Information regarding the status of your hotel partnership application on the H'Leven platform.
             </p>
           </div>
         </div>
@@ -72,10 +72,10 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
             <span className="material-symbols-outlined text-4xl text-[#747871]">add_home_work</span>
           </div>
           <h4 className="font-title-md text-lg font-bold text-[#1c1c19] mb-2">
-            Anda belum menjadi mitra hotel.
+            You are not a hotel partner yet.
           </h4>
           <p className="font-body-md text-sm text-[#444842] mb-5 max-w-lg mx-auto leading-relaxed">
-            Daftarkan hotel Anda sekarang dan nikmati keuntungan bersama ribuan mitra H'Leven lainnya untuk mengembangkan bisnis hotel Anda.
+            Register your hotel now and enjoy the benefits with thousands of other H'Leven partners to grow your hotel business.
           </p>
           <button
             type="button"
@@ -88,7 +88,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">flag</span>
-              Daftar Menjadi Mitra
+              Register as Partner
             </span>
           </button>
         </div>
@@ -113,16 +113,16 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-1">
-            <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">Status Mitra Hotel</h3>
+            <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">Hotel Partner Status</h3>
             <StatusBadge status={status} />
           </div>
           <p className="font-body-md text-sm text-[#444842]">
-            No. Pengajuan:{" "}
+            Application No.:{" "}
             <span className="font-semibold text-[#50604d]">
               #{application.application_number || application.id || "—"}
             </span>
             <span className="mx-2 text-[#DCCFC0]">•</span>
-            Diajukan pada {dateStr}
+            Submitted on {dateStr}
           </p>
         </div>
       </div>
@@ -151,7 +151,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
             </span>
             <div className="flex-1">
               <h5 className="font-label-md text-sm font-bold text-[#3b4b39] uppercase tracking-wider mb-3">
-                Informasi Akses Admin Hotel
+                Hotel Admin Access Information
               </h5>
               <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">
                 {approvalNotification.message}
@@ -170,7 +170,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
               </span>
               <div className="flex-1">
                 <h5 className="font-label-md text-sm font-bold text-[#93000a] uppercase tracking-wider mb-2">
-                  {status === "needs_revision" ? "Perbaikan yang Diminta" : "Alasan Penolakan"}
+                  {status === "needs_revision" ? "Requested Revision" : "Rejection Reason"}
                 </h5>
                 <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">
                   {application.rejection_reason ||
@@ -186,7 +186,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
         <div className="bg-[#faf3ea]/70 rounded-2xl border border-[#DCCFC0]/40 p-5 mb-6">
           <div>
             <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-0.5">
-              Nama Hotel
+              Hotel Name
             </span>
             <span className="font-body-md text-sm font-semibold text-[#1c1c19]">{application.hotel_name}</span>
           </div>
@@ -202,7 +202,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">edit</span>
-              Perbaiki Pengajuan
+              Fix Application
             </span>
           </button>
         )}
@@ -214,7 +214,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">dashboard</span>
-              Masuk ke Dashboard Hotel
+              Go to Hotel Dashboard
             </span>
           </button>
         )}
@@ -226,7 +226,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">info</span>
-              Pelajari Ketentuan Mitra
+              Learn Partner Terms
             </span>
           </button>
         )}
@@ -238,7 +238,7 @@ const ApplicationStatus = ({ application, loading, onFixRevision, approvalNotifi
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">info</span>
-              Lihat Keuntungan Mitra
+              View Partner Benefits
             </span>
           </button>
         )}

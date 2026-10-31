@@ -21,7 +21,7 @@ const UserManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Modal Tambah Admin Hotel
+  // Hotel Admin Add Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,7 +32,7 @@ const UserManagement = () => {
     password_confirmation: "",
   });
 
-  // State Dialog Konfirmasi
+  // Confirmation Dialog State
   const [pendingStatus, setPendingStatus] = useState(null); // { id, newStatus }
   const [pendingRole, setPendingRole] = useState(null); // { userId, newRole, userName }
   const [pendingDelete, setPendingDelete] = useState(null); // { id, name }
@@ -72,9 +72,9 @@ const UserManagement = () => {
       const data = response.data?.data || response.data || [];
       setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Gagal mengambil data user:", err);
+      console.error("Failed to fetch user data:", err);
       if (users.length === 0) {
-        setError("Gagal memuat data pengguna. Pastikan server backend berjalan.");
+        setError("Failed to load user data. Ensure the backend server is running.");
       }
     } finally {
       setLoading(false);
@@ -107,20 +107,20 @@ const UserManagement = () => {
 
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Status pengguna berhasil diperbarui!");
+      toast.success("User status updated successfully!");
       setPendingStatus(null);
       fetchUsers(true);
     } catch (err) {
-      console.error("Gagal update status:", err);
+      console.error("Failed to update status:", err);
       toast.error(
-        err.response?.data?.message || "Gagal memperbarui status pengguna."
+        err.response?.data?.message || "Failed to update user status."
       );
     } finally {
       setIsConfirming(false);
     }
   };
 
-  // Ubah Role Pengguna
+  // Change User Role
   const handleRoleChange = (userId, newRole, userName) => {
     setPendingRole({ userId, newRole, userName });
   };
@@ -140,9 +140,9 @@ const UserManagement = () => {
       setPendingRole(null);
       fetchUsers(true);
     } catch (err) {
-      console.error("Gagal update role:", err);
+      console.error("Failed to update role:", err);
       toast.error(
-        err.response?.data?.message || "Gagal memperbarui role pengguna."
+        err.response?.data?.message || "Failed to update user role."
       );
     } finally {
       setIsConfirming(false);
@@ -166,8 +166,8 @@ const UserManagement = () => {
       setPendingDelete(null);
       fetchUsers(true);
     } catch (err) {
-      console.error("Gagal hapus user:", err);
-      toast.error(err.response?.data?.message || "Gagal menghapus akun pengguna.");
+      console.error("Failed to delete user:", err);
+      toast.error(err.response?.data?.message || "Failed to delete user account.");
     } finally {
       setIsConfirming(false);
     }
@@ -179,7 +179,7 @@ const UserManagement = () => {
     setSubmitLoading(true);
 
     if (formData.password !== formData.password_confirmation) {
-      toast.error("Password dan Konfirmasi Password tidak cocok!");
+      toast.error("Password and Confirm Password do not match!");
       setSubmitLoading(false);
       return;
     }
@@ -215,8 +215,8 @@ const UserManagement = () => {
       setIsModalOpen(false);
       fetchUsers(true);
     } catch (err) {
-      console.error("Gagal menambah admin:", err);
-      toast.error(err.response?.data?.message || "Gagal menambahkan Admin Hotel.");
+      console.error("Failed to add admin:", err);
+      toast.error(err.response?.data?.message || "Failed to add Hotel Admin.");
     } finally {
       setSubmitLoading(false);
     }
@@ -262,7 +262,7 @@ const UserManagement = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Manajemen Pengguna
+              User Management
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Kelola data administrator hotel, mitra, dan hak akses pengguna sistem.
@@ -274,7 +274,7 @@ const UserManagement = () => {
           className="px-5 py-2.5 bg-[#768875] text-white font-hanken text-[14px] font-semibold tracking-[0.01em] rounded-lg hover:bg-[#657764] shadow-sm hover:shadow transition-all duration-150 flex items-center gap-2 active:scale-95"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
-          <span>Tambah Admin Hotel</span>
+           <span>Add Hotel Admin</span>
         </button>
       </div>
 
@@ -302,7 +302,7 @@ const UserManagement = () => {
             onChange={(e) => setRoleFilter(e.target.value)}
             className="flex-1 sm:w-44 px-3.5 py-2.5 rounded-lg border border-[#E5E0D8] bg-white focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 font-hanken text-[14px] text-[#191c1b] cursor-pointer"
           >
-            <option value="">Semua Role</option>
+            <option value="">All Roles</option>
             <option value="super_admin">Super Admin</option>
             <option value="admin_hotel">Admin Hotel</option>
             <option value="user">User / Pelanggan</option>
@@ -314,7 +314,7 @@ const UserManagement = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="flex-1 sm:w-44 px-3.5 py-2.5 rounded-lg border border-[#E5E0D8] bg-white focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 font-hanken text-[14px] text-[#191c1b] cursor-pointer"
           >
-            <option value="">Semua Status</option>
+            <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="blocked">Blocked / Inactive</option>
             <option value="pending">Pending</option>
@@ -457,7 +457,7 @@ const UserManagement = () => {
                                   onClick={() =>
                                     handleToggleStatus(user.id, user.status)
                                   }
-                                  title={isActive ? "Blokir Pengguna" : "Aktifkan Pengguna"}
+                                   title={isActive ? "Block User" : "Activate User"}
                                   className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-hanken text-[13px] font-medium transition-all active:scale-95 ${
                                     isActive
                                       ? "text-[#ba1a1a] hover:bg-[#ffdad6]/40 border border-[#ffdad6]"
@@ -471,11 +471,11 @@ const UserManagement = () => {
                                 </button>
                                 <button
                                   onClick={() => handleDeleteUser(user.id, user.name)}
-                                  title="Hapus Akun"
+                                   title="Delete Account"
                                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffdad6]/40 font-hanken text-[13px] font-medium transition-all active:scale-95"
                                 >
                                   <span className="material-symbols-outlined text-[17px]">delete</span>
-                                  <span>Hapus</span>
+                                   <span>Delete</span>
                                 </button>
                               </div>
                             ) : (
@@ -567,7 +567,7 @@ const UserManagement = () => {
             <div className="flex justify-between items-start mb-6 pb-4 border-b border-[#E5E0D8]">
               <div>
                 <h3 className="font-newsreader text-[24px] font-semibold text-[#4f604f] font-['Newsreader',serif]">
-                  Tambah Admin Hotel
+                   Add Hotel Admin
                 </h3>
                 <p className="font-hanken text-[13px] text-[#747872] mt-0.5">
                   Buat akun pengelola hotel baru untuk mitra jaringan H'Leven.
@@ -586,7 +586,7 @@ const UserManagement = () => {
             <form onSubmit={handleCreateAdmin} className="space-y-4">
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Nama Lengkap Admin
+                  Admin Full Name
                 </label>
                 <input
                   type="text"
@@ -602,7 +602,7 @@ const UserManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Nama Hotel / Properti
+                   Hotel / Property Name
                 </label>
                 <input
                   type="text"
@@ -650,7 +650,7 @@ const UserManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Konfirmasi Password
+                   Confirm Password
                 </label>
                 <input
                   type="password"
@@ -685,7 +685,7 @@ const UserManagement = () => {
                       : "bg-[#768875] hover:bg-[#657764]"
                   }`}
                 >
-                  {submitLoading ? "Menyimpan..." : "Simpan Admin"}
+                   {submitLoading ? "Saving..." : "Save Admin"}
                 </button>
               </div>
             </form>
@@ -696,9 +696,9 @@ const UserManagement = () => {
       {/* Confirm Toggle Status Dialog */}
       <ConfirmDialog
         open={!!pendingStatus}
-        title="Ubah Status Pengguna"
+         title="Change User Status"
         message={`Apakah Anda yakin ingin mengubah status pengguna ini menjadi ${(pendingStatus?.newStatus || "").toUpperCase()}?`}
-        confirmText="Ya, Ubah Status"
+         confirmText="Yes, Change Status"
         processing={isConfirming}
         onConfirm={performToggleStatus}
         onCancel={() => setPendingStatus(null)}
@@ -707,9 +707,9 @@ const UserManagement = () => {
       {/* Confirm Role Change Dialog */}
       <ConfirmDialog
         open={!!pendingRole}
-        title="Ubah Role Pengguna"
+         title="Change User Role"
         message={`Apakah Anda yakin ingin mengubah role ${pendingRole?.userName} menjadi ${formatRole(pendingRole?.newRole)}?`}
-        confirmText="Ya, Ubah Role"
+         confirmText="Yes, Change Role"
         processing={isConfirming}
         onConfirm={performRoleChange}
         onCancel={() => setPendingRole(null)}
@@ -719,9 +719,9 @@ const UserManagement = () => {
       <ConfirmDialog
         open={!!pendingDelete}
         type="danger"
-        title="Hapus Akun Pengguna"
-        message={`Hapus akun ${pendingDelete?.name}? Tindakan ini permanen.`}
-        confirmText="Ya, Hapus Akun"
+         title="Delete User Account"
+         message={`Delete account ${pendingDelete?.name}? This action is permanent.`}
+         confirmText="Yes, Delete Account"
         processing={isConfirming}
         onConfirm={performDeleteUser}
         onCancel={() => setPendingDelete(null)}

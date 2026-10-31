@@ -44,7 +44,7 @@ const loadSnapScript = () =>
     s.src = SNAP_URL;
     s.setAttribute("data-client-key", CLIENT_KEY || "");
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Gagal memuat Midtrans Snap"));
+    s.onerror = () => reject(new Error("Failed to load Midtrans Snap"));
     document.body.appendChild(s);
   });
 
@@ -107,7 +107,7 @@ const BookingPage = () => {
   // PROTEKSI HALAMAN ON-MOUNT: Jika guest, langsung alihkan ke login
   useEffect(() => {
     if (!isUserLoggedIn()) {
-      toast.error("Silakan login terlebih dahulu untuk melakukan pemesanan.");
+      toast.error("Please login first to make a booking.");
       navigate("/login", { state: { from: location }, replace: true });
     }
   }, [navigate, location]);
@@ -138,7 +138,7 @@ const BookingPage = () => {
         if (u.email) setEmail(u.email);
         if (u.phone) setPhone(u.phone);
       } catch (err) {
-        console.error("Gagal membaca data user:", err);
+        console.error("Failed to read user data:", err);
       }
     }
   }, []);
@@ -212,7 +212,7 @@ const BookingPage = () => {
                 const liveRoom = liveRooms.find((r) => String(r.id) === String(matchedRoomType.id));
                 if (liveRoom && liveRoom.available_stock !== undefined) liveStock = liveRoom.available_stock;
               } catch (e) {
-                console.error("Gagal mengambil stok live:", e);
+                console.error("Failed to fetch live stock:", e);
               }
             }
 
@@ -223,7 +223,7 @@ const BookingPage = () => {
               weekday_price: matchedRoomType.weekday_price,
               weekend_price: matchedRoomType.weekend_price,
               stock: liveStock ?? matchedRoomType.stock ?? 10,
-              capacity: `${matchedRoomType.capacity_adult || 2} Dewasa, ${matchedRoomType.capacity_child || 0} Anak`,
+              capacity: `${matchedRoomType.capacity_adult || 2} Adults, ${matchedRoomType.capacity_child || 0} Children`,
               capacity_adult: matchedRoomType.capacity_adult || 2,
               capacity_child: matchedRoomType.capacity_child || 0,
               description: matchedRoomType.description,
@@ -242,7 +242,7 @@ const BookingPage = () => {
           setRoom(null);
         }
       } catch (err) {
-        console.error("Backend Error / Gagal memuat data booking:", err);
+        console.error("Backend Error / Failed to load booking data:", err);
         if (isMounted) {
           setHotel(null);
           setRoom(null);
@@ -317,7 +317,7 @@ const BookingPage = () => {
           setPriceQuoteError(
             responseData?.message ||
             validationMessage ||
-            "Gagal memeriksa harga dan ketersediaan kamar."
+            "Failed to check price and availability."
           );
         }
       }
@@ -338,7 +338,7 @@ const BookingPage = () => {
 
   // Formatted price string for info
   const pricePerNight = Number(room?.price || room?.weekday_price || 350000);
-  const priceInfoText = `Rp ${pricePerNight.toLocaleString("id-ID")} x ${nightsCount} malam x ${roomQty} kamar`;
+  const priceInfoText = `Rp ${pricePerNight.toLocaleString("en-US")} x ${nightsCount} night(s) x ${roomQty} room(s)`;
 
   const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -370,7 +370,7 @@ const BookingPage = () => {
       if (attempts > 40) {
         clearInterval(pollRef.current);
         releaseSubmitLock();
-        toast("Pembayaran belum terkonfirmasi. Cek Transaction History → Sync.", { icon: "ℹ️" });
+        toast("Payment not confirmed. Check Transaction History → Sync.", { icon: "ℹ️" });
         return;
       }
       try {
@@ -381,7 +381,7 @@ const BookingPage = () => {
           clearInterval(pollRef.current);
           releaseSubmitLock();
           showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
-          toast.success("Pembayaran terkonfirmasi!");
+          toast.success("Payment confirmed!");
         }
       } catch {}
     }, 3000);
@@ -403,7 +403,7 @@ const BookingPage = () => {
       return;
     }
     if (!window.snap) {
-      toast.error("Midtrans Snap belum siap");
+      toast.error("Midtrans Snap is not ready");
       releaseSubmitLock();
       return;
     }
@@ -417,19 +417,19 @@ const BookingPage = () => {
         } catch {
           showSuccess(oid, "Midtrans", bookingId);
         }
-        toast.success("Pembayaran berhasil!");
+        toast.success("Payment successful!");
       },
       onPending: () => {
-        toast("Menunggu pembayaran — polling cek status...", { icon: "⏳" });
+        toast("Waiting for payment — polling status...", { icon: "⏳" });
       },
       onError: () => {
         if (pollRef.current) clearInterval(pollRef.current);
         releaseSubmitLock();
-        toast.error("Pembayaran gagal");
+        toast.error("Payment failed");
       },
       onClose: () => {
         releaseSubmitLock();
-        toast("Popup ditutup — status tetap dipolling 2 menit", { icon: "ℹ️" });
+        toast("Popup closed — status continues polling for 2 minutes", { icon: "ℹ️" });
       },
     });
   };
@@ -439,7 +439,7 @@ const BookingPage = () => {
 
     // STRICT AUTH CHECK: Jika Guest, langsung lempar ke login
     if (!isUserLoggedIn()) {
-      toast.error("Silakan login terlebih dahulu untuk melakukan pemesanan.");
+      toast.error("Please login first to make a booking.");
       navigate("/login", { state: { from: location } });
       return;
     }
@@ -447,22 +447,22 @@ const BookingPage = () => {
     if (isSubmittingRef.current || submitting) return;
 
     if (!fullName || !email || !phone) {
-      toast.error("Harap lengkapi Data Pemesan (Nama, Email, dan No. Telepon).");
+      toast.error("Please complete Booker Details (Name, Email, and Phone).");
       return;
     }
 
     if (maxAvailableStock <= 0 || Number(roomQty) <= 0) {
-      toast.error("Maaf, kamar ini sudah habis untuk tanggal yang Anda pilih.");
+      toast.error("Sorry, this room is fully booked for your selected dates.");
       return;
     }
 
     if (bookingFor === "someone_else" && (!guestName || !guestEmail || !guestPhone)) {
-      toast.error("Harap lengkapi Data Tamu Menginap (Nama, Email, dan No. Telepon).");
+      toast.error("Please complete Guest Details (Name, Email, and Phone).");
       return;
     }
 
     if (!CLIENT_KEY) {
-      toast.error("VITE_MIDTRANS_CLIENT_KEY belum dikonfigurasi");
+      toast.error("VITE_MIDTRANS_CLIENT_KEY not configured");
       return;
     }
 
@@ -470,7 +470,7 @@ const BookingPage = () => {
     const targetRoomTypeId = room?.id || roomId;
 
     if (!targetHotelId || !targetRoomTypeId) {
-      toast.error("ID Hotel atau Tipe Kamar tidak valid.");
+      toast.error("Invalid Hotel or Room ID.");
       return;
     }
 
@@ -480,7 +480,7 @@ const BookingPage = () => {
   const doBooking = async (targetHotelId, targetRoomTypeId) => {
     // DOUBLE CHECK AUTH
     if (!isUserLoggedIn()) {
-      toast.error("Silakan login terlebih dahulu untuk melakukan pemesanan.");
+      toast.error("Please login first to make a booking.");
       navigate("/login", { state: { from: location } });
       return;
     }
@@ -543,7 +543,7 @@ const BookingPage = () => {
             token = snapRes.data?.data?.snap_token || snapRes.data?.snap_token;
           } catch (snapErr) {
             console.error("Gagal ambil snap token:", snapErr);
-            toast.error(snapErr.response?.data?.message || snapErr.response?.data?.error || "Gagal membuat sesi pembayaran Midtrans");
+            toast.error(snapErr.response?.data?.message || snapErr.response?.data?.error || "Failed to create payment session");
             releaseSubmitLock();
             return;
           }
@@ -569,7 +569,7 @@ const BookingPage = () => {
         const validationMessage = responseData?.errors
           ? Object.values(responseData.errors).flat().find(Boolean)
           : null;
-        const errorMessage = responseData?.message || validationMessage || "Kamar tidak memenuhi kriteria pesanan.";
+        const errorMessage = responseData?.message || validationMessage || "Room does not meet order criteria.";
         toast.error(errorMessage);
 
         if (responseData?.suggestions) {
@@ -607,16 +607,16 @@ const BookingPage = () => {
     return (
       <div className="w-full max-w-[1280px] mx-auto py-20 text-center">
         <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1e1b16]">
-          Kamar Tidak Tersedia
+          Room Not Available
         </h2>
         <p className="font-body-md text-sm text-[#444842] mb-6">
-          Tipe kamar atau hotel ini sedang tidak aktif dan tidak dapat dipesan saat ini.
+          This room type or hotel is currently inactive and cannot be booked at this time.
         </p>
         <button
           onClick={() => navigate("/")}
           className="bg-[#778873] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#50604d] transition-colors cursor-pointer"
         >
-          Kembali ke Beranda
+          Back to Home
         </button>
       </div>
     );
@@ -626,29 +626,29 @@ const BookingPage = () => {
     <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-16 text-left">
         <div className="mb-8">
-          <h1 className="font-headline-xl text-3xl md:text-5xl font-bold text-[#778873] mb-2 leading-tight">
-            Selesaikan Pemesanan Anda
+            <h1 className="font-headline-xl text-3xl md:text-5xl font-bold text-[#778873] mb-2 leading-tight">
+            Complete Your Booking
           </h1>
           <p className="font-body-lg text-base md:text-lg text-[#444842]">
-            Lengkapi detail di bawah ini untuk mengonfirmasi reservasi Anda.
+            Fill in the details below to confirm your reservation.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-8">
             <section className="bg-white rounded-2xl p-6 border border-[#DCCFC0]/50 shadow-sm">
-              <h2 className="font-headline-md text-xl font-bold text-[#778873] mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#A1BC98]">person</span>
-                Data Pemesan &amp; Tamu
-              </h2>
+                  <h2 className="font-headline-md text-xl font-bold text-[#778873] mb-6 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#A1BC98]">person</span>
+                    Booking & Guest Data
+                  </h2>
 
               {maxAvailableStock <= 0 && (
                 <div className="mb-6 p-4 bg-[#ba1a1a]/10 border border-[#ba1a1a]/30 rounded-xl flex items-center gap-3 text-[#ba1a1a]">
                   <span className="material-symbols-outlined text-2xl shrink-0">block</span>
                   <div>
-                    <p className="font-bold text-sm">Kamar Tidak Tersedia</p>
+                    <p className="font-bold text-sm">Room Not Available</p>
                     <p className="text-xs mt-0.5">
-                      Kamar ini sudah habis untuk tanggal yang Anda pilih. Silakan ganti tanggal atau cari tipe kamar lain.
+                      This room is fully booked for your selected dates. Please change dates or select another room type.
                     </p>
                   </div>
                 </div>
@@ -658,17 +658,17 @@ const BookingPage = () => {
                 {/* DATA PEMESAN UTAMA */}
                 <div className="space-y-4">
                   <p className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider">
-                    Data Kontak Pemesan
+                    Booking Contact Details
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="fullName">
-                        Nama Pemesan *
+                        Full Name *
                       </label>
                       <input
                         id="fullName"
                         type="text"
-                        placeholder="Nama lengkap pemesan"
+                        placeholder="Full name of booker"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         required
@@ -678,12 +678,12 @@ const BookingPage = () => {
 
                     <div>
                       <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="email">
-                        Alamat Email *
+                        Email Address *
                       </label>
                       <input
                         id="email"
                         type="email"
-                        placeholder="nama@email.com"
+                        placeholder="name@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -694,7 +694,7 @@ const BookingPage = () => {
 
                   <div>
                     <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
-                      Nomor Telepon Pemesan *
+                      Booking Phone Number *
                     </label>
                     <input
                       id="phone"
@@ -711,7 +711,7 @@ const BookingPage = () => {
                 {/* PILIHAN PEMESANAN UNTUK SIAPA */}
                 <div className="pt-2 border-t border-[#DCCFC0]/40">
                   <span className="block font-label-md text-xs font-semibold text-[#444842] mb-3">
-                    Apakah reservasi ini untuk Anda sendiri atau orang lain?
+                    Is this reservation for yourself or someone else?
                   </span>
                   <div className="flex items-center space-x-6">
                     <label className="inline-flex items-center cursor-pointer select-none">
@@ -723,7 +723,7 @@ const BookingPage = () => {
                         onChange={(e) => setBookingFor(e.target.value)}
                         className="w-4 h-4 accent-[#778873] cursor-pointer"
                       />
-                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Untuk Saya Sendiri</span>
+                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Me (Self)</span>
                     </label>
                     <label className="inline-flex items-center cursor-pointer select-none">
                       <input
@@ -734,7 +734,7 @@ const BookingPage = () => {
                         onChange={(e) => setBookingFor(e.target.value)}
                         className="w-4 h-4 accent-[#778873] cursor-pointer"
                       />
-                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Pesan untuk Orang Lain</span>
+                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Someone Else</span>
                     </label>
                   </div>
                 </div>
@@ -743,17 +743,17 @@ const BookingPage = () => {
                 {bookingFor === "someone_else" && (
                   <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 space-y-4 animate-in fade-in duration-200">
                     <p className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider">
-                      Data Tamu Menginap (Sesuai KTP / Paspor)
+                      Guest Data (As per ID / Passport)
                     </p>
 
                     <div>
                       <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestName">
-                        Nama Lengkap Tamu *
+                        Full Guest Name *
                       </label>
                       <input
                         id="guestName"
                         type="text"
-                        placeholder="Nama tamu yang akan check-in"
+                        placeholder="Guest name who will check-in"
                         value={guestName}
                         onChange={(e) => setGuestName(e.target.value)}
                         required={bookingFor === "someone_else"}
@@ -764,12 +764,12 @@ const BookingPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestEmail">
-                          Email Tamu *
+                          Guest Email *
                         </label>
                         <input
                           id="guestEmail"
                           type="email"
-                          placeholder="email.tamu@domain.com"
+                          placeholder="guest.email@domain.com"
                           value={guestEmail}
                           onChange={(e) => setGuestEmail(e.target.value)}
                           required={bookingFor === "someone_else"}
@@ -778,7 +778,7 @@ const BookingPage = () => {
                       </div>
                       <div>
                         <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestPhone">
-                          Nomor Telepon Tamu *
+                          Guest Phone Number *
                         </label>
                         <input
                           id="guestPhone"
@@ -798,13 +798,13 @@ const BookingPage = () => {
                 <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 flex items-center justify-between">
                   <div>
                     <span className="block font-label-md text-sm font-bold text-[#2D332C]">
-                      Jumlah Kamar
+                      Number of Rooms
                     </span>
                     <span className="font-label-sm text-xs text-[#778873]">
                       {maxAvailableStock <= 0 ? (
-                        <span className="text-[#ba1a1a] font-semibold">Stok Habis (Tersedia: 0)</span>
+                        <span className="text-[#ba1a1a] font-semibold">Out of Stock (Available: 0)</span>
                       ) : (
-                        `Minimal ${minRequiredRooms} kamar untuk ${adults} dewasa (Tersedia: ${maxAvailableStock})`
+                        `Minimum ${minRequiredRooms} rooms for ${adults} adults (Available: ${maxAvailableStock})`
                       )}
                     </span>
                   </div>
@@ -834,12 +834,12 @@ const BookingPage = () => {
 
                 <div>
                   <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="requests">
-                    Permintaan Khusus (Opsional)
+                    Special Requests (Optional)
                   </label>
                   <textarea
                     id="requests"
                     rows={3}
-                    placeholder="Misal: Ranjang tambahan, preferensi lantai atas, check-in terlambat..."
+                    placeholder="e.g., Extra bed, high floor preference, late check-in..."
                     value={specialRequests}
                     onChange={(e) => setSpecialRequests(e.target.value)}
                     className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors resize-none"
@@ -847,18 +847,18 @@ const BookingPage = () => {
                 </div>
 
                 <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
-                    className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {maxAvailableStock <= 0
-                      ? "Kamar Tidak Tersedia"
-                      : submitting
-                      ? "Memeriksa Ketersediaan..."
-                      : "Bayar Sekarang"}
-                    <span className="material-symbols-outlined text-base">payments</span>
-                  </button>
+            <button
+              type="submit"
+              disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
+              className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {maxAvailableStock <= 0
+                ? "Room Not Available"
+                : submitting
+                ? "Checking Availability..."
+                : "Pay Now"}
+              <span className="material-symbols-outlined text-base">payments</span>
+            </button>
                 </div>
               </form>
             </section>
@@ -868,7 +868,7 @@ const BookingPage = () => {
           <div className="lg:col-span-5 relative">
             <div className="sticky top-24 bg-[#e8e2d9] rounded-2xl p-6 flex flex-col gap-5 border border-[#DCCFC0]/60 shadow-md shadow-[#778873]/5">
               <h3 className="font-headline-md text-xl font-bold text-[#778873]">
-                Rincian Pemesanan
+                Booking Details
               </h3>
 
               <div className="bg-white rounded-xl overflow-hidden flex border border-[#DCCFC0]/40">
@@ -893,7 +893,7 @@ const BookingPage = () => {
                   </h4>
                   <span className="font-label-sm text-xs text-[#444842] mt-1 flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">group</span>
-                    {adults} Dewasa, {children} Anak ({roomQty} Kamar)
+                    {adults} Adults, {children} Children ({roomQty} Rooms)
                   </span>
                 </div>
               </div>
@@ -901,15 +901,15 @@ const BookingPage = () => {
               {/* PEMISAHAN NAMA PEMESAN & TAMU */}
               <div className="bg-white/60 p-3 rounded-xl border border-[#DCCFC0]/50 space-y-1.5 font-body-md text-xs text-[#444842]">
                 <div className="flex justify-between items-center">
-                  <span>Pemesan:</span>
+                  <span>Booker:</span>
                   <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
                     {fullName || "-"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Tamu Menginap:</span>
+                  <span>Guest:</span>
                   <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
-                    {bookingFor === "someone_else" ? (guestName || "-") : (fullName || "Sama dengan pemesan")}
+                    {bookingFor === "someone_else" ? (guestName || "-") : (fullName || "Same as booker")}
                   </span>
                 </div>
               </div>
@@ -921,9 +921,9 @@ const BookingPage = () => {
                     <p className="font-label-md text-xs font-bold text-[#4F6F52] uppercase tracking-wider">
                       Reservasi Bisa Direfund
                     </p>
-                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
-                      Refund otomatis tersedia jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana hangus.
-                    </p>
+                      <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                        Refund is automatically available if cancellation is made more than 24 hours before check-in. Within the last 24 hours, the funds are non-refundable.
+                      </p>
                   </div>
                 </div>
               ) : (
@@ -933,9 +933,9 @@ const BookingPage = () => {
                     <p className="font-label-md text-xs font-bold text-[#ba1a1a] uppercase tracking-wider">
                       Non-Refundable
                     </p>
-                    <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
-                      Kamar ini tidak dapat dikembalikan dananya apabila Anda membatalkan pesanan.
-                    </p>
+                      <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                        This room cannot be refunded if you cancel your reservation.
+                      </p>
                   </div>
                 </div>
               )}
@@ -957,7 +957,7 @@ const BookingPage = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-[#778873]">
-                  <span>Pajak &amp; Service ({taxRate}%)</span>
+                  <span>                      Tax &amp; Service ({taxRate}%)</span>
                   <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
                 </div>
               </div>
@@ -971,23 +971,23 @@ const BookingPage = () => {
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleOpenPaymentModal}
-                disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
-                className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {maxAvailableStock <= 0
-                  ? "Kamar Tidak Tersedia"
-                  : submitting
-                  ? "Memproses..."
-                  : "Bayar Sekarang"}
-                <span className="material-symbols-outlined text-base">payments</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={handleOpenPaymentModal}
+                  disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
+                  className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {maxAvailableStock <= 0
+                    ? "Room Not Available"
+                    : submitting
+                    ? "Processing..."
+                    : "Pay Now"}
+                  <span className="material-symbols-outlined text-base">payments</span>
+                </button>
 
               <p className="font-label-sm text-xs text-[#444842] text-center flex items-center justify-center gap-1">
                 <span className="material-symbols-outlined text-sm">shield</span>
-                Pembayaran aman via Midtrans
+                 Secure payment via Midtrans
               </p>
             </div>
           </div>
@@ -1014,7 +1014,7 @@ const BookingPage = () => {
                   <span className="font-semibold text-right">{successModalData.hotelName}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#444842]">Kamar:</span>
+                  <span className="text-xs text-[#444842]">Room:</span>
                   <span className="font-semibold text-right">{successModalData.roomName} ({successModalData.roomQty} kamar)</span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -1033,21 +1033,21 @@ const BookingPage = () => {
                 </div>
                 <hr className="border-t border-[#DCCFC0]/60 my-2" />
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-[#444842]">Total Dibayar:</span>
+                  <span className="text-xs font-bold text-[#444842]">Total Paid:</span>
                   <span className="font-bold text-lg text-[#778873]">Rp {successModalData.totalPrice.toLocaleString("id-ID")}</span>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setSuccessModalData(null);
-                  navigate("/profile", { state: { defaultTab: "history" } });
-                }}
-                className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
-              >
-                Lihat Pesanan Saya
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuccessModalData(null);
+                    navigate("/profile", { state: { defaultTab: "history" } });
+                  }}
+                  className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
+                >
+                  View My Orders
+                </button>
             </div>
           </div>
         </div>
@@ -1060,7 +1060,7 @@ const BookingPage = () => {
             <div className="flex justify-between items-start border-b border-[#DCCFC0]/60 pb-3">
               <div>
                 <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
-                  Kamar Tidak Tersedia
+                  Room Not Available
                 </h3>
                 <p className="text-xs font-semibold text-[#ba1a1a] mt-1">{suggestionData.message}</p>
               </div>
@@ -1097,10 +1097,10 @@ const BookingPage = () => {
                         />
                       )}
                       <div className="min-w-0 flex-1 space-y-1">
-                        <p className="truncate font-label-md text-xs font-bold text-[#50604d]">
-                          {altRoom.hotel?.name || "Hotel"}
-                          {suggestionData.type === "same_hotel" && " · Hotel ini"}
-                        </p>
+                  <p className="truncate font-label-md text-xs font-bold text-[#50604d]">
+                    {altRoom.hotel?.name || "Hotel"}
+                    {suggestionData.type === "same_hotel" && " · This Hotel"}
+                  </p>
                         <p className="truncate font-headline-sm text-sm font-bold text-[#2D332C]">{altRoom.name}</p>
                         <p className="truncate text-xs text-[#5b6058]">
                           {altRoom.hotel?.address || altRoom.hotel?.city || "Lokasi tidak tersedia"}
@@ -1109,7 +1109,7 @@ const BookingPage = () => {
                           && altRoom.distance_km != null
                           && Number.isFinite(Number(altRoom.distance_km)) && (
                           <p className="text-xs text-[#5b6058]">
-                            ±{Number(altRoom.distance_km).toLocaleString("id-ID")} km dari hotel pilihan
+                            ±{Number(altRoom.distance_km).toLocaleString("en-US")} km from selected hotel
                           </p>
                         )}
                         <p className="font-label-md text-xs font-bold text-[#778873]">
@@ -1133,7 +1133,7 @@ const BookingPage = () => {
                           }}
                           className="rounded-lg bg-[#778873] px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-[#50604d]"
                         >
-                          Pilih Kamar
+                          Select Room
                         </button>
                       </div>
                     </div>
@@ -1145,7 +1145,7 @@ const BookingPage = () => {
                         )}
                         <div className="grid grid-cols-2 gap-2 text-xs text-[#444842]">
                           <p>Kapasitas: {altRoom.capacity_adult} dewasa, {altRoom.capacity_child || 0} anak</p>
-                          <p>Tempat tidur: {altRoom.bed || "Tidak disebutkan"} · {Number(altRoom.bed_count || 1)} kasur</p>
+                          <p>Bed: {altRoom.bed || "Not specified"} · {Number(altRoom.bed_count || 1)} bed(s)</p>
                         </div>
                         {Array.isArray(altRoom.facilities) && altRoom.facilities.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">

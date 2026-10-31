@@ -17,13 +17,13 @@ const Modal = ({ isOpen, onClose, title, message, onConfirm, onCancel }) => {
             onClick={onCancel}
             className="flex-1 px-4 py-2.5 rounded-xl border border-[#DCCFC0] text-[#444842] hover:bg-[#FDF6ED] font-semibold text-sm transition-colors"
           >
-            Batal
+            Cancel
           </button>
           <button
             onClick={onConfirm}
             className="flex-1 px-4 py-2.5 rounded-xl bg-[#778873] text-white hover:bg-[#50604d] font-semibold text-sm transition-colors shadow-sm"
           >
-            Ya, Lanjutkan
+            Yes, Continue
           </button>
         </div>
       </div>

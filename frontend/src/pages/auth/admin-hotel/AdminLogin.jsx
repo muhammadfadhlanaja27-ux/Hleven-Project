@@ -27,7 +27,7 @@ export default function AdminLogin() {
 
       // 2. Pastikan data tidak kosong
       if (!token || !user) {
-        throw new Error("Data token atau user tidak ditemukan dari server.");
+        throw new Error("Token or user data not found from server.");
       }
 
       // 3. Validasi Role (Hanya admin_hotel atau super_admin yang boleh masuk)
@@ -41,7 +41,7 @@ export default function AdminLogin() {
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      toast.success("Login Admin Hotel Berhasil!");
+      toast.success("Hotel Admin login successful!");
 
       // 5. Arahkan ke dashboard admin hotel
       navigate("/admin/dashboard");
@@ -50,7 +50,7 @@ export default function AdminLogin() {
       const errorMessage =
         err.response?.data?.message ||
         err.message ||
-        "Login gagal, periksa email dan password Anda.";
+        "Login failed, check your email and password.";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -240,7 +240,7 @@ export default function AdminLogin() {
           {/* Micro Footer Notice */}
           <div className="mt-8 text-center">
             <p className="text-xs text-[#747872]">
-              Hanya untuk staf &amp; administrator hotel H&apos;Leven terdaftar.
+              For registered H'Leven hotel staff &amp; administrators only.
             </p>
           </div>
         </div>

@@ -16,7 +16,7 @@ const openPartnerDocument = async (appId, docId, fallbackUrl) => {
       window.open(fallbackUrl, "_blank", "noopener,noreferrer");
       return;
     }
-    toast.error(err.response?.data?.message || "Gagal membuka dokumen.");
+    toast.error(err.response?.data?.message || "Failed to open document.");
   }
 };
 
@@ -86,9 +86,9 @@ const PartnerApproval = () => {
       const data = response.data?.data || response.data || [];
       setPartners(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Gagal mengambil data pengajuan:", err);
+      console.error("Failed to fetch application data:", err);
       if (partners.length === 0) setError(true);
-      toast.error("Gagal memuat data pengajuan mitra.");
+      toast.error("Failed to load partner application data.");
     } finally {
       setLoading(false);
     }
@@ -122,7 +122,7 @@ const PartnerApproval = () => {
       setPendingApprove(null);
       fetchPartners(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menyetujui pengajuan.");
+      toast.error(err.response?.data?.message || "Failed to approve application.");
     } finally {
       setIsApproving(false);
     }
@@ -155,7 +155,7 @@ const PartnerApproval = () => {
       }
       fetchPartners(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menolak pengajuan.");
+      toast.error(err.response?.data?.message || "Failed to reject application.");
     } finally {
       setRejectLoading(false);
     }
@@ -588,7 +588,7 @@ const PartnerApproval = () => {
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-[#747872]">Bintang (Klaim Mitra)</p>
-                      <p className="font-medium text-[#191c1b] mt-0.5">{selectedPartner.requested_star_rating ? `★ ${selectedPartner.requested_star_rating}` : "Belum Bersertifikat"}</p>
+                      <p className="font-medium text-[#191c1b] mt-0.5">{selectedPartner.requested_star_rating ? `★ ${selectedPartner.requested_star_rating}` : "Not Certified"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-[#747872]">
@@ -764,7 +764,7 @@ const PartnerApproval = () => {
                     rejectLoading ? "opacity-60 cursor-not-allowed" : "active:scale-95"
                   }`}
                 >
-                  {rejectLoading ? "Menyimpan..." : "Konfirmasi Penolakan"}
+                  {rejectLoading ? "Saving..." : "Confirm Rejection"}
                 </button>
               </div>
             </form>
@@ -777,7 +777,7 @@ const PartnerApproval = () => {
           <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => !isApproving && setPendingApprove(null)}></div>
           <div className="relative bg-white rounded-xl border border-[#E5E0D8] p-6 max-w-md w-full z-10 font-hanken">
             <h3 className="font-newsreader text-lg font-semibold mb-1">Setujui Mitra + Bintang</h3>
-            {(() => { const p = partners.find((x) => x.id === pendingApprove); return p?.requested_star_rating ? <p className="text-xs text-[#747872] mb-3">Klaim mitra: ★ {p.requested_star_rating} — koreksi di bawah jika perlu.</p> : null; })()}
+            {(() => { const p = partners.find((x) => x.id === pendingApprove); return p?.requested_star_rating ? <p className="text-xs text-[#747872] mb-3">Partner claim: ★ {p.requested_star_rating} — correct below if needed.</p> : null; })()}
             <div className="space-y-3">
               <select value={approveStar} onChange={(e) => setApproveStar(e.target.value)} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm">
                 <option value="">Belum Terverifikasi</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Bintang</option>)}

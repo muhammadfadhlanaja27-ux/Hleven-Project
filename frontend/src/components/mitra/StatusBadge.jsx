@@ -4,31 +4,31 @@ const STATUS_STYLES = {
   pending: {
     bg: "bg-[#eae1d8]/60",
     text: "text-[#615b54]",
-    label: "Menunggu Verifikasi",
+    label: "Pending Verification",
     icon: "schedule",
   },
   under_review: {
     bg: "bg-[#ceeac7]/60",
     text: "text-[#4c6549]",
-    label: "Sedang Ditinjau",
+    label: "Under Review",
     icon: "visibility",
   },
   needs_revision: {
     bg: "bg-[#ffdad6]/40",
     text: "text-[#ba1a1a]",
-    label: "Membutuhkan Perbaikan",
+    label: "Needs Revision",
     icon: "edit_note",
   },
   approved: {
     bg: "bg-[#d5e8cf]/70",
     text: "text-[#3b4b39]",
-    label: "Disetujui",
+    label: "Approved",
     icon: "verified",
   },
   rejected: {
     bg: "bg-[#ffdad6]/60",
     text: "text-[#93000a]",
-    label: "Ditolak",
+    label: "Rejected",
     icon: "cancel",
   },
 };
@@ -48,5 +48,5 @@ const StatusBadge = ({ status, size = "md" }) => {
   );
 };
 
-export const getStatusLabel = (status) => STATUS_STYLES[status]?.label || "Menunggu Verifikasi";
+export const getStatusLabel = (status) => STATUS_STYLES[status]?.label || "Pending Verification";
 export default StatusBadge;

@@ -29,7 +29,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
       {/* Info text */}
       {totalItems !== undefined && (
         <div className="text-xs text-[#444842] font-body-md">
-          Menampilkan <span className="font-semibold text-[#1e1b16]">{startItem}</span> - <span className="font-semibold text-[#1e1b16]">{endItem}</span> dari <span className="font-semibold text-[#1e1b16]">{totalItems}</span> hotel
+          Showing <span className="font-semibold text-[#1e1b16]">{startItem}</span> - <span className="font-semibold text-[#1e1b16]">{endItem}</span> of <span className="font-semibold text-[#1e1b16]">{totalItems}</span> hotels
         </div>
       )}
 
@@ -44,7 +44,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
               ? "opacity-40 cursor-not-allowed border-[#DCCFC0] text-[#747871]"
               : "border-[#DCCFC0] text-[#778873] hover:bg-[#778873] hover:text-white active:scale-95 cursor-pointer"
           }`}
-          aria-label="Halaman Sebelumnya"
+          aria-label="Previous Page"
         >
           <span className="material-symbols-outlined text-sm">chevron_left</span>
         </button>
@@ -103,7 +103,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
               ? "opacity-40 cursor-not-allowed border-[#DCCFC0] text-[#747871]"
               : "border-[#DCCFC0] text-[#778873] hover:bg-[#778873] hover:text-white active:scale-95 cursor-pointer"
           }`}
-          aria-label="Halaman Selanjutnya"
+          aria-label="Next Page"
         >
           <span className="material-symbols-outlined text-sm">chevron_right</span>
         </button>
