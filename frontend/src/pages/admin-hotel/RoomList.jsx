@@ -261,7 +261,7 @@ export default function RoomList() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memuat data kamar dari server.");
+       toast.error("Failed to load room data from server.");
     } finally {
       setLoading(false);
     }
@@ -451,13 +451,13 @@ export default function RoomList() {
     const errs = {};
     if (!editValues.name.trim()) errs.name = "Room name is required.";
     if (!editValues.room_type_category_id)
-      errs.room_type_category_id = "Pilih tipe kamar.";
+       errs.room_type_category_id = "Select room type.";
     if (!editValues.weekday_price || Number(editValues.weekday_price) <= 0)
       errs.weekday_price = "Weekday price must be greater than 0.";
     if (!editValues.weekend_price || Number(editValues.weekend_price) <= 0)
       errs.weekend_price = "Weekend price must be greater than 0.";
     if (!editValues.bed_type_id)
-      errs.bed_type_id = "Pilih tipe tempat tidur.";
+       errs.bed_type_id = "Select bed type.";
     if (!editValues.bed_count || Number(editValues.bed_count) < 1)
       errs.bed_count = "Jumlah kasur minimal 1.";
     if (!editValues.stock || Number(editValues.stock) < 1)
@@ -804,7 +804,7 @@ export default function RoomList() {
                           {rooms.length === 0 ? "No rooms yet." : "No rooms found."}
                         </p>
                         <p className="text-xs text-[#6B6E6A] mt-1">
-                          {rooms.length === 0 ? "Mulai dengan menambahkan tipe kamar pertama Anda." : "Tidak ada kamar yang cocok dengan kriteria pencarian/filter."}
+                           {rooms.length === 0 ? "Start by adding your first room type." : "No rooms match your search/filter criteria."}
                         </p>
                       </div>
                       {searchQuery || typeFilter !== "all" || statusFilter !== "all" || capacityFilter !== "all" ? (
@@ -904,7 +904,7 @@ export default function RoomList() {
             <div className="p-6 overflow-y-auto space-y-6 text-sm">
               <div className="bg-[#fcf9f5] rounded-xl border border-[#E5E1DA] p-5 space-y-3">
                 <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">Room Information</h4>
-                <p className="text-xs text-[#444840] leading-relaxed">{viewingRoom.description || "Tidak ada deskripsi kamar."}</p>
+                 <p className="text-xs text-[#444840] leading-relaxed">{viewingRoom.description || "No room description."}</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-[#E5E1DA] text-xs">
                   <div>
                     <span className="text-[#6B6E6A]">Type:</span>
@@ -968,7 +968,7 @@ export default function RoomList() {
                     </span>
                   ))}
                   {getFacilitiesForRoom(viewingRoom.facilityIds).length === 0 && (
-                    <span className="text-xs text-[#6B6E6A] italic">Tidak ada fasilitas kamar yang terdaftar.</span>
+                     <span className="text-xs text-[#6B6E6A] italic">No room facilities listed.</span>
                   )}
                 </div>
               </div>
@@ -1021,7 +1021,7 @@ export default function RoomList() {
                       onChange={handleEditCategoryChange}
                       className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
                     >
-                      <option value="">Pilih tipe kamar</option>
+                               <option value="">Select room type</option>
                       {roomTypeCategories
                         .filter(
                           (category) =>
@@ -1041,7 +1041,7 @@ export default function RoomList() {
                     )}
                     {roomTypeCategories.length === 0 && (
                       <span className="text-xs text-[#6B6E6A]">
-                        Belum ada tipe kamar. Tambahkan di menu Room Types Management.
+                         No room types yet. Add them in Room Types Management.
                       </span>
                     )}
                   </div>
@@ -1049,9 +1049,9 @@ export default function RoomList() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-[#2D312C]">Tipe Kasur</label>
+                    <label className="text-xs font-semibold text-[#2D312C]">Bed Type</label>
                     <select name="bed_type_id" value={editValues.bed_type_id || ""} onChange={handleEditChange} className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white">
-                      <option value="">Pilih tipe kasur</option>
+                               <option value="">Select bed type</option>
                       {bedTypes.filter((bedType) =>
                         bedType.status === "active" ||
                         Number(bedType.id) === Number(editValues.bed_type_id)
@@ -1096,7 +1096,7 @@ export default function RoomList() {
                       onChange={handleEditBedTypeChange}
                       className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm bg-white"
                     >
-                      <option value="">Pilih Tipe Kasur</option>
+                       <option value="">Select Bed Type</option>
                       {bedTypes.filter((b) =>
                         b.status === "active" || String(b.id) === String(editValues.bed_type_id)
                       ).map((b) => (
@@ -1112,7 +1112,7 @@ export default function RoomList() {
                       if (!selected) return null;
                       return (
                         <span className="text-[11px] text-[#4A5D43] mt-1">
-                          Kapasitas: {selected.max_adults} Dewasa, {selected.max_children} Anak (Total {selected.max_total} tamu)
+                          Kapasitas: {selected.max_adults} Adults, {selected.max_children} Children (Total {selected.max_total} guests)
                         </span>
                       );
                     })()}
@@ -1122,7 +1122,7 @@ export default function RoomList() {
                     <label className="text-xs font-semibold text-[#2D312C]">Jumlah Kasur *</label>
                     <input type="number" name="bed_count" value={editValues.bed_count} onChange={handleEditChange} min="1" max="50" className="h-10 px-3 border border-[#E5E0D8] rounded-lg text-sm" />
                     {editErrors.bed_count && <span className="text-xs text-[#ba1a1a]">{editErrors.bed_count}</span>}
-                    <span className="text-[10px] text-[#6B6E6A]">Tidak mengubah kapasitas tamu.</span>
+                     <span className="text-[10px] text-[#6B6E6A]">Does not change guest capacity.</span>
                   </div>
 
                   <div className="flex flex-col gap-1">
@@ -1182,10 +1182,10 @@ export default function RoomList() {
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-bold text-[#2D312C] flex items-center gap-2">
                         <span className="material-symbols-outlined text-[#ba1a1a] text-[18px]">block</span>
-                        Tidak Bisa Refund
+                         Non-Refundable
                       </span>
                       <p className="text-xs text-[#6B6E6A] leading-relaxed">
-                        Pembayaran bersifat non-refundable. Tamu tidak bisa mengembalikan dana bila membatalkan reservasi.
+                         Payment is non-refundable. Guests cannot get a refund if they cancel the reservation.
                       </p>
                     </div>
                   </button>
@@ -1193,13 +1193,13 @@ export default function RoomList() {
               </div>
 
               <div className="space-y-4 pt-4 border-t border-[#E5E1DA]">
-                <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Kebijakan Kamar</h4>
+                    <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Room Policy</h4>
                 <textarea
                   name="policies"
                   rows={5}
                   value={editValues.policies || ""}
                   onChange={handleEditChange}
-                  placeholder="Kebijakan khusus kamar ini..."
+                    placeholder="Room-specific policy..."
                   className="w-full p-3 border border-[#E5E0D8] rounded-lg text-sm leading-relaxed whitespace-pre-wrap focus:outline-none focus:border-[#506147]"
                 />
               </div>
@@ -1208,7 +1208,7 @@ export default function RoomList() {
                 <div>
                   <h4 className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">5. Fasilitas Kamar</h4>
                   <p className="text-[11px] text-[#6B6E6A] mt-1">
-                    Pilihan ini hanya berlaku untuk kamar; fasilitas hotel diatur terpisah.
+                    Options apply to rooms only; hotel facilities are set separately.
                   </p>
                 </div>
                 <div className="relative">
@@ -1219,8 +1219,8 @@ export default function RoomList() {
                     type="search"
                     value={facilitySearch}
                     onChange={(event) => setFacilitySearch(event.target.value)}
-                    placeholder="Cari fasilitas kamar..."
-                    aria-label="Cari fasilitas kamar"
+                    placeholder="Search room facilities..."
+                    aria-label="Search room facilities"
                     className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
                   />
                 </div>
@@ -1268,7 +1268,7 @@ export default function RoomList() {
 
                   {(editValues.photos || []).length === 0 && (
                     <div className="col-span-full rounded-xl border border-dashed border-[#D5CFC3] bg-[#fcf9f5] p-6 text-center text-xs text-[#6B6E6A]">
-                      Belum ada foto kamar. Tambahkan foto untuk menampilkan tampilan kamar.
+                       No room photos yet. Add photos to display the room view.
                     </div>
                   )}
                 </div>

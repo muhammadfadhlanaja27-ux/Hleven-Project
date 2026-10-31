@@ -323,7 +323,7 @@ const RoomDetail = () => {
   const handleReserve = (e) => {
     e.preventDefault();
     if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
-      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
+      toast.error("This room is already fully booked for the selected dates.");
       return;
     }
     const hId = hotel?.id || hotelId || 1;
@@ -402,7 +402,7 @@ const RoomDetail = () => {
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20">
                     <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">block</span>
                     <span className="text-[#ba1a1a] font-bold text-xs uppercase tracking-wider">
-                      Tidak Bisa Refund
+                      Non-Refundable
                     </span>
                   </div>
                 )}
@@ -413,7 +413,7 @@ const RoomDetail = () => {
               <span className="text-xs font-semibold text-[#444842] uppercase tracking-wider">Mulai dari</span>
               <div className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873]">
                 Rp {roomPrice.toLocaleString("id-ID")}{" "}
-                <span className="text-sm font-normal text-[#444842]">/ malam</span>
+                <span className="text-sm font-normal text-[#444842]">/ night</span>
               </div>
             </div>
           </div>
@@ -427,7 +427,7 @@ const RoomDetail = () => {
               type="button"
               onClick={() => navigate(-1)}
               className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
-              title="Kembali"
+              title="Back"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
@@ -482,13 +482,13 @@ const RoomDetail = () => {
               type="button"
               onClick={() => navigate(-1)}
               className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
-              title="Kembali"
+              title="Back"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
 
             <span className="material-symbols-outlined text-[#778873] text-7xl mb-4 opacity-60">image_not_supported</span>
-            <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">Belum Ada Foto Kamar</h3>
+            <h3 className="font-headline-md text-2xl font-bold text-[#778873] mb-2">No Room Photos Yet</h3>
             <p className="font-body-md text-sm text-[#444842] max-w-md">
               Admin hotel belum mengunggah foto untuk tipe kamar ini.
             </p>
@@ -503,11 +503,11 @@ const RoomDetail = () => {
             
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-4">
-                Tentang Kamar Ini
+                About This Room
               </h2>
               <p className="font-body-md text-base text-[#444842] leading-relaxed whitespace-pre-line">
                 {room?.description ||
-                  `Nikmati privasi dan ketenangan tak tertandingi di ${room?.name || "Executive Suite"}. Dirancang sebagai tempat peristirahatan modern, ruang seluas ${room?.sqm || '80 sqm'} ini menggabungkan kemewahan kontemporer dengan elemen alam yang menenangkan. Kamar ini dilengkapi dengan area santai terpisah, kamar mandi marmer mewah dengan bathtub berukuran besar, serta jendela besar yang menghadap langsung ke panorama alam yang indah.`}
+                  `Enjoy unmatched privacy and peace in the ${room?.name || "Executive Suite"}. Designed as a modern retreat, this ${room?.sqm || '80 sqm'} space combines contemporary luxury with soothing natural elements. It features a separate lounge area, a luxurious marble bathroom with a large bathtub, and large windows overlooking stunning views.`}
               </p>
             </section>
 
@@ -515,7 +515,7 @@ const RoomDetail = () => {
 
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
-                Fasilitas Kamar
+                Room Amenities
               </h2>
               {Array.isArray(room?.facilities) && room.facilities.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
@@ -536,7 +536,7 @@ const RoomDetail = () => {
                 </div>
               ) : (
                 <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
-                  Belum ada fasilitas khusus yang terdaftar untuk kamar ini.
+                  No specific amenities listed for this room.
                 </p>
               )}
             </section>
@@ -545,7 +545,7 @@ const RoomDetail = () => {
 
             <section>
               <h2 className="font-headline-md text-2xl font-bold text-[#1e1b16] mb-6">
-                Kebijakan Kamar
+                Room Policies
               </h2>
               {room?.policies ? (
                 <>
@@ -553,37 +553,37 @@ const RoomDetail = () => {
                     {room.policies}
                   </div>
                   <div className="mt-4 rounded-2xl border border-[#4F6F52]/20 bg-[#4F6F52]/10 p-4 text-left">
-                    <h4 className="font-semibold text-[#1e1b16] text-sm">Aturan Refund Sistem</h4>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">System Refund Policy</h4>
                     {room?.is_refundable ? (
-                      <p className="text-xs text-[#444842] mt-1">Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir sebelum check-in, dana tidak dapat dikembalikan.</p>
+                      <p className="text-xs text-[#444842] mt-1">Automatic refund applies if canceled more than 24 hours before check-in. Within the last 24 hours before check-in, the funds are non-refundable.</p>
                     ) : (
-                      <p className="text-xs text-[#444842] mt-1">Kamar ini non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.</p>
+                      <p className="text-xs text-[#444842] mt-1">This room is non-refundable. Payments cannot be refunded under any circumstances.</p>
                     )}
                   </div>
                 </>
               ) : (
                 <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
                   <div>
-                    <h4 className="font-semibold text-[#1e1b16] text-sm">Waktu Check-in & Check-out</h4>
-                    <p className="text-xs text-[#444842] mt-1">Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Check-in &amp; Check-out</h4>
+                    <p className="text-xs text-[#444842] mt-1">Check-in from 14:00. Check-out by 12:00.</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#1e1b16] text-sm">Kebijakan Bebas Asap Rokok</h4>
-                    <p className="text-xs text-[#444842] mt-1">Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Smoke-Free Policy</h4>
+                    <p className="text-xs text-[#444842] mt-1">All rooms are smoke-free. Designated smoking areas are available on the outdoor terrace.</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#1e1b16] text-sm">Hewan Peliharaan</h4>
-                    <p className="text-xs text-[#444842] mt-1">Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.</p>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Pets</h4>
+                    <p className="text-xs text-[#444842] mt-1">Pets are not allowed to maintain guest hygiene.</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#1e1b16] text-sm">Pembatalan</h4>
+                    <h4 className="font-semibold text-[#1e1b16] text-sm">Cancellation</h4>
                     {room?.is_refundable ? (
                       <p className="text-xs text-[#444842] mt-1">
-                        <span className="font-bold text-[#4F6F52]">Pembatalan tersedia:</span> Refund otomatis berlaku jika pembatalan dilakukan lebih dari 24 jam sebelum check-in. Dalam 24 jam terakhir, dana tidak dapat dikembalikan.
+                        <span className="font-bold text-[#4F6F52]">Refundable:</span> Automatic refund applies if canceled more than 24 hours before check-in. Within the last 24 hours, funds are non-refundable.
                       </p>
                     ) : (
                       <p className="text-xs text-[#444842] mt-1">
-                        <span className="font-bold text-[#ba1a1a]">Tidak dapat dibatalkan:</span> Kamar ini bersifat non-refundable. Pembayaran tidak dapat dikembalikan dalam kondisi apa pun.
+                        <span className="font-bold text-[#ba1a1a]">Non-refundable:</span> This room is non-refundable. Payments cannot be refunded under any circumstances.
                       </p>
                     )}
                   </div>
@@ -646,7 +646,7 @@ const RoomDetail = () => {
                       minDate={today}
                       monthsShown={2}
                       dateFormat="dd/MM/yyyy"
-                      placeholderText="Pilih Tanggal Menginap"
+                      placeholderText="Select Stay Dates"
                       popperClassName="!z-[9999]"
                       className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate"
                     />
@@ -667,21 +667,21 @@ const RoomDetail = () => {
               <div className="space-y-3 mb-6 font-body-md text-xs text-[#444842]">
                 <div className="flex justify-between">
                   <span>
-                    Tarif Kamar
+                    Room Rate
                     <span className="text-[#444842] text-xs block">
-                      Rp {Math.round(subtotalPrice / nightsCount / rooms).toLocaleString("id-ID")} x {nightsCount} malam x {rooms} kamar
+                      Rp {Math.round(subtotalPrice / nightsCount / rooms).toLocaleString("en-US")} x {nightsCount} night(s) x {rooms} room(s)
                     </span>
                   </span>
-                  <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
+                  <span className="font-semibold">Rp {subtotalPrice.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Pajak & Biaya Layanan ({taxRate}%)</span>
-                  <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
+                  <span>Taxes & Service Fees ({taxRate}%)</span>
+                  <span className="font-semibold">Rp {taxAndFees.toLocaleString("en-US")}</span>
                 </div>
                 <hr className="border-[#DCCFC0]/50 my-2" />
                 <div className="flex justify-between font-label-md text-sm font-bold text-[#1e1b16]">
-                  <span>Total Harga</span>
-                  <span className="text-[#778873]">Rp {totalPrice.toLocaleString("id-ID")}</span>
+                  <span>Total Price</span>
+                  <span className="text-[#778873]">Rp {totalPrice.toLocaleString("en-US")}</span>
                 </div>
               </div>
 
@@ -692,25 +692,25 @@ const RoomDetail = () => {
                   disabled
                   className="w-full bg-[#E5E0D8] text-[#8A948C] py-3.5 rounded-xl font-label-md text-sm font-semibold cursor-not-allowed shadow-none"
                 >
-                  Kamar Habis
+                  Sold Out
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleReserve}
-                  className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md active:scale-95 cursor-pointer"
-                >
-                  Pesan Sekarang
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleReserve}
+                    className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    Book Now
+                  </button>
+                  <p className="text-center font-body-md text-[11px] text-[#444842] mt-3">
+                    You won't be charged yet
+                  </p>
+                </>
               )}
-              <p className="text-center font-body-md text-[11px] text-[#444842] mt-3">
-                Anda belum dikenakan biaya pada tahap ini
-              </p>
-            </div>
           </div>
         </div>
-      </main>
-
+      </div>
       {/* Full-screen Lightbox */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) setLightboxOpen(false); }}>
@@ -760,6 +760,7 @@ const RoomDetail = () => {
           </div>
         </div>
       )}
+      </main>
     </div>
   );
 };

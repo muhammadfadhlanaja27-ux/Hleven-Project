@@ -64,7 +64,7 @@ class ReviewController extends Controller
         if (! $user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Silakan login untuk melihat pesanan yang dapat diulas.',
+                'message' => 'Please login to view eligible bookings for review.',
             ], 401);
         }
 
@@ -128,8 +128,8 @@ class ReviewController extends Controller
                 if (! $exists) {
                     Notification::create([
                         'user_id' => $saId,
-                        'title' => "Peringatan Rating Rendah: {$hotel->name}",
-                        'message' => "Rating hotel {$hotel->name} saat ini turun menjadi {$hotel->average_rating} dari total {$hotel->total_review} ulasan. Pertimbangkan untuk meninjau atau menerbitkan warning.",
+                        'title' => "Low Rating Alert: {$hotel->name}",
+                        'message' => "The rating for hotel {$hotel->name} has dropped to {$hotel->average_rating} from {$hotel->total_review} reviews. Consider reviewing or issuing a warning.",
                         'type' => 'low_rating_alert',
                         'is_read' => false,
                     ]);

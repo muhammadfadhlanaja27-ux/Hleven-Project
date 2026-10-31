@@ -11,7 +11,7 @@ const payoutChannels = [
   { code: "LINKAJA", label: "LINKAJA", type: "e_wallet", numberLabel: "Nomor HP LinkAja" },
 ];
 
-const STATUS_LABEL = { pending: "Menunggu", approved: "Disetujui", rejected: "Ditolak", paid: "Ditransfer" };
+const STATUS_LABEL = { pending: "Pending", approved: "Approved", rejected: "Rejected", paid: "Transferred" };
 const STATUS_CLASS = {
   pending: "bg-[#FFF0E0] text-[#9B5235]",
   approved: "bg-[#E0F2FE] text-[#0369A1]",
@@ -54,7 +54,7 @@ export default function Payouts() {
       setDestinations(list);
       if (list.length && !selectedDestinationId) setSelectedDestinationId(String(list[0].id));
     } catch (err) {
-      toast.error("Gagal memuat data keuangan.");
+       toast.error("Failed to load financial data.");
     } finally { setLoading(false); }
   };
 
@@ -71,17 +71,17 @@ export default function Payouts() {
       setEditingDestination(null);
       fetchData();
     } catch (err) {
-      toast.error("Gagal menyimpan tujuan.");
+       toast.error("Failed to save destination.");
     } finally { setSavingDestination(false); }
   };
 
   const handleDeleteDestination = async (id) => {
-    if (!confirm("Hapus tujuan ini?")) return;
+     if (!confirm("Delete this destination?")) return;
     try {
       await api.delete(`/admin/wallet/destinations/${id}`);
       toast.success("Tujuan dihapus.");
       fetchData();
-    } catch (err) { toast.error("Gagal menghapus."); }
+    } catch (err) { toast.error("Failed to delete."); }
   };
 
   const handlePayoutSubmit = async (e) => {
@@ -98,7 +98,7 @@ export default function Payouts() {
       setAmount(""); setNote("");
       fetchData();
     } catch (err) {
-      toast.error("Gagal mengajukan pencairan.");
+      toast.error("Failed to request payout.");
     } finally {
       setSubmitting(false);
     }
@@ -112,7 +112,7 @@ export default function Payouts() {
         {/* Header */}
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
-            Saldo & Pencairan
+            Balance & Withdrawal
           </h2>
           <p className="text-base text-[#6B6E6A] mt-1">Kelola pendapatan hotel dan tarik saldo ke rekening Anda.</p>
         </div>
@@ -124,7 +124,7 @@ export default function Payouts() {
             <p className="font-['Newsreader',serif] text-3xl font-bold mt-2">{rupiah(balance?.available_balance)}</p>
           </div>
           <div className="bg-white border border-[#E5E1DA] rounded-2xl p-6 shadow-sm">
-            <p className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-wider">Total Pendapatan</p>
+                <p className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-wider">Total Revenue</p>
             <p className="font-['Newsreader',serif] text-2xl font-bold text-[#2D312C] mt-2">{rupiah(balance?.net_revenue)}</p>
           </div>
           <div className="bg-white border border-[#E5E1DA] rounded-2xl p-6 shadow-sm">
@@ -141,7 +141,7 @@ export default function Payouts() {
           {/* Form & Destination */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl border border-[#E5E1DA] p-6 shadow-sm">
-              <h3 className="font-bold text-[#2D312C] mb-4">Ajukan Pencairan</h3>
+              <h3 className="font-bold text-[#2D312C] mb-4">Request Withdrawal</h3>
               <form onSubmit={handlePayoutSubmit} className="space-y-4">
                 <div>
                   <label className="text-[11px] font-bold text-[#6B6E6A] uppercase block mb-1.5">Nominal (Rp)</label>
@@ -149,7 +149,7 @@ export default function Payouts() {
                   <p className="text-[10px] text-[#6B6E6A] mt-1">Minimal pencairan {rupiah(limits?.min_payout)}</p>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-[#6B6E6A] uppercase block mb-1.5">Tujuan Pencairan</label>
+                  <label className="text-[11px] font-bold text-[#6B6E6A] uppercase block mb-1.5">Withdrawal Destination</label>
                   <select value={selectedDestinationId} onChange={(e) => setSelectedDestinationId(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-[#E5E1DA] text-sm font-semibold outline-none focus:border-[#506147]">
                     {destinations.map(d => (
                       <option key={d.id} value={d.id}>{d.channel_code} - {d.account_name}</option>
@@ -163,7 +163,7 @@ export default function Payouts() {
             <div className="bg-white rounded-2xl border border-[#E5E1DA] p-6 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-[#2D312C]">Rekening Tujuan</h3>
-                <button onClick={() => setEditingDestination({ ...payoutChannels[0], isNew: true })} className="text-[11px] font-bold text-[#506147] hover:underline uppercase">+ Tambah</button>
+                 <button onClick={() => setEditingDestination({ ...payoutChannels[0], isNew: true })} className="text-[11px] font-bold text-[#506147] hover:underline uppercase">+ Add</button>
               </div>
               <div className="space-y-3">
                 {destinations.map(d => (
@@ -182,13 +182,13 @@ export default function Payouts() {
           {/* History */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E5E1DA] overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-[#E5E1DA] bg-[#F9F6F1]">
-              <h3 className="font-bold text-[#757870] uppercase text-xs tracking-wider">Riwayat Pencairan</h3>
+               <h3 className="font-bold text-[#757870] uppercase text-xs tracking-wider">Payout History</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead className="border-b border-[#E5E1DA] bg-[#FBFBFA]">
                   <tr>
-                    {["Tanggal", "Nominal", "Status", "Tujuan"].map(h => (
+                    {["Date", "Amount", "Status", "Destination"].map(h => (
                       <th key={h} className="px-6 py-3 text-[11px] font-bold text-[#6B6E6A] uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -206,7 +206,7 @@ export default function Payouts() {
                       <td className="px-6 py-4 text-xs font-semibold text-[#6B6E6A]">{p.bank_name || p.destination_name}</td>
                     </tr>
                   ))}
-                  {payouts.length === 0 && <tr><td colSpan="4" className="py-12 text-center text-sm text-[#6B6E6A]">Belum ada riwayat pencairan.</td></tr>}
+                  {payouts.length === 0 && <tr><td colSpan="4" className="py-12 text-center text-sm text-[#6B6E6A]">No payout history yet.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -219,9 +219,9 @@ export default function Payouts() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-[#2D312C]/40 backdrop-blur-sm" onClick={() => setEditingDestination(null)}></div>
           <form onSubmit={handleSaveDestination} className="relative bg-white rounded-2xl shadow-2xl border border-[#E5E1DA] max-w-sm w-full z-10 p-6 space-y-4">
-            <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">Tujuan Pencairan</h3>
+            <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">Withdrawal Destination</h3>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#6B6E6A] uppercase block">Pilih Layanan</label>
+               <label className="text-[10px] font-bold text-[#6B6E6A] uppercase block">Select Service</label>
               <select onChange={(e) => setEditingDestination({ ...payoutChannels.find(c => c.code === e.target.value), isNew: true })} className="w-full h-10 px-3 rounded-lg border border-[#E5E1DA] text-sm outline-none">
                 {payoutChannels.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
               </select>
@@ -235,8 +235,8 @@ export default function Payouts() {
               <input type="text" required value={destinationForm.account_name} onChange={e => setDestinationForm({ ...destinationForm, account_name: e.target.value })} className="w-full h-10 px-3 rounded-lg border border-[#E5E1DA] text-sm outline-none" />
             </div>
             <div className="flex gap-2 pt-2">
-              <button type="button" onClick={() => setEditingDestination(null)} className="flex-1 h-10 border border-[#E5E1DA] rounded-lg text-xs font-bold">Batal</button>
-              <button type="submit" disabled={savingDestination} className="flex-1 h-10 bg-[#506147] text-white rounded-lg text-xs font-bold shadow-md">{savingDestination ? "..." : "Simpan"}</button>
+               <button type="button" onClick={() => setEditingDestination(null)} className="flex-1 h-10 border border-[#E5E1DA] rounded-lg text-xs font-bold">Cancel</button>
+               <button type="submit" disabled={savingDestination} className="flex-1 h-10 bg-[#506147] text-white rounded-lg text-xs font-bold shadow-md">{savingDestination ? "..." : "Save"}</button>
             </div>
           </form>
         </div>

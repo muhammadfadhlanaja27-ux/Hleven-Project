@@ -67,9 +67,9 @@ const ApplicationRevenue = () => {
       setChartData(Array.isArray(d.chart_data) ? d.chart_data : []);
       setPagination(d.pagination || null);
     } catch (err) {
-      console.error("Gagal memuat pendapatan aplikasi:", err);
+      console.error("Failed to load application revenue:", err);
       if (hotels.length === 0) setError(true);
-      toast.error("Gagal memuat data pendapatan aplikasi.");
+      toast.error("Failed to load application revenue data.");
     } finally {
       setLoading(false);
     }
@@ -113,8 +113,8 @@ const ApplicationRevenue = () => {
       const fileName = `HLeven_Komisi_Aplikasi_${startDate || "awal"}_${endDate || "akhir"}`;
       let csv = `\uFEFFH'LEVEN PENDAPATAN APLIKASI (KOMISI ${commissionPct}%)\n`;
       csv += `Periode,${startDate || "Awal"} s/d ${endDate || "Sekarang"}\n`;
-      csv += `Total Komisi,${summary?.total_platform_commission || 0}\n`;
-      csv += `Total Pendapatan Hotel,${summary?.total_hotel_revenue || 0}\n\n`;
+       csv += `Total Commission,${summary?.total_platform_commission || 0}\n`;
+       csv += `Total Hotel Revenue,${summary?.total_hotel_revenue || 0}\n\n`;
       csv += `Hotel,Kota,Total Pendapatan,Komisi ${commissionPct}%,Net Hotel ${netPct}%,Transaksi\n`;
       hotels.forEach((h) => {
         csv += `"${h.name}","${h.city}",${h.hotel_revenue},${h.platform_commission},${h.hotel_net},${h.transactions_count}\n`;
@@ -190,7 +190,7 @@ const ApplicationRevenue = () => {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872]">
-              Tanggal Mulai
+               Start Date
             </label>
             <input
               type="date"
@@ -201,7 +201,7 @@ const ApplicationRevenue = () => {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872]">
-              Tanggal Selesai
+               End Date
             </label>
             <input
               type="date"
@@ -239,7 +239,7 @@ const ApplicationRevenue = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] min-h-[150px]">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="font-newsreader text-[20px] font-medium text-[#191c1b]">Total Komisi Aplikasi</h3>
+                 <h3 className="font-newsreader text-[20px] font-medium text-[#191c1b]">Total Application Commission</h3>
                 <div className="w-8 h-8 rounded-full bg-[#F9F6F1] flex items-center justify-center text-[#768875]">
                   <span className="material-symbols-outlined text-[20px]">payments</span>
                 </div>
@@ -251,7 +251,7 @@ const ApplicationRevenue = () => {
             </div>
             <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] min-h-[150px]">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="font-newsreader text-[20px] font-medium text-[#191c1b]">Total Pendapatan Hotel</h3>
+                 <h3 className="font-newsreader text-[20px] font-medium text-[#191c1b]">Total Hotel Revenue</h3>
                 <div className="w-8 h-8 rounded-full bg-[#F9F6F1] flex items-center justify-center text-[#4f604f]">
                   <span className="material-symbols-outlined text-[20px]">domain</span>
                 </div>
@@ -333,7 +333,7 @@ const ApplicationRevenue = () => {
             {pagination && pagination.last_page > 1 && (
               <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-[#747872] font-hanken">
                 <span className="text-[13px]">
-                  Halaman {pagination.current_page} dari {pagination.last_page} • {pagination.total} hotel
+                   Page {pagination.current_page} of {pagination.last_page} • {pagination.total} hotels
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -368,7 +368,7 @@ const ApplicationRevenue = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
-              <h3 className="font-newsreader text-[20px] font-medium text-[#4f604f]">Top 10 Hotel — Komisi Tertinggi</h3>
+               <h3 className="font-newsreader text-[20px] font-medium text-[#4f604f]">Top 10 Hotels — Highest Commission</h3>
               <p className="font-hanken text-[13px] text-[#747872] mt-0.5 mb-4">Berdasarkan data periode yang dipilih</p>
               <div className="w-full h-80">
                 {chartData.length > 0 ? (
@@ -390,7 +390,7 @@ const ApplicationRevenue = () => {
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
-              <h3 className="font-newsreader text-[20px] font-medium text-[#4f604f]">Distribusi Komisi — Top 5</h3>
+               <h3 className="font-newsreader text-[20px] font-medium text-[#4f604f]">Commission Distribution — Top 5</h3>
               <p className="font-hanken text-[13px] text-[#747872] mt-0.5 mb-4">Pangsa 5 hotel kontributor terbesar</p>
               <div className="w-full h-80">
                 {chartData.length > 0 ? (
@@ -459,7 +459,7 @@ const ApplicationRevenue = () => {
                     <p className="font-hanken text-[14px] text-[#191c1b]">{selectedHotel.transactions_count} transaksi</p>
                   </div>
                   <div>
-                    <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">Total Pendapatan</label>
+                     <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">Total Revenue</label>
                     <p className="font-hanken text-[16px] font-semibold text-[#191c1b]">{formatRupiah(selectedHotel.hotel_revenue)}</p>
                   </div>
                   <div>

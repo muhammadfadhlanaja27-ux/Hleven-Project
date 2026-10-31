@@ -277,8 +277,8 @@ export default function Profile() {
       window.dispatchEvent(new Event("userUpdated"));
       toast.success("Profile photo updated successfully.");
     } catch (err) {
-      console.error("Gagal mengunggah foto profil:", err);
-      toast.error(err.response?.data?.message || err.message || "Gagal mengunggah foto profil ke server.");
+       console.error("Failed to upload profile photo:", err);
+       toast.error(err.response?.data?.message || err.message || "Failed to upload profile photo to server.");
     } finally {
       e.target.value = "";
     }
@@ -313,7 +313,7 @@ export default function Profile() {
       toast.success("Hotel logo updated successfully.");
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Gagal mengunggah logo hotel.");
+       toast.error(err.response?.data?.message || "Failed to upload hotel logo.");
     } finally {
       setSavingHotelLogo(false);
       e.target.value = "";
@@ -331,8 +331,8 @@ export default function Profile() {
       }));
       toast.success("Hotel logo removed.");
     } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Gagal menghapus logo hotel.");
+       console.error(err);
+       toast.error(err.response?.data?.message || "Failed to delete hotel logo.");
     } finally {
       setSavingHotelLogo(false);
     }
@@ -403,7 +403,7 @@ export default function Profile() {
       toast.success("Profile updated successfully.");
     } catch (err) {
       console.error(err);
-      const msg = err.response?.data?.message || "Gagal memperbarui profil.";
+      const msg = err.response?.data?.message || "Failed to update profile.";
       toast.error(msg);
     } finally {
       setSavingAccount(false);
@@ -484,7 +484,7 @@ export default function Profile() {
       toast.success("Hotel information updated successfully.");
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memperbarui informasi hotel.");
+      toast.error("Failed to update hotel information.");
     } finally {
       setSavingHotel(false);
     }
@@ -548,7 +548,7 @@ export default function Profile() {
     } catch (err) {
       console.error(err);
       const msg =
-        err.response?.data?.message || "Gagal mengubah kata sandi.";
+        err.response?.data?.message || "Failed to change password.";
       toast.error(msg);
     } finally {
       setUpdatingPassword(false);

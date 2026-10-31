@@ -23,7 +23,7 @@ const SuperAdminLogin = () => {
       });
 
       // 2. CEK CONSOLE: Kita log hasil aslinya agar ketahuan bentuknya
-      console.log("Berhasil hit API! Ini balasan Backend:", response.data);
+      console.log("API call successful! Backend response:", response.data);
 
       // 3. AMBIL DATA DENGAN AMAN
       // Laravel sering menyimpan data di dalam response.data.data
@@ -34,7 +34,7 @@ const SuperAdminLogin = () => {
 
       // 4. Cegah error jika format balasan backend ternyata berbeda
       if (!user || !token) {
-        setError("Login berhasil, tapi format data dari server tidak dikenali.");
+        setError("Login successful, but the data format from the server is not recognized.");
         setLoading(false);
         return;
       }
@@ -57,7 +57,7 @@ const SuperAdminLogin = () => {
       console.error("Login gagal (Catch Error):", err);
       
       // Tampilkan error dari backend jika ada, jika tidak pakai pesan default
-      setError(err.response?.data?.message || "Email atau password salah. Pastikan kredensial Anda benar.");
+      setError(err.response?.data?.message || "Incorrect email or password. Ensure your credentials are correct.");
     } finally {
       setLoading(false);
     }
@@ -93,16 +93,15 @@ const SuperAdminLogin = () => {
           <p style={styles.brandTagline}>Authority Portal</p>
 
           <p style={styles.brandDescription}>
-            Sistem manajemen terpusat untuk mengawasi seluruh operasional
-            jaringan hotel H'Leven secara real-time.
+            Centralized management system to monitor all H'Leven hotel network operations in real-time.
           </p>
 
           {/* Feature highlights */}
           <div style={styles.featureList}>
             {[
-              { icon: "◆", text: "Monitoring Jaringan Hotel" },
-              { icon: "◆", text: "Manajemen Mitra & Pengguna" },
-              { icon: "◆", text: "Laporan & Analitik Real-time" },
+              { icon: "◆", text: "Hotel Network Monitoring" },
+              { icon: "◆", text: "Partner & User Management" },
+              { icon: "◆", text: "Real-time Reports & Analytics" },
             ].map((item, i) => (
               <div key={i} style={styles.featureItem}>
                 <span style={styles.featureIcon}>{item.icon}</span>
@@ -113,22 +112,22 @@ const SuperAdminLogin = () => {
         </div>
 
         {/* Bottom info */}
-        <p style={styles.leftFooter}>
-          © {new Date().getFullYear()} H'Leven Group · All rights reserved
-        </p>
-      </div>
+          <p style={styles.leftFooter}>
+            © {new Date().getFullYear()} H'Leven Group · All rights reserved
+          </p>
+        </div>
 
-      {/* ====== RIGHT PANEL — Login Form ====== */}
-      <div style={styles.rightPanel}>
-        <div style={styles.formContainer}>
-          {/* Header */}
-          <div style={styles.formHeader}>
-            <p style={styles.welcomeLabel}>SUPER ADMIN</p>
-            <h2 style={styles.formTitle}>Selamat Datang Kembali</h2>
-            <p style={styles.formSubtitle}>
-              Masukkan kredensial Anda untuk mengakses portal administrasi.
-            </p>
-          </div>
+        {/* ====== RIGHT PANEL — Login Form ====== */}
+        <div style={styles.rightPanel}>
+          <div style={styles.formContainer}>
+            {/* Header */}
+            <div style={styles.formHeader}>
+              <p style={styles.welcomeLabel}>SUPER ADMIN</p>
+              <h2 style={styles.formTitle}>Welcome Back</h2>
+              <p style={styles.formSubtitle}>
+                Enter your credentials to access the administration portal.
+              </p>
+            </div>
 
           {/* Error Banner */}
           {error && (
@@ -210,7 +209,7 @@ const SuperAdminLogin = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   style={styles.eyeButton}
                   tabIndex={-1}
-                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -273,17 +272,17 @@ const SuperAdminLogin = () => {
                       fill="none"
                     />
                   </svg>
-                  Memproses...
+                  Processing...
                 </span>
               ) : (
-                "Masuk ke Portal"
+                "Sign In to Portal"
               )}
             </button>
           </form>
 
           {/* Footer inside form area */}
           <p style={styles.rightFooter}>
-            Akses terbatas hanya untuk Super Administrator H'Leven.
+            Restricted access for H'Leven Super Administrators only.
           </p>
         </div>
       </div>

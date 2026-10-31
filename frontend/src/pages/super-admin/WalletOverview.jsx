@@ -12,12 +12,12 @@ export default function WalletOverview() {
   useEffect(() => {
     api.get("/super-admin/wallet")
       .then((response) => setWallet(response.data.data))
-      .catch((error) => toast.error(error.response?.data?.message || "Gagal memuat ringkasan komisi."))
+       .catch((error) => toast.error(error.response?.data?.message || "Failed to load commission summary."))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="p-8 text-stone-500">Memuat laporan saldo...</div>;
-  if (!wallet) return <div className="p-8 text-stone-500">Data saldo tidak tersedia.</div>;
+   if (!wallet) return <div className="p-8 text-stone-500">Wallet data not available.</div>;
 
   const withdrawals = wallet.withdrawals?.data || [];
 
@@ -36,7 +36,7 @@ export default function WalletOverview() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
-          <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Total Komisi Tercatat</p>
+           <p className="text-xs text-[#747872] font-semibold uppercase tracking-wider">Recorded Total Commission</p>
           <p className="font-newsreader text-[32px] font-semibold text-[#4f604f] mt-2 leading-none">
             {rupiah(wallet.commission_total)}
           </p>
@@ -56,7 +56,7 @@ export default function WalletOverview() {
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs text-amber-900 leading-relaxed font-hanken">
-        <span className="font-bold block mb-0.5">Catatan Sistem:</span>
+         <span className="font-bold block mb-0.5">System Note:</span>
         Saldo ini adalah pembukuan internal. Payout dan pencocokan dana provider belum aktif sampai XenPlatform dikonfigurasi.
       </div>
 
@@ -75,8 +75,8 @@ export default function WalletOverview() {
                   <th className="py-4 px-6">Hotel</th>
                   <th className="py-4 px-6">Nominal</th>
                   <th className="py-4 px-6">Diterima</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6">Tanggal</th>
+                   <th className="py-4 px-6">Status</th>
+                   <th className="py-4 px-6">Date</th>
                 </tr>
               </thead>
               <tbody className="font-hanken text-[14px] text-[#191c1b] divide-y divide-[#E5E0D8]">

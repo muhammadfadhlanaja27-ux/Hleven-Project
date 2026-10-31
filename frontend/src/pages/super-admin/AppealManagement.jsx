@@ -24,7 +24,7 @@ export default function AppealManagement() {
       setTotalPages(data?.last_page || 1);
       setTotalItems(data?.total || 0);
     } catch (e) {
-      toast.error("Gagal memuat data banding.");
+      toast.error("Failed to load appeal data.");
       setAppeals([]);
     } finally {
       setLoading(false);
@@ -48,7 +48,7 @@ export default function AppealManagement() {
       setAdminNote("");
       fetchAppeals();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memproses banding");
+       toast.error(err.response?.data?.message || "Failed to process appeal");
     } finally {
       setIsDeciding(false);
     }
@@ -83,7 +83,7 @@ export default function AppealManagement() {
             }}
             className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
-            <option value="">Semua Status</option>
+             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="approved">Disetujui</option>
             <option value="rejected">Ditolak</option>
@@ -105,24 +105,24 @@ export default function AppealManagement() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
-                <th className="py-4 px-6">Hotel</th>
-                <th className="py-4 px-6">Tipe Banding</th>
-                <th className="py-4 px-6">Pemohon</th>
-                <th className="py-4 px-6">Alasan</th>
-                <th className="py-4 px-6">Tanggal</th>
-                <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6 text-right">Aksi</th>
+                 <th className="py-4 px-6">Hotel</th>
+                 <th className="py-4 px-6">Appeal Type</th>
+                 <th className="py-4 px-6">Requester</th>
+                 <th className="py-4 px-6">Reason</th>
+                 <th className="py-4 px-6">Date</th>
+                 <th className="py-4 px-6">Status</th>
+                 <th className="py-4 px-6 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="font-hanken text-[14px] text-[#191c1b] divide-y divide-[#E5E0D8]">
-              {loading ? (
-                <tr>
-                  <td colSpan="7" className="py-12 text-center text-[#747872]">Memuat data banding...</td>
-                </tr>
-              ) : appeals.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-12 text-center text-[#747872]">Tidak ada data permohonan banding.</td>
-                </tr>
+               {loading ? (
+                 <tr>
+                   <td colSpan="7" className="py-12 text-center text-[#747872]">Loading appeal data...</td>
+                 </tr>
+               ) : appeals.length === 0 ? (
+                 <tr>
+                   <td colSpan="7" className="py-12 text-center text-[#747872]">No appeal data available.</td>
+                 </tr>
               ) : (
                 appeals.map((a) => {
                   const isWarningAppeal = !!a.warning_id;
@@ -174,9 +174,9 @@ export default function AppealManagement() {
 
         {/* Pagination Controls */}
         <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#747872] font-hanken">
-          <span>
-            Menampilkan {totalItems > 0 ? (page - 1) * 10 + 1 : 0} hingga {Math.min(page * 10, totalItems)} dari {totalItems} banding
-          </span>
+           <span>
+             Showing {totalItems > 0 ? (page - 1) * 10 + 1 : 0} to {Math.min(page * 10, totalItems)} of {totalItems} appeals
+           </span>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
@@ -221,7 +221,7 @@ export default function AppealManagement() {
                     : `Banding Pemulihan Akun`}
                 </h3>
                 <p className="text-xs text-[#6B6E6A]">
-                  Hotel: <span className="font-semibold text-[#2D312C]">{selectedAppeal.hotel?.name}</span> • Pemohon: {selectedAppeal.requester?.name || selectedAppeal.requester?.email}
+                  Hotel: <span className="font-semibold text-[#2D312C]">{selectedAppeal.hotel?.name}</span> • Requester: {selectedAppeal.requester?.name || selectedAppeal.requester?.email}
                 </p>
               </div>
               {badge(selectedAppeal.status)}

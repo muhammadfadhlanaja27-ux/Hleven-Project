@@ -21,22 +21,22 @@ const MitraRegistrationSuccess = () => {
       <div className="min-h-screen bg-[#fcf9f4] flex items-center justify-center px-5">
         <div className="bg-white rounded-2xl border border-[#c4c8bf]/60 p-8 max-w-md text-center shadow-md">
           <span className="material-symbols-outlined text-5xl text-[#747871] mb-3">find_in_page</span>
-          <h2 className="font-headline-lg text-2xl font-bold text-[#1c1c19] mb-2">Tidak ada data pengajuan</h2>
+          <h2 className="font-headline-lg text-2xl font-bold text-[#1c1c19] mb-2">No submission data</h2>
           <p className="font-body-md text-sm text-[#444842] mb-6">
-            Silakan lakukan pengajuan terlebih dahulu melalui halaman pendaftaran mitra.
+            Please submit your application first via the partner registration page.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               to="/mitra"
               className="px-6 py-3 rounded-xl bg-[#50604d] text-white font-label-sm text-xs font-bold tracking-wider hover:bg-[#3b4b39] transition-colors"
             >
-              Halaman Mitra
+              Partner Page
             </Link>
             <Link
               to="/mitra/daftar"
               className="px-6 py-3 rounded-xl border-2 border-[#50604d] text-[#50604d] font-label-sm text-xs font-bold tracking-wider hover:bg-[#e5e2dd] transition-colors"
             >
-              Daftar Sekarang
+              Register Now
             </Link>
           </div>
         </div>
@@ -45,10 +45,10 @@ const MitraRegistrationSuccess = () => {
   }
 
   const submitDate = data.submitted_at || data.created_at ? new Date(data.submitted_at || data.created_at) : new Date();
-  const dateStr = submitDate.toLocaleDateString("id-ID", {
+  const dateStr = submitDate.toLocaleDateString("en-US", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
-  const timeStr = submitDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  const timeStr = submitDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   const status = data.status || "pending";
   const appNumber = data.application_number || data.id || "HLVN-MIT-" + (data.id || "xxxxxx");
 
@@ -60,17 +60,17 @@ const MitraRegistrationSuccess = () => {
         </div>
 
         <h1 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#1c1c19] mb-2">
-          Pengajuan Berhasil Dikirim!
+          Application Successfully Submitted!
         </h1>
         <p className="font-body-md text-sm md:text-base text-[#444842] mb-6 leading-relaxed">
-          Terima kasih telah mendaftarkan hotel Anda ke program kemitraan H'Leven.
-          Tim kami akan segera meninjau pengajuan Anda. Setelah disetujui, akun admin hotel akan dibuat secara otomatis menggunakan email hotel yang Anda daftarkan.
+          Thank you for registering your hotel for the H'Leven partnership program.
+          Our team will review your application shortly. Once approved, the hotel admin account will be created automatically using the hotel email you registered.
         </p>
 
         <div className="bg-[#faf3ea] rounded-2xl border border-[#DCCFC0]/60 p-5 md:p-6 mb-6 text-left space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-[#DCCFC0]/50">
             <span className="font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871]">
-              Nomor Pengajuan
+              Application Number
             </span>
             <span className="font-headline-md text-base font-bold text-[#50604d]">
               #{appNumber}
@@ -79,29 +79,29 @@ const MitraRegistrationSuccess = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-1">
-                Nama Hotel
+                Hotel Name
               </span>
               <span className="font-body-md text-sm font-semibold text-[#1c1c19]">
-                {data.hotel_name || "Hotel Anda"}
+                {data.hotel_name || "Your Hotel"}
               </span>
             </div>
             <div>
               <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-1">
-                Status Pengajuan
+                Application Status
               </span>
               <StatusBadge status={status} />
             </div>
             <div>
               <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-1">
-                Tanggal Pengajuan
+                Submission Date
               </span>
               <span className="font-body-md text-sm text-[#1c1c19]">{dateStr}</span>
             </div>
             <div>
               <span className="block font-label-sm text-[11px] font-bold tracking-wider uppercase text-[#747871] mb-1">
-                Waktu
+                Time
               </span>
-              <span className="font-body-md text-sm text-[#1c1c19]">{timeStr} WIB</span>
+              <span className="font-body-md text-sm text-[#1c1c19]">{timeStr}</span>
             </div>
           </div>
         </div>
@@ -109,8 +109,8 @@ const MitraRegistrationSuccess = () => {
         <div className="bg-[#ceeac7]/40 border border-[#ceeac7] rounded-2xl p-4 mb-6 text-left flex items-start gap-3">
           <span className="material-symbols-outlined text-[#4c6549] shrink-0 mt-0.5">timeline</span>
           <div className="font-body-md text-xs md:text-sm text-[#0a200a] leading-relaxed">
-            <p className="font-bold mb-1">Proses verifikasi pengajuan membutuhkan waktu 3-7 hari kerja.</p>
-            <p>Anda akan menerima notifikasi melalui email ketika ada perubahan status. Sementara itu, periksa status pengajuan Anda kapan saja melalui halaman profil.</p>
+            <p className="font-bold mb-1">The application verification process takes 3-7 business days.</p>
+            <p>You will receive an email notification when there is a status update. Meanwhile, you can check your application status at any time via your profile page.</p>
           </div>
         </div>
 
@@ -122,7 +122,7 @@ const MitraRegistrationSuccess = () => {
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
-              Cek Status Pengajuan
+              Check Application Status
             </span>
           </button>
           <Link
@@ -131,7 +131,7 @@ const MitraRegistrationSuccess = () => {
           >
             <span className="flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-[18px]">explore</span>
-              Jelajahi Hotel
+              Explore Hotels
             </span>
           </Link>
         </div>

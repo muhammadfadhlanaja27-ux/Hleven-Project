@@ -17,7 +17,7 @@ const HotelHealthReport = () => {
         const res = await api.get("/super-admin/dashboard/hotel-health");
         setData(res.data.data);
       } catch (e) {
-        toast.error("Gagal memuat laporan kesehatan hotel.");
+         toast.error("Failed to load hotel health report.");
       } finally {
         setLoading(false);
       }
@@ -42,7 +42,7 @@ const HotelHealthReport = () => {
       setWarningTitle("");
       setWarningMessage("");
     } catch (e) {
-      toast.error("Gagal mengirim peringatan.");
+       toast.error("Failed to send warning.");
     } finally {
       setSendingWarning(false);
     }
@@ -93,7 +93,7 @@ const HotelHealthReport = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
-                  <th className="py-4 px-6">Nama Hotel</th>
+                   <th className="py-4 px-6">Hotel Name</th>
                   <th className="py-4 px-6">Health Score</th>
                   <th className="py-4 px-6">Rating</th>
                   <th className="py-4 px-6">Cancel Rate</th>
@@ -181,7 +181,7 @@ const HotelHealthReport = () => {
             </div>
 
             <div className="border-t border-[#E5E0D8] pt-4 space-y-3">
-              <h4 className="font-semibold text-[#191c1b] text-sm">Kirim Peringatan</h4>
+               <h4 className="font-semibold text-[#191c1b] text-sm">Send Warning</h4>
               <input
                 type="text"
                 placeholder="Judul peringatan..."
@@ -210,7 +210,7 @@ const HotelHealthReport = () => {
                   disabled={sendingWarning}
                   className="px-5 py-2 bg-[#ba1a1a] text-white rounded-lg text-sm font-semibold hover:bg-[#93000a] disabled:opacity-50"
                 >
-                  {sendingWarning ? "Mengirim..." : "Kirim Peringatan"}
+                   {sendingWarning ? "Sending..." : "Send Warning"}
                 </button>
               </div>
             </div>

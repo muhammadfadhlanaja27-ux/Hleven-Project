@@ -32,7 +32,7 @@ export default function RoomTypeManager() {
       setCategories(list);
     } catch (e) {
       console.error(e);
-      toast.error(getErrorMessage(e, "Gagal memuat tipe kamar."));
+       toast.error(getErrorMessage(e, "Failed to load room types."));
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export default function RoomTypeManager() {
 
   const validate = () => {
     const err = {};
-    if (!formValues.name.trim()) err.name = "Nama tipe kamar diperlukan.";
+     if (!formValues.name.trim()) err.name = "Room type name is required.";
     return err;
   };
 
@@ -103,7 +103,7 @@ export default function RoomTypeManager() {
       closeModal();
     } catch (e) {
       console.error(e);
-      toast.error(getErrorMessage(e, "Operasi gagal."));
+       toast.error(getErrorMessage(e, "Operation failed."));
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +120,7 @@ export default function RoomTypeManager() {
       closeModal();
     } catch (e) {
       console.error(e);
-      toast.error(getErrorMessage(e, "Gagal menghapus tipe kamar."));
+       toast.error(getErrorMessage(e, "Failed to delete room type."));
     } finally {
       setSubmitting(false);
     }
@@ -134,10 +134,10 @@ export default function RoomTypeManager() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
-              Manajemen Tipe Kamar
+              Room Type Management
             </h2>
             <p className="text-base text-[#6B6E6A] mt-1">
-              Atur daftar kategori tipe kamar untuk keperluan pengelolaan inventaris.
+              Manage room type categories for inventory management.
             </p>
           </div>
 
@@ -178,7 +178,7 @@ export default function RoomTypeManager() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#F9F6F1] border-b border-[#E5E1DA]">
                   <tr>
-                    <th className="px-6 py-4 text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Tipe Kamar</th>
+                    <th className="px-6 py-4 text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Room Type</th>
                     <th className="px-6 py-4 text-center text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Status</th>
                     <th className="px-6 py-4 text-center text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Dipakai</th>
                     <th className="px-6 py-4 text-right text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Aksi</th>
@@ -194,16 +194,12 @@ export default function RoomTypeManager() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          category.status === "inactive"
-                            ? "bg-[#FFDAD6] text-[#93000A]"
-                            : "bg-[#E4EBE0] text-[#506147]"
-                        }`}>
-                          {category.status === "inactive" ? "Nonaktif" : "Aktif"}
-                        </span>
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${category.status === "inactive" ? "bg-[#FFDAD6] text-[#93000A]" : "bg-[#E4EBE0] text-[#506147]"}`}>
+                  {category.status === "inactive" ? "Inactive" : "Active"}
+                </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="text-xs font-semibold text-[#6B6E6A] bg-[#f0ede9] px-2 py-0.5 rounded">{category.room_types_count ?? 0} Kamar</span>
+                        <span className="text-xs font-semibold text-[#6B6E6A] bg-[#f0ede9] px-2 py-0.5 rounded">{category.room_types_count ?? 0} Rooms</span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -294,7 +290,7 @@ export default function RoomTypeManager() {
                   onClick={closeModal}
                   className="flex-1 h-11 border border-[#E5E0D8] text-[#434842] rounded-xl font-bold hover:bg-[#FBFBFA] transition-all"
                 >
-                  Batal
+                   Cancel
                 </button>
                 <button
                   type="submit"
@@ -326,7 +322,7 @@ export default function RoomTypeManager() {
                 onClick={closeModal}
                 className="flex-1 h-11 border border-[#E5E0D8] text-[#434842] rounded-xl font-bold hover:bg-[#FBFBFA] transition-all"
               >
-                Batal
+                 Cancel
               </button>
               <button
                 onClick={handleDelete}

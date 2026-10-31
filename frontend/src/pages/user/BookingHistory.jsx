@@ -134,7 +134,7 @@ const BookingHistory = () => {
       fetchApiBookings(true);
     } catch (err) {
       console.error("Gagal konfirmasi pembayaran:", err);
-      toast.error(err.response?.data?.message || "Gagal mengonfirmasi pembayaran.");
+        toast.error(err.response?.data?.message || "Failed to confirm payment.");
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -155,7 +155,7 @@ const BookingHistory = () => {
       a.remove();
       toast.success("E-Tiket PDF berhasil diunduh.");
     } catch (err) {
-      toast.error("Gagal mengunduh E-Tiket PDF.");
+      toast.error("Failed to download E-Ticket PDF.");
     }
   };
 
@@ -165,7 +165,7 @@ const BookingHistory = () => {
       try {
         setUser(JSON.parse(savedUser));
       } catch (e) {
-        console.error("Gagal membaca user:", e);
+        console.error("Failed to read user:", e);
       }
     }
 
@@ -185,7 +185,7 @@ const BookingHistory = () => {
       const result = responseData?.data || responseData || [];
       setBookings(Array.isArray(result) ? result : []);
     } catch (err) {
-      console.warn("Gagal memuat riwayat pemesanan:", err);
+      console.warn("Failed to load booking history:", err);
       setBookings([]);
     } finally {
       setBookingsLoading(false);
@@ -206,7 +206,7 @@ const BookingHistory = () => {
       setCancelReason("");
       fetchApiBookings(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
+      toast.error(err.response?.data?.message || "Failed to process cancellation.");
     } finally {
       setIsSubmittingCancel(false);
     }
@@ -258,7 +258,7 @@ const BookingHistory = () => {
           <div className="bg-[#FFF0E0] backdrop-blur-md border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
             <span className="font-label-sm text-[11px] text-[#9B5235] font-bold uppercase tracking-wider">
-              Menunggu Bayar
+              Menunggu Bayar (Waiting for Payment)
             </span>
           </div>
         );
@@ -431,7 +431,7 @@ const BookingHistory = () => {
                     {bookings.length}
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
-                    Total Pesanan
+                    Total Orders
                   </span>
                 </div>
 
@@ -473,7 +473,7 @@ const BookingHistory = () => {
                 className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left bg-[#778873]/10 text-[#778873] border-[#778873]"
               >
                 <span className="material-symbols-outlined text-xl">history</span>
-                Riwayat Pemesanan
+                Booking History
               </div>
 
               <button
@@ -482,7 +482,7 @@ const BookingHistory = () => {
                 className="w-full flex items-center gap-3 px-6 py-4 text-[#ba1a1a] hover:bg-[#ffdad6]/30 font-label-md text-sm font-semibold transition-colors border-l-4 border-l-transparent mt-2 border-t border-[#DCCFC0]/30 text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-xl">logout</span>
-                Keluar (Sign Out)
+                Sign Out
               </button>
             </nav>
           </aside>
@@ -501,7 +501,7 @@ const BookingHistory = () => {
                     onChange={(e) => setFilterStatus(e.target.value)}
                     className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
                   >
-                    <option value="All">Semua Pesanan</option>
+                      <option value="All">All Orders</option>
                     <option value="Pending">Menunggu Pembayaran</option>
                     <option value="Upcoming">Upcoming / Lunas</option>
                     <option value="Past">Selesai (Checked Out)</option>
@@ -518,9 +518,9 @@ const BookingHistory = () => {
                     onChange={(e) => setSortBy(e.target.value)}
                     className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873]"
                   >
-                    <option value="newest">Tanggal (Terbaru)</option>
-                    <option value="oldest">Tanggal (Terlama)</option>
-                    <option value="price_high">Harga (Tertinggi)</option>
+                    <option value="newest">Date (Newest)</option>
+                    <option value="oldest">Date (Oldest)</option>
+                    <option value="price_high">Price (Highest)</option>
                   </select>
                 </div>
               </div>
@@ -553,12 +553,12 @@ const BookingHistory = () => {
                     <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">
                       event_busy
                     </span>
-                    <p className="text-[#444842] text-sm">Tidak ada riwayat pemesanan yang sesuai dengan filter.</p>
+                    <p className="text-[#444842] text-sm">No matching bookings found for the applied filters.</p>
                   </div>
                 ) : (
                   filteredBookings.map((item) => {
                     const hotelName = item.hotel?.name || item.hotel_name || "H'Leven Resort";
-                    const roomName = item.booking_rooms?.[0]?.room_type?.name || item.room_name || item.room?.name || "Tipe Kamar";
+                        const roomName = item.booking_rooms?.[0]?.room_type?.name || item.room_name || item.room?.name || "Room Type";
                     const grandTotal = Number(item.grand_total || item.total_price || item.subtotal || 0);
                     const imageUrl = getItemImage(item);
                     const isCancelled = ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system"].includes(item.status);
@@ -630,7 +630,7 @@ const BookingHistory = () => {
 
                             <div className="text-left sm:text-right">
                               <span className="text-[10px] uppercase font-bold text-[#778873] block">
-                                Total Pembayaran
+                                  Total Payment
                               </span>
                               <span className="font-headline-lg text-xl font-bold text-[#778873]">
                                 Rp {grandTotal.toLocaleString("id-ID")}
@@ -685,14 +685,14 @@ const BookingHistory = () => {
                                   className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
                                 >
                                   <span className="material-symbols-outlined text-base">payments</span>
-                                  Lanjutkan Pembayaran
+                                  Continue Payment
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setCancelModalBooking(item)}
                                   className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
                                 >
-                                  Batalkan Pesanan
+                                  Batalkan Pesanan (Cancel Order)
                                 </button>
                               </>
                             )}
@@ -714,7 +714,7 @@ const BookingHistory = () => {
                                 onClick={() => setCancelModalBooking(item)}
                                 className="px-4 py-2 rounded-xl bg-[#ba1a1a] text-white font-label-md text-xs font-semibold hover:bg-[#93000a] transition-colors cursor-pointer"
                               >
-                                {refundPolicy.canRefund ? "Ajukan Refund" : "Batalkan (Hangus)"}
+                                {refundPolicy.canRefund ? "Request Refund" : "Cancel (Non-refundable)"}
                               </button>
                             )}
 
@@ -736,7 +736,7 @@ const BookingHistory = () => {
                                 className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-base">autorenew</span>
-                                Pesan Lagi
+                                Pesan Lagi (Book Again)
                               </button>
                             )}
                           </div>
@@ -812,7 +812,7 @@ const BookingHistory = () => {
                 onClick={handleConfirmPayment}
                 className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                {isSubmittingPayment ? "Memproses..." : "Saya Sudah Bayar"}
+                {isSubmittingPayment ? "Memproses..." : "                                  I Have Paid"}
               </button>
             </div>
           </div>
@@ -824,10 +824,10 @@ const BookingHistory = () => {
         const isPaid = ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(cancelModalBooking.status);
         const refundPolicy = getRefundPolicy(cancelModalBooking);
         const title = !isPaid
-          ? "Batalkan Pesanan"
+          ? "Cancel Order"
           : refundPolicy.canRefund
             ? "Pengajuan Refund"
-            : "Batalkan Pesanan (Hangus)";
+            : "Cancel Order (Non-refundable)";
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
@@ -837,12 +837,12 @@ const BookingHistory = () => {
               </p>
               {isPaid && !refundPolicy.isRefundable && (
                 <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
-                  Kamar non-refundable — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar akan dikembalikan, pembayaran tetap hangus.
+                  Non-refundable room — funds are <strong>non-refundable</strong>. Room inventory will be released, payment remains non-refundable.
                 </div>
               )}
               {isPaid && refundPolicy.isRefundable && refundPolicy.withinCutoff && (
                 <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
-                  Pembatalan kurang dari {refundPolicy.cutoffHours} jam sebelum check-in — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar tetap dikembalikan.
+                  Cancellation less than {refundPolicy.cutoffHours} hours before check-in — funds are <strong>non-refundable</strong>. Room inventory will be released.
                 </div>
               )}
               {isPaid && refundPolicy.canRefund && (
@@ -884,7 +884,7 @@ const BookingHistory = () => {
                   disabled={isSubmittingCancel || !cancelReason.trim()}
                   className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
                 >
-                  {isSubmittingCancel ? "Memproses..." : isPaid && !refundPolicy.canRefund ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
+                  {isSubmittingCancel ? "Processing..." : isPaid && !refundPolicy.canRefund ? "Yes, Cancel (Non-refundable)" : "Confirm Cancellation"}
                 </button>
               </div>
             </div>
@@ -953,7 +953,7 @@ const BookingHistory = () => {
                     <div className="w-full flex flex-col items-center">
                       <div className="bg-[#FDF6ED] p-6 border-2 border-[#778873] rounded-2xl mb-4 shadow-sm flex flex-col items-center justify-center w-full max-w-[240px]">
                         <span className="material-symbols-outlined text-5xl text-[#778873] mb-2">payments</span>
-                        <p className="font-headline-md text-base font-bold text-[#2D332C]">Total Tagihan</p>
+                        <p className="font-headline-md text-base font-bold text-[#2D332C]">Total Bill</p>
                         <p className="font-headline-lg text-lg font-bold text-[#778873] mt-1">
                           Rp {Number(selectedBooking.grand_total || selectedBooking.total_price || 0).toLocaleString("id-ID")}
                         </p>
@@ -1009,7 +1009,7 @@ const BookingHistory = () => {
                           onClick={() => setSelectedBooking(null)}
                           className="w-full text-center font-label-md text-xs font-semibold text-[#778873] hover:underline cursor-pointer py-1"
                         >
-                          Tutup Pratinjau Tiket
+                          Close Ticket Preview
                         </button>
                       </div>
                     </>
@@ -1038,7 +1038,7 @@ const BookingHistory = () => {
                       {selectedBooking.booking_rooms?.[0]?.room_type?.name || selectedBooking.room_name || selectedBooking.room?.name || "Executive Suite"}
                     </p>
                     <p className="font-body-md text-xs text-[#444842] mt-1">
-                      1 Kamar • 2 Tamu • Termasuk Sarapan Pagi
+                      1 Room • 2 Guests • Breakfast Included
                     </p>
                     <div className="mt-2">
                       {getRefundPolicy(selectedBooking).canRefund ? (
@@ -1110,9 +1110,9 @@ const BookingHistory = () => {
       {/* Confirm Logout Dialog */}
       <ConfirmDialog
         open={confirmLogout}
-        title="Keluar dari Akun"
+        title="Sign Out of Account"
         message="Apakah Anda yakin ingin keluar?"
-        confirmText="Ya, Keluar"
+        confirmText="Yes, Sign Out"
         onConfirm={performLogout}
         onCancel={() => setConfirmLogout(false)}
       />

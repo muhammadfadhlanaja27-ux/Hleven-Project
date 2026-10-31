@@ -65,13 +65,13 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.booking_id) {
-      toast.error("Pilih pesanan yang ingin di-review.");
+      toast.error("Please select the booking you want to review.");
       return;
     }
     setSubmitting(true);
     try {
       await api.post(`/hotels/${hotelId}/reviews`, form);
-      toast.success("Review berhasil dikirim!");
+      toast.success("Review submitted successfully!");
       setForm({ booking_id: "", rating: 5, comment: "" });
       fetchEligibleBookings();
       const newStats = await fetchReviews();
@@ -80,7 +80,7 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
       // Notify parent (HotelDetail) agar bintang header ter-update dengan rating baru
       if (onReviewSubmitted && newStats) onReviewSubmitted(newStats);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal mengirim review");
+      toast.error(err.response?.data?.message || "Failed to submit review");
     }
     setSubmitting(false);
   };
@@ -95,14 +95,14 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#D48C45]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
             <span className="font-bold text-lg">{Number(stats.average_rating).toFixed(1)}</span>
-            <span className="text-sm text-[#444842]">({stats.total_reviews} Ulasan)</span>
+            <span className="text-sm text-[#444842]">({stats.total_reviews} Reviews)</span>
           </div>
         </div>
       </div>
 
       {isAuthenticated && eligibleBookings.length > 0 && (
         <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/60 rounded-2xl p-5 mb-8">
-          <h3 className="font-label-md text-sm font-bold text-[#778873] uppercase mb-4">Tulis Ulasan Anda</h3>
+          <h3 className="font-label-md text-sm font-bold text-[#778873] uppercase mb-4">Write Your Review</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <select
               value={form.booking_id}
@@ -110,7 +110,7 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
               className="w-full border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] text-sm"
               required
             >
-              <option value="">-- Pilih Pesanan (Completed) --</option>
+              <option value="">-- Select Booking (Completed) --</option>
               {eligibleBookings.map((b) => (
                 <option key={b.id} value={b.id}>
                   Booking #{b.booking_code} - {b.booking_rooms?.map(r => r.room_type?.name).join(', ')}
@@ -133,14 +133,14 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
             </div>
 
             <textarea
-              placeholder="Bagikan pengalaman menginap Anda..."
+              placeholder="Share your stay experience..."
               value={form.comment}
               onChange={(e) => setForm({ ...form, comment: e.target.value })}
               className="w-full border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] text-sm h-24"
               required
             />
             <button type="submit" disabled={submitting} className="bg-[#778873] text-white px-6 py-2 rounded-xl text-sm font-semibold hover:bg-[#50604d]">
-              {submitting ? 'Mengirim...' : 'Kirim Ulasan'}
+              {submitting ? 'Submitting...' : 'Submit Review'}
             </button>
           </form>
         </div>
@@ -150,25 +150,25 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         <input
           type="text"
-          placeholder="Cari ulasan..."
+          placeholder="Search reviews..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] text-sm w-full"
         />
         <select value={rating} onChange={(e) => setRating(e.target.value)} className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] text-sm w-full">
-          <option value="all">Semua Bintang</option>
-          {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>Bintang {r}</option>)}
+          <option value="all">All Stars</option>
+          {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r} Stars</option>)}
         </select>
         <select value={roomTypeId} onChange={(e) => setRoomTypeId(e.target.value)} className="border border-[#DCCFC0] rounded-xl p-3 bg-[#FDF6ED] text-sm w-full">
-          <option value="all">Semua Tipe Kamar</option>
+          <option value="all">All Room Types</option>
           {roomTypes.map(rt => <option key={rt.id} value={rt.id}>{rt.name}</option>)}
         </select>
       </div>
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {loading ? <p className="text-sm">Memuat...</p> : reviews.length === 0 ? <p className="text-sm text-gray-500">Belum ada ulasan.</p> : reviews.map((review) => {
-          const roomNames = review.booking?.booking_rooms?.map(r => r.room_type?.name).join(', ') || 'Kamar';
+        {loading ? <p className="text-sm">Loading...</p> : reviews.length === 0 ? <p className="text-sm text-gray-500">No reviews yet.</p> : reviews.map((review) => {
+          const roomNames = review.booking?.booking_rooms?.map(r => r.room_type?.name).join(', ') || 'Room';
           const nights = review.booking?.total_night || 0;
           const guests = review.booking?.guests?.length || 0;
           
@@ -177,7 +177,7 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h4 className="font-bold text-[#1e1b16]">{review.user?.name || 'User'}</h4>
-                  <p className="text-xs text-[#444842]">{new Date(review.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-xs text-[#444842]">{new Date(review.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <div className="flex text-[#D48C45]">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -187,13 +187,13 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
               </div>
               <div className="flex flex-wrap gap-2 mb-3">
                 <span className="bg-[#DCCFC0]/30 text-[#444842] px-2 py-1 rounded text-[10px] font-semibold">{roomNames}</span>
-                <span className="bg-[#DCCFC0]/30 text-[#444842] px-2 py-1 rounded text-[10px] font-semibold">{nights} Malam</span>
-                <span className="bg-[#DCCFC0]/30 text-[#444842] px-2 py-1 rounded text-[10px] font-semibold">{guests} Tamu</span>
+                <span className="bg-[#DCCFC0]/30 text-[#444842] px-2 py-1 rounded text-[10px] font-semibold">{nights} Nights</span>
+                <span className="bg-[#DCCFC0]/30 text-[#444842] px-2 py-1 rounded text-[10px] font-semibold">{guests} Guests</span>
               </div>
               <p className="text-sm text-[#1e1b16]">{review.comment}</p>
               {review.reply && (
                 <div className="mt-4 bg-[#E4EBE0]/50 rounded-xl p-4 border border-[#c4c8be]/40">
-                  <p className="text-xs font-bold text-[#4A5D43] mb-1">Balasan Hotel:</p>
+                  <p className="text-xs font-bold text-[#4A5D43] mb-1">Hotel Reply:</p>
                   <p className="text-sm text-[#2D312C]">{review.reply}</p>
                 </div>
               )}

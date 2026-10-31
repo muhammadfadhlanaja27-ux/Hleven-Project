@@ -27,7 +27,7 @@ export default function RoomCalendar() {
         setRooms(arr);
         if (arr.length) setRoomId(String(arr[0].id));
       })
-      .catch(() => toast.error("Gagal memuat daftar kamar."));
+       .catch(() => toast.error("Failed to load room list."));
   }, []);
 
   const loadCalendar = useCallback(async () => {
@@ -39,7 +39,7 @@ export default function RoomCalendar() {
       setRoom(data.room_type || null);
       setDays(data.days || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memuat kalender.");
+       toast.error(err.response?.data?.message || "Failed to load calendar.");
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export default function RoomCalendar() {
       setEditing(null);
       loadCalendar();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menyimpan perubahan.");
+       toast.error(err.response?.data?.message || "Failed to save changes.");
     } finally {
       setSaving(false);
     }
@@ -128,7 +128,7 @@ export default function RoomCalendar() {
               onChange={(e) => setRoomId(e.target.value)}
               className="h-10 px-3 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-semibold text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all min-w-[240px]"
             >
-              {rooms.length === 0 && <option value="">Tidak ada kamar</option>}
+               {rooms.length === 0 && <option value="">No rooms</option>}
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -326,7 +326,7 @@ export default function RoomCalendar() {
                 disabled={saving}
                 className="flex-1 h-11 rounded-xl border border-[#E5E0D8] text-sm font-bold text-[#434842] hover:bg-[#F9F6F1] transition-all disabled:opacity-50"
               >
-                Batal
+                 Cancel
               </button>
               <button
                 onClick={save}

@@ -90,9 +90,9 @@ const Reports = () => {
         toast.success("Data laporan berhasil diperbarui");
       }
     } catch (err) {
-      console.error("Gagal mengambil data laporan:", err);
+      console.error("Failed to fetch report data:", err);
       if (!data.bookings.total && !data.revenue.total_revenue) setError(true);
-      toast.error("Gagal memuat data laporan. Pastikan server backend berjalan.");
+      toast.error("Failed to load report data. Ensure backend server is running.");
     } finally {
       setLoading(false);
     }
@@ -145,7 +145,7 @@ const Reports = () => {
 
         if (data.revenue?.trend && data.revenue.trend.length > 0) {
           csvContent += `DAILY REVENUE TREND\n`;
-          csvContent += `Tanggal,Pendapatan (IDR)\n`;
+          csvContent += `Date,Revenue (IDR)\n`;
           data.revenue.trend.forEach((item) => {
             csvContent += `"${item.date}",${item.total}\n`;
           });
@@ -197,7 +197,7 @@ const Reports = () => {
           <body>
             <div class="header">
               <h1>H'Leven System - ${exportType.toUpperCase()} REPORT</h1>
-              <p>Rentang Tanggal: ${startDate || 'Awal'} s/d ${endDate || 'Sekarang'} | Dibuat: ${new Date().toLocaleString("id-ID")}</p>
+               <p>Date Range: ${startDate || 'Start'} to ${endDate || 'Present'} | Generated: ${new Date().toLocaleString("en-US")}</p>
             </div>
 
             <div class="grid">
@@ -220,7 +220,7 @@ const Reports = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Tanggal</th>
+                     <th>Date</th>
                     <th>Pendapatan</th>
                   </tr>
                 </thead>
@@ -250,7 +250,7 @@ const Reports = () => {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Gagal mengekspor laporan.", { id: "export-toast" });
+       toast.error("Failed to export report.", { id: "export-toast" });
     } finally {
       setIsExporting(false);
     }
@@ -262,7 +262,7 @@ const Reports = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Laporan Sistem
+              System Report
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Generate comprehensive insights and monitor system performance.

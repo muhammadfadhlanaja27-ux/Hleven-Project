@@ -102,7 +102,7 @@ const initialPhotos = [];
 const DEFAULT_HOTEL_POLICIES = `Waktu Check-in & Check-out
 Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
 Kebijakan Bebas Asap Rokok
-Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+All rooms are non-smoking. Designated smoking areas are available on the outdoor terrace.
 Hewan Peliharaan
 Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
 Pembatalan
@@ -200,7 +200,7 @@ export default function HotelInformation() {
           return;
         }
       } catch (error) {
-        console.warn("Gagal membaca cache lokasi hotel:", error);
+        console.warn("Failed to read hotel location cache:", error);
       }
 
       try {
@@ -221,11 +221,11 @@ export default function HotelInformation() {
             expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
           }));
         } catch (error) {
-          console.warn("Gagal menyimpan cache lokasi hotel:", error);
+          console.warn("Failed to save hotel location cache:", error);
         }
       } catch (error) {
         if (!active) return;
-        console.error("Gagal mencari area lokasi hotel:", error);
+        console.error("Failed to search hotel location area:", error);
         setLocationAreaStatus("error");
       }
     };
@@ -589,7 +589,7 @@ export default function HotelInformation() {
           try {
             await api.delete(`/admin/hotels/photos/${photoId}`);
           } catch (err) {
-            console.error(`Gagal menghapus foto ID ${photoId}:`, err);
+            console.error(`Failed to delete photo ID ${photoId}:`, err);
           }
         }
       } else {
@@ -597,7 +597,7 @@ export default function HotelInformation() {
           try {
             await api.delete(`/admin/hotels/photos/${photoId}`);
           } catch (err) {
-            console.error(`Gagal menghapus foto ID ${photoId}:`, err);
+            console.error(`Failed to delete photo ID ${photoId}:`, err);
           }
         }
       }
@@ -623,7 +623,7 @@ export default function HotelInformation() {
     } catch (err) {
       console.error("Failed to update hotel profile:", err);
       const msg =
-        err.response?.data?.message || "Gagal memperbarui profil hotel.";
+        err.response?.data?.message || "Failed to update hotel profile.";
       toast.error(msg);
     } finally {
       setIsSaving(false);
@@ -697,7 +697,7 @@ export default function HotelInformation() {
                     Hotel Overview
                   </h3>
                   <p className="text-xs text-[#6B6E6A] mt-0.5">
-                    Informasi umum dan profil utama hotel Anda.
+                    General information and main profile of your hotel.
                   </p>
                 </div>
                 <span className="material-symbols-outlined text-[#757870] text-[24px]">
@@ -730,7 +730,7 @@ export default function HotelInformation() {
                       Property Type
                     </h4>
                     <p className="text-sm font-semibold text-[#2D312C]">
-                      {hotelData.propertyType || "Belum diisi"}
+                       {hotelData.propertyType || "Not specified"}
                     </p>
                   </div>
                   <div>
@@ -738,7 +738,7 @@ export default function HotelInformation() {
                       Year Built
                     </h4>
                     <p className="text-sm font-semibold text-[#2D312C]">
-                      {hotelData.yearBuilt || "Belum diisi"}
+                       {hotelData.yearBuilt || "Not specified"}
                     </p>
                   </div>
                 </div>
@@ -775,11 +775,11 @@ export default function HotelInformation() {
                   ))}
                 </div>
                 <p className="text-xs text-[#444840]">
-                  Berdasarkan{" "}
+                                     Based on {" "}
                   <span className="font-semibold text-[#2D312C]">
                     {hotelData.totalReviews}
                   </span>{" "}
-                  ulasan tamu terverifikasi.
+                   verified guest reviews.
                 </p>
               </div>
 
@@ -871,7 +871,7 @@ export default function HotelInformation() {
                     </h4>
                     <p className="font-semibold text-[#2D312C]">
                       {locationAreaStatus === "loading"
-                        ? "Mencari lokasi hotel..."
+                         ? "Searching hotel location..."
                         : resolvedLocationArea || hotelData.location}
                     </p>
                     <a
@@ -884,7 +884,7 @@ export default function HotelInformation() {
                     </a>
                     {locationAreaStatus === "error" && (
                       <p role="status" className="mt-1 text-[11px] text-[#9A4D32]">
-                        Lokasi otomatis belum tersedia. Periksa nama hotel atau koordinatnya.
+                         Automatic location not available. Check hotel name or coordinates.
                       </p>
                     )}
                   </div>
@@ -909,7 +909,7 @@ export default function HotelInformation() {
           <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-4">
             <div className="flex items-center gap-2 border-b border-[#E5E1DA] pb-4">
               <span className="material-symbols-outlined text-[#506147] text-[22px]">policy</span>
-              <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Kebijakan Hotel</h3>
+                              <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Hotel Policies</h3>
             </div>
             <div className="text-sm text-[#444840] leading-relaxed whitespace-pre-wrap bg-[#fcf9f5] p-4 rounded-xl border border-[#E5E1DA]">
               {hotelData.policies || DEFAULT_HOTEL_POLICIES}
@@ -983,7 +983,7 @@ export default function HotelInformation() {
                 </span>
                 <div>
                   <p className="font-semibold text-[#2D312C] text-base">
-                    Belum ada fasilitas hotel yang dipilih.
+                     No hotel facilities selected.
                   </p>
                   <p className="text-xs text-[#6B6E6A] mt-1">
                     Klik <strong>Edit Hotel</strong> untuk mencentang fasilitas hotel yang tersedia.
@@ -1081,10 +1081,10 @@ export default function HotelInformation() {
           <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
             <div className="border-b border-[#E5E1DA] pb-4">
               <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-                Form Informasi Hotel
+                Hotel Information Form
               </h3>
               <p className="text-xs text-[#6B6E6A] mt-0.5">
-                Perbarui bidang informasi di bawah ini. Semua bidang bertanda * wajib diisi.
+                Update the information fields below. All fields marked with * are required.
               </p>
             </div>
 
@@ -1490,7 +1490,7 @@ export default function HotelInformation() {
               ) : (
                 <div className="p-6 rounded-xl border border-dashed border-[#E5E1DA] bg-[#fcf9f5]/50 text-center space-y-2">
                   <p className="text-xs font-semibold text-[#2D312C]">
-                    Belum ada pilihan fasilitas hotel pada katalog.
+                     No hotel facility options available in the catalog.
                   </p>
                   <p className="text-[11px] text-[#6B6E6A]">
                     Pilihan fasilitas hotel akan tersedia setelah katalog fasilitas diisi.
@@ -1584,7 +1584,7 @@ export default function HotelInformation() {
                     Hotel Rating &amp; Total Reviews (Read-Only)
                   </p>
                   <p className="text-[11px] text-[#6B6E6A]">
-                    Informasi rating ({hotelData.rating} ★) dan ulasan (
+                     Rating info ({hotelData.rating} ★) and reviews (
                     {hotelData.totalReviews} ulasan) dikalkulasi secara otomatis oleh sistem.
                   </p>
                 </div>

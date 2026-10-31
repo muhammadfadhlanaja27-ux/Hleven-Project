@@ -49,7 +49,7 @@ const SuperAdminProfile = () => {
         }
         return 'Profil berhasil diperbarui!';
       },
-      error: (err) => err.response?.data?.message || 'Gagal memperbarui profil.'
+      error: (err) => err.response?.data?.message || 'Failed to update profile.'
     });
 
     try {
@@ -86,7 +86,7 @@ const SuperAdminProfile = () => {
         setConfirmPassword('');
         return 'Password berhasil diubah!';
       },
-      error: (err) => err.response?.data?.message || 'Gagal mengubah password.'
+      error: (err) => err.response?.data?.message || 'Failed to change password.'
     });
 
     try {
@@ -115,13 +115,13 @@ const SuperAdminProfile = () => {
         <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
             <span className="material-symbols-outlined text-[#768875]">person</span>
-            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Data Diri</h3>
+            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Personal Information</h3>
           </div>
 
           <form onSubmit={handleUpdateProfile} className="space-y-5">
             <div>
               <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Nama Lengkap
+                Full Name
               </label>
               <input
                 type="text"
@@ -154,7 +154,7 @@ const SuperAdminProfile = () => {
                 loadingProfile ? 'bg-[#A2BA9C] cursor-not-allowed' : 'bg-[#768875] hover:bg-[#657764] shadow-sm'
               }`}
             >
-              {loadingProfile ? 'Menyimpan...' : 'Simpan Profil'}
+              {loadingProfile ? 'Saving...' : 'Save Profile'}
             </button>
           </form>
         </div>
@@ -163,7 +163,7 @@ const SuperAdminProfile = () => {
         <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
             <span className="material-symbols-outlined text-[#768875]">lock</span>
-            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Ubah Password</h3>
+            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Change Password</h3>
           </div>
 
           <form onSubmit={handleUpdatePassword} className="space-y-5">
@@ -199,7 +199,7 @@ const SuperAdminProfile = () => {
 
             <div>
               <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Konfirmasi Password Baru
+                Confirm New Password
               </label>
               <input
                 type="password"

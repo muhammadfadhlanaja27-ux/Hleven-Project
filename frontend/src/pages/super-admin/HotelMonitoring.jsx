@@ -60,9 +60,9 @@ const HotelMonitoring = () => {
       const resData = response.data?.data || response.data || [];
       setHotels(Array.isArray(resData) ? resData : []);
     } catch (err) {
-      console.error("Gagal mengambil data hotel:", err);
+      console.error("Failed to fetch hotel data:", err);
       if (hotels.length === 0) setError(true);
-      toast.error("Gagal memuat data hotel. Silakan coba lagi.");
+      toast.error("Failed to load hotel data. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ const HotelMonitoring = () => {
       });
       invalidateCache("/super-admin/hotels");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Status hotel berhasil diperbarui!");
+      toast.success("Hotel status updated successfully!");
       if (selectedHotel && selectedHotel.id === id) {
         setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
       }
@@ -105,7 +105,7 @@ const HotelMonitoring = () => {
       fetchHotels(true);
     } catch (err) {
       toast.error(
-        err.response?.data?.message || "Gagal memperbarui status hotel."
+        err.response?.data?.message || "Failed to update hotel status."
       );
     } finally {
       setIsToggling(false);
@@ -133,7 +133,7 @@ const HotelMonitoring = () => {
       fetchHotels(true);
     } catch (err) {
       toast.error(
-        err.response?.data?.message || "Gagal menghapus hotel."
+        err.response?.data?.message || "Failed to delete hotel."
       );
     } finally {
       setIsDeleting(false);
@@ -164,7 +164,7 @@ const HotelMonitoring = () => {
         star_verified_reason: starReason || null 
       }));
     } catch (e) { 
-      toast.error(e.response?.data?.message || "Gagal simpan bintang"); 
+      toast.error(e.response?.data?.message || "Failed to save rating"); 
     } finally { 
       setSavingStar(false); 
     }
@@ -227,7 +227,7 @@ const HotelMonitoring = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
-            <option value="">Semua Status</option>
+            <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="pending">Pending</option>
@@ -360,9 +360,9 @@ const HotelMonitoring = () => {
                                 handleDeleteHotel(hotel.id, hotel.name)
                               }
                               className="font-hanken text-[13px] font-medium text-[#ba1a1a] hover:text-[#93000a] border border-[#ffdad6] hover:bg-[#ffdad6]/40 px-3 py-1.5 rounded-lg transition-colors active:scale-95"
-                              title="Hapus Hotel"
+                               title="Delete Hotel"
                             >
-                              Hapus
+                               Delete
                             </button>
                           </td>
                         </tr>
@@ -472,12 +472,12 @@ const HotelMonitoring = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
-                  Total Kamar
+                  Total Rooms
                 </label>
                 <p className="font-hanken text-[14px] text-[#191c1b]">
                   {selectedHotel.rooms_count ??
                     selectedHotel.total_rooms ??
-                    "24 Kamar"}
+                     "24 Rooms"}
                 </p>
               </div>
 
@@ -494,7 +494,7 @@ const HotelMonitoring = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
-                  Status Operasional
+                  Operational Status
                 </label>
                 <div className="mt-1">
                   {selectedHotel.status?.toLowerCase() === "active" ? (
@@ -513,7 +513,7 @@ const HotelMonitoring = () => {
             {selectedHotel.description && (
               <div className="mb-6">
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Deskripsi Properti
+                  Property Description
                 </label>
                 <p className="font-hanken text-[13px] text-[#434842] leading-relaxed bg-[#F9F6F1] p-3.5 rounded-lg border border-[#E5E0D8]">
                   {selectedHotel.description}
@@ -528,9 +528,9 @@ const HotelMonitoring = () => {
                   <option value="">Belum Terverifikasi</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Bintang</option>)}
                 </select>
                 <input value={starReason} onChange={(e) => setStarReason(e.target.value)} placeholder="Alasan koreksi (opsional)" className="flex-1 px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-sm" />
-                <button onClick={handleSaveStar} disabled={savingStar} className="px-4 py-2 bg-[#768875] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{savingStar ? "..." : "Simpan Bintang"}</button>
+                <button onClick={handleSaveStar} disabled={savingStar} className="px-4 py-2 bg-[#768875] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{savingStar ? "..." : "Save Rating"}</button>
               </div>
-              {selectedHotel.star_rating && <p className="text-xs text-[#747872] mt-2">Terverifikasi: ★ {selectedHotel.star_rating} {selectedHotel.star_verified_reason ? `— ${selectedHotel.star_verified_reason}` : ""}</p>}
+              {selectedHotel.star_rating && <p className="text-xs text-[#747872] mt-2">Verified: ★ {selectedHotel.star_rating} {selectedHotel.star_verified_reason ? `— ${selectedHotel.star_verified_reason}` : ""}</p>}
             </div>
             <div className="flex justify-end items-center gap-3 pt-4 border-t border-[#E5E0D8]">
               <button
@@ -548,7 +548,7 @@ const HotelMonitoring = () => {
                 }}
                 className="px-4 py-2 border border-[#ffdad6] rounded-lg font-hanken text-[13px] font-semibold text-[#ba1a1a] hover:bg-[#ffdad6]/30 transition-colors"
               >
-                Hapus Hotel
+                Delete Hotel
               </button>
 
               <button
@@ -574,9 +574,9 @@ const HotelMonitoring = () => {
       {/* Confirm Toggle Status Dialog */}
       <ConfirmDialog
         open={!!pendingToggle}
-        title="Ubah Status Hotel"
+        title="Change Hotel Status"
         message={`Yakin ingin mengubah status hotel ini menjadi ${(pendingToggle?.newStatus || "").toUpperCase()}?`}
-        confirmText="Ya, Ubah Status"
+        confirmText="Yes, Change Status"
         processing={isToggling}
         onConfirm={performToggleStatus}
         onCancel={() => setPendingToggle(null)}
@@ -586,9 +586,9 @@ const HotelMonitoring = () => {
       <ConfirmDialog
         open={!!pendingDelete}
         type="danger"
-        title="Hapus Hotel"
+        title="Delete Hotel"
         message={`Apakah Anda yakin ingin menghapus hotel "${pendingDelete?.name}"? Tindakan ini tidak dapat dibatalkan.`}
-        confirmText="Ya, Hapus Hotel"
+        confirmText="Yes, Delete Hotel"
         processing={isDeleting}
         onConfirm={performDeleteHotel}
         onCancel={() => setPendingDelete(null)}

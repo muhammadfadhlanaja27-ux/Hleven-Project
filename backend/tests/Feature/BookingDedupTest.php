@@ -168,6 +168,7 @@ class BookingDedupTest extends TestCase
 
     public function test_double_post_same_details_returns_same_booking(): void
     {
+        $this->withoutExceptionHandling();
         [$hotel, $room] = $this->makeHotelRoom();
         $user = User::create(['name' => 'Buyer', 'email' => 'buyer@x.com', 'password' => 'x', 'role' => 'user', 'status' => 'active']);
         $payload = $this->payload($hotel->id, $room->id);
@@ -216,7 +217,7 @@ class BookingDedupTest extends TestCase
         ]);
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/v1/bookings', $p2);
         $response->assertStatus(422);
-        $this->assertStringContainsString('habis', strtolower($response->json('message')));
+        $this->assertStringContainsString('stock', strtolower($response->json('message')));
         $this->assertEquals(1, Booking::count());
     }
 

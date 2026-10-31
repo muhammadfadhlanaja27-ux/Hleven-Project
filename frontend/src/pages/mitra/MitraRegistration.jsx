@@ -6,11 +6,11 @@ import FileUpload from "../../components/mitra/FileUpload";
 import api from "../../services/api";
 
 const STEP_LABELS = [
-  "Informasi Hotel",
-  "Lokasi",
-  "Pemilik",
-  "Dokumen",
-  "Rekening",
+  "Hotel Details",
+  "Location",
+  "Owner",
+  "Documents",
+  "Bank Account",
   "Review",
 ];
 
@@ -117,7 +117,7 @@ const MitraRegistration = () => {
         const available = res.data?.available ?? true;
         setEmailAvailable(available);
         if (!available) {
-          setErrors((prev) => ({ ...prev, hotel_email: "Email ini sudah terpakai. Silakan gunakan email lain." }));
+          setErrors((prev) => ({ ...prev, hotel_email: "This email is already in use. Please use another email." }));
         }
       } catch (err) {
         // Jika gagal, biarkan tetap bisa submit (fail-open)
@@ -132,43 +132,43 @@ const MitraRegistration = () => {
   const validateStep = (step) => {
     const e = {};
     if (step === 1) {
-      if (!form.hotel_name.trim()) e.hotel_name = "Nama hotel wajib diisi";
-      if (!form.hotel_description.trim()) e.hotel_description = "Deskripsi hotel wajib diisi";
-      if (!form.hotel_phone.trim()) e.hotel_phone = "Nomor telepon hotel wajib diisi";
-      else if (!isValidPhone(form.hotel_phone)) e.hotel_phone = "Format nomor telepon tidak valid";
-      if (!form.hotel_email.trim()) e.hotel_email = "Email hotel wajib diisi";
-      else if (!isValidEmail(form.hotel_email)) e.hotel_email = "Format email tidak valid";
-      else if (emailAvailable === false) e.hotel_email = "Email ini sudah terpakai. Silakan gunakan email lain.";
+      if (!form.hotel_name.trim()) e.hotel_name = "Hotel name is required";
+      if (!form.hotel_description.trim()) e.hotel_description = "Hotel description is required";
+      if (!form.hotel_phone.trim()) e.hotel_phone = "Hotel phone number is required";
+      else if (!isValidPhone(form.hotel_phone)) e.hotel_phone = "Invalid phone number format";
+      if (!form.hotel_email.trim()) e.hotel_email = "Hotel email is required";
+      else if (!isValidEmail(form.hotel_email)) e.hotel_email = "Invalid email format";
+      else if (emailAvailable === false) e.hotel_email = "This email is already registered. Please use another email.";
     }
     if (step === 2) {
-      if (!form.address.trim()) e.address = "Alamat lengkap wajib diisi";
-      if (!form.province.trim()) e.province = "Provinsi wajib diisi";
-      if (!form.city.trim()) e.city = "Kota/Kabupaten wajib diisi";
-      if (!form.district.trim()) e.district = "Kecamatan wajib diisi";
-      if (!form.postal_code.trim()) e.postal_code = "Kode pos wajib diisi";
-      else if (!isValidPostal(form.postal_code)) e.postal_code = "Kode pos harus angka 4-10 digit";
+      if (!form.address.trim()) e.address = "Full address is required";
+      if (!form.province.trim()) e.province = "Province is required";
+      if (!form.city.trim()) e.city = "City/Regency is required";
+      if (!form.district.trim()) e.district = "District is required";
+      if (!form.postal_code.trim()) e.postal_code = "Postal code is required";
+      else if (!isValidPostal(form.postal_code)) e.postal_code = "Postal code must be 4-10 digits";
     }
     if (step === 3) {
-      if (!form.owner_name.trim()) e.owner_name = "Nama lengkap wajib diisi";
-      if (!form.owner_email.trim()) e.owner_email = "Email wajib diisi";
-      else if (!isValidEmail(form.owner_email)) e.owner_email = "Format email tidak valid";
-      if (!form.owner_phone.trim()) e.owner_phone = "Nomor telepon wajib diisi";
-      else if (!isValidPhone(form.owner_phone)) e.owner_phone = "Format nomor telepon tidak valid";
-      if (!form.owner_id_number.trim()) e.owner_id_number = "Nomor identitas wajib diisi";
-      else if (form.owner_id_number.trim().length < 10) e.owner_id_number = "Nomor identitas terlalu pendek";
+      if (!form.owner_name.trim()) e.owner_name = "Full name is required";
+      if (!form.owner_email.trim()) e.owner_email = "Email is required";
+      else if (!isValidEmail(form.owner_email)) e.owner_email = "Invalid email format";
+      if (!form.owner_phone.trim()) e.owner_phone = "Phone number is required";
+      else if (!isValidPhone(form.owner_phone)) e.owner_phone = "Invalid phone number format";
+      if (!form.owner_id_number.trim()) e.owner_id_number = "ID number is required";
+      else if (form.owner_id_number.trim().length < 10) e.owner_id_number = "ID number is too short";
     }
     if (step === 4) {
-      if (!form.doc_ktp) e.doc_ktp = "Unggah KTP/Identitas pemilik";
-      if (!form.doc_legal) e.doc_legal = "Unggah dokumen legalitas hotel";
+      if (!form.doc_ktp) e.doc_ktp = "Upload KTP/Owner ID";
+      if (!form.doc_legal) e.doc_legal = "Upload hotel legal documents";
     }
     if (step === 5) {
-      if (!form.bank_name.trim()) e.bank_name = "Nama bank wajib diisi";
-      if (!form.bank_account_number.trim()) e.bank_account_number = "Nomor rekening wajib diisi";
-      else if (!/^[\d\s-]{6,30}$/.test(form.bank_account_number)) e.bank_account_number = "Format nomor rekening tidak valid";
-      if (!form.bank_account_name.trim()) e.bank_account_name = "Nama pemilik rekening wajib diisi";
+      if (!form.bank_name.trim()) e.bank_name = "Bank name is required";
+      if (!form.bank_account_number.trim()) e.bank_account_number = "Account number is required";
+      else if (!/^[\d\s-]{6,30}$/.test(form.bank_account_number)) e.bank_account_number = "Invalid account number format";
+      if (!form.bank_account_name.trim()) e.bank_account_name = "Account holder name is required";
     }
     if (step === 6) {
-      if (!form.agree) e.agree = "Anda harus menyetujui pernyataan ini";
+      if (!form.agree) e.agree = "You must agree to these terms";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -176,7 +176,7 @@ const MitraRegistration = () => {
 
   const nextStep = () => {
     if (!validateStep(currentStep)) {
-      toast.error("Mohon lengkapi data yang belum sesuai.");
+      toast.error("Please complete the required information.");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -198,7 +198,7 @@ const MitraRegistration = () => {
 
   const handleSubmit = async () => {
     if (!validateStep(6)) {
-      toast.error("Mohon centang pernyataan persetujuan.");
+      toast.error("Please agree to the statement.");
       return;
     }
     setSubmitting(true);
@@ -227,10 +227,10 @@ const MitraRegistration = () => {
         localStorage.setItem("partner_app_submission", JSON.stringify(savedData));
       } catch (e) {}
 
-      toast.success("Pengajuan berhasil dikirim!");
+      toast.success("Application successfully submitted!");
       navigate("/mitra/sukses", { state: savedData, replace: true });
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Gagal mengirim pengajuan.";
+      const msg = err?.response?.data?.message || err?.message || "Failed to submit application.";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -240,7 +240,7 @@ const MitraRegistration = () => {
   const saveExit = () => {
     try {
       localStorage.setItem("partner_app_draft", JSON.stringify(form));
-      toast.success("Draf tersimpan. Anda dapat melanjutkannya nanti.");
+      toast.success("Draft saved. You can continue it later.");
     } catch (e) {}
     navigate("/");
   };
@@ -250,17 +250,17 @@ const MitraRegistration = () => {
     <div className="bg-white rounded-2xl border border-[#c4c8bf]/60 p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
       <h2 className="font-title-md text-xl font-bold text-[#50604d] mb-5 flex items-center gap-2 border-b border-[#DCCFC0]/50 pb-3">
         <span className="material-symbols-outlined">domain</span>
-        Informasi Hotel
+        Hotel Details
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="hotel_name">Nama Hotel *</label>
+          <label className={LABEL} htmlFor="hotel_name">Hotel Name *</label>
           <input
             id="hotel_name"
             type="text"
             value={form.hotel_name}
             onChange={(e) => update("hotel_name", e.target.value)}
-            placeholder="Contoh: Grand H'Leven Resort & Spa"
+            placeholder="e.g., Grand H'Leven Resort & Spa"
             className={`${INPUT_BASE} ${errors.hotel_name ? INPUT_ERROR : ""}`}
           />
           {errors.hotel_name && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_name}</span>}
@@ -273,10 +273,10 @@ const MitraRegistration = () => {
             maxLength={100}
             value={form.property_type}
             onChange={(e) => update("property_type", e.target.value)}
-            placeholder="Contoh: Hotel Bisnis, Resort, Boutique Hotel"
+            placeholder="e.g., Business Hotel, Resort, Boutique Hotel"
             className={INPUT_BASE}
           />
-          <span className={HELPER}>Opsional. Isi jenis properti hotel Anda.</span>
+          <span className={HELPER}>Optional. Enter your hotel property type.</span>
         </div>
         <div className="flex flex-col gap-2">
           <label className={LABEL} htmlFor="year_built">Year Built</label>
@@ -287,33 +287,33 @@ const MitraRegistration = () => {
             max={new Date().getFullYear()}
             value={form.year_built}
             onChange={(e) => update("year_built", e.target.value)}
-            placeholder="Contoh: 2018"
+            placeholder="e.g., 2018"
             className={INPUT_BASE}
           />
-          <span className={HELPER}>Opsional. Kosongkan jika tahun dibangun belum diketahui.</span>
+          <span className={HELPER}>Optional. Leave empty if unknown.</span>
         </div>
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="hotel_description">Deskripsi Hotel *</label>
+          <label className={LABEL} htmlFor="hotel_description">Hotel Description *</label>
           <textarea
             id="hotel_description"
             rows={4}
             value={form.hotel_description}
             onChange={(e) => update("hotel_description", e.target.value)}
-            placeholder="Jelaskan fasilitas, keunggulan, dan nilai unik hotel Anda secara singkat."
+            placeholder="Briefly describe your hotel's facilities, highlights, and unique value."
             className={`${INPUT_BASE} resize-y ${errors.hotel_description ? INPUT_ERROR : ""}`}
           />
           {errors.hotel_description && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_description}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="requested_star_rating">Klasifikasi Bintang (Klaim)</label>
+          <label className={LABEL} htmlFor="requested_star_rating">Star Rating (Claim)</label>
           <select id="requested_star_rating" value={form.requested_star_rating} onChange={(e) => update("requested_star_rating", e.target.value)} className={INPUT_BASE}>
-            <option value="">-- Belum Bersertifikat / Pilih --</option>
-            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} Bintang</option>)}
+            <option value="">-- Uncertified / Select --</option>
+            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} Star</option>)}
           </select>
-          <span className={HELPER}>Akan diverifikasi Super Admin. Kosong = belum terklasifikasi.</span>
+          <span className={HELPER}>To be verified by Super Admin. Empty = unclassified.</span>
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="hotel_phone">Nomor Telepon Hotel *</label>
+          <label className={LABEL} htmlFor="hotel_phone">Hotel Phone Number *</label>
           <input
             id="hotel_phone"
             type="tel"
@@ -325,7 +325,7 @@ const MitraRegistration = () => {
           {errors.hotel_phone && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_phone}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="hotel_email">Email Hotel *</label>
+          <label className={LABEL} htmlFor="hotel_email">Hotel Email *</label>
           <input
             id="hotel_email"
             type="email"
@@ -334,7 +334,7 @@ const MitraRegistration = () => {
             placeholder="hotel@example.com"
             className={`${INPUT_BASE} ${errors.hotel_email ? INPUT_ERROR : ""}`}
           />
-          <span className={HELPER}>Email ini akan digunakan sebagai akun admin hotel.</span>
+          <span className={HELPER}>This email will be used as the hotel admin account.</span>
           {errors.hotel_email && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.hotel_email}</span>}
         </div>
       </div>
@@ -345,80 +345,80 @@ const MitraRegistration = () => {
     <div className="bg-white rounded-2xl border border-[#c4c8bf]/60 p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
       <h2 className="font-title-md text-xl font-bold text-[#50604d] mb-5 flex items-center gap-2 border-b border-[#DCCFC0]/50 pb-3">
         <span className="material-symbols-outlined">location_on</span>
-        Lokasi Hotel
+        Hotel Location
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="address">Alamat Lengkap *</label>
+          <label className={LABEL} htmlFor="address">Full Address *</label>
           <textarea
             id="address"
             rows={3}
             value={form.address}
             onChange={(e) => update("address", e.target.value)}
-            placeholder="Nama Jalan, No. Rumah, RT/RW, Kelurahan/Desa, dll."
+            placeholder="Street name, house number, neighborhood, village/ward, etc."
             className={`${INPUT_BASE} resize-y ${errors.address ? INPUT_ERROR : ""}`}
           />
           {errors.address && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.address}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="province">Provinsi *</label>
+          <label className={LABEL} htmlFor="province">Province *</label>
           <input
             id="province"
             type="text"
             value={form.province}
             onChange={(e) => update("province", e.target.value)}
-            placeholder="Contoh: Jawa Barat"
+            placeholder="e.g., West Java"
             className={`${INPUT_BASE} ${errors.province ? INPUT_ERROR : ""}`}
           />
           {errors.province && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.province}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="city">Kota / Kabupaten *</label>
+          <label className={LABEL} htmlFor="city">City / Regency *</label>
           <input
             id="city"
             type="text"
             value={form.city}
             onChange={(e) => update("city", e.target.value)}
-            placeholder="Contoh: Kota Bandung"
+            placeholder="e.g., Bandung City"
             className={`${INPUT_BASE} ${errors.city ? INPUT_ERROR : ""}`}
           />
           {errors.city && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.city}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="district">Kecamatan *</label>
+          <label className={LABEL} htmlFor="district">District *</label>
           <input
             id="district"
             type="text"
             value={form.district}
             onChange={(e) => update("district", e.target.value)}
-            placeholder="Contoh: Bandung Wetan"
+            placeholder="e.g., Bandung Wetan"
             className={`${INPUT_BASE} ${errors.district ? INPUT_ERROR : ""}`}
           />
           {errors.district && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.district}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="postal_code">Kode Pos *</label>
+          <label className={LABEL} htmlFor="postal_code">Postal Code *</label>
           <input
             id="postal_code"
             type="text"
             value={form.postal_code}
             onChange={(e) => update("postal_code", e.target.value.replace(/\D/g, ""))}
-            placeholder="Contoh: 40116"
+            placeholder="e.g., 40116"
             className={`${INPUT_BASE} ${errors.postal_code ? INPUT_ERROR : ""}`}
           />
           {errors.postal_code && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.postal_code}</span>}
         </div>
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="maps_url">Lokasi Google Maps (Opsional)</label>
+          <label className={LABEL} htmlFor="maps_url">Google Maps Location (Optional)</label>
           <input
             id="maps_url"
             type="url"
             value={form.maps_url}
             onChange={(e) => update("maps_url", e.target.value)}
-            placeholder="Tempel link share Google Maps hotel Anda"
+            placeholder="Paste your hotel's Google Maps share link"
             className={INPUT_BASE}
           />
-          <span className={HELPER}>Integrasi map picker akan ditambahkan di tahap berikutnya.</span>
+          <span className={HELPER}>Map picker integration will be added in the next phase.</span>
         </div>
       </div>
     </div>
@@ -428,31 +428,31 @@ const MitraRegistration = () => {
     <div className="bg-white rounded-2xl border border-[#c4c8bf]/60 p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
       <h2 className="font-title-md text-xl font-bold text-[#50604d] mb-3 flex items-center gap-2 border-b border-[#DCCFC0]/50 pb-3">
         <span className="material-symbols-outlined">person</span>
-        Pemilik / Penanggung Jawab
+        Owner / Responsible Person
       </h2>
-      <div className="mb-5 p-3 rounded-xl bg-[#d5e8cf]/30 border border-[#d5e8cf] flex items-start gap-3">
+        <div className="mb-5 p-3 rounded-xl bg-[#d5e8cf]/30 border border-[#d5e8cf] flex items-start gap-3">
         <span className="material-symbols-outlined text-[#50604d] shrink-0 mt-0.5">info</span>
         <p className="font-body-md text-xs text-[#3b4b39] leading-relaxed">
-          Data ini akan digunakan untuk proses verifikasi dan komunikasi resmi. Pastikan nama sesuai dengan identitas resmi.
+          This data will be used for verification and official communication. Ensure the name matches the official ID.
         </p>
       </div>
       {form.owner_email && form.hotel_email && form.owner_email === form.hotel_email && (
         <div className="mb-5 p-3 rounded-xl bg-[#e8e2d9]/60 border border-[#DCCFC0] flex items-start gap-3">
           <span className="material-symbols-outlined text-[#778873] shrink-0 mt-0.5">key</span>
           <p className="font-body-md text-xs text-[#444842] leading-relaxed">
-            <strong>Email ini akan dijadikan akun admin hotel</strong> untuk login. Anda dapat mengubah kata sandi setelah login melalui halaman Profile.
+            <strong>This email will be set as the hotel admin account</strong> for logging in. You can change the password after logging in via the Profile page.
           </p>
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="owner_name">Nama Lengkap *</label>
+          <label className={LABEL} htmlFor="owner_name">Full Name *</label>
           <input
             id="owner_name"
             type="text"
             value={form.owner_name}
             onChange={(e) => update("owner_name", e.target.value)}
-            placeholder="Nama sesuai KTP"
+            placeholder="Name as per ID"
             className={`${INPUT_BASE} ${errors.owner_name ? INPUT_ERROR : ""}`}
           />
           {errors.owner_name && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.owner_name}</span>}
@@ -464,13 +464,13 @@ const MitraRegistration = () => {
             type="email"
             value={form.owner_email}
             onChange={(e) => update("owner_email", e.target.value)}
-            placeholder="email.pemilik@example.com"
+            placeholder="owner.email@example.com"
             className={`${INPUT_BASE} ${errors.owner_email ? INPUT_ERROR : ""}`}
           />
           {errors.owner_email && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.owner_email}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="owner_phone">Nomor Telepon / WhatsApp *</label>
+          <label className={LABEL} htmlFor="owner_phone">Phone Number / WhatsApp *</label>
           <input
             id="owner_phone"
             type="tel"
@@ -482,13 +482,13 @@ const MitraRegistration = () => {
           {errors.owner_phone && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.owner_phone}</span>}
         </div>
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="owner_id_number">Nomor Identitas (KTP/Passport) *</label>
+          <label className={LABEL} htmlFor="owner_id_number">ID Number (KTP/Passport) *</label>
           <input
             id="owner_id_number"
             type="text"
             value={form.owner_id_number}
             onChange={(e) => update("owner_id_number", e.target.value)}
-            placeholder="Masukkan 16 digit nomor KTP"
+            placeholder="Enter your 16-digit ID number"
             className={`${INPUT_BASE} ${errors.owner_id_number ? INPUT_ERROR : ""}`}
           />
           {errors.owner_id_number && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.owner_id_number}</span>}
@@ -501,19 +501,19 @@ const MitraRegistration = () => {
     <div className="bg-white rounded-2xl border border-[#c4c8bf]/60 p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
       <h2 className="font-title-md text-xl font-bold text-[#50604d] mb-3 flex items-center gap-2 border-b border-[#DCCFC0]/50 pb-3">
         <span className="material-symbols-outlined">description</span>
-        Dokumen Legalitas
+        Legal Documents
       </h2>
       <div className="mb-5 p-3 rounded-xl bg-[#eae1d8]/30 border border-[#eae1d8] flex items-start gap-3">
         <span className="material-symbols-outlined text-[#615b54] shrink-0 mt-0.5">gavel</span>
         <div className="font-body-md text-xs text-[#4b463f] leading-relaxed space-y-1">
-          <p><strong>Format yang diterima:</strong> PDF, JPG, JPEG, PNG, WEBP. Maks 10MB per file.</p>
-          <p><strong>Catatan keamanan:</strong> Dokumen Anda dienkripsi dan hanya dapat diakses oleh tim verifikasi.</p>
+          <p><strong>Accepted formats:</strong> PDF, JPG, JPEG, PNG, WEBP. Max 10MB per file.</p>
+          <p><strong>Security note:</strong> Your documents are encrypted and accessible only by the verification team.</p>
         </div>
       </div>
       <div className="space-y-5">
         <FileUpload
-          label="KTP / Identitas Pemilik *"
-          description="Scan KTP/Passport yang masih berlaku dan sesuai nama pemilik."
+          label="Owner KTP / ID *"
+          description="Scan of valid KTP/Passport matching the owner's name."
           file={form.doc_ktp}
           onChange={(f) => update("doc_ktp", f)}
           onRemove={() => update("doc_ktp", null)}
@@ -521,8 +521,8 @@ const MitraRegistration = () => {
           required
         />
         <FileUpload
-          label="Dokumen Legalitas Hotel *"
-          description="SIUP, TDUP, NIB, Akta Pendirian, IMB, atau dokumen izin operasional lainnya (boleh gabung dalam 1 file PDF)."
+          label="Hotel Legal Documents *"
+          description="SIUP, TDUP, NIB, Deed of Establishment, IMB, or other operational licenses (can be combined into one PDF file)."
           accept=".pdf,.jpg,.jpeg,.png,.webp"
           file={form.doc_legal}
           onChange={(f) => update("doc_legal", f)}
@@ -531,8 +531,8 @@ const MitraRegistration = () => {
           required
         />
         <FileUpload
-          label="Dokumen Pendukung Lainnya (Opsional)"
-          description="Foto tampak depan hotel, surat tanah, SPPT PBB, atau dokumen lain yang mendukung."
+          label="Other Supporting Documents (Optional)"
+          description="Front view photo of the hotel, land deed, SPPT PBB, or other supporting documents."
           file={form.doc_support}
           onChange={(f) => update("doc_support", f)}
           onRemove={() => update("doc_support", null)}
@@ -545,47 +545,47 @@ const MitraRegistration = () => {
     <div className="bg-white rounded-2xl border border-[#c4c8bf]/60 p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
       <h2 className="font-title-md text-xl font-bold text-[#50604d] mb-3 flex items-center gap-2 border-b border-[#DCCFC0]/50 pb-3">
         <span className="material-symbols-outlined">account_balance</span>
-        Informasi Rekening
+        Bank Account Information
       </h2>
       <div className="mb-5 p-3 rounded-xl bg-[#ceeac7]/30 border border-[#ceeac7] flex items-start gap-3">
         <span className="material-symbols-outlined text-[#4c6549] shrink-0 mt-0.5">payments</span>
         <p className="font-body-md text-xs text-[#0a200a] leading-relaxed">
-          Rekening ini digunakan untuk pencairan dana hasil transaksi tamu. Pastikan rekening <strong>aktif</strong> dan <strong>atas nama pemilik hotel / badan usaha</strong>.
+          This account is used for guest transaction fund disbursements. Ensure the account is <strong>active</strong> and <strong>under the hotel owner's/business entity's name</strong>.
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="flex flex-col gap-2 md:col-span-2">
-          <label className={LABEL} htmlFor="bank_name">Nama Bank *</label>
+          <label className={LABEL} htmlFor="bank_name">Bank Name *</label>
           <input
             id="bank_name"
             type="text"
             value={form.bank_name}
             onChange={(e) => update("bank_name", e.target.value)}
-            placeholder="Contoh: Bank Central Asia (BCA)"
+            placeholder="e.g., Bank Central Asia (BCA)"
             className={`${INPUT_BASE} ${errors.bank_name ? INPUT_ERROR : ""}`}
           />
           {errors.bank_name && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.bank_name}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="bank_account_number">Nomor Rekening *</label>
+          <label className={LABEL} htmlFor="bank_account_number">Account Number *</label>
           <input
             id="bank_account_number"
             type="text"
             value={form.bank_account_number}
             onChange={(e) => update("bank_account_number", e.target.value.replace(/[^\d\s-]/g, ""))}
-            placeholder="Nomor rekening tanpa spasi"
+            placeholder="Account number without spaces"
             className={`${INPUT_BASE} ${errors.bank_account_number ? INPUT_ERROR : ""}`}
           />
           {errors.bank_account_number && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.bank_account_number}</span>}
         </div>
         <div className="flex flex-col gap-2">
-          <label className={LABEL} htmlFor="bank_account_name">Nama Pemilik Rekening *</label>
+          <label className={LABEL} htmlFor="bank_account_name">Account Holder Name *</label>
           <input
             id="bank_account_name"
             type="text"
             value={form.bank_account_name}
             onChange={(e) => update("bank_account_name", e.target.value.toUpperCase())}
-            placeholder="SESUAI BUKU TABUNGAN (huruf kapital)"
+            placeholder="AS PER BANK ACCOUNT (capital letters)"
             className={`${INPUT_BASE} ${errors.bank_account_name ? INPUT_ERROR : ""}`}
           />
           {errors.bank_account_name && <span className="text-[11px] font-semibold text-[#ba1a1a]">{errors.bank_account_name}</span>}
@@ -618,7 +618,7 @@ const MitraRegistration = () => {
     <div>
       <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">{label}</span>
       <span className="block font-body-md text-sm text-[#1c1c19] break-words">
-        {value || <span className="text-[#747871] italic">Tidak diisi</span>}
+        {value || <span className="text-[#747871] italic">Not provided</span>}
       </span>
     </div>
   );
@@ -635,7 +635,7 @@ const MitraRegistration = () => {
           </span>
         </span>
       ) : (
-        <span className="text-[#747871] italic text-sm">Tidak ada file</span>
+        <span className="text-[#747871] italic text-sm">No file</span>
       )}
     </div>
   );
@@ -643,34 +643,34 @@ const MitraRegistration = () => {
   const renderStep6 = () => (
     <div className="space-y-5">
       <div className="mb-2 text-center">
-        <h1 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#1c1c19] mb-2">Review Data Pengajuan</h1>
+        <h1 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#1c1c19] mb-2">Review Submission Data</h1>
         <p className="text-sm text-[#444842]">
-          Pastikan semua informasi yang Anda masukkan sudah benar sebelum mengirimkan pengajuan.
+          Ensure all information you entered is correct before submitting your application.
         </p>
       </div>
 
-      <ReviewCard title="Informasi Hotel" icon="domain" step={1}>
-        <Row label="Nama Properti" value={form.hotel_name} />
+      <ReviewCard title="Hotel Details" icon="domain" step={1}>
+        <Row label="Property Name" value={form.hotel_name} />
         <Row label="Property Type" value={form.property_type} />
         <Row label="Year Built" value={form.year_built} />
         <div className="md:col-span-2">
-          <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Deskripsi</span>
+          <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Description</span>
           <p className="font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">{form.hotel_description}</p>
         </div>
-        <Row label="Nomor Telepon" value={form.hotel_phone} />
-        <Row label="Email Properti" value={form.hotel_email} />
-        <Row label="Bintang (Klaim)" value={form.requested_star_rating ? `${form.requested_star_rating} Bintang` : "Belum Bersertifikat"} />
+        <Row label="Phone Number" value={form.hotel_phone} />
+        <Row label="Property Email" value={form.hotel_email} />
+        <Row label="Star Rating (Claim)" value={form.requested_star_rating ? `${form.requested_star_rating} Star` : "Uncertified"} />
       </ReviewCard>
 
-      <ReviewCard title="Lokasi" icon="location_on" step={2}>
+      <ReviewCard title="Hotel Location" icon="location_on" step={2}>
         <div className="md:col-span-2">
-          <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Alamat Lengkap</span>
+          <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Full Address</span>
           <span className="block font-body-md text-sm text-[#1c1c19] whitespace-pre-wrap leading-relaxed">{form.address}</span>
         </div>
-        <Row label="Provinsi" value={form.province} />
-        <Row label="Kota/Kabupaten" value={form.city} />
-        <Row label="Kecamatan" value={form.district} />
-        <Row label="Kode Pos" value={form.postal_code} />
+        <Row label="Province" value={form.province} />
+        <Row label="City/Regency" value={form.city} />
+        <Row label="District" value={form.district} />
+        <Row label="Postal Code" value={form.postal_code} />
         {form.maps_url && (
           <div className="md:col-span-2">
             <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Google Maps</span>
@@ -681,24 +681,24 @@ const MitraRegistration = () => {
         )}
       </ReviewCard>
 
-      <ReviewCard title="Pemilik / Penanggung Jawab" icon="person" step={3}>
-        <Row label="Nama Lengkap" value={form.owner_name} />
-        <Row label="Nomor Identitas" value={form.owner_id_number} />
-        <Row label="Email Pemilik" value={form.owner_email} />
-        <Row label="Nomor Telepon Pribadi" value={form.owner_phone} />
+      <ReviewCard title="Owner / Responsible Person" icon="person" step={3}>
+        <Row label="Full Name" value={form.owner_name} />
+        <Row label="ID Number" value={form.owner_id_number} />
+        <Row label="Owner Email" value={form.owner_email} />
+        <Row label="Personal Phone" value={form.owner_phone} />
       </ReviewCard>
 
-      <ReviewCard title="Dokumen Legalitas" icon="description" step={4}>
-        <FileRow label="KTP / Identitas Pemilik" file={form.doc_ktp} />
-        <FileRow label="Dokumen Legalitas Hotel" file={form.doc_legal} />
-        <FileRow label="Dokumen Pendukung Lainnya" file={form.doc_support} />
+      <ReviewCard title="Legal Documents" icon="description" step={4}>
+        <FileRow label="Owner KTP / ID" file={form.doc_ktp} />
+        <FileRow label="Hotel Legal Documents" file={form.doc_legal} />
+        <FileRow label="Other Supporting Documents" file={form.doc_support} />
       </ReviewCard>
 
-      <ReviewCard title="Detail Rekening" icon="account_balance" step={5}>
-        <Row label="Nama Bank" value={form.bank_name} />
-        <Row label="Nomor Rekening" value={form.bank_account_number} />
+      <ReviewCard title="Bank Account Details" icon="account_balance" step={5}>
+        <Row label="Bank Name" value={form.bank_name} />
+        <Row label="Account Number" value={form.bank_account_number} />
         <div className="md:col-span-2">
-          <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Nama Pemilik Rekening</span>
+          <span className="block font-label-sm text-[11px] font-semibold tracking-wider uppercase text-[#747871] mb-0.5">Account Holder Name</span>
           <span className="block font-body-md text-sm text-[#1c1c19]">{form.bank_account_name}</span>
         </div>
       </ReviewCard>
@@ -712,15 +712,15 @@ const MitraRegistration = () => {
             className="mt-1 w-5 h-5 rounded border-[#747871] text-[#50604d] focus:ring-[#50604d] focus:ring-offset-[#fcf9f4]"
           />
           <span className="font-body-md text-sm text-[#1c1c19] leading-relaxed">
-            Saya menyatakan bahwa seluruh informasi yang diberikan adalah benar dan dapat dipertanggungjawabkan. Saya setuju dengan{" "}
+            I declare that all information provided is true and accountable. I agree to the{" "}
             <a href="#" className="text-[#50604d] underline hover:text-[#3b4b39]">
-              Syarat dan Ketentuan
+              Terms and Conditions
             </a>{" "}
-            serta{" "}
+            and{" "}
             <a href="#" className="text-[#50604d] underline hover:text-[#3b4b39]">
-              Kebijakan Privasi
+              Privacy Policy
             </a>{" "}
-            yang berlaku pada program kemitraan H'Leven.
+            applicable to the H'Leven partnership program.
           </span>
         </label>
         {errors.agree && <p className="mt-2 text-[11px] font-semibold text-[#ba1a1a] ml-8">{errors.agree}</p>}
@@ -735,14 +735,14 @@ const MitraRegistration = () => {
           <span className="font-headline-lg text-xl md:text-2xl font-bold text-[#50604d] tracking-tight">
             H'Leven Mitra
           </span>
-          <button
-            type="button"
-            onClick={saveExit}
-            className="text-[#444842] hover:text-[#50604d] transition-colors flex items-center gap-2"
-          >
-            <span className="font-label-sm text-[11px] md:text-xs font-bold tracking-wider hidden sm:inline">Keluar</span>
-            <span className="material-symbols-outlined text-[20px]">exit_to_app</span>
-          </button>
+            <button
+              type="button"
+              onClick={saveExit}
+              className="text-[#444842] hover:text-[#50604d] transition-colors flex items-center gap-2"
+            >
+              <span className="font-label-sm text-[11px] md:text-xs font-bold tracking-wider hidden sm:inline">Exit</span>
+              <span className="material-symbols-outlined text-[20px]">exit_to_app</span>
+            </button>
         </div>
       </header>
 
@@ -765,7 +765,7 @@ const MitraRegistration = () => {
               className="w-full md:w-auto px-6 py-3 rounded-xl border-2 border-[#50604d] text-[#50604d] font-label-sm text-xs font-bold tracking-wider hover:bg-[#e5e2dd] transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-              Kembali
+              Back
             </button>
             {currentStep < 6 ? (
               <button
@@ -774,7 +774,7 @@ const MitraRegistration = () => {
                 disabled={submitting}
                 className="w-full md:w-auto px-8 py-3 rounded-xl bg-[#50604d] text-white font-label-sm text-xs font-bold tracking-wider hover:bg-[#3b4b39] transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                Lanjutkan
+                Continue
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             ) : (
@@ -787,11 +787,11 @@ const MitraRegistration = () => {
                 {submitting ? (
                   <>
                     <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                    Mengirim Pengajuan...
+                    Submitting...
                   </>
                 ) : (
                   <>
-                    Kirim Pengajuan
+                    Submit Application
                     <span className="material-symbols-outlined text-[18px]">send</span>
                   </>
                 )}
@@ -803,7 +803,7 @@ const MitraRegistration = () => {
 
       <footer className="bg-[#f0ede9] border-t border-[#c4c8bf]/60 w-full py-4 px-5 text-center">
         <span className="font-label-sm text-[11px] font-semibold tracking-wider text-[#747871]">
-          © 2026 H'Leven Hospitality Group. Hak Cipta Dilindungi.
+          © 2026 H'Leven Hospitality Group. All Rights Reserved.
         </span>
       </footer>
     </div>
