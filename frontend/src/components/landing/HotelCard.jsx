@@ -9,23 +9,15 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   if (!hotel) return null;
 
   const getImageUrl = () => {
-    if (hotel.thumbnail) {
-      if (hotel.thumbnail.startsWith('http')) return hotel.thumbnail;
-      return `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, '')}`;
-    }
-    if (hotel.photos && hotel.photos.length > 0) {
-      const firstPhoto = hotel.photos[0];
-      const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
-      if (photoPath) {
-        if (photoPath.startsWith('http')) return photoPath;
-        return `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`;
-      }
-    }
+    if (hotel.thumbnail) return getStorageUrl(hotel.thumbnail);
+    if (hotel.photos?.length > 0) return getStorageUrl(hotel.photos[0].photo || hotel.photos[0].url);
     return null;
   };
 
-  const imageUrl = !imgError ? getImageUrl() : null;
+  const imageUrl = !imgError ? getImageUrl() : "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
   const hasValidImage = !!imageUrl;
+
+  const handleImageError = () => setImgError(true);
 
   const getPrice = () => {
     const rawPrice = hotel.starting_price || hotel.price || (hotel.rooms && hotel.rooms[0]?.price) || 500000;
@@ -93,7 +85,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               src={imageUrl}
               alt={hotel.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              onError={() => setImgError(true)}
+              onError={handleImageError}
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
@@ -210,13 +202,18 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
           {cityName}
         </div>
 
-        {hotel.logo && (
-          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5">
+        {hotel.logo ? (
+          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5 overflow-hidden">
             <img
               src={getStorageUrl(hotel.logo)}
               alt={`${hotel.name} logo`}
               className="w-full h-full object-contain"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
+          </div>
+        ) : (
+          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#778873] text-2xl">apartment</span>
           </div>
         )}
 

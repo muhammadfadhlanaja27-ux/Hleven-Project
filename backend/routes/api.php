@@ -30,6 +30,7 @@ use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\WarningController;
 use Illuminate\Support\Facades\Route;
 
+
 /*
 |--------------------------------------------------------------------------
 | API Routes - H'Leven Backend
@@ -231,8 +232,6 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/hotel-health', [SuperAdminDashboardController::class, 'hotelHealthReport']);
     });
 
-    Route::get('/wallet', [SuperAdminDashboardController::class, 'wallet']);
-
     Route::prefix('users')->group(function () {
         Route::get('/', [SuperAdminUserController::class, 'index']);
         Route::get('/{id}', [SuperAdminUserController::class, 'show']);
@@ -267,12 +266,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::patch('/{id}/status', [SuperAdminPayoutController::class, 'updateStatus']);
     });
 
-    // --- Platform Commission Payouts (Super Admin) ---
-    Route::prefix('platform-payouts')->group(function () {
-        Route::get('/', [SuperAdminPlatformPayoutController::class, 'index']);
-        Route::post('/', [SuperAdminPlatformPayoutController::class, 'store']);
-        Route::put('/settings', [SuperAdminPlatformPayoutController::class, 'updateSettings']);
-    });
+    // Route pencairan platform dihapus
 
     // --- Partner Application (Super Admin) ---
     Route::prefix('partners')->group(function () {
@@ -298,6 +292,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
     Route::get('/export', [ReportController::class, 'export']);
 
     Route::middleware('role:super_admin')->group(function () {
+        Route::get('/summary', [ReportController::class, 'summary']);
         Route::get('/users', [ReportController::class, 'users']);
         Route::get('/hotels', [ReportController::class, 'hotels']);
     });

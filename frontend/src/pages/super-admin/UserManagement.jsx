@@ -136,7 +136,7 @@ const UserManagement = () => {
 
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Role pengguna berhasil diperbarui!");
+      toast.success("User role updated successfully!");
       setPendingRole(null);
       fetchUsers(true);
     } catch (err) {
@@ -162,7 +162,7 @@ const UserManagement = () => {
 
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Akun pengguna berhasil dihapus!");
+      toast.success("User account deleted successfully!");
       setPendingDelete(null);
       fetchUsers(true);
     } catch (err) {
@@ -185,7 +185,7 @@ const UserManagement = () => {
     }
 
     if (formData.password.length < 8) {
-      toast.error("Password minimal harus 8 karakter!");
+      toast.error("Password must be at least 8 characters!");
       setSubmitLoading(false);
       return;
     }
@@ -204,7 +204,7 @@ const UserManagement = () => {
 
       invalidateCache("/super-admin/users");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Admin Hotel & Properti berhasil ditambahkan!");
+      toast.success("Hotel Admin & Property successfully added!");
       setFormData({
         name: "",
         hotel_name: "",
@@ -265,7 +265,7 @@ const UserManagement = () => {
               User Management
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
-            Kelola data administrator hotel, mitra, dan hak akses pengguna sistem.
+            Manage hotel administrator data, partners, and system user access rights.
           </p>
         </div>
 
@@ -287,7 +287,7 @@ const UserManagement = () => {
           </span>
           <input
             type="text"
-            placeholder="Cari nama atau email..."
+            placeholder="Search name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#E5E0D8] bg-white focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 font-hanken text-[14px] text-[#191c1b] placeholder-[#747872] transition-all"
@@ -304,8 +304,8 @@ const UserManagement = () => {
           >
             <option value="">All Roles</option>
             <option value="super_admin">Super Admin</option>
-            <option value="admin_hotel">Admin Hotel</option>
-            <option value="user">User / Pelanggan</option>
+            <option value="admin_hotel">Hotel Admin</option>
+            <option value="user">User / Customer</option>
           </select>
 
           {/* Status Filter */}
@@ -344,7 +344,7 @@ const UserManagement = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
-            <p className="font-hanken text-[14px] text-[#747872]">Memuat data pengguna...</p>
+            <p className="font-hanken text-[14px] text-[#747872]">Loading user data...</p>
           </div>
         ) : (
           <>
@@ -359,13 +359,13 @@ const UserManagement = () => {
                       Role
                     </th>
                     <th className="px-6 py-4 font-hanken text-[12px] font-semibold text-[#434842] uppercase tracking-[0.05em]">
-                      Hotel / Afiliasi
+                      Hotel / Affiliation
                     </th>
                     <th className="px-6 py-4 font-hanken text-[12px] font-semibold text-[#434842] uppercase tracking-[0.05em]">
                       Status
                     </th>
                     <th className="px-6 py-4 font-hanken text-[12px] font-semibold text-[#434842] uppercase tracking-[0.05em] text-right">
-                      Aksi
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -493,7 +493,7 @@ const UserManagement = () => {
                         colSpan="5"
                         className="px-6 py-12 text-center text-[#747872] font-hanken text-[14px]"
                       >
-                        Tidak ada data pengguna yang sesuai dengan kriteria pencarian.
+                        No user data matching the search criteria.
                       </td>
                     </tr>
                   )}
@@ -504,12 +504,12 @@ const UserManagement = () => {
             {/* Pagination */}
             <div className="px-6 py-4 border-t border-[#E5E0D8] bg-[#F9F6F1] flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm text-[#747872] font-hanken">
               <span className="text-[13px]">
-                Menampilkan{" "}
+                Showing{" "}
                 {totalItems > 0
                   ? (currentPage - 1) * itemsPerPage + 1
                   : 0}{" "}
-                hingga {Math.min(currentPage * itemsPerPage, totalItems)} dari{" "}
-                {totalItems} pengguna
+                to {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
+                {totalItems} users
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -570,7 +570,7 @@ const UserManagement = () => {
                    Add Hotel Admin
                 </h3>
                 <p className="font-hanken text-[13px] text-[#747872] mt-0.5">
-                  Buat akun pengelola hotel baru untuk mitra jaringan H'Leven.
+                  Create a new hotel manager account for H'Leven network partners.
                 </p>
               </div>
               <button
@@ -618,7 +618,7 @@ const UserManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Alamat Email
+                  Email Address
                 </label>
                 <input
                   type="email"
@@ -634,12 +634,12 @@ const UserManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Password Akun
+                  Account Password
                 </label>
                 <input
                   type="password"
                   required
-                  placeholder="Minimal 8 karakter"
+                  placeholder="Minimum 8 characters"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
@@ -655,7 +655,7 @@ const UserManagement = () => {
                 <input
                   type="password"
                   required
-                  placeholder="Ulangi password di atas"
+                  placeholder="Repeat password above"
                   value={formData.password_confirmation}
                   onChange={(e) =>
                     setFormData({
@@ -674,7 +674,7 @@ const UserManagement = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border border-[#E5E0D8] rounded-lg font-hanken text-[13px] font-semibold text-[#434842] hover:bg-[#F9F6F1] transition-colors"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -697,7 +697,7 @@ const UserManagement = () => {
       <ConfirmDialog
         open={!!pendingStatus}
          title="Change User Status"
-        message={`Apakah Anda yakin ingin mengubah status pengguna ini menjadi ${(pendingStatus?.newStatus || "").toUpperCase()}?`}
+        message={`Are you sure you want to change the status of this user to ${(pendingStatus?.newStatus || "").toUpperCase()}?`}
          confirmText="Yes, Change Status"
         processing={isConfirming}
         onConfirm={performToggleStatus}
@@ -708,7 +708,7 @@ const UserManagement = () => {
       <ConfirmDialog
         open={!!pendingRole}
          title="Change User Role"
-        message={`Apakah Anda yakin ingin mengubah role ${pendingRole?.userName} menjadi ${formatRole(pendingRole?.newRole)}?`}
+        message={`Are you sure you want to change the role of ${pendingRole?.userName} to ${formatRole(pendingRole?.newRole)}?`}
          confirmText="Yes, Change Role"
         processing={isConfirming}
         onConfirm={performRoleChange}

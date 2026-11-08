@@ -176,15 +176,13 @@ class HotelSeeder extends Seeder
 
     private function getPhotoFromPool($type, $seedId)
     {
-        $pool = ($type === 'exterior') ? $this->exteriorPhotos : $this->roomPhotos;
+        $hotelKeywords = ['hotel,exterior', 'resort,view', 'luxury,building', 'modern,architecture', 'hotel,garden'];
+        $roomKeywords = ['hotel,bedroom', 'modern,suite', 'luxury,interior', 'cozy,room', 'apartment,bedroom'];
 
-        if (empty($pool)) {
-            // Fallback to Picsum
-            return "https://picsum.photos/seed/hleven-{$type}-{$seedId}/1200/800";
-        }
-
-        // Return random image from pool
-        return $pool[array_rand($pool)];
+        $pool = ($type === 'exterior') ? $hotelKeywords : $roomKeywords;
+        $kw = $pool[array_rand($pool)];
+        
+        return "https://loremflickr.com/1200/800/{$kw}?lock={$seedId}";
     }
 
     private function getBasePrice($starRating)

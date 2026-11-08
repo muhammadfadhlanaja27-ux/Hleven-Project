@@ -41,7 +41,7 @@ const Register = () => {
 
   const handleSendOtp = async () => {
     if (!formData.email) {
-                  toast.error('Enter email first');
+      toast.error('Enter email first');
       return;
     }
     
@@ -49,11 +49,11 @@ const Register = () => {
     setError({});
     try {
       const res = await api.post('/register/send-otp', { email: formData.email });
-      toast.success(res.data.message || 'OTP terkirim ke email');
+      toast.success(res.data.message || 'OTP sent to email');
       setOtpStatus('sent');
       setTimer(60);
     } catch (err) {
-        const msg = err.response?.data?.message || 'Failed to send OTP';
+      const msg = err.response?.data?.message || 'Failed to send OTP';
       toast.error(msg);
       if (err.response?.data?.errors?.email) {
         setError({ email: err.response.data.errors.email });
@@ -65,7 +65,7 @@ const Register = () => {
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
-                  toast.error('Enter 6-digit OTP code');
+      toast.error('Enter 6-digit OTP code');
       return;
     }
 
@@ -78,7 +78,7 @@ const Register = () => {
       toast.success('Email verified successfully');
       setOtpStatus('verified');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'OTP salah atau kadaluarsa');
+      toast.error(err.response?.data?.message || 'OTP code is invalid or expired');
     } finally {
       setOtpLoading(false);
     }
@@ -89,7 +89,7 @@ const Register = () => {
     setError({});
 
     if (otpStatus !== 'verified') {
-      toast.error('Anda harus memverifikasi email dengan OTP terlebih dahulu.');
+      toast.error('You must verify your email with OTP first.');
       return;
     }
 
@@ -450,13 +450,13 @@ const Register = () => {
                   2. Booking & Room Payment
                 </h4>
                 <p>
-                  Setiap reservasi kamar yang dilakukan melalui layanan kami akan dikonfirmasi setelah pembayaran terverifikasi. Harga ketersediaan kamar yang ditampilkan sudah mencakup pajak layanan kecuali dinyatakan lain.
+                  Each room reservation made through our services will be confirmed after payment is verified. Room availability prices displayed include service taxes unless otherwise stated.
                 </p>
               </section>
 
               <section>
                 <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
-                  3. Kebijakan Pembatalan & Pengembalian Dana
+                  3. Cancellation & Refund Policy
                 </h4>
                 <p>
                   Cancellation of orders is subject to the policies of each room type. Rooms labeled <em>refundable</em> may be canceled according to the time limits specified before the check-in period.
@@ -476,7 +476,7 @@ const Register = () => {
             {/* Modal Footer */}
             <div className="p-6 border-t border-[#DCCFC0] bg-[#faf3ea] flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-xs text-[#747871]">
-                Harap baca seluruh poin sebelum menyetujui pendaftaran.
+                Please read all terms before agreeing to registration.
               </p>
               <div className="flex gap-3 w-full sm:w-auto">
                 <button
@@ -484,14 +484,14 @@ const Register = () => {
                   onClick={() => setShowTermsModal(false)}
                   className="flex-1 sm:flex-none px-5 py-2.5 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20 transition-colors"
                 >
-                  Tutup
+                  Close
                 </button>
                 <button
                   type="button"
                   onClick={handleAgreeTermsModal}
                   className="flex-1 sm:flex-none px-6 py-2.5 bg-[#778873] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors shadow-xs"
                 >
-                  Saya Setuju
+                  I Agree
                 </button>
               </div>
             </div>

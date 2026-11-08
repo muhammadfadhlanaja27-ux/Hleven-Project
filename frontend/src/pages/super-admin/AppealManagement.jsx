@@ -43,7 +43,7 @@ export default function AppealManagement() {
         status,
         admin_note: adminNote.trim() || null,
       });
-      toast.success(res.data?.message || `Banding ${status}`);
+      toast.success(res.data?.message || `Appeal ${status}`);
       setSelectedAppeal(null);
       setAdminNote("");
       fetchAppeals();
@@ -68,10 +68,10 @@ export default function AppealManagement() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-            Manajemen Aju Banding
+            Appeal Management
           </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
-            Review dan putuskan permohonan banding atas surat peringatan maupun pemulihan akun suspend hotel.
+            Review and decide on appeals regarding warnings or hotel account suspensions.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -85,8 +85,8 @@ export default function AppealManagement() {
           >
              <option value="">All Statuses</option>
             <option value="pending">Pending</option>
-            <option value="approved">Disetujui</option>
-            <option value="rejected">Ditolak</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
           </select>
           <button
             onClick={fetchAppeals}
@@ -132,19 +132,19 @@ export default function AppealManagement() {
                       <td className="py-4 px-6">
                         {isWarningAppeal ? (
                           <div className="space-y-0.5">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-amber-50 text-amber-900 border border-amber-200">
-                              <span className="material-symbols-outlined text-[13px]">warning</span>
-                              <span>Peringatan #{String(a.warning_id).padStart(4, "0")}</span>
-                            </span>
+                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-amber-50 text-amber-900 border border-amber-200">
+                               <span className="material-symbols-outlined text-[13px]">warning</span>
+                               <span>Warning #{String(a.warning_id).padStart(4, "0")}</span>
+                             </span>
                             {a.warning?.title && (
                               <p className="text-[11px] text-[#747872] truncate max-w-[180px]">{a.warning.title}</p>
                             )}
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-red-50 text-red-900 border border-red-200">
-                            <span className="material-symbols-outlined text-[13px]">lock_reset</span>
-                            <span>Pemulihan Akun</span>
-                          </span>
+                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-red-50 text-red-900 border border-red-200">
+                               <span className="material-symbols-outlined text-[13px]">lock_reset</span>
+                               <span>Account Recovery</span>
+                             </span>
                         )}
                       </td>
                       <td className="py-4 px-6 text-xs text-[#747872]">{a.requester?.name || a.requester?.email || "-"}</td>
@@ -215,11 +215,11 @@ export default function AppealManagement() {
           <div className="bg-white rounded-2xl border border-[#E5E1DA] w-full max-w-lg shadow-2xl p-6 space-y-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-['Newsreader',serif] text-xl font-bold text-[#2D312C]">
-                  {selectedAppeal.warning_id
-                    ? `Banding Peringatan #${String(selectedAppeal.warning_id).padStart(4, "0")}`
-                    : `Banding Pemulihan Akun`}
-                </h3>
+                 <h3 className="font-['Newsreader',serif] text-xl font-bold text-[#2D312C]">
+                   {selectedAppeal.warning_id
+                     ? `Warning Appeal #${String(selectedAppeal.warning_id).padStart(4, "0")}`
+                     : `Account Recovery Appeal`}
+                 </h3>
                 <p className="text-xs text-[#6B6E6A]">
                   Hotel: <span className="font-semibold text-[#2D312C]">{selectedAppeal.hotel?.name}</span> • Requester: {selectedAppeal.requester?.name || selectedAppeal.requester?.email}
                 </p>
@@ -294,16 +294,16 @@ export default function AppealManagement() {
                     <p className="text-[#2D312C]">{selectedAppeal.admin_note}</p>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-[11px] text-[#6B6E6A]/70">
-                  <span>Diputus pada: {selectedAppeal.decided_at ? new Date(selectedAppeal.decided_at).toLocaleString("id-ID") : "-"}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAppeal(null)}
-                    className="px-5 py-2 bg-[#506147] text-white rounded-xl text-xs font-semibold"
-                  >
-                    Tutup
-                  </button>
-                </div>
+                 <div className="flex justify-between items-center text-[11px] text-[#6B6E6A]/70">
+                   <span>Decided on: {selectedAppeal.decided_at ? new Date(selectedAppeal.decided_at).toLocaleString("en-US") : "-"}</span>
+                   <button
+                     type="button"
+                     onClick={() => setSelectedAppeal(null)}
+                     className="px-5 py-2 bg-[#506147] text-white rounded-xl text-xs font-semibold"
+                   >
+                     Close
+                   </button>
+                 </div>
               </div>
             )}
           </div>

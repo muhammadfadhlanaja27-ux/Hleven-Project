@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const CityTopHotelsCarousel = ({ hotels = [] }) => {
     const navigate = useNavigate();
@@ -113,10 +114,12 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                         "Bandung";
 
                     const imageUrl = hotel.thumbnail
-                        ? hotel.thumbnail.startsWith("http")
-                            ? hotel.thumbnail
-                            : `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, "")}`
-                        : hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || null;
+                        ? getStorageUrl(hotel.thumbnail)
+                        : getStorageUrl(hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || "");
+                    
+                    const handleImageError = (e) => {
+                        e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
+                    };
 
                     const price = Number(
                         hotel.starting_price || hotel.price || hotel.rooms?.[0]?.price || 500000
@@ -142,7 +145,8 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                     <img
                                         src={imageUrl}
                                         alt={hotel.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        onError={handleImageError}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-duration-500"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[#778873]">

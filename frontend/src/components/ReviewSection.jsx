@@ -48,9 +48,9 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
       });
       setEligibleBookings(res.data.data || []);
     } catch (err) {
-      if (err.response?.status !== 401 && err.response?.status !== 404) {
-        console.error(err);
-      }
+      // Catch 403 Forbidden or any other error so it doesn't crash the whole page
+      console.warn("ReviewSection: User not eligible or not logged in properly", err.response?.status);
+      setEligibleBookings([]);
     }
   };
 
@@ -90,7 +90,7 @@ const ReviewSection = ({ hotelId, roomTypes = [], onReviewSubmitted }) => {
       <div className="flex flex-col md:flex-row justify-between mb-8 gap-4">
         <div>
           <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#778873] mb-1">
-            Ulasan Tamu
+            Guest Reviews
           </h2>
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#D48C45]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>

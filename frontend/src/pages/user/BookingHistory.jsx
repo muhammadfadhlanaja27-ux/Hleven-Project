@@ -90,7 +90,7 @@ const BookingHistory = () => {
   }, [paymentModalBooking, qrisTimer]);
 
   const formattedTimer = useMemo(() => {
-    if (qrisTimer <= 0) return "Waktu Habis";
+    if (qrisTimer <= 0) return "Time Expired";
     const minutes = Math.floor(qrisTimer / 60);
     const seconds = qrisTimer % 60;
     const mStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
@@ -126,7 +126,7 @@ const BookingHistory = () => {
       }
 
       invalidateCache("/user/bookings");
-      toast.success("Pembayaran berhasil dikonfirmasi!");
+      toast.success("Payment confirmed successfully!");
       setPaymentModalBooking(null);
       if (selectedBooking && selectedBooking.id === paymentModalBooking.id) {
         setSelectedBooking(null);
@@ -201,7 +201,7 @@ const BookingHistory = () => {
         reason: cancelReason,
       });
 
-      toast.success(res.data?.message || "Permintaan pembatalan berhasil diproses.");
+      toast.success(res.data?.message || "Cancellation request processed.");
       setCancelModalBooking(null);
       setCancelReason("");
       fetchApiBookings(true);
@@ -257,9 +257,9 @@ const BookingHistory = () => {
         return (
           <div className="bg-[#FFF0E0] backdrop-blur-md border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
-            <span className="font-label-sm text-[11px] text-[#9B5235] font-bold uppercase tracking-wider">
-              Menunggu Bayar (Waiting for Payment)
-            </span>
+                              <span className="font-label-sm text-[11px] text-[#9B5235] font-bold uppercase tracking-wider">
+                                Waiting for Payment
+                              </span>
           </div>
         );
       case "checked_in":
@@ -267,7 +267,7 @@ const BookingHistory = () => {
           <div className="bg-[#506147]/90 backdrop-blur-md border border-[#506147] px-3 py-1 rounded-full flex items-center gap-1.5 text-white shadow-sm">
             <span className="w-2 h-2 rounded-full bg-white"></span>
             <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider">
-              Sedang Menginap
+              Staying
             </span>
           </div>
         );
@@ -279,7 +279,7 @@ const BookingHistory = () => {
           <div className="bg-[#4F6F52] backdrop-blur-md border border-[#4F6F52] px-3 py-1 rounded-full flex items-center gap-1.5 text-white shadow-sm">
             <span className="w-2 h-2 rounded-full bg-white"></span>
             <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider">
-              Paid / Dikonfirmasi
+              Paid / Confirmed
             </span>
           </div>
         );
@@ -288,7 +288,7 @@ const BookingHistory = () => {
           <div className="bg-[#0369A1] backdrop-blur-md border border-[#0369A1] px-3 py-1 rounded-full flex items-center gap-1.5 text-white shadow-sm">
             <span className="w-2 h-2 rounded-full bg-white"></span>
             <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider">
-              Proses Refund
+              Refund Processing
             </span>
           </div>
         );
@@ -310,7 +310,7 @@ const BookingHistory = () => {
           <div className="bg-[#ba1a1a] backdrop-blur-md border border-[#ba1a1a] px-3 py-1 rounded-full flex items-center gap-1.5 text-white shadow-sm">
             <span className="w-2 h-2 rounded-full bg-white"></span>
             <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider">
-              Kedaluwarsa
+              Expired
             </span>
           </div>
         );
@@ -322,7 +322,7 @@ const BookingHistory = () => {
           <div className="bg-[#ba1a1a] backdrop-blur-md border border-[#ba1a1a] px-3 py-1 rounded-full flex items-center gap-1.5 text-white shadow-sm">
             <span className="w-2 h-2 rounded-full bg-white"></span>
             <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider">
-              Dibatalkan
+              Cancelled
             </span>
           </div>
         );
@@ -365,8 +365,8 @@ const BookingHistory = () => {
 
   const accountStatus = (() => {
     const s = String(initialUser?.status || initialRole || "").toLowerCase();
-    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
-    if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
+    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Inactive", color: "text-[#ba1a1a]" };
+    if (["pending", "waiting", "review"].includes(s)) return { label: "Pending", color: "text-[#9B5235]" };
     if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
     if (["super_admin"].includes(s)) return { label: "Super Admin", color: "text-[#778873]" };
     return { label: "Active", color: "text-[#778873]" };
@@ -393,9 +393,9 @@ const BookingHistory = () => {
           <h1 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#778873] mb-2 leading-tight">
             My Account
           </h1>
-          <p className="font-body-md text-sm md:text-base text-[#444842]">
-            Kelola profil pribadi dan riwayat pemesanan kamar Anda.
-          </p>
+        <p className="font-body-md text-sm md:text-base text-[#444842]">
+          Manage your personal profile and room booking history.
+        </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -440,7 +440,7 @@ const BookingHistory = () => {
                     {accountStatus.label}
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
-                    Status Akun
+                    Account Status
                   </span>
                 </div>
               </div>
@@ -456,7 +456,7 @@ const BookingHistory = () => {
                   <span className="material-symbols-outlined text-xl">
                     real_estate_agent
                   </span>
-                  Status Mitra Hotel
+                  Hotel Partner Status
                 </Link>
               )}
 
@@ -466,7 +466,7 @@ const BookingHistory = () => {
                 className="w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
               >
                 <span className="material-symbols-outlined text-xl">person_outline</span>
-                Informasi Pribadi
+                Personal Information
               </Link>
 
               <div
@@ -502,10 +502,10 @@ const BookingHistory = () => {
                     className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
                   >
                       <option value="All">All Orders</option>
-                    <option value="Pending">Menunggu Pembayaran</option>
-                    <option value="Upcoming">Upcoming / Lunas</option>
-                    <option value="Past">Selesai (Checked Out)</option>
-                    <option value="Cancelled">Dibatalkan / Refund</option>
+                    <option value="Pending">Waiting for Payment</option>
+                    <option value="Upcoming">Upcoming / Paid</option>
+                    <option value="Past">Completed (Checked Out)</option>
+                    <option value="Cancelled">Cancelled / Refund</option>
                   </select>
                 </div>
 
@@ -584,9 +584,9 @@ const BookingHistory = () => {
                               <span className="material-symbols-outlined text-[#778873] text-5xl mb-1 opacity-60">
                                 no_photography
                               </span>
-                              <p className="font-label-md text-[10px] font-bold text-[#778873] uppercase tracking-wider">
-                                Belum Ada Foto
-                              </p>
+                                <p className="font-label-md text-[10px] font-bold text-[#778873] uppercase tracking-wider">
+                                  No Photo
+                                </p>
                             </div>
                           )}
 
@@ -692,7 +692,7 @@ const BookingHistory = () => {
                                   onClick={() => setCancelModalBooking(item)}
                                   className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
                                 >
-                                  Batalkan Pesanan (Cancel Order)
+                                  Cancel Order
                                 </button>
                               </>
                             )}
@@ -719,25 +719,25 @@ const BookingHistory = () => {
                             )}
 
                             {item.status === "checked_out" && !item.review && (
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id}`)}
-                                className="px-4 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-base">rate_review</span>
-                                Tulis Ulasan
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id}`)}
+                                  className="px-4 py-2 rounded-xl bg-[#A0522D] text-white font-label-md text-xs font-semibold hover:bg-[#8a4426] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">rate_review</span>
+                                  Write Review
+                                </button>
                             )}
 
                             {!["Paid", "paid", "confirmed", "Dikonfirmasi", "checked_in", "checked_out", "pending", "unpaid"].includes(item.status) && (
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id || 1}`)}
-                                className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-base">autorenew</span>
-                                Pesan Lagi (Book Again)
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/hotels/${item.hotel_id || item.hotel?.id || 1}`)}
+                                  className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">autorenew</span>
+                                  Book Again
+                                </button>
                             )}
                           </div>
 
@@ -858,13 +858,13 @@ const BookingHistory = () => {
 
               <div className="space-y-2">
                 <label className="block font-label-md text-xs font-semibold text-[#444842]">
-                  Alasan Pembatalan / Refund *
+                  Cancellation / Refund Reason *
                 </label>
                 <textarea
                   rows={3}
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Tuliskan alasan lengkap..."
+                  placeholder="Write your complete reason..."
                   className="w-full p-3 bg-[#fff8f0] border border-[#DCCFC0] rounded-xl text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873]"
                 />
               </div>
@@ -958,9 +958,9 @@ const BookingHistory = () => {
                           Rp {Number(selectedBooking.grand_total || selectedBooking.total_price || 0).toLocaleString("id-ID")}
                         </p>
                       </div>
-                      <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px] leading-relaxed">
-                        Pesanan ini belum dibayar. Klik tombol di bawah untuk melanjutkan pembayaran via QRIS.
-                      </p>
+                <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px] leading-relaxed">
+                  This order is unpaid. Click the button below to continue payment via QRIS.
+                </p>
                       <div className="w-full flex flex-col gap-3">
                         <button
                           type="button"
@@ -993,7 +993,7 @@ const BookingHistory = () => {
                         />
                       </div>
                       <p className="font-body-md text-xs text-[#444842] mb-6 max-w-[240px] leading-relaxed">
-                        Tunjukkan QR code ini di resepsionis saat check-in untuk proses yang cepat dan mudah.
+                        Show this QR code at the reception desk upon check-in for a quick and easy process.
                       </p>
                       <div className="w-full flex flex-col gap-3">
                         <button
@@ -1002,7 +1002,7 @@ const BookingHistory = () => {
                           className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <span className="material-symbols-outlined text-lg">download</span>
-                          Unduh E-Tiket (PDF)
+                          Download E-Ticket (PDF)
                         </button>
                         <button
                           type="button"

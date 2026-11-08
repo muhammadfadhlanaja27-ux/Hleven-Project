@@ -236,7 +236,7 @@ const ActivityLogs = () => {
       {error && (
         <div className="bg-[#ffdad6] border border-[#ffbab1] text-[#93000a] px-5 py-4 rounded-xl font-hanken text-[14px] flex items-center gap-3">
           <span className="material-symbols-outlined">error</span>
-          <span>Terjadi kesalahan saat memuat log aktivitas. Pastikan backend aktif.</span>
+          <span>An error occurred while loading activity logs. Ensure the backend is active.</span>
         </div>
       )}
 
@@ -245,7 +245,7 @@ const ActivityLogs = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
-            <p className="font-hanken text-[14px] text-[#747872]">Memuat rekam aktivitas...</p>
+            <p className="font-hanken text-[14px] text-[#747872]">Loading activity history...</p>
           </div>
         ) : (
           <>
@@ -335,7 +335,7 @@ const ActivityLogs = () => {
                         colSpan="4"
                         className="py-12 text-center text-[#747872] font-hanken text-[14px]"
                       >
-                        Tidak ada catatan log aktivitas yang ditemukan.
+                        No activity logs found.
                       </td>
                     </tr>
                   )}
@@ -346,7 +346,7 @@ const ActivityLogs = () => {
             {/* Pagination Controls */}
             <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm text-[#747872] font-hanken">
               <span className="text-[13px]">
-                Menampilkan halaman <strong className="text-[#191c1b]">{meta.current_page}</strong> dari{" "}
+                Showing page <strong className="text-[#191c1b]">{meta.current_page}</strong> of{" "}
                 <strong className="text-[#191c1b]">{meta.last_page}</strong>{" "}
                 {meta.total ? `(Total: ${meta.total} activities)` : ""}
               </span>
@@ -357,7 +357,7 @@ const ActivityLogs = () => {
                   disabled={page <= 1}
                   className="px-3 py-1.5 rounded-md border border-[#E5E0D8] bg-white text-[#434842] hover:bg-[#F9F6F1] font-medium text-[13px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Sebelumnya
+                  Previous
                 </button>
 
                 <div className="px-2 font-medium text-[13px] text-[#191c1b]">
@@ -369,7 +369,7 @@ const ActivityLogs = () => {
                   disabled={page >= meta.last_page}
                   className="px-3 py-1.5 rounded-md border border-[#E5E0D8] bg-white text-[#434842] hover:bg-[#F9F6F1] font-medium text-[13px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Selanjutnya
+                  Next
                 </button>
               </div>
             </div>

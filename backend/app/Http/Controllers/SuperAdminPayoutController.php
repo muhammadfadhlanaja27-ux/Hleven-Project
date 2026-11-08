@@ -10,7 +10,10 @@ use RuntimeException;
 
 class SuperAdminPayoutController extends Controller
 {
-    public function __construct(private PayoutService $payoutService) {}
+    public function __construct(
+        private PayoutService $payoutService,
+        private \App\Services\SuperAdminDashboardService $dashboardService
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -18,7 +21,25 @@ class SuperAdminPayoutController extends Controller
             'status' => 'nullable|in:pending,approved,rejected,paid',
             'search' => 'nullable|string|max:100',
             'per_page' => 'nullable|integer|min:1|max:100',
+            'breakdown_page' => 'nullable|integer|min:1',
+            'page' => 'nullable|integer|min:1',
         ]);
+
+        $rate = (float) config('hleven.commission_rate', 0.05);
+        $totalGross = (float) \App\Models\Payment::where('payment_status', 'success')->sum('gross_amount');
+        $platformCommission = $totalGross * $rate;
+        $hotelNetRevenue = $totalGross - $platformCommission;
+
+        // Ambil rincian pendapatan per hotel dengan paginasi terpisah
+        $hotelStats = $this->dashboardService->getHotelCommissionStats(
+            null, 
+            null, 
+            'platform_commission', 
+            'desc', 
+            10, 
+            $request->query('search'),
+            'breakdown_page'
+        );
 
         $query = Payout::with([
             'hotel:id,name,admin_id,bank_name,bank_account_number,bank_account_name',
@@ -39,8 +60,20 @@ class SuperAdminPayoutController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Daftar pencairan berhasil dimuat',
-            'data' => $payouts,
+            'message' => 'Data keuangan dan pencairan berhasil dimuat',
+            'data' => [
+                'summary' => [
+                    'total_gross' => $totalGross,
+                    'platform_commission' => $platformCommission,
+                    'hotel_net_revenue' => $hotelNetRevenue,
+                    'commission_rate' => $rate
+                ],
+                'hotel_breakdown' => [
+                    'data' => $hotelStats['hotels'] ?? [],
+                    'pagination' => $hotelStats['pagination'] ?? null
+                ],
+                'payouts' => $payouts
+            ]
         ], 200);
     }
 

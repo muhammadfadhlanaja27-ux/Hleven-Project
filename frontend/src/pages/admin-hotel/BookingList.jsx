@@ -572,7 +572,7 @@ export default function BookingList() {
             className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-[#E5E1DA] rounded-xl text-sm font-semibold text-[#2D312C] hover:border-[#506147] transition-colors"
           >
             <span className="material-symbols-outlined text-[19px]">key</span>
-            Input Kode Hotel
+            Input Booking Code
           </button>
           <button
             type="button"
@@ -1464,7 +1464,7 @@ export default function BookingList() {
             </div>
 
             <label className="block text-xs font-semibold text-[#2D312C] space-y-1.5">
-              Kode booking untuk check-in
+              Booking code for check-in
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1479,9 +1479,9 @@ export default function BookingList() {
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(manualBookingCode);
-                        toast.success("Kode booking disalin.");
+                        toast.success("Booking code copied.");
                       } catch {
-                        toast.error("Kode booking gagal disalin.");
+                        toast.error("Failed to copy booking code.");
                       }
                     }}
                     title="Salin kode booking"

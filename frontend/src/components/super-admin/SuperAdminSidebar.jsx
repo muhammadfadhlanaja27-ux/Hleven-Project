@@ -10,9 +10,8 @@ const navItems = [
   { name: "Appeal Management", to: "/super-admin/appeals", icon: "gavel" },
   { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
   { name: "Hotel Health", to: "/super-admin/hotel-health", icon: "monitor_heart" },
-  { name: "Payout Management", to: "/super-admin/payouts", icon: "account_balance_wallet" },
-  { name: "Platform Payouts", to: "/super-admin/platform-payouts", icon: "request_quote" },
-  { name: "Hotel Wallet & Commission", to: "/super-admin/wallet", icon: "payments" },
+  { name: "Finance & Payouts", to: "/super-admin/finance", icon: "payments" },
+  { name: "System Reports", to: "/super-admin/reports", icon: "analytics" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {

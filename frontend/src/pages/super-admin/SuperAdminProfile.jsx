@@ -3,20 +3,20 @@ import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 const SuperAdminProfile = () => {
-  // State untuk Data Profil
+  // Profile Data State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   
-  // State untuk Ubah Password
+  // Password Change State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // State untuk Status UI
+  // UI Status State
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
 
-  // Ambil data user yang sedang login dari localStorage saat halaman dimuat
+  // Fetch logged-in user data from localStorage on load
   useEffect(() => {
     try {
       const userData = JSON.parse(localStorage.getItem('user'));
@@ -29,7 +29,7 @@ const SuperAdminProfile = () => {
     }
   }, []);
 
-  // Fungsi Update Profil
+  // Profile Update Function
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoadingProfile(true);
@@ -37,7 +37,7 @@ const SuperAdminProfile = () => {
     const updatePromise = api.put('/user/profile', { name, email });
 
     toast.promise(updatePromise, {
-      loading: 'Menyimpan profil...',
+      loading: 'Saving profile...',
       success: () => {
         try {
           const userData = JSON.parse(localStorage.getItem('user')) || {};
@@ -47,7 +47,7 @@ const SuperAdminProfile = () => {
         } catch (err) {
           console.error(err);
         }
-        return 'Profil berhasil diperbarui!';
+        return 'Profile updated successfully!';
       },
       error: (err) => err.response?.data?.message || 'Failed to update profile.'
     });
@@ -61,12 +61,12 @@ const SuperAdminProfile = () => {
     }
   };
 
-  // Fungsi Update Password
+  // Password Update Function
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     
     if (newPassword !== confirmPassword) {
-      toast.error('Password baru dan konfirmasi tidak cocok!');
+      toast.error('New password and confirmation do not match!');
       return;
     }
 
@@ -79,12 +79,12 @@ const SuperAdminProfile = () => {
     });
 
     toast.promise(updatePromise, {
-      loading: 'Memperbarui password...',
+      loading: 'Updating password...',
       success: () => {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        return 'Password berhasil diubah!';
+        return 'Password changed successfully!';
       },
       error: (err) => err.response?.data?.message || 'Failed to change password.'
     });
@@ -103,15 +103,15 @@ const SuperAdminProfile = () => {
       {/* Header */}
       <div>
         <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-          Pengaturan Profil
+          Profile Settings
         </h2>
         <p className="font-hanken text-[15px] text-[#747872] mt-1">
-          Kelola informasi data diri dan keamanan akun Super Administrator H'Leven.
+          Manage your personal information and Super Administrator account security.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Form Ubah Profil */}
+        {/* Profile Update Form */}
         <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
             <span className="material-symbols-outlined text-[#768875]">person</span>
@@ -159,7 +159,7 @@ const SuperAdminProfile = () => {
           </form>
         </div>
 
-        {/* Form Ubah Password */}
+        {/* Password Update Form */}
         <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
             <span className="material-symbols-outlined text-[#768875]">lock</span>
@@ -169,7 +169,7 @@ const SuperAdminProfile = () => {
           <form onSubmit={handleUpdatePassword} className="space-y-5">
             <div>
               <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Password Saat Ini
+                Current Password
               </label>
               <input
                 type="password"
@@ -184,7 +184,7 @@ const SuperAdminProfile = () => {
 
             <div>
               <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Password Baru
+                New Password
               </label>
               <input
                 type="password"
@@ -219,7 +219,7 @@ const SuperAdminProfile = () => {
                 loadingPassword ? 'bg-[#747872] cursor-not-allowed' : 'bg-[#2F3231] hover:bg-[#1a1c1b] shadow-sm'
               }`}
             >
-              {loadingPassword ? 'Memperbarui...' : 'Perbarui Password'}
+              {loadingPassword ? 'Updating...' : 'Update Password'}
             </button>
           </form>
         </div>

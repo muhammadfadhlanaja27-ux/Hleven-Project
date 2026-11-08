@@ -333,7 +333,7 @@ export default function RoomCalendar() {
                 disabled={saving}
                 className="flex-1 h-11 rounded-xl bg-[#506147] text-white text-sm font-bold hover:bg-[#3b4b33] transition-all shadow-sm active:scale-[0.98] disabled:bg-[#a2ba9c]"
               >
-                {saving ? "Memproses..." : "Simpan Perubahan"}
+                {saving ? "Processing..." : "Save Changes"}
               </button>
             </div>
           </div>

@@ -42,10 +42,10 @@ const Login = () => {
 
     try {
       const response = await api.post('/forgot-password', { email: forgotEmail });
-      toast.success(response.data?.message || 'Kode OTP dikirim ke email');
+      toast.success(response.data?.message || 'OTP code sent to email');
       setForgotStep(2);
     } catch (err) {
-                  setForgotError(err.response?.data?.message || 'Failed to send OTP. Ensure the email is registered.');
+      setForgotError(err.response?.data?.message || 'Failed to send OTP. Ensure the email is registered.');
     } finally {
       setForgotLoading(false);
     }
@@ -61,10 +61,10 @@ const Login = () => {
         email: forgotEmail,
         otp: forgotOtp,
       });
-      toast.success(response.data?.message || 'Kode OTP valid');
+      toast.success(response.data?.message || 'OTP code is valid');
       setForgotStep(3);
     } catch (err) {
-      setForgotError(err.response?.data?.message || 'Kode OTP tidak valid atau sudah kadaluarsa.');
+      setForgotError(err.response?.data?.message || 'OTP code is invalid or expired.');
     } finally {
       setForgotLoading(false);
     }
@@ -90,7 +90,7 @@ const Login = () => {
       toast.success(response.data?.message || 'Password updated successfully');
       resetForgotState();
     } catch (err) {
-      setForgotError(err.response?.data?.message || 'Reset password gagal. Periksa kembali kode OTP.');
+      setForgotError(err.response?.data?.message || 'Failed to reset password. Please check the OTP code.');
     } finally {
       setForgotLoading(false);
     }
@@ -98,11 +98,16 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Menambah pencegahan bubbling tambahan
     setError('');
     setLoading(true);
 
+    console.log("Submit clicked, data:", { email: formData.email, passLength: formData.password.length });
+
     try {
-      const response = await api.post('/login', formData);
+      const response = await api.post('/login', formData, {
+        skipAuthRedirect: true
+      });
 
       const token =
         response.data?.data?.access_token ||
@@ -113,7 +118,7 @@ const Login = () => {
       const user = response.data?.data?.user || response.data?.user;
 
       if (!token) {
-        throw new Error('Token autentikasi tidak ditemukan dari server.');
+        throw new Error('Authentication token not found from server.');
       }
 
       localStorage.setItem('token', token);
@@ -261,7 +266,7 @@ const Login = () => {
 
           {/* Google Login Button */}
           <button
-            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/google`}
+            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'https://api.hleven.my.id/api/v1'}/auth/google`}
             className="w-full flex justify-center items-center gap-3 py-3 px-4 rounded border border-[#DCCFC0] bg-white text-[#444842] hover:bg-[#faf3ea] transition-all duration-200 font-label-md text-[14px] shadow-sm cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 18 18">

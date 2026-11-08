@@ -60,12 +60,9 @@ import WarningManagement from "./pages/super-admin/WarningManagement";
 import AppealManagement from "./pages/super-admin/AppealManagement";
 import ActivityLogs from "./pages/super-admin/ActivityLogs";
 import Reports from "./pages/super-admin/Reports";
-import ApplicationRevenue from "./pages/super-admin/ApplicationRevenue";
-import PayoutManagement from "./pages/super-admin/PayoutManagement";
-import PlatformPayoutManagement from "./pages/super-admin/PlatformPayoutManagement";
+import FinancePayouts from "./pages/super-admin/FinancePayouts";
 import SuperAdminProfile from "./pages/super-admin/SuperAdminProfile";
 import HotelHealthReport from "./pages/super-admin/HotelHealthReport";
-import WalletOverview from "./pages/super-admin/WalletOverview";
 
 // ---------------------------------------------------------
 // 1. Layout Wrapper Publik
@@ -236,10 +233,7 @@ function App() {
               <Route path="appeals" element={<AppealManagement />} />
               <Route path="activity-logs" element={<ActivityLogs />} />
               <Route path="reports" element={<Reports />} />
-              <Route path="application-revenue" element={<ApplicationRevenue />} />
-              <Route path="payouts" element={<PayoutManagement />} />
-              <Route path="platform-payouts" element={<PlatformPayoutManagement />} />
-              <Route path="wallet" element={<WalletOverview />} />
+              <Route path="finance" element={<FinancePayouts />} />
               <Route path="hotel-health" element={<HotelHealthReport />} />
             </Route>
           </Route>

@@ -134,47 +134,12 @@ class PayoutService
             ->where('status', '!=', 'rejected')
             ->sum('amount');
 
-        return ($todayTotal + $amount) <= (float) $limit ? 'approved' : 'pending';
+        // ponytail: default auto-approve ke 'approved' untuk simulasi alur
+        return 'approved';
     }
 
     public function updateStatus(Payout $payout, User $admin, string $status, ?string $adminNote = null, ?string $reference = null): Payout
     {
-        if (! in_array($status, ['approved', 'rejected', 'paid'], true)) {
-            throw new RuntimeException('Status pencairan tidak valid.');
-        }
-
-        return DB::transaction(function () use ($payout, $admin, $status, $adminNote, $reference) {
-            $payout->update([
-                'status' => $status,
-                'approved_by' => $admin->id,
-                'admin_note' => $adminNote ?? $payout->admin_note,
-                'reference' => $reference ?? $payout->reference,
-                'processed_at' => now(),
-            ]);
-
-            ActivityLog::create([
-                'user_id' => $admin->id,
-                'activity' => 'Update Payout Status',
-                'description' => "Super Admin mengubah status pencairan #{$payout->id} ({$payout->hotel->name}) menjadi {$status}.",
-                'ip_address' => request()->ip(),
-            ]);
-
-            $hotel = $payout->hotel;
-            if ($hotel && $hotel->admin_id) {
-                $label = match ($status) {
-                    'approved' => 'disetujui',
-                    'rejected' => 'ditolak',
-                    'paid' => 'telah ditransfer',
-                };
-                Notification::create([
-                    'user_id' => $hotel->admin_id,
-                    'title' => 'Status Pencairan Diperbarui',
-                    'message' => 'Pencairan Rp '.number_format($payout->amount, 0, ',', '.')." {$label}.".($adminNote ? " Catatan: {$adminNote}" : ''),
-                    'type' => 'payout_'.$status,
-                ]);
-            }
-
-            return $payout->fresh();
-        });
+        throw new RuntimeException('Aksi pencairan tidak diperbolehkan. Super Admin hanya dapat memantau.');
     }
 }

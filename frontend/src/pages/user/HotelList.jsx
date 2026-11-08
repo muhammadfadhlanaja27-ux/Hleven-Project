@@ -328,7 +328,7 @@ const HotelList = () => {
           <div className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
             <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-3">
               <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
-                Filter Pencarian
+                Search Filters
               </h3>
               {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedFacilities.length > 0) && (
                 <button
@@ -391,7 +391,7 @@ const HotelList = () => {
             {/* Rating Ulasan Filter */}
             <div className="mb-6">
               <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
-                Rating Ulasan
+                Review Ratings
               </h4>
               <div className="flex flex-col gap-2.5">
                 {[5, 4, 3, 2, 1].map((rating) => (
@@ -460,7 +460,7 @@ const HotelList = () => {
           <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
             <div>
               <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-                Hasil Pencarian ({filteredHotels.length})
+                Search Results ({filteredHotels.length})
               </h2>
               <p className="font-body-md text-sm text-[#444842]">
                 Ready-to-stay accommodation options for your business or vacation.

@@ -120,7 +120,14 @@ const UserProfile = () => {
     }
   };
 
+  const resolvedRole = user?.role || currentUserRole || "user";
+  const isAdminOrSuperAdmin =
+    resolvedRole === "admin_hotel" || resolvedRole === "super_admin";
+
   const fetchUserBookings = useCallback(async (forceRefresh = false, silent = false) => {
+    // Admin hotel & super admin tidak bisa melihat booking history sebagai tamu
+    if (isAdminOrSuperAdmin) return;
+    
     if (!silent) setBookingsLoading(true);
     try {
       const TTL_30DETIK = 30 * 1000;
@@ -140,7 +147,7 @@ const UserProfile = () => {
     } finally {
       if (!silent) setBookingsLoading(false);
     }
-  }, []);
+  }, [isAdminOrSuperAdmin]);
 
   const fetchPartnerStatus = async () => {
     setPartnerLoading(true);
@@ -586,10 +593,6 @@ const UserProfile = () => {
     }
   };
 
-  const resolvedRole = user?.role || currentUserRole || "user";
-  const isAdminOrSuperAdmin =
-    resolvedRole === "admin_hotel" || resolvedRole === "super_admin";
-
   const getAvatarUrl = () => {
     const a = user?.avatar || user?.avatar_url || user?.avatarPreview;
     if (!a) return null;
@@ -605,8 +608,8 @@ const UserProfile = () => {
 
   const accountStatus = (() => {
     const s = String(user?.status || resolvedRole || "").toLowerCase();
-    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
-    if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
+    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Inactive", color: "text-[#ba1a1a]" };
+    if (["pending", "waiting", "review"].includes(s)) return { label: "Pending", color: "text-[#9B5235]" };
     if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
     if (["super_admin"].includes(s)) return { label: "Super Admin", color: "text-[#778873]" };
     return { label: "Active", color: "text-[#778873]" };
@@ -764,18 +767,20 @@ const UserProfile = () => {
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab("history")}
-                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
-                  activeTab === "history"
-                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
-                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
-                }`}
-              >
-                <span className="material-symbols-outlined text-xl">history</span>
-                Riwayat Pemesanan (Booking History)
-              </button>
+              {!isAdminOrSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                    activeTab === "history"
+                      ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                      : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xl">history</span>
+                  Riwayat Pemesanan (Booking History)
+                </button>
+              )}
 
               <button
                 type="button"

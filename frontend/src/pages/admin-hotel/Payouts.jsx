@@ -67,7 +67,7 @@ export default function Payouts() {
       const payload = { type: editingDestination.type, channel_code: editingDestination.code, ...destinationForm };
       if (editingDestination.id) await api.put(`/admin/wallet/destinations/${editingDestination.id}`, payload);
       else await api.post("/admin/wallet/destinations", payload);
-      toast.success("Tujuan pencairan disimpan.");
+      toast.success("Payout destination saved.");
       setEditingDestination(null);
       fetchData();
     } catch (err) {

@@ -439,6 +439,10 @@ const HotelDetail = () => {
     filterSmoking ||
     filterRefundable;
 
+  const handleImageError = (e) => {
+    e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
+  };
+
   return (
     <div className="bg-[#FAF8F5] text-[#1e1b16] font-body-md antialiased min-h-screen">
       <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-8 pb-20 text-left">
@@ -475,11 +479,12 @@ const HotelDetail = () => {
                     setLightboxOpen(true);
                   }}
                 >
-                  <img
-                    src={photosList[0]}
-                    alt={hotel.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+                <img
+                  src={photosList[0]}
+                  alt={hotel.name}
+                  onError={handleImageError}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
                 </div>
                 {photosList[1] && (
                   <div
@@ -920,11 +925,11 @@ const HotelDetail = () => {
                     className="flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md transition-shadow"
                   >
                     <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-[#E8E2D9] overflow-hidden">
-                      {room.thumbnail && !imgErrors[room.id] ? (
+                      {room.thumbnail ? (
                         <img
                           src={room.thumbnail}
                           alt={room.name || "Kamar Hotel"}
-                          onError={() => setImgErrors((prev) => ({ ...prev, [room.id]: true }))}
+                          onError={handleImageError}
                           className="w-full h-full object-cover absolute inset-0"
                         />
                       ) : (

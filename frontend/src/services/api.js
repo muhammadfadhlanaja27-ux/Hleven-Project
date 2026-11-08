@@ -2,7 +2,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'https://api.hleven.my.id/api/v1',
   headers: {
     'Accept': 'application/json',
   },
@@ -28,7 +28,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const status = error.response.status;
-      const message = error.response.data?.message || 'Terjadi kesalahan sistem.';
+      const message = error.response.data?.message || 'System error occurred.';
 
       if (status === 401 && !error.config?.skipAuthRedirect) {
         localStorage.removeItem('token');
@@ -37,12 +37,12 @@ api.interceptors.response.use(
       } else if (status === 403 && error.response.data?.blocked) {
         window.location.href = '/admin/suspended';
       } else if (status >= 500) {
-        toast.error('Terjadi kesalahan pada server. Silakan coba lagi nanti.');
+        toast.error('Server error occurred. Please try again later.');
       } else if (status !== 422 && status !== 401 && status !== 403) {
         toast.error(message);
       }
     } else {
-      toast.error('Gagal terhubung ke server.');
+      toast.error('Failed to connect to server.');
     }
     return Promise.reject(error);
   }

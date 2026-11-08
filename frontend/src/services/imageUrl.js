@@ -1,6 +1,6 @@
 // Helper to resolve backend storage URL dynamically based on environment
 const getBackendBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+  const apiUrl = import.meta.env.VITE_API_URL || "https://api.hleven.my.id/api/v1";
   return apiUrl.replace(/\/api(?:\/v1)?\/?$/, "");
 };
 
@@ -9,11 +9,9 @@ export const getStorageUrl = (path = "") => {
   const str = String(path).trim();
   if (!str) return "";
 
-  if (str.includes("storage.supabase.co/storage/v1/s3")) {
-    return str.replace(".storage.supabase.co/storage/v1/s3", ".supabase.co/storage/v1/object/public");
-  }
-  if (str.includes("/storage/v1/s3")) {
-    return str.replace("/storage/v1/s3", "/storage/v1/object/public");
+  // Jika path mengarah ke gambar lokal khusus (Padma/Budi)
+  if (str.startsWith("/images/")) {
+    return str;
   }
 
   // Already absolute URL, blob URL, or data URI: keep as-is.
@@ -23,12 +21,9 @@ export const getStorageUrl = (path = "") => {
 
   const base = getBackendBaseUrl();
   let cleanPath = str.replace(/^\/+/, "");
-  if (cleanPath.startsWith("public/")) {
-    cleanPath = cleanPath.replace(/^public\//, "");
-  }
-  if (cleanPath.startsWith("storage/")) {
-    cleanPath = cleanPath.replace(/^storage\//, "");
-  }
+  
+  if (cleanPath.startsWith("public/")) cleanPath = cleanPath.replace(/^public\//, "");
+  if (cleanPath.startsWith("storage/")) cleanPath = cleanPath.replace(/^storage\//, "");
 
   if (str.startsWith("/storage/") || str.startsWith("storage/")) {
     return `${base}/${str.startsWith("/") ? str.slice(1) : str}`;

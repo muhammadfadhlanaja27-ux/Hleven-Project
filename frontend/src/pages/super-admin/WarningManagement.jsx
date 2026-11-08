@@ -199,9 +199,9 @@ const WarningManagement = () => {
             className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
           >
             <option value="">All Statuses</option>
-            <option value="unread">Belum Dilihat</option>
-            <option value="read">Dilihat</option>
-            <option value="closed">Selesai</option>
+            <option value="unread">Unread</option>
+            <option value="read">Read</option>
+            <option value="closed">Completed</option>
           </select>
 
           {/* Refresh Button */}
@@ -229,18 +229,18 @@ const WarningManagement = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
-            <p className="font-hanken text-[14px] text-[#747872]">Memuat data surat peringatan...</p>
+            <p className="font-hanken text-[14px] text-[#747872]">Loading warning data...</p>
           </div>
         ) : error ? (
           <div className="p-12 text-center space-y-3 font-hanken">
             <p className="text-[#ba1a1a] font-medium text-[15px]">
-              Terjadi kesalahan saat memuat data teguran.
+              An error occurred while loading warning data.
             </p>
             <button
               onClick={fetchWarnings}
               className="px-4 py-2 bg-[#768875] text-white rounded-lg text-[13px] font-semibold hover:opacity-90 transition-opacity"
             >
-              Coba Lagi
+              Try Again
             </button>
           </div>
         ) : (
@@ -322,17 +322,17 @@ const WarningManagement = () => {
                             {isClosed ? (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#d1eac9] text-[#0c200c] text-[11px] font-semibold uppercase tracking-[0.05em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#768875]"></span>
-                                Selesai
+                                Completed
                               </span>
                             ) : isRead ? (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#dbeafe] text-[#1e40af] text-[11px] font-semibold uppercase tracking-[0.05em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]"></span>
-                                Dilihat
+                                Read
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ffdad6] text-[#93000a] text-[11px] font-semibold uppercase tracking-[0.05em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]"></span>
-                                Belum Dilihat
+                                Unread
                               </span>
                             )}
                             {row.read_at && (
@@ -364,16 +364,16 @@ const WarningManagement = () => {
                                 </button>
                               )}
 
-                              <button
-                                onClick={() => {
-                                  setSelectedWarning(row);
-                                  setIsDetailModalOpen(true);
-                                }}
-                                className="px-3 py-1.5 border border-[#E5E0D8] text-[#434842] rounded-lg font-hanken text-[12px] font-semibold hover:bg-[#F9F6F1] transition-all"
-                                title="Lihat Detail"
-                              >
-                                Detail
-                              </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedWarning(row);
+                                    setIsDetailModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 border border-[#E5E0D8] text-[#434842] rounded-lg font-hanken text-[12px] font-semibold hover:bg-[#F9F6F1] transition-all"
+                                  title="View Detail"
+                                >
+                                  Detail
+                                </button>
                             </div>
                           </td>
                         </tr>
@@ -385,7 +385,7 @@ const WarningManagement = () => {
                         colSpan="5"
                         className="py-12 text-center text-[#747872] font-hanken text-[14px]"
                       >
-                        Tidak ada surat peringatan kepatuhan yang ditemukan.
+                        No compliance warnings found.
                       </td>
                     </tr>
                   )}
@@ -395,12 +395,12 @@ const WarningManagement = () => {
 
             {/* Pagination Controls */}
             <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm text-[#747872] font-hanken">
-              <span className="text-[13px]">
-                Menampilkan{" "}
+              <div className="text-[13px]">
+                Showing{" "}
                 {totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}{" "}
-                hingga {Math.min(currentPage * itemsPerPage, totalItems)} dari{" "}
-                {totalItems} peringatan
-              </span>
+                to {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
+                {totalItems} warnings
+              </div>
 
               <div className="flex items-center gap-1.5">
                 <button
@@ -478,14 +478,14 @@ const WarningManagement = () => {
                 </p>
               </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
-                  Subject / Perihal
-                </label>
-                <p className="font-medium text-[#191c1b]">
-                  {selectedWarning.title}
-                </p>
-              </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
+                    Subject
+                  </label>
+                  <p className="font-medium text-[#191c1b]">
+                    {selectedWarning.title}
+                  </p>
+                </div>
 
               <div>
                 <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
@@ -514,44 +514,44 @@ const WarningManagement = () => {
                   </label>
                   {(() => {
                     const s = (selectedWarning.status || "unread").toLowerCase();
-                    if (s === "closed" || s === "resolved") return (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d1eac9] text-[#0c200c] text-[11px] font-semibold uppercase tracking-[0.05em]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#768875]"></span>
-                        Selesai
-                      </span>
-                    );
-                    if (s === "read") return (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dbeafe] text-[#1e40af] text-[11px] font-semibold uppercase tracking-[0.05em]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]"></span>
-                        Dilihat
-                      </span>
-                    );
-                    return (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ffdad6] text-[#93000a] text-[11px] font-semibold uppercase tracking-[0.05em]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]"></span>
-                        Belum Dilihat
-                      </span>
+                     if (s === "closed" || s === "resolved") return (
+                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d1eac9] text-[#0c200c] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                         <span className="w-1.5 h-1.5 rounded-full bg-[#768875]"></span>
+                         Completed
+                       </span>
+                     );
+                     if (s === "read") return (
+                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dbeafe] text-[#1e40af] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                         <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]"></span>
+                         Read
+                       </span>
+                     );
+                     return (
+                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ffdad6] text-[#93000a] text-[11px] font-semibold uppercase tracking-[0.05em]">
+                         <span className="w-1.5 h-1.5 rounded-full bg-[#ba1a1a]"></span>
+                         Unread
+                       </span>
                     );
                   })()}
                 </div>
               </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
-                  Waktu Dilihat oleh Mitra
-                </label>
-                <p className="text-xs text-[#434842]">
-                  {selectedWarning.read_at
-                    ? new Date(selectedWarning.read_at).toLocaleString("id-ID", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "Belum dilihat"}
-                </p>
-              </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] block mb-1">
+                    Viewed Time by Partner
+                  </label>
+                  <p className="text-xs text-[#434842]">
+                    {selectedWarning.read_at
+                      ? new Date(selectedWarning.read_at).toLocaleString("en-US", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Not viewed yet"}
+                  </p>
+                </div>
 
               {/* Status Banding jika ada */}
               {Array.isArray(selectedWarning.appeals) && selectedWarning.appeals.length > 0 && (
@@ -603,9 +603,9 @@ const WarningManagement = () => {
                 <h3 className="font-newsreader text-[20px] font-semibold text-[#191c1b] font-['Newsreader',serif]">
                   Issue Compliance Warning
                 </h3>
-                <p className="text-xs text-[#747872] mt-0.5">
-                  Terbitkan surat peringatan resmi kepada mitra hotel.
-                </p>
+                 <p className="text-xs text-[#747872] mt-0.5">
+                   Issue official warning letter to partner hotel.
+                 </p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -636,23 +636,23 @@ const WarningManagement = () => {
                   />
                   {showHotelDropdown && hotelSearch && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-[#E5E0D8] rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filteredHotels.length > 0 ? (
-                        filteredHotels.map((hotel) => (
-                          <div
-                            key={hotel.id}
-                            className="px-4 py-2 hover:bg-[#F9F6F1] cursor-pointer text-[13.5px]"
-                            onClick={() => {
-                              setNewWarning({ ...newWarning, hotel_id: hotel.id });
-                              setHotelSearch(hotel.name);
-                              setShowHotelDropdown(false);
-                            }}
-                          >
-                            {hotel.name}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2 text-[13px] text-[#747872]">Hotel tidak ditemukan</div>
-                      )}
+                     {filteredHotels.length > 0 ? (
+                         filteredHotels.map((hotel) => (
+                           <div
+                             key={hotel.id}
+                             className="px-4 py-2 hover:bg-[#F9F6F1] cursor-pointer text-[13.5px]"
+                             onClick={() => {
+                               setNewWarning({ ...newWarning, hotel_id: hotel.id });
+                               setHotelSearch(hotel.name);
+                               setShowHotelDropdown(false);
+                             }}
+                           >
+                             {hotel.name}
+                           </div>
+                         ))
+                       ) : (
+                         <div className="px-4 py-2 text-[13px] text-[#747872]">Hotel not found</div>
+                       )}
                     </div>
                   )}
                 </div>
@@ -676,18 +676,18 @@ const WarningManagement = () => {
 
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Warning Message &amp; Description <span className="text-[#ba1a1a]">*</span>
-                </label>
-                <textarea
-                  required
-                  rows="4"
-                  value={newWarning.message}
-                  onChange={(e) =>
-                    setNewWarning({ ...newWarning, message: e.target.value })
-                  }
-                  placeholder="Jelaskan alasan dan instruksi tindak lanjut yang harus dilakukan mitra..."
-                  className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[13.5px] text-[#191c1b] placeholder-[#747872] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all resize-none"
-                ></textarea>
+                   Warning Message &amp; Description <span className="text-[#ba1a1a]">*</span>
+                 </label>
+                 <textarea
+                   required
+                   rows="4"
+                   value={newWarning.message}
+                   onChange={(e) =>
+                     setNewWarning({ ...newWarning, message: e.target.value })
+                   }
+                   placeholder="Explain reason and follow-up instructions for the partner..."
+                   className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[13.5px] text-[#191c1b] placeholder-[#747872] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all resize-none"
+                 ></textarea>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-[#E5E0D8]">
@@ -718,8 +718,8 @@ const WarningManagement = () => {
         open={!!pendingResolve}
         type="success"
          title="Mark Warning Resolved"
-        message="Tandai peringatan kepatuhan ini sebagai Selesai (Resolved)?"
-        confirmText="Ya, Tandai Resolved"
+         message="Mark this compliance warning as Completed (Resolved)?"
+         confirmText="Yes, Mark Resolved"
         processing={isResolving}
         onConfirm={performResolveWarning}
         onCancel={() => setPendingResolve(null)}
