@@ -50,8 +50,8 @@ class AppealController extends Controller
                 return response()->json(['success' => false, 'message' => 'Banding untuk peringatan ini sedang ditinjau'], 400);
             }
         } else {
-            if ($hotel->status !== 'blocked') {
-                return response()->json(['success' => false, 'message' => 'Hotel tidak dalam status diblokir'], 400);
+            if (!in_array($hotel->status, ['blocked', 'inactive'])) {
+                return response()->json(['success' => false, 'message' => 'Hotel tidak dalam status diblokir atau non-aktif'], 400);
             }
             $hasPendingSuspendAppeal = Appeal::where('hotel_id', $hotel->id)
                 ->whereNull('warning_id')

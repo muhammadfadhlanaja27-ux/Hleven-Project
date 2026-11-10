@@ -130,7 +130,7 @@ export default function RoomCreate() {
   const ROOM_POLICY_TEMPLATE = `Waktu Check-in & Check-out
 Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
 Kebijakan Bebas Asap Rokok
-Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+All rooms are non-smoking. Designated smoking area available on the outdoor terrace.
 Hewan Peliharaan
 Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
 Pembatalan
@@ -185,14 +185,14 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
         setBedTypes(Array.isArray(bedTypeData) ? bedTypeData : []);
       } else {
         console.error("Failed to load bed types:", bedTypeResult.reason);
-        toast.error("Gagal memuat daftar tipe kasur.");
+        toast.error("Failed to load bed type list.");
       }
       if (categoryResult.status === "fulfilled") {
         const categoryData = categoryResult.value.data?.data ?? [];
         setRoomTypeCategories(Array.isArray(categoryData) ? categoryData : []);
       } else {
         console.error("Failed to load room type categories:", categoryResult.reason);
-        toast.error("Gagal memuat daftar tipe kamar.");
+        toast.error("Failed to load room type list.");
       }
       setIsLoadingFacilities(false);
     };
@@ -291,7 +291,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
     }
 
     if (!formData.room_type_category_id) {
-      newErrors.room_type_category_id = "Pilih tipe kamar.";
+      newErrors.room_type_category_id = "Select room type.";
     }
 
     if (!formData.weekday_price || Number(formData.weekday_price) <= 0) {
@@ -303,7 +303,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
     }
 
     if (!formData.bed_type_id) {
-      newErrors.bed_type_id = "Pilih tipe tempat tidur.";
+      newErrors.bed_type_id = "Select bed type.";
     }
 
     if (!formData.stock || Number(formData.stock) < 1) {
@@ -357,7 +357,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
     } catch (error) {
       console.error("Failed to create room:", error);
       const msg =
-        error.response?.data?.message || "Gagal membuat tipe kamar di server.";
+        error.response?.data?.message || "Failed to create room type on server.";
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -446,7 +446,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
                 } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] transition-all cursor-pointer`}
               >
                 <option value="" disabled>
-                  Pilih tipe kamar
+                   Select room type
                 </option>
                 {roomTypeCategories
                   .filter((category) => category.status === "active")
@@ -463,7 +463,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
               )}
               {roomTypeCategories.length === 0 && (
                 <span className="text-[11px] text-[#6B6E6A]">
-                  Belum ada tipe kamar. Tambahkan dulu di menu{" "}
+                   No room types yet. Add them first in...
                   <Link to="/admin/room-types" className="font-semibold text-[#506147] underline">
                     Room Types Management
                   </Link>
@@ -505,7 +505,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
                 errors.bed_type_id ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
               } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all cursor-pointer`}
             >
-              <option value="">Pilih Tipe Kasur</option>
+               <option value="">Select Bed Type</option>
               {bedTypes.filter((b) =>
                 b.status === "active" || String(b.id) === String(formData.bed_type_id)
               ).map((b) => (
@@ -520,7 +520,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
             )}
             {bedTypes.length === 0 && (
               <span className="text-[11px] text-[#6B6E6A]">
-                Belum ada tipe tempat tidur. Tambahkan dulu di menu Bed Types Management.
+                 No bed types yet. Add them first in Bed Types Management.
               </span>
             )}
             {(() => {
@@ -738,7 +738,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
                     <span className="material-symbols-outlined text-[#ba1a1a] text-[18px]">
                       block
                     </span>
-                    Tidak Bisa Refund
+                           Non-Refundable
                   </span>
                   <p className="text-xs text-[#6B6E6A] leading-relaxed">
                     Pembayaran bersifat non-refundable. Tamu tidak dapat mengembalikan dana apabila membatalkan reservasi.
@@ -767,7 +767,7 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
           </div>
 
           <div className="bg-[#F6F3EF] p-4 rounded-xl text-xs text-[#6B6E6A] border border-[#E5E1DA]">
-            <p className="font-semibold text-[#2D312C]">Informasi Stok Tersedia (Available Stock)</p>
+            <p className="font-semibold text-[#2D312C]">Available Stock Information</p>
             <p className="mt-0.5">
               Available stock dikalkulasikan secara otomatis berdasarkan rumus: <code className="bg-white px-1.5 py-0.5 rounded border">Stock - Occupied</code>.
             </p>
@@ -793,8 +793,8 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
               type="search"
               value={facilitySearch}
               onChange={(event) => setFacilitySearch(event.target.value)}
-              placeholder="Cari fasilitas kamar..."
-              aria-label="Cari fasilitas kamar"
+               placeholder="Search room facilities..."
+               aria-label="Search room facilities"
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-[#E5E0D8] bg-white text-sm focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
             />
           </div>
@@ -803,8 +803,8 @@ Pembatalan tersedia: Refund otomatis berlaku jika pembatalan dilakukan lebih dar
             {roomFacilities.length === 0 && (
               <div className="col-span-full py-8 text-center text-xs text-[#6B6E6A]">
                 {isLoadingFacilities
-                  ? "Memuat daftar fasilitas kamar..."
-                  : "Belum ada fasilitas kamar di katalog."}
+                  ? "Loading room facility list..."
+                   : "No room facilities in the catalog."}
               </div>
             )}
             {roomFacilities

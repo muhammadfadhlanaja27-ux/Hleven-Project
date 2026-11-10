@@ -129,7 +129,19 @@ class SuperAdminDashboardService
         ];
     }
 
-    // TAMBAHKAN METHOD INI UNTUK LIST HOTEL DI MONITORING
+    public function getWalletStats(): array
+    {
+        $rate = (float) config('hleven.commission_rate', 0.05);
+        $totalPlatformCommission = (float) Payment::where('payment_status', 'success')
+            ->sum(DB::raw("gross_amount * {$rate}"));
+        
+        return [
+            'commission_total' => $totalPlatformCommission,
+            'commission_held' => 0.0,
+            'commission_available' => $totalPlatformCommission,
+            'withdrawals' => ['data' => []],
+        ];
+    }
     public function getAllHotelsForMonitoring($search = null, $status = null)
     {
         $query = Hotel::with(['admin:id,email', 'city']);
@@ -148,15 +160,25 @@ class SuperAdminDashboardService
 
     public function getHotelHealthReport(): array
     {
-        return Hotel::with(['reviews:hotel_id,rating'])
-            ->withCount(['bookings', 'bookings as cancelled_bookings_count' => function ($q) {
-                $q->where('status', 'cancelled');
-            }])
+        return Hotel::query()
+            ->withAvg('reviews', 'rating')
+            ->withCount([
+                'bookings',
+                'bookings as cancelled_bookings_count' => function ($q) {
+                    $q->where('status', 'cancelled');
+                }
+            ])
             ->get()
             ->map(function ($hotel) {
-                $avgRating = $hotel->reviews->avg('rating') ?? 5.0;
+                $avgRating = $hotel->reviews_avg_rating ?? 5.0;
                 $totalBookings = $hotel->bookings_count ?: 1;
                 $cancelRate = $hotel->cancelled_bookings_count / $totalBookings;
+                
+                // Lost Revenue subquery
+                $lostRevenue = \App\Models\Booking::where('hotel_id', $hotel->id)
+                    ->where('status', 'cancelled')
+                    ->join('payments', 'bookings.id', '=', 'payments.booking_id')
+                    ->sum('payments.gross_amount');
 
                 // Score: 0 - 100
                 $ratingScore = min(100, max(0, ($avgRating / 5) * 100));
@@ -169,6 +191,7 @@ class SuperAdminDashboardService
                     'health_score' => round($healthScore, 1),
                     'average_rating' => round($avgRating, 1),
                     'cancellation_rate' => round($cancelRate * 100, 1).'%',
+                    'lost_revenue' => (float) $lostRevenue,
                     'status' => $healthScore < 60 ? 'critical' : ($healthScore < 80 ? 'warning' : 'healthy'),
                 ];
             })
@@ -210,7 +233,7 @@ class SuperAdminDashboardService
         });
     }
 
-    public function getHotelCommissionStats($startDate = null, $endDate = null, $sortBy = 'platform_commission', $sortDir = 'desc', $perPage = 10, $search = null): array
+    public function getHotelCommissionStats($startDate = null, $endDate = null, $sortBy = 'platform_commission', $sortDir = 'desc', $perPage = 10, $search = null, $pageName = 'page'): array
     {
         $allowedSort = ['hotel_revenue', 'platform_commission', 'hotel_name', 'transactions_count'];
         if (! in_array($sortBy, $allowedSort)) {
@@ -243,7 +266,7 @@ class SuperAdminDashboardService
             $query->orderBy($sortBy, $sortDir);
         }
 
-        $paginated = $query->paginate($perPage);
+        $paginated = $query->paginate($perPage, ['*'], $pageName);
 
         $hotelIds = $paginated->pluck('id')->toArray();
         $cities = Hotel::whereIn('id', $hotelIds)->with('city:id,city')->get()->keyBy('id');

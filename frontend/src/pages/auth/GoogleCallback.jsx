@@ -20,15 +20,15 @@ const GoogleCallback = () => {
         // Dispatch event to update navbar/UI
         window.dispatchEvent(new Event('storage'));
         
-        toast.success('Login Google Berhasil!');
+        toast.success('Google login successful!');
         navigate('/', { replace: true });
       } catch (e) {
         console.error('Error parsing user data:', e);
-        toast.error('Gagal memproses data login.');
+        toast.error('Failed to process login data.');
         navigate('/login');
       }
     } else {
-      toast.error('Login Gagal atau Dibatalkan.');
+      toast.error('Login failed or cancelled.');
       navigate('/login');
     }
   }, [location, navigate]);

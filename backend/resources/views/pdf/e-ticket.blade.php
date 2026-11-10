@@ -113,9 +113,9 @@
                         <span class="badge-other">Orang Lain</span>
                     @endif
                 </div>
-                <div class="value">{{ $booking->staying_guest_name ?? '-' }}</div>
-                <div class="sub-value">{{ $booking->staying_guest_email ?? '-' }}</div>
-                <div class="sub-value">{{ $booking->staying_guest_phone ?? '-' }}</div>
+                <div class="value">{{ $booking->guest_name ?? '-' }}</div>
+                <div class="sub-value">{{ $booking->guest_email ?? '-' }}</div>
+                <div class="sub-value">{{ $booking->guest_phone ?? '-' }}</div>
             </td>
         </tr>
 

@@ -6,8 +6,8 @@ const Footer = () => {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <p>&copy; 2026 H'Leven Hotel Booking Platform. SMKN 11 Bandung.</p>
         <div className="flex gap-4">
-          <span className="cursor-pointer hover:underline">Kebijakan Privasi</span>
-          <span className="cursor-pointer hover:underline">Syarat & Ketentuan</span>
+          <span className="cursor-pointer hover:underline">Privacy Policy</span>
+          <span className="cursor-pointer hover:underline">Terms & Conditions</span>
         </div>
       </div>
     </footer>

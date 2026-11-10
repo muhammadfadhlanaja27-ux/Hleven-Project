@@ -19,25 +19,30 @@ class ReportController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
-        $period = $request->get('period', 'monthly'); // Default monthly
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
 
-        $query = Payment::whereHas('booking.bookingRooms.roomType', function ($q) use ($hotel) {
-            $q->where('hotel_id', $hotel->id);
-        })
-            ->where('payment_status', 'success')
-            ->with(['booking.user', 'booking.bookingRooms.roomType']);
-
-        // Filter berdasarkan periode waktu
-        $now = Carbon::now();
-        if ($period === 'daily') {
-            $query->whereDate('created_at', $now->toDateString());
-        } elseif ($period === 'weekly') {
-            $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
-        } elseif ($period === 'monthly') {
-            $query->whereYear('created_at', $now->year)
-                ->whereMonth('created_at', $now->month);
-        } elseif ($period === 'yearly') {
-            $query->whereYear('created_at', $now->year);
+        // Filter berdasarkan rentang tanggal atau periode
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ]);
+        } else {
+            $allowedPeriods = ['daily', 'weekly', 'monthly', 'yearly'];
+            $period = in_array($request->get('period'), $allowedPeriods) ? $request->get('period') : 'monthly';
+            $now = Carbon::now();
+            
+            if ($period === 'daily') {
+                $query->whereDate('created_at', $now->toDateString());
+            } elseif ($period === 'weekly') {
+                $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+            } elseif ($period === 'monthly') {
+                $query->whereYear('created_at', $now->year)
+                    ->whereMonth('created_at', $now->month);
+            } elseif ($period === 'yearly') {
+                $query->whereYear('created_at', $now->year);
+            }
         }
 
         $payments = $query->latest()->get();

@@ -70,7 +70,7 @@ class HotelPayoutController extends Controller
         }
 
         $data = $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => ['required', 'numeric', 'min:' . (config('hleven.min_payout', 0))],
             'note' => 'nullable|string|max:1000',
             'destination_id' => [
                 'nullable',

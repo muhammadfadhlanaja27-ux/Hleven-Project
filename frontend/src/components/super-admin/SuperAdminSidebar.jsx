@@ -2,16 +2,16 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const navItems = [
-  { name: "Ringkasan Sistem", to: "/super-admin/dashboard", icon: "dashboard" },
-  { name: "Pemantauan Hotel", to: "/super-admin/hotels", icon: "hotel" },
-  { name: "Manajemen Pengguna", to: "/super-admin/users", icon: "group" },
-  { name: "Persetujuan Mitra", to: "/super-admin/partners", icon: "handshake" },
-  { name: "Manajemen Peringatan", to: "/super-admin/warnings", icon: "warning" },
-  { name: "Manajemen Banding", to: "/super-admin/appeals", icon: "gavel" },
-  { name: "Riwayat Aktivitas", to: "/super-admin/activity-logs", icon: "history" },
-  { name: "Kesehatan Hotel", to: "/super-admin/hotel-health", icon: "monitor_heart" },
-  { name: "Manajemen Payout", to: "/super-admin/payouts", icon: "account_balance_wallet" },
-  { name: "Saldo & Komisi", to: "/super-admin/wallet", icon: "payments" },
+  { name: "Dashboard", to: "/super-admin/dashboard", icon: "dashboard" },
+  { name: "Hotel Monitoring", to: "/super-admin/hotels", icon: "hotel" },
+  { name: "User Management", to: "/super-admin/users", icon: "group" },
+  { name: "Partner Approval", to: "/super-admin/partners", icon: "handshake" },
+  { name: "Warning Management", to: "/super-admin/warnings", icon: "warning" },
+  { name: "Appeal Management", to: "/super-admin/appeals", icon: "gavel" },
+  { name: "Activity Logs", to: "/super-admin/activity-logs", icon: "history" },
+  { name: "Hotel Health", to: "/super-admin/hotel-health", icon: "monitor_heart" },
+  { name: "Finance & Payouts", to: "/super-admin/finance", icon: "payments" },
+  { name: "System Reports", to: "/super-admin/reports", icon: "analytics" },
 ];
 
 const SuperAdminSidebar = ({ onLogout }) => {
@@ -69,7 +69,7 @@ const SuperAdminSidebar = ({ onLogout }) => {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 account_circle
               </span>
-              <span>Profil</span>
+              <span>Profile</span>
             </Link>
           </li>
           <li>
@@ -80,7 +80,7 @@ const SuperAdminSidebar = ({ onLogout }) => {
               <span className="material-symbols-outlined mr-3 text-[20px]">
                 logout
               </span>
-              <span>Keluar</span>
+              <span>Logout</span>
             </button>
           </li>
         </ul>

@@ -63,23 +63,22 @@ class WarningService
                 'ip_address' => request()->ip(),
             ]);
 
-            $activeWarnings = Warning::where('hotel_id', $hotel->id)->whereIn('status', ['unread', 'read'])->count();
-            if ($activeWarnings >= 2 && $hotel->status !== 'blocked') {
-                $hotel->update(['status' => 'blocked']);
-                Notification::create([
-                    'user_id' => $hotel->admin_id,
-                    'title' => 'Hotel Diblokir Otomatis',
-                    'message' => "Hotel {$hotel->name} otomatis diblokir karena telah menerima {$activeWarnings} peringatan.",
-                    'type' => 'warning',
-                    'is_read' => false,
-                ]);
-                ActivityLog::create([
-                    'user_id' => $superAdmin->id,
-                    'activity' => 'Auto Suspend Hotel',
-                    'description' => "Hotel {$hotel->name} otomatis diblokir setelah {$activeWarnings} peringatan.",
-                    'ip_address' => request()->ip(),
-                ]);
+            $activeWarningsCount = Warning::where('hotel_id', $hotel->id)->whereIn('status', ['unread', 'read'])->count();
+            
+            // Notify Super Admin if warnings reach 3, do not auto-suspend
+            if ($activeWarningsCount >= 3) {
+                $superAdmins = \App\Models\User::where('role', 'super_admin')->get();
+                foreach ($superAdmins as $superAdminUser) {
+                    Notification::create([
+                        'user_id' => $superAdminUser->id,
+                        'title' => 'Perlu Tindakan: Hotel Mencapai 3 Warning',
+                        'message' => "Hotel {$hotel->name} telah menerima {$activeWarningsCount} peringatan. Harap tinjau untuk tindakan lebih lanjut.",
+                        'type' => 'warning',
+                        'is_read' => false,
+                    ]);
+                }
             }
+
 
             return $warning->fresh();
         });

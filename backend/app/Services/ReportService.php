@@ -49,12 +49,32 @@ class ReportService
         $query = Booking::query();
         $this->applyRoleAndDateFilters($query, $user, $filters, 'check_in');
 
+        // Distribution
+        $distribution = (clone $query)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Previous month
+        $prevMonthStart = now()->subMonth()->startOfMonth()->toDateString();
+        $prevMonthEnd = now()->subMonth()->endOfMonth()->toDateString();
+        
+        $prevQuery = Booking::query();
+        $this->applyRoleAndDateFilters($prevQuery, $user, ['start_date' => $prevMonthStart, 'end_date' => $prevMonthEnd], 'check_in');
+        
+        $prevCompleted = (clone $prevQuery)->where('status', 'Checked Out')->count();
+        $currentCompleted = $distribution['Checked Out'] ?? 0;
+
         return [
             'total_booking' => $query->count(),
-            'completed' => (clone $query)->where('status', 'Checked Out')->count(),
-            'cancelled' => (clone $query)->where('status', 'Cancelled')->count(),
-            'expired' => (clone $query)->where('status', 'Expired')->count(),
-            'pending' => (clone $query)->where('status', 'Pending')->count(),
+            'completed' => $currentCompleted,
+            'cancelled' => $distribution['Cancelled'] ?? 0,
+            'expired' => $distribution['Expired'] ?? 0,
+            'pending' => $distribution['Pending'] ?? 0,
+            'diff' => $currentCompleted - $prevCompleted,
+            'distribution' => $distribution,
         ];
     }
 
@@ -65,18 +85,26 @@ class ReportService
 
         $totalRevenue = (clone $query)->sum('gross_amount');
 
-        // TAMBAHAN: Mengambil data tren harian untuk grafik (dikelompokkan per tanggal)
+        // TAMBAHAN: Pendapatan bulan lalu untuk perbandingan
+        $lastMonthStart = now()->subMonth()->startOfMonth()->toDateString();
+        $lastMonthEnd = now()->subMonth()->endOfMonth()->toDateString();
+        
+        $prevMonthRevenue = (clone $query)
+            ->whereBetween('paid_at', [$lastMonthStart.' 00:00:00', $lastMonthEnd.' 23:59:59'])
+            ->sum('gross_amount');
+
         $trend = (clone $query)
             ->selectRaw('DATE(paid_at) as date, SUM(gross_amount) as total')
             ->groupBy('date')
             ->orderBy('date', 'asc')
-            ->limit(30) // Batasi 30 hari terakhir agar grafik tidak terlalu padat
+            ->limit(30)
             ->get();
 
         return [
             'total_revenue' => (float) $totalRevenue,
-            'average_daily' => (float) ($totalRevenue / 30), // Simplifikasi
-            'trend' => $trend, // Data untuk grafik Recharts
+            'prev_month_revenue' => (float) $prevMonthRevenue,
+            'diff' => (float) ($totalRevenue - $prevMonthRevenue),
+            'trend' => $trend,
         ];
     }
 
@@ -102,10 +130,18 @@ class ReportService
             $query->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
         }
 
+        $totalUsers = $query->count();
+        
+        // Previous month
+        $prevMonthStart = now()->subMonth()->startOfMonth()->toDateString();
+        $prevMonthEnd = now()->subMonth()->endOfMonth()->toDateString();
+        $prevUsers = User::query()->whereBetween('created_at', [$prevMonthStart, $prevMonthEnd])->count();
+
         return [
-            'total_users' => $query->count(),
+            'total_users' => $totalUsers,
             'verified_users' => (clone $query)->whereNotNull('email_verified_at')->count(), // Future dev[cite: 1]
             'new_users' => (clone $query)->whereYear('created_at', now()->year)->whereMonth('created_at', now()->month)->count(),
+            'diff' => $totalUsers - $prevUsers,
         ];
     }
 
@@ -120,14 +156,50 @@ class ReportService
         ];
     }
 
-    public function getPartnerReport(array $filters): array
+    public function getFinancialSummary(array $filters, $user): array
     {
-        $query = PartnerApplication::query();
+        $query = Payment::query()->where('payment_status', 'Success');
+        $this->applyRoleAndDateFilters($query, $user, $filters, 'paid_at');
+
+        $commissionRate = config('hleven.commission_rate', 0.10);
+        
+        $stats = (clone $query)
+            ->selectRaw('SUM(gross_amount) as gross_revenue')
+            ->first();
+
+        $gross = (float) ($stats->gross_revenue ?? 0);
+        $platformCut = $gross * $commissionRate;
+        $hotelNet = $gross - $platformCut;
+
+        // Top Bookings
+        $topBookings = \App\Models\Hotel::query()
+            ->withCount('bookings')
+            ->orderByDesc('bookings_count')
+            ->limit(5)
+            ->get()
+            ->map(fn($h) => ['name' => $h->name, 'value' => $h->bookings_count]);
+
+        // Top Revenue
+        $topRevenue = \App\Models\Hotel::query()
+            ->leftJoin('bookings', 'hotels.id', '=', 'bookings.hotel_id')
+            ->leftJoin('payments', 'bookings.id', '=', 'payments.booking_id')
+            ->select('hotels.name')
+            ->selectRaw('SUM(payments.gross_amount) as total_revenue')
+            ->where('payments.payment_status', 'Success')
+            ->groupBy('hotels.id', 'hotels.name')
+            ->orderByDesc('total_revenue')
+            ->limit(5)
+            ->get()
+            ->map(fn($h) => ['name' => $h->name, 'value' => (float)($h->total_revenue ?? 0)]);
 
         return [
-            'pending' => (clone $query)->where('status', 'Pending')->count(),
-            'approved' => (clone $query)->where('status', 'Approved')->count(),
-            'rejected' => (clone $query)->where('status', 'Rejected')->count(),
+            'financial' => [
+                'gross_revenue' => $gross,
+                'platform_commission' => $platformCut,
+                'hotel_net_revenue' => $hotelNet,
+            ],
+            'top_bookings' => $topBookings,
+            'top_revenue' => $topRevenue,
         ];
     }
 

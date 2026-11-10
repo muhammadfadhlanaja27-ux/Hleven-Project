@@ -13,7 +13,7 @@ const MitraLanding = () => {
         const response = await api.get("/public-stats");
         setStats(response.data);
       } catch (err) {
-        console.error("Gagal memuat stats:", err);
+        console.error("Failed to load stats:", err);
       }
     };
     fetchStats();
@@ -31,77 +31,77 @@ const MitraLanding = () => {
   const benefits = [
     {
       icon: "public",
-      title: "Jangkauan Pelanggan Luas",
-      desc: "Akses jutaan calon tamu dari seluruh dunia yang mencari pengalaman menginap premium.",
+      title: "Broad Customer Reach",
+      desc: "Access millions of potential guests worldwide looking for premium stay experiences.",
     },
     {
       icon: "manage_accounts",
-      title: "Manajemen Mudah",
-      desc: "Dashboard intuitif untuk mengelola ketersediaan, konten, dan promosi dengan cepat.",
+      title: "Easy Management",
+      desc: "An intuitive dashboard to quickly manage availability, content, and promotions.",
     },
     {
       icon: "tune",
-      title: "Kontrol Kamar & Harga",
-      desc: "Fleksibilitas penuh dalam mengatur alokasi kamar dan strategi harga dinamis.",
+      title: "Room & Price Control",
+      desc: "Full flexibility to allocate rooms and set dynamic pricing strategies.",
     },
     {
       icon: "book_online",
-      title: "Manajemen Reservasi",
-      desc: "Sistem pemesanan real-time yang mengurangi risiko overbooking secara otomatis.",
+      title: "Reservation Management",
+      desc: "Real-time booking system that automatically reduces overbooking risks.",
     },
     {
       icon: "payments",
-      title: "Pembayaran Terintegrasi",
-      desc: "Proses pembayaran yang aman dan pencairan dana yang lancar serta transparan.",
+      title: "Integrated Payments",
+      desc: "Secure payment processing and seamless, transparent fund payouts.",
     },
     {
       icon: "support_agent",
-      title: "Dukungan Platform",
-      desc: "Tim bantuan khusus yang siap membantu mengoptimalkan profil dan operasional Anda.",
+      title: "Platform Support",
+      desc: "A dedicated support team ready to help optimize your profile and operations.",
     },
   ];
 
   const steps = [
     {
       num: "01",
-      title: "Daftar & Isi Formulir",
-      desc: "Lengkapi data hotel, lokasi, pemilik, dokumen legal, dan informasi rekening.",
+      title: "Register & Fill Form",
+      desc: "Complete hotel details, location, owner info, legal documents, and bank details.",
       icon: "edit_document",
     },
     {
       num: "02",
-      title: "Proses Verifikasi",
-      desc: "Tim H'Leven akan meninjau kelengkapan data dan validitas dokumen Anda.",
+      title: "Verification Process",
+      desc: "The H'Leven team will review your submitted details and document validity.",
       icon: "fact_check",
     },
     {
       num: "03",
-      title: "Hotel Aktif & Terima Tamu",
-      desc: "Setelah disetujui, hotel Anda langsung tayang dan siap menerima reservasi.",
+      title: "Hotel Active & Accept Guests",
+      desc: "Once approved, your hotel goes live immediately to receive reservations.",
       icon: "celebration",
     },
   ];
 
   const faqs = [
     {
-      q: "Apakah ada biaya untuk mendaftar menjadi Mitra H'Leven?",
-      a: "Pendaftaran sebagai mitra GRATIS. H'Leven menerapkan sistem komisi per transaksi reservasi yang berhasil.",
+      q: "Is there a fee to register as an H'Leven Partner?",
+      a: "Partner registration is FREE. H'Leven applies a commission per successful reservation transaction.",
     },
     {
-      q: "Berapa lama proses verifikasi pengajuan?",
-      a: "Proses verifikasi membutuhkan waktu 3-7 hari kerja setelah semua dokumen lengkap diterima.",
+      q: "How long does the verification process take?",
+      a: "The verification process takes 3-7 business days after all required documents are received.",
     },
     {
-      q: "Dokumen apa saja yang diperlukan?",
-      a: "KTP/Passport pemilik, dokumen legalitas hotel (SIUP, TDUP, NIB), dan dokumen pendukung lainnya.",
+      q: "What documents are required?",
+      a: "Owner ID/Passport, hotel legal documents (SIUP, TDUP, NIB), and other supporting documents.",
     },
     {
-      q: "Bisakah mengelola lebih dari satu hotel?",
-      a: "Tentu. Setelah akun disetujui, Anda dapat menambahkan properti hotel lain melalui dashboard.",
+      q: "Can I manage more than one hotel?",
+      a: "Of course. Once your account is approved, you can add other hotel properties through the dashboard.",
     },
     {
-      q: "Bagaimana cara menerima pembayaran?",
-      a: "Pembayaran tamu akan diteruskan ke rekening bank yang Anda daftarkan sesuai jadwal pencairan.",
+      q: "How do I receive payments?",
+      a: "Guest payments will be forwarded to your registered bank account according to the payout schedule.",
     },
   ];
 
@@ -125,10 +125,10 @@ const MitraLanding = () => {
         </div>
         <div className="relative z-10 text-center px-5 md:px-16 max-w-4xl mx-auto py-20">
           <h1 className="font-headline-lg text-3xl md:text-5xl font-bold text-white mb-5 drop-shadow-lg leading-tight">
-            Jadikan Hotel Anda Bagian dari H'Leven
+            Make Your Hotel Part of H'Leven
           </h1>
           <p className="font-body-lg text-base md:text-lg text-[#f3f0eb] mb-9 max-w-2xl mx-auto drop-shadow leading-relaxed">
-            Perluas jangkauan hotel Anda, kelola reservasi dengan lebih mudah, dan kembangkan bisnis hotel Anda bersama platform reservasi premium H'Leven.
+            Expand your hotel's reach, manage reservations easily, and grow your hotel business with H'Leven's premium reservation platform.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -137,7 +137,7 @@ const MitraLanding = () => {
             >
               <span className="flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
-                Daftar Sekarang
+                Register Now
               </span>
             </button>
             <a
@@ -146,18 +146,18 @@ const MitraLanding = () => {
             >
               <span className="flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">play_circle</span>
-                Pelajari Cara Kerja
+                Learn How It Works
               </span>
             </a>
           </div>
           <div className="mt-12 grid grid-cols-2 gap-6 max-w-xl mx-auto text-white">
             <div className="flex flex-col items-center gap-1">
-              <span className="font-headline-lg text-2xl md:text-3xl font-bold">{stats.total_mitra.toLocaleString('id-ID')}</span>
-              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Total Pendaftar</span>
+              <span className="font-headline-lg text-2xl md:text-3xl font-bold">{stats.total_mitra.toLocaleString('en-US')}</span>
+              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Total Applicants</span>
             </div>
             <div className="flex flex-col items-center gap-1">
-              <span className="font-headline-lg text-2xl md:text-3xl font-bold">{stats.total_mitra_diterima.toLocaleString('id-ID')}</span>
-              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Mitra Diterima</span>
+              <span className="font-headline-lg text-2xl md:text-3xl font-bold">{stats.total_mitra_diterima.toLocaleString('en-US')}</span>
+              <span className="font-label-sm text-[11px] uppercase tracking-wider text-white/75">Partners Accepted</span>
             </div>
           </div>
         </div>
@@ -168,10 +168,10 @@ const MitraLanding = () => {
         <div className="max-w-[1280px] mx-auto">
           <div className="text-center mb-14">
             <h2 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#1c1c19] mb-4">
-              Mengapa Bermitra dengan H'Leven?
+              Why Partner with H'Leven?
             </h2>
             <p className="font-body-md text-base text-[#444842] max-w-2xl mx-auto">
-              Tingkatkan performa bisnis properti Anda dengan platform dan dukungan terbaik dari tim profesional kami.
+              Boost your property business performance with the best platform and support from our professional team.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -197,11 +197,11 @@ const MitraLanding = () => {
       <section className="py-16 md:py-24 bg-[#f0ede9] px-5 md:px-16" id="cara-kerja">
         <div className="max-w-[1280px] mx-auto">
           <div className="text-center mb-14">
-            <h2 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#1c1c19] mb-4">
-              Cara Kerja yang Mudah & Cepat
-            </h2>
+<h2 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#1c1c19] mb-4">
+                Easy & Fast Process
+              </h2>
             <p className="font-body-md text-base text-[#444842] max-w-2xl mx-auto">
-              Hanya butuh 3 langkah sederhana untuk bergabung bersama ribuan mitra hotel kami.
+              Only 3 simple steps to join thousands of our partner hotels.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
@@ -235,10 +235,10 @@ const MitraLanding = () => {
               FAQ
             </span>
             <h2 className="font-headline-lg text-2xl md:text-4xl font-bold text-[#1c1c19] mb-4">
-              Pertanyaan yang Sering Diajukan
+              Frequently Asked Questions
             </h2>
             <p className="font-body-md text-base text-[#444842]">
-              Temukan jawaban untuk pertanyaan umum seputar program kemitraan hotel H'Leven.
+              Find answers to common questions about the H'Leven hotel partnership program.
             </p>
           </div>
           <div className="space-y-3">
@@ -276,11 +276,11 @@ const MitraLanding = () => {
       <section className="py-16 md:py-24 px-5 md:px-16 bg-gradient-to-br from-[#50604d] via-[#4c6549] to-[#615b54]">
         <div className="max-w-4xl mx-auto text-center">
           <span className="material-symbols-outlined text-[56px] text-[#baccb4] mb-5 icon-fill">apartment</span>
-          <h2 className="font-headline-lg text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
-            Siap Membawa Hotel Anda ke Level Berikutnya?
+            <h2 className="font-headline-lg text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+            Ready to Take Your Hotel to the Next Level?
           </h2>
           <p className="font-body-lg text-base md:text-lg text-[#f3f0eb]/90 mb-9 max-w-2xl mx-auto leading-relaxed">
-            Bergabunglah dengan ribuan mitra hotel yang telah merasakan peningkatan okupansi dan pendapatan bersama H'Leven.
+            Join thousands of partner hotels that have experienced increased occupancy and revenue with H'Leven.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -289,14 +289,14 @@ const MitraLanding = () => {
             >
               <span className="flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">flag</span>
-                Daftar Menjadi Mitra Sekarang
+                Become a Partner Now
               </span>
             </button>
             <Link
               to="/hotels"
               className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/30 text-white px-8 py-4 rounded-xl font-label-sm text-sm font-bold tracking-wider transition-colors"
             >
-              Lihat Hotel Mitra Kami
+              View Our Partner Hotels
             </Link>
           </div>
         </div>

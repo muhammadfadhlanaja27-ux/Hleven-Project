@@ -316,7 +316,7 @@ export default function RevenueReport() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memuat data laporan.");
+       toast.error("Failed to load report data.");
     } finally {
       setLoading(false);
     }

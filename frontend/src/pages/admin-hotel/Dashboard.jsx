@@ -28,10 +28,10 @@ const fmt = (val) =>
 
 const greeting = () => {
   const h = new Date().getHours();
-  if (h < 11) return 'Selamat Pagi';
-  if (h < 15) return 'Selamat Siang';
-  if (h < 18) return 'Selamat Sore';
-  return 'Selamat Malam';
+  if (h < 11) return 'Good Morning';
+  if (h < 15) return 'Good Afternoon';
+  if (h < 18) return 'Good Evening';
+  return 'Good Evening';
 };
 
 const fmtDate = (str) => {
@@ -164,12 +164,8 @@ export default function Dashboard() {
       if (!data) throw new Error('Format data tidak valid dari server.');
       setStats(data);
     } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Gagal memuat data dashboard.'
-      );
+       console.error('Dashboard fetch error:', err);
+       setError(err.response?.data?.message || err.message || 'Failed to load dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -239,7 +235,7 @@ export default function Dashboard() {
     return mapToChart(stats?.monthly_booking_chart, 'month');
   }, [stats, trendPeriod]);
 
-  const todayFormatted = new Date().toLocaleDateString('id-ID', {
+  const todayFormatted = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -254,7 +250,7 @@ export default function Dashboard() {
           onClick={() => fetchStats(true)}
           className="px-5 py-2.5 bg-[#506147] text-white rounded text-sm font-semibold hover:bg-[#3b4b33] transition-colors"
         >
-          Coba Lagi
+          Try Again
         </button>
       </div>
     );
@@ -278,11 +274,10 @@ export default function Dashboard() {
                   {greeting()}, {renderText(currentUser?.name, 'Manager')}
                 </h2>
                 <p className="text-base text-[#6B6E6A] mt-1">
-                  Ringkasan operasional{' '}
+                  Current operational summary for{' '}
                   <span className="font-semibold text-[#2D312C]">
                     {renderText(stats?.hotel_name, "H'Leven Hotel")}
-                  </span>{' '}
-                  saat ini.
+                  </span>.
                 </p>
               </>
             )}
@@ -304,7 +299,7 @@ export default function Dashboard() {
               <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
                 refresh
               </span>
-              Segarkan Data
+              Refresh Data
             </button>
           </div>
         </div>
@@ -314,11 +309,11 @@ export default function Dashboard() {
             <div className="flex items-start gap-3.5">
               <span className="w-10 h-10 rounded-full bg-[#ba1a1a] text-white flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[24px]">block</span></span>
               <div>
-                <h4 className="font-bold text-base text-[#93000a]">Hotel Diblokir — Akses Terkunci</h4>
-                <p className="text-xs text-[#434842] mt-1">Hotel diblokir setelah 2 peringatan. Dashboard terkunci. Silakan aju banding.</p>
+                <h4 className="font-bold text-base text-[#93000a]">Hotel Suspended — Access Locked</h4>
+                <p className="text-xs text-[#434842] mt-1">Hotel suspended after 2 warnings. Dashboard is locked. Please submit an appeal.</p>
               </div>
             </div>
-            <a href="/admin/suspended" className="shrink-0 px-5 py-2.5 bg-[#ba1a1a] text-white rounded-xl text-sm font-bold hover:bg-[#93000a] transition-colors">Aju Banding</a>
+            <a href="/admin/suspended" className="shrink-0 px-5 py-2.5 bg-[#ba1a1a] text-white rounded-xl text-sm font-bold hover:bg-[#93000a] transition-colors">Submit Appeal</a>
           </div>
         ); return null; })()}
 
@@ -331,9 +326,9 @@ export default function Dashboard() {
               </span>
               <div>
                 <h4 className="font-semibold text-base text-amber-900 flex items-center gap-2">
-                  <span>Peringatan Kepatuhan Resmi dari Super Admin</span>
+                  <span>Official Compliance Warning from Super Admin</span>
                   <span className="px-2 py-0.5 rounded bg-amber-500 text-white text-[10px] uppercase font-bold tracking-wider">
-                    Perhatian
+                    Attention
                   </span>
                 </h4>
                 {warnings
@@ -351,7 +346,7 @@ export default function Dashboard() {
               to="/admin/warnings"
               className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
             >
-              Lihat Detail &amp; Banding
+              View Details &amp; Appeal
             </Link>
           </div>
         )}
@@ -361,7 +356,7 @@ export default function Dashboard() {
           {/* Total Rooms */}
           <div className="bg-white rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-4">
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Total Kamar</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Total Rooms</p>
               <span className="material-symbols-outlined text-[#757870]">bed</span>
             </div>
             <div>
@@ -370,7 +365,7 @@ export default function Dashboard() {
               </h3>
               <p className="text-xs text-[#6D7E63] mt-1 flex items-center font-medium">
                 <span className="material-symbols-outlined text-[14px] mr-1">arrow_upward</span>
-                Semua Operasional
+                All Operations
               </p>
             </div>
           </div>
@@ -378,7 +373,7 @@ export default function Dashboard() {
           {/* Available Rooms */}
           <div className="bg-white rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-4">
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Kamar Tersedia</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Available Rooms</p>
               <span className="material-symbols-outlined text-[#757870]">key</span>
             </div>
             <div>
@@ -386,7 +381,7 @@ export default function Dashboard() {
                 {loading ? <Skeleton className="h-9 w-16" /> : availableRooms}
               </h3>
               <p className="text-xs text-[#6B6E6A] mt-1">
-                {availRate}% dari total kamar
+                {availRate}% of total rooms
               </p>
             </div>
           </div>
@@ -394,7 +389,7 @@ export default function Dashboard() {
           {/* Occupied Rooms */}
           <div className="bg-white rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-4">
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Kamar Terisi</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Occupied Rooms</p>
               <span className="material-symbols-outlined text-[#757870]">meeting_room</span>
             </div>
             <div>
@@ -402,7 +397,7 @@ export default function Dashboard() {
                 {loading ? <Skeleton className="h-9 w-16" /> : occupiedRooms}
               </h3>
               <p className="text-xs text-[#6B6E6A] mt-1">
-                {occupancyRate}% tingkat okupansi
+                {occupancyRate}% occupancy rate
               </p>
             </div>
           </div>
@@ -410,7 +405,7 @@ export default function Dashboard() {
           {/* Total Revenue */}
           <div className="bg-[#F2EBE1] rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-4">
-              <p className="text-xs font-semibold text-[#2D312C] uppercase tracking-wider">Total Pendapatan</p>
+              <p className="text-xs font-semibold text-[#2D312C] uppercase tracking-wider">Total Revenue</p>
               <span className="material-symbols-outlined text-[#506147]">payments</span>
             </div>
             <div>
@@ -419,7 +414,7 @@ export default function Dashboard() {
               </h3>
               <p className="text-xs text-[#2D312C] opacity-80 mt-1 flex items-center font-medium">
                 <span className="material-symbols-outlined text-[14px] mr-1">trending_up</span>
-                Pendapatan Terkumpul
+                Collected Revenue
               </p>
             </div>
           </div>
@@ -429,7 +424,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Booking Hari Ini</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Today's Bookings</p>
               <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
                 {loading ? <Skeleton className="h-7 w-10" /> : (stats?.today_bookings ?? 0)}
               </div>
@@ -441,7 +436,7 @@ export default function Dashboard() {
 
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Check In Hari Ini</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Today's Check-ins</p>
               <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
                 {loading ? <Skeleton className="h-7 w-10" /> : (stats?.today_checkins ?? 0)}
               </div>
@@ -453,7 +448,7 @@ export default function Dashboard() {
 
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Check Out Hari Ini</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Today's Check-outs</p>
               <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mt-1">
                 {loading ? <Skeleton className="h-7 w-10" /> : (stats?.today_checkouts ?? 0)}
               </div>
@@ -465,7 +460,7 @@ export default function Dashboard() {
 
           <div className="bg-white rounded border border-[#E5E1DA] px-6 py-4 flex items-center justify-between shadow-xs">
             <div>
-              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Rata-Rata Rating</p>
+              <p className="text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">Average Rating</p>
               <div className="flex items-center gap-1.5 mt-1">
                 <div className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
                   {loading ? <Skeleton className="h-7 w-10" /> : (stats?.average_rating ?? 0)}
@@ -486,7 +481,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] lg:col-span-1 flex flex-col justify-between">
             <div>
               <h3 className="font-['Inter',sans-serif] text-lg font-bold text-[#2D312C] mb-6">
-                Statistik Pesanan
+                Booking Statistics
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -542,7 +537,7 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-6 pt-4 border-t border-[#E5E1DA] flex justify-between items-center text-xs">
-              <span className="text-[#6B6E6A] font-medium">Total Pesanan Tercatat</span>
+              <span className="text-[#6B6E6A] font-medium">Total Recorded Bookings</span>
               <span className="font-bold text-[#506147] text-sm">
                 {stats?.total_bookings ?? Object.values(bookingBD).reduce((a, b) => a + b, 0)}
               </span>
@@ -553,15 +548,15 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] lg:col-span-2 flex flex-col justify-between">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
               <h3 className="font-['Inter',sans-serif] text-lg font-bold text-[#2D312C]">
-                Analisis Pendapatan
+                Revenue Analysis
               </h3>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex gap-1.5 p-1 bg-[#f0ede9] rounded-full">
                   {[
-                    { id: 'daily', label: 'Harian' },
-                    { id: 'weekly', label: 'Mingguan' },
-                    { id: 'monthly', label: 'Bulanan' },
-                    { id: 'yearly', label: 'Tahunan' },
+                    { id: 'daily', label: 'Daily' },
+                    { id: 'weekly', label: 'Weekly' },
+                    { id: 'monthly', label: 'Monthly' },
+                    { id: 'yearly', label: 'Yearly' },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -579,16 +574,16 @@ export default function Dashboard() {
                 {revPeriod === 'daily' && (
                   <div className="flex items-center gap-1.5">
                     <input type="date" value={customRevFrom} onChange={(e) => setCustomRevFrom(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
-                    <span className="text-xs text-[#6B6E6A]">s/d</span>
+                    <span className="text-xs text-[#6B6E6A]">to</span>
                     <input type="date" value={customRevTo} onChange={(e) => setCustomRevTo(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
-                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { from: customRevFrom, to: customRevTo }); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
+                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { from: customRevFrom, to: customRevTo }); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Apply</button>
                     {(customRevFrom || customRevTo) && <button type="button" onClick={() => { setCustomRevFrom(''); setCustomRevTo(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { from: '', to: '' }); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
                   </div>
                 )}
                 {revPeriod === 'monthly' && (
                   <div className="flex items-center gap-1.5">
                     <input type="month" value={customRevMonth} onChange={(e) => setCustomRevMonth(e.target.value)} className="px-2 py-1.5 bg-white border border-[#E5E1DA] rounded-lg text-xs text-[#2D312C] focus:outline-none focus:border-[#506147]" />
-                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { month: customRevMonth }); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Terapkan</button>
+                    <button type="button" onClick={() => { invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { month: customRevMonth }); }} className="px-3 py-1.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33]">Apply</button>
                     {customRevMonth && <button type="button" onClick={() => { setCustomRevMonth(''); invalidateCache('/admin/hotel/dashboard'); fetchStats(true, { month: '' }); }} className="text-xs text-[#6B6E6A] hover:text-[#2D312C]">Reset</button>}
                   </div>
                 )}
@@ -633,12 +628,12 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg border border-[#E5E1DA] p-6 shadow-[0px_4px_24px_rgba(0,0,0,0.04)]">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
             <h3 className="font-['Inter',sans-serif] text-lg font-bold text-[#2D312C]">
-              Tren Booking & Reservasi
+              Booking Trends & Reservations
             </h3>
             <div className="flex items-center gap-4 text-xs font-semibold">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#506147]" />
-                <span className="text-[#6B6E6A]">Selesai / Paid</span>
+                <span className="text-[#6B6E6A]">Completed / Paid</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#c4c8be]" />
@@ -647,10 +642,10 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-1.5 p-1 bg-[#f0ede9] rounded-full self-start">
               {[
-                { id: 'daily', label: 'Harian' },
-                { id: 'weekly', label: 'Mingguan' },
-                { id: 'monthly', label: 'Bulanan' },
-                { id: 'yearly', label: 'Tahunan' },
+                { id: 'daily', label: 'Daily' },
+                { id: 'weekly', label: 'Weekly' },
+                { id: 'monthly', label: 'Monthly' },
+                { id: 'yearly', label: 'Yearly' },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -723,10 +718,10 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg border border-[#E5E1DA] overflow-hidden shadow-[0px_4px_24px_rgba(0,0,0,0.04)]">
           <div className="p-6 border-b border-[#E5E1DA] flex justify-between items-center bg-[#fcf9f5]">
             <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-              Pesanan Terbaru
+              Recent Bookings
             </h3>
             <Link to="/admin/bookings" className="text-xs font-bold text-[#506147] hover:underline">
-              Lihat Semua
+              View All
             </Link>
           </div>
 
@@ -735,15 +730,15 @@ export default function Dashboard() {
               <thead>
                 <tr className="bg-[#F2EBE1] border-b border-[#E5E1DA]">
                   {[
-                    'Kode Booking',
-                    'Tamu',
-                    'Tipe Kamar',
+                    'Booking Code',
+                    'Guest',
+                    'Room Type',
                     'Check In',
                     'Check Out',
-                    'Total Biaya',
-                    'Status Bayar',
-                    'Status Pesanan',
-                    'Aksi',
+                    'Total Cost',
+                    'Payment Status',
+                    'Booking Status',
+                    'Actions',
                   ].map((h) => (
                     <th key={h} className="p-4 text-xs font-semibold text-[#6B6E6A] uppercase tracking-wider">
                       {h}
@@ -809,7 +804,7 @@ export default function Dashboard() {
                 ) : (
                   <tr>
                     <td colSpan="9" className="p-10 text-center text-[#6B6E6A]">
-                      Belum ada pesanan tercatat.
+                       No orders recorded yet.
                     </td>
                   </tr>
                 )}

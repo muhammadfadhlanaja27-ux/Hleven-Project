@@ -24,10 +24,12 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdminPayoutController;
+use App\Http\Controllers\SuperAdminPlatformPayoutController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\WarningController;
 use Illuminate\Support\Facades\Route;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -90,6 +92,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/user/bookings', [BookingController::class, 'userBookings']);
             Route::post('/user/bookings', [BookingController::class, 'store']);
             Route::post('/user/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+            Route::get('/user/bookings/{id}/sync-payment', [BookingController::class, 'syncPayment']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
         });
@@ -230,8 +233,6 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::get('/hotel-health', [SuperAdminDashboardController::class, 'hotelHealthReport']);
     });
 
-    Route::get('/wallet', [SuperAdminDashboardController::class, 'wallet']);
-
     Route::prefix('users')->group(function () {
         Route::get('/', [SuperAdminUserController::class, 'index']);
         Route::get('/{id}', [SuperAdminUserController::class, 'show']);
@@ -266,6 +267,8 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('v1/super-admin'
         Route::patch('/{id}/status', [SuperAdminPayoutController::class, 'updateStatus']);
     });
 
+    // Route pencairan platform dihapus
+
     // --- Partner Application (Super Admin) ---
     Route::prefix('partners')->group(function () {
         Route::get('/', [PartnerApplicationController::class, 'index']);
@@ -290,6 +293,7 @@ Route::middleware(['auth:sanctum', 'role:admin_hotel,super_admin'])->prefix('v1/
     Route::get('/export', [ReportController::class, 'export']);
 
     Route::middleware('role:super_admin')->group(function () {
+        Route::get('/summary', [ReportController::class, 'summary']);
         Route::get('/users', [ReportController::class, 'users']);
         Route::get('/hotels', [ReportController::class, 'hotels']);
     });

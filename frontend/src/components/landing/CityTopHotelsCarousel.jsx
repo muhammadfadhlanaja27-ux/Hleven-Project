@@ -42,9 +42,9 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
         return Array.from(cityMap.values())
             .sort((a, b) => {
                 if (b.starVal !== a.starVal) {
-                    return b.starVal - a.starVal; // Prioritaskan Bintang tertinggi (5 -> 4 -> 3)
+                    return b.starVal - a.starVal;
                 }
-                return b.score - a.score; // Jika bintang sama, urutkan ulasan tertinggi
+                return b.score - a.score;
             })
             .map((item) => item.hotel);
     }, [hotels]);
@@ -87,13 +87,14 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
     return (
         <section className="w-full my-10 text-left">
+            {/* Header dengan background putih */}
             <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-6 text-left">
-                <span className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider block mb-1">
-                    Destinasi Pilihan
-                </span>
-                <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#2D332C]">
-                    Hotel Terbaik di Setiap Kota
+                <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
+                    Best Hotels in Each City
                 </h2>
+                <p className="font-body-md text-sm text-[#444842]">
+                    Recommended accommodations with the highest reviews across various destination cities.
+                </p>
             </div>
 
             {/* Container Carousel Horizontal */}
@@ -140,7 +141,8 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                     <img
                                         src={imageUrl}
                                         alt={hotel.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        onError={handleImageError}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-duration-500"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[#778873]">
@@ -162,7 +164,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                         star
                                     </span>
                                     <span className="font-label-sm text-xs font-bold text-[#1C251D]">
-                                        {starCount} Bintang
+                                        {starCount} Star(s)
                                     </span>
                                 </div>
                             </div>
@@ -182,10 +184,10 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                             >
                                                 star
                                             </span>
-                                            <span>{reviewRating > 0 ? reviewRating : "Baru"}</span>
+                                            <span>{reviewRating > 0 ? reviewRating : "New"}</span>
                                         </div>
                                         <span className="text-[11px] text-[#747871] truncate">
-                                            Rating Ulasan
+                                            Review Rating
                                         </span>
                                     </div>
 
@@ -199,13 +201,13 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
                                 <div className="flex items-end justify-between pt-3 border-t border-[#E8E2D9]">
                                     <div>
-                                        <span className="text-[10px] text-[#444842] block">Mulai dari</span>
+                                        <span className="text-[10px] text-[#444842] block">Starting from</span>
                                         <span className="font-headline-sm text-base font-bold text-[#778873]">
-                                            Rp {price} <span className="text-[10px] font-normal text-[#444842]">/malam</span>
+                                            Rp {price} <span className="text-[10px] font-normal text-[#444842]">/night</span>
                                         </span>
                                     </div>
                                     <span className="text-xs font-bold text-[#778873] group-hover:translate-x-1 transition-transform flex items-center">
-                                        Detail <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                        Details <span className="material-symbols-outlined text-sm">chevron_right</span>
                                     </span>
                                 </div>
                             </div>

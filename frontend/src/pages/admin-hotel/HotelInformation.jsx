@@ -102,7 +102,7 @@ const initialPhotos = [];
 const DEFAULT_HOTEL_POLICIES = `Waktu Check-in & Check-out
 Check-in mulai pukul 14:00 WIB. Check-out maksimal pukul 12:00 WIB.
 Kebijakan Bebas Asap Rokok
-Semua kamar bebas dari asap rokok. Area merokok khusus tersedia di teras luar.
+All rooms are non-smoking. Designated smoking areas are available on the outdoor terrace.
 Hewan Peliharaan
 Hewan peliharaan tidak diperkenankan masuk untuk menjaga higienitas seluruh tamu.
 Pembatalan
@@ -200,7 +200,7 @@ export default function HotelInformation() {
           return;
         }
       } catch (error) {
-        console.warn("Gagal membaca cache lokasi hotel:", error);
+        console.warn("Failed to read hotel location cache:", error);
       }
 
       try {
@@ -221,7 +221,7 @@ export default function HotelInformation() {
             expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
           }));
         } catch (error) {
-          console.warn("Gagal menyimpan cache lokasi hotel:", error);
+          console.warn("Failed to save hotel location cache:", error);
         }
       } catch (error) {
         if (!active) return;
@@ -442,7 +442,7 @@ export default function HotelInformation() {
       return nextPhotos;
     });
 
-    toast.success(`${files.length} foto berhasil diunggah!`);
+    toast.success(`${files.length} photos uploaded successfully!`);
   };
 
   const handleSetPrimary = (photoId) => {
@@ -452,7 +452,7 @@ export default function HotelInformation() {
         isPrimary: photo.id === photoId,
       }))
     );
-    toast.success("Foto utama hotel berhasil diperbarui.");
+    toast.success("Primary hotel photo updated successfully.");
   };
 
   const handleDeletePhoto = (photoId) => {
@@ -468,7 +468,7 @@ export default function HotelInformation() {
       setDeletedPhotoIds((prev) => [...prev, photoId]);
     }
 
-    toast.success("Foto berhasil dihapus dari galeri.");
+    toast.success("Photo removed from gallery.");
   };
 
   const validateForm = () => {
@@ -591,7 +591,7 @@ export default function HotelInformation() {
           try {
             await api.delete(`/admin/hotels/photos/${photoId}`);
           } catch (err) {
-            console.error(`Gagal menghapus foto ID ${photoId}:`, err);
+            console.error(`Failed to delete photo ID ${photoId}:`, err);
           }
         }
       } else {
@@ -599,7 +599,7 @@ export default function HotelInformation() {
           try {
             await api.delete(`/admin/hotels/photos/${photoId}`);
           } catch (err) {
-            console.error(`Gagal menghapus foto ID ${photoId}:`, err);
+            console.error(`Failed to delete photo ID ${photoId}:`, err);
           }
         }
       }
@@ -625,7 +625,7 @@ export default function HotelInformation() {
     } catch (err) {
       console.error("Failed to update hotel profile:", err);
       const msg =
-        err.response?.data?.message || "Gagal memperbarui profil hotel.";
+        err.response?.data?.message || "Failed to update hotel profile.";
       toast.error(msg);
     } finally {
       setIsSaving(false);
@@ -699,7 +699,7 @@ export default function HotelInformation() {
                     Hotel Overview
                   </h3>
                   <p className="text-xs text-[#6B6E6A] mt-0.5">
-                    Informasi umum dan profil utama hotel Anda.
+                    General information and main profile of your hotel.
                   </p>
                 </div>
                 <span className="material-symbols-outlined text-[#757870] text-[24px]">
@@ -732,7 +732,7 @@ export default function HotelInformation() {
                       Property Type
                     </h4>
                     <p className="text-sm font-semibold text-[#2D312C]">
-                      {hotelData.propertyType || "Belum diisi"}
+                       {hotelData.propertyType || "Not specified"}
                     </p>
                   </div>
                   <div>
@@ -740,7 +740,7 @@ export default function HotelInformation() {
                       Year Built
                     </h4>
                     <p className="text-sm font-semibold text-[#2D312C]">
-                      {hotelData.yearBuilt || "Belum diisi"}
+                       {hotelData.yearBuilt || "Not specified"}
                     </p>
                   </div>
                 </div>
@@ -777,11 +777,11 @@ export default function HotelInformation() {
                   ))}
                 </div>
                 <p className="text-xs text-[#444840]">
-                  Berdasarkan{" "}
+                                     Based on {" "}
                   <span className="font-semibold text-[#2D312C]">
                     {hotelData.totalReviews}
                   </span>{" "}
-                  ulasan tamu terverifikasi.
+                   verified guest reviews.
                 </p>
               </div>
 
@@ -873,7 +873,7 @@ export default function HotelInformation() {
                     </h4>
                     <p className="font-semibold text-[#2D312C]">
                       {locationAreaStatus === "loading"
-                        ? "Mencari lokasi hotel..."
+                         ? "Searching hotel location..."
                         : resolvedLocationArea || hotelData.location}
                     </p>
                     <a
@@ -886,7 +886,7 @@ export default function HotelInformation() {
                     </a>
                     {locationAreaStatus === "error" && (
                       <p role="status" className="mt-1 text-[11px] text-[#9A4D32]">
-                        Lokasi otomatis belum tersedia. Periksa nama hotel atau koordinatnya.
+                         Automatic location not available. Check hotel name or coordinates.
                       </p>
                     )}
                   </div>
@@ -911,7 +911,7 @@ export default function HotelInformation() {
           <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-4">
             <div className="flex items-center gap-2 border-b border-[#E5E1DA] pb-4">
               <span className="material-symbols-outlined text-[#506147] text-[22px]">policy</span>
-              <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Kebijakan Hotel</h3>
+                              <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">Hotel Policies</h3>
             </div>
             <div className="text-sm text-[#444840] leading-relaxed whitespace-pre-wrap bg-[#fcf9f5] p-4 rounded-xl border border-[#E5E1DA]">
               {hotelData.policies || DEFAULT_HOTEL_POLICIES}
@@ -979,25 +979,25 @@ export default function HotelInformation() {
                 )}
               </div>
             ) : (
-              <div className="py-12 flex flex-col items-center justify-center gap-3 text-center border-2 border-dashed border-[#E5E1DA] rounded-xl bg-[#fcf9f5]/50">
-                <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
-                  spa
-                </span>
-                <div>
-                  <p className="font-semibold text-[#2D312C] text-base">
-                    Belum ada fasilitas hotel yang dipilih.
-                  </p>
-                  <p className="text-xs text-[#6B6E6A] mt-1">
-                    Klik <strong>Edit Hotel</strong> untuk mencentang fasilitas hotel yang tersedia.
-                  </p>
+                <div className="py-12 flex flex-col items-center justify-center gap-3 text-center border-2 border-dashed border-[#E5E1DA] rounded-xl bg-[#fcf9f5]/50">
+                  <span className="material-symbols-outlined text-[48px] text-[#c4c8be]">
+                    spa
+                  </span>
+                  <div>
+                    <p className="font-semibold text-[#2D312C] text-base">
+                       No hotel facilities selected.
+                    </p>
+                    <p className="text-xs text-[#6B6E6A] mt-1">
+                      Click <strong>Edit Hotel</strong> to check available hotel facilities.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleStartEdit}
+                    className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
+                  >
+                    Manage Hotel Facilities
+                  </button>
                 </div>
-                <button
-                  onClick={handleStartEdit}
-                  className="mt-2 px-5 py-2.5 bg-[#506147] text-white rounded-lg text-xs font-semibold hover:bg-[#3b4b33] transition-colors"
-                >
-                  Kelola Fasilitas Hotel
-                </button>
-              </div>
             )}
           </div>
 
@@ -1083,29 +1083,29 @@ export default function HotelInformation() {
           <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 space-y-6">
             <div className="border-b border-[#E5E1DA] pb-4">
               <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
-                Form Informasi Hotel
+                Hotel Information Form
               </h3>
               <p className="text-xs text-[#6B6E6A] mt-0.5">
-                Perbarui bidang informasi di bawah ini. Semua bidang bertanda * wajib diisi.
+                Update the information fields below. All fields marked with * are required.
               </p>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="name"
-                className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
-              >
-                Hotel Name *
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={formValues.name}
-                onChange={handleChange}
-                disabled={isSaving}
-                placeholder="Masukkan nama hotel"
-                className={`w-full h-11 px-4 bg-white border ${
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="name"
+                  className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
+                >
+                  Hotel Name *
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formValues.name}
+                  onChange={handleChange}
+                  disabled={isSaving}
+                  placeholder="Enter hotel name"
+                  className={`w-full h-11 px-4 bg-white border ${
                   errors.name ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                 } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
               />
@@ -1116,22 +1116,22 @@ export default function HotelInformation() {
               )}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="description"
-                className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
-              >
-                Description *
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                rows={4}
-                value={formValues.description}
-                onChange={handleChange}
-                disabled={isSaving}
-                placeholder="Masukkan deskripsi hotel"
-                className={`w-full p-4 bg-white border ${
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="description"
+                  className="text-xs font-semibold text-[#434842] uppercase tracking-wider"
+                >
+                  Description *
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={4}
+                  value={formValues.description}
+                  onChange={handleChange}
+                  disabled={isSaving}
+                  placeholder="Enter hotel description"
+                  className={`w-full p-4 bg-white border ${
                   errors.description ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                 } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all leading-relaxed`}
               />
@@ -1157,7 +1157,7 @@ export default function HotelInformation() {
                   value={formValues.address}
                   onChange={handleChange}
                   disabled={isSaving}
-                  placeholder="Contoh: Jl. Example No. 123"
+                  placeholder="Example: Jl. Example No. 123"
                   className={`w-full h-11 px-4 bg-white border ${
                     errors.address ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                   } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
@@ -1183,7 +1183,7 @@ export default function HotelInformation() {
                   value={formValues.city}
                   onChange={handleChange}
                   disabled={isSaving}
-                  placeholder="Contoh: Bandung"
+                  placeholder="Example: Bandung"
                   className={`w-full h-11 px-4 bg-white border ${
                     errors.city ? "border-[#ba1a1a]" : "border-[#E5E0D8]"
                   } rounded-lg text-sm text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20 transition-all`}
@@ -1492,7 +1492,7 @@ export default function HotelInformation() {
               ) : (
                 <div className="p-6 rounded-xl border border-dashed border-[#E5E1DA] bg-[#fcf9f5]/50 text-center space-y-2">
                   <p className="text-xs font-semibold text-[#2D312C]">
-                    Belum ada pilihan fasilitas hotel pada katalog.
+                     No hotel facility options available in the catalog.
                   </p>
                   <p className="text-[11px] text-[#6B6E6A]">
                     Pilihan fasilitas hotel akan tersedia setelah katalog fasilitas diisi.
@@ -1586,7 +1586,7 @@ export default function HotelInformation() {
                     Hotel Rating &amp; Total Reviews (Read-Only)
                   </p>
                   <p className="text-[11px] text-[#6B6E6A]">
-                    Informasi rating ({hotelData.rating} ★) dan ulasan (
+                     Rating info ({hotelData.rating} ★) and reviews (
                     {hotelData.totalReviews} ulasan) dikalkulasi secara otomatis oleh sistem.
                   </p>
                 </div>

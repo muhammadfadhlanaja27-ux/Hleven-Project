@@ -72,8 +72,11 @@ class QRCodeService
 
         return [
             'booking_code' => $booking->booking_code,
-            'guest_name' => $booking->guests->first()->name ?? 'Tamu',
-            'room' => $booking->bookingRooms->first()->roomType->name ?? '-',
+            'booker_name'  => $booking->booker_name,
+            'guest_name'   => $booking->guest_name,
+            'guest_email'  => $booking->guest_email,
+            'guest_phone'  => $booking->guest_phone,
+            'room'         => $booking->bookingRooms->first()->roomType->name ?? '-',
         ];
     }
 }

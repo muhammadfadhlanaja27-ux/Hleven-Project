@@ -110,17 +110,23 @@ const UserProfile = () => {
         try {
           const errorText = await err.response.data.text();
           const errorJson = JSON.parse(errorText);
-          toast.error(errorJson.message || "Gagal mengunduh E-Tiket PDF.");
+          toast.error(errorJson.message || "Failed to download E-Ticket PDF.");
         } catch {
-          toast.error("Gagal mengunduh E-Tiket PDF.");
+          toast.error("Failed to download E-Ticket PDF.");
         }
       } else {
-        toast.error(err.response?.data?.message || "Gagal mengunduh E-Tiket PDF.");
+        toast.error(err.response?.data?.message || "Failed to download E-Ticket PDF.");
       }
     }
   };
 
+  const resolvedRole = user?.role || currentUserRole || "user";
+  const isAdminOrSuperAdmin =
+    resolvedRole === "admin_hotel" || resolvedRole === "super_admin";
+
   const fetchUserBookings = useCallback(async (forceRefresh = false, silent = false) => {
+    if (isAdminOrSuperAdmin) return;
+    
     if (!silent) setBookingsLoading(true);
     try {
       const TTL_30DETIK = 30 * 1000;
@@ -133,14 +139,14 @@ const UserProfile = () => {
       const result = responseData?.data || responseData || [];
       setBookings(Array.isArray(result) ? result : []);
     } catch (err) {
-      console.warn("Gagal memuat riwayat pemesanan:", err);
+      console.warn("Failed to load booking history:", err);
       if (!silent) {
-        toast.error("Gagal memuat riwayat pemesanan. Coba muat ulang halaman.");
+        toast.error("Failed to load booking history. Try reloading the page.");
       }
     } finally {
       if (!silent) setBookingsLoading(false);
     }
-  }, []);
+  }, [isAdminOrSuperAdmin]);
 
   const fetchPartnerStatus = async () => {
     setPartnerLoading(true);
@@ -164,14 +170,30 @@ const UserProfile = () => {
     }
   };
 
+  // Ambil dan eliminasi notifikasi duplikat berdasarkan ID / Judul & Pesan
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
       const res = await api.get("/notifications");
-      const data = res.data?.data || res.data || [];
-      setNotifications(Array.isArray(data) ? data : []);
+      const rawData = res.data?.data || res.data || [];
+      const dataList = Array.isArray(rawData) ? rawData : [];
+
+      // Deduplikasi data ganda
+      const uniqueNotifications = dataList.filter(
+        (notif, index, self) =>
+          index ===
+          self.findIndex(
+            (n) =>
+              n.id === notif.id ||
+              (n.title === notif.title &&
+                n.message === notif.message &&
+                n.created_at === notif.created_at)
+          )
+      );
+
+      setNotifications(uniqueNotifications);
     } catch (err) {
-      console.warn("Gagal memuat notifikasi:", err);
+      console.warn("Failed to load notifications:", err);
       setNotifications([]);
     } finally {
       setNotificationsLoading(false);
@@ -189,7 +211,7 @@ const UserProfile = () => {
         )
       );
     } catch (err) {
-      console.error("Gagal menandai notifikasi dibaca:", err);
+      console.error("Failed to mark notification as read:", err);
     }
   };
 
@@ -201,7 +223,7 @@ const UserProfile = () => {
       );
       toast.success("Semua notifikasi ditandai sebagai dibaca.");
     } catch {
-      toast.error("Gagal menandai semua notifikasi.");
+      toast.error("Failed to mark all notifications.");
     }
   };
 
@@ -229,7 +251,7 @@ const UserProfile = () => {
         setActiveTab((prev) => (prev === "partner" ? "personal" : prev));
       }
     } catch (err) {
-      console.error("Gagal membaca user:", err);
+      console.error("Failed to read user:", err);
     }
 
     fetchUserBookings();
@@ -243,7 +265,7 @@ const UserProfile = () => {
     fetchNotifications();
     const notificationInterval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(notificationInterval);
-  }, [navigate]);
+  }, [navigate, fetchUserBookings]);
 
   useEffect(() => {
     if (activeTab !== "history") return undefined;
@@ -266,12 +288,10 @@ const UserProfile = () => {
     };
   }, [activeTab, fetchUserBookings]);
 
-  // Reset error avatar setiap kali data user atau foto berubah
   useEffect(() => {
     setAvatarError(false);
   }, [user?.avatar, user?.avatar_url, user?.avatarPreview]);
 
-  // Handler Upload Foto Profil Langsung dari Sidebar
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -320,7 +340,7 @@ const UserProfile = () => {
       toast.success("Foto profil berhasil diperbarui!");
     } catch (err) {
       console.error("Gagal upload avatar:", err);
-      toast.error(err.response?.data?.message || "Gagal mengunggah foto profil.");
+      toast.error(err.response?.data?.message || "Failed to upload profile photo.");
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -380,9 +400,9 @@ const UserProfile = () => {
       localStorage.setItem("user", JSON.stringify(newUserData));
       setUser(newUserData);
       window.dispatchEvent(new Event("storage"));
-      toast.success("Profil berhasil diperbarui!");
+      toast.success("Profile updated successfully!");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memperbarui profil.");
+      toast.error(err.response?.data?.message || "Failed to update profile.");
     } finally {
       setLoading(false);
     }
@@ -392,7 +412,7 @@ const UserProfile = () => {
     event.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      toast.error("Konfirmasi kata sandi baru tidak cocok.");
+      toast.error("New password confirmation does not match.");
       return;
     }
 
@@ -411,7 +431,7 @@ const UserProfile = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Gagal memperbarui kata sandi. Periksa kata sandi saat ini."
+          "Failed to update password. Check your current password."
       );
     } finally {
       setPwdLoading(false);
@@ -432,13 +452,12 @@ const UserProfile = () => {
       setCancelReason("");
       fetchUserBookings(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memproses pembatalan.");
+      toast.error(err.response?.data?.message || "Failed to process cancellation.");
     } finally {
       setIsSubmittingCancel(false);
     }
   };
 
-  // Filter & Sort Logic
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
 
@@ -506,7 +525,7 @@ const UserProfile = () => {
           <div className="bg-[#FFF0E0] backdrop-blur-md border border-[#9B5235]/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#9B5235]"></span>
             <span className="font-label-sm text-[11px] text-[#9B5235] font-bold uppercase tracking-wider">
-              Menunggu Bayar
+              Menunggu Bayar (Waiting for Payment)
             </span>
           </div>
         );
@@ -586,10 +605,6 @@ const UserProfile = () => {
     }
   };
 
-  const resolvedRole = user?.role || currentUserRole || "user";
-  const isAdminOrSuperAdmin =
-    resolvedRole === "admin_hotel" || resolvedRole === "super_admin";
-
   const getAvatarUrl = () => {
     const a = user?.avatar || user?.avatar_url || user?.avatarPreview;
     if (!a) return null;
@@ -605,8 +620,8 @@ const UserProfile = () => {
 
   const accountStatus = (() => {
     const s = String(user?.status || resolvedRole || "").toLowerCase();
-    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Nonaktif", color: "text-[#ba1a1a]" };
-    if (["pending", "waiting", "review"].includes(s)) return { label: "Menunggu", color: "text-[#9B5235]" };
+    if (["banned", "suspended", "inactive", "nonaktif"].includes(s)) return { label: "Inactive", color: "text-[#ba1a1a]" };
+    if (["pending", "waiting", "review"].includes(s)) return { label: "Pending", color: "text-[#9B5235]" };
     if (["admin_hotel"].includes(s)) return { label: "Admin Hotel", color: "text-[#778873]" };
     if (["super_admin"].includes(s)) return { label: "Super Admin", color: "text-[#778873]" };
     return { label: "Active", color: "text-[#778873]" };
@@ -633,7 +648,7 @@ const UserProfile = () => {
             My Account
           </h1>
           <p className="font-body-md text-sm md:text-base text-[#444842]">
-            Kelola profil pribadi dan riwayat pemesanan kamar Anda.
+            Manage your personal profile and booking history.
           </p>
         </div>
 
@@ -641,7 +656,6 @@ const UserProfile = () => {
           <aside className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
               
-              {/* Foto Profil + Fallback Inisial + Fitur Upload Foto */}
               <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden shadow-md group">
                 {userAvatar && !avatarError ? (
                   <img
@@ -656,13 +670,12 @@ const UserProfile = () => {
                   </span>
                 )}
 
-                {/* Overlay Ikon Kamera saat Hover / Loading saat Upload */}
                 <label
                   htmlFor="sidebar-avatar-upload"
                   className={`absolute inset-0 bg-black/40 text-white flex flex-col items-center justify-center cursor-pointer transition-opacity duration-200 z-10 ${
                     isUploadingAvatar ? "opacity-100 bg-black/60" : "opacity-0 group-hover:opacity-100"
                   }`}
-                  title="Ubah Foto Profil"
+                  title="Edit Profile Picture"
                 >
                   {isUploadingAvatar ? (
                     <span className="material-symbols-outlined text-2xl animate-spin">
@@ -671,7 +684,7 @@ const UserProfile = () => {
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-2xl">photo_camera</span>
-                      <span className="text-[10px] font-semibold mt-0.5">Ubah</span>
+                      <span className="text-[10px] font-semibold mt-0.5">Edit</span>
                     </>
                   )}
                 </label>
@@ -689,7 +702,7 @@ const UserProfile = () => {
                 {fullName}
               </h2>
               <p className="text-[#778873] font-label-md text-xs font-semibold mb-5">
-                Anggota H&apos;Leven
+                H'Leven Member
               </p>
 
               <div className="w-full bg-[#DCCFC0]/40 h-px mb-5"></div>
@@ -700,7 +713,7 @@ const UserProfile = () => {
                     {bookings.length}
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
-                    Total Pesanan
+                    Total Bookings
                   </span>
                 </div>
 
@@ -709,7 +722,7 @@ const UserProfile = () => {
                     {accountStatus.label}
                   </span>
                   <span className="text-[#444842] font-label-sm text-[11px] font-semibold uppercase tracking-wider">
-                    Status Akun
+                    Account Status
                   </span>
                 </div>
               </div>
@@ -764,18 +777,20 @@ const UserProfile = () => {
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab("history")}
-                className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
-                  activeTab === "history"
-                    ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
-                    : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
-                }`}
-              >
-                <span className="material-symbols-outlined text-xl">history</span>
-                Riwayat Pemesanan
-              </button>
+              {!isAdminOrSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className={`w-full flex items-center gap-3 px-6 py-4 font-label-md text-sm font-semibold transition-colors border-l-4 text-left cursor-pointer ${
+                    activeTab === "history"
+                      ? "bg-[#778873]/10 text-[#778873] border-[#778873]"
+                      : "text-[#444842] hover:bg-[#DCCFC0]/20 hover:text-[#778873] border-transparent"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xl">history</span>
+                  Riwayat Pemesanan (Booking History)
+                </button>
+              )}
 
               <button
                 type="button"
@@ -783,7 +798,7 @@ const UserProfile = () => {
                 className="w-full flex items-center gap-3 px-6 py-4 text-[#ba1a1a] hover:bg-[#ffdad6]/30 font-label-md text-sm font-semibold transition-colors border-l-4 border-l-transparent mt-2 border-t border-[#DCCFC0]/30 text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-xl">logout</span>
-                Keluar (Sign Out)
+                Sign Out
               </button>
             </nav>
           </aside>
@@ -791,8 +806,6 @@ const UserProfile = () => {
           <div className="lg:col-span-8 flex flex-col gap-8">
             <section className="flex-grow flex flex-col gap-6">
 
-            {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
-                Untuk admin_hotel / super_admin — fitur ini tidak tersedia. */}
             {currentUserRole !== "admin_hotel" &&
               currentUserRole !== "super_admin" &&
               activeTab === "partner" && (
@@ -804,7 +817,7 @@ const UserProfile = () => {
                 />
               )}
             
-{activeTab === "notifications" && (
+            {activeTab === "notifications" && (
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
                   <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-4">
                     <div className="flex items-center gap-3">
@@ -899,7 +912,7 @@ const UserProfile = () => {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                       })
-                                    : "Baru saja"}
+                                    : "Just now"}
                                 </span>
                                 {!notif.is_read && (
                                   <button
@@ -907,7 +920,7 @@ const UserProfile = () => {
                                     onClick={() => handleMarkAsRead(notif.id)}
                                     className="text-[10px] font-label-md font-semibold text-[#778873] hover:text-[#50604d] transition-colors"
                                   >
-                                    Tandai dibaca
+                                    Mark as read
                                   </button>
                                 )}
                               </div>
@@ -929,14 +942,14 @@ const UserProfile = () => {
                       person_outline
                     </span>
                     <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
-                      Informasi Pribadi
+                      Personal Information
                     </h3>
                   </div>
 
                   <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="flex flex-col gap-2">
                       <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="firstName">
-                        Nama Depan *
+                        First Name *
                       </label>
                       <input
                         id="firstName"
@@ -950,7 +963,7 @@ const UserProfile = () => {
 
                     <div className="flex flex-col gap-2">
                       <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="lastName">
-                        Nama Belakang
+                        Last Name
                       </label>
                       <input
                         id="lastName"
@@ -963,7 +976,7 @@ const UserProfile = () => {
 
                     <div className="flex flex-col gap-2 md:col-span-2">
                       <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="email">
-                        Alamat Email *
+                        Email Address *
                       </label>
                       <input
                         id="email"
@@ -977,7 +990,7 @@ const UserProfile = () => {
 
                     <div className="flex flex-col gap-2 md:col-span-2">
                       <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="phone">
-                        Nomor Telepon / WhatsApp
+                        Phone / WhatsApp Number
                       </label>
                       <input
                         id="phone"
@@ -995,7 +1008,7 @@ const UserProfile = () => {
                         disabled={loading}
                         className="bg-[#778873] text-white font-label-md text-sm font-semibold px-8 py-3 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm cursor-pointer disabled:opacity-50"
                       >
-                        {loading ? "Menyimpan Perubahan..." : "Simpan Informasi"}
+                        {loading ? "Saving Changes..." : "Save Information"}
                       </button>
                     </div>
                   </form>
@@ -1007,14 +1020,14 @@ const UserProfile = () => {
                       lock_outline
                     </span>
                     <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
-                      Keamanan &amp; Kata Sandi
+                      Security & Password
                     </h3>
                   </div>
 
                   <form onSubmit={handleChangePassword} className="flex flex-col gap-5">
                     <div className="flex flex-col gap-2">
                       <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="currentPassword">
-                        Kata Sandi Saat Ini
+                        Current Password
                       </label>
                       <input
                         id="currentPassword"
@@ -1032,12 +1045,12 @@ const UserProfile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
                       <div className="flex flex-col gap-2">
                         <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="newPassword">
-                          Kata Sandi Baru
+                          New Password
                         </label>
                         <input
                           id="newPassword"
                           type="password"
-                          placeholder="Kata Sandi Baru"
+                          placeholder="New Password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           required
@@ -1047,12 +1060,12 @@ const UserProfile = () => {
 
                       <div className="flex flex-col gap-2">
                         <label className="font-label-md text-xs font-semibold text-[#444842]" htmlFor="confirmPassword">
-                          Konfirmasi Kata Sandi Baru
+                          Confirm New Password
                         </label>
                         <input
                           id="confirmPassword"
                           type="password"
-                          placeholder="Konfirmasi Kata Sandi"
+                          placeholder="Confirm Password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           required
@@ -1067,17 +1080,16 @@ const UserProfile = () => {
                         disabled={pwdLoading}
                         className="bg-[#2D332C] text-white font-label-md text-sm font-semibold px-8 py-3 rounded-xl hover:bg-[#1e1b16] transition-colors shadow-sm cursor-pointer disabled:opacity-50"
                       >
-                        {pwdLoading ? "Memproses..." : "Perbarui Kata Sandi"}
+                        {pwdLoading ? "Processing..." : "Update Password"}
                       </button>
                     </div>
                   </form>
                 </section>
-              </>
-            )}
+                </>
+              )}
 
             {activeTab === "history" && (
               <div className="flex flex-col gap-6">
-                {/* Banner: ajakan menulis ulasan untuk booking selesai yang belum diulas */}
                 {bookings.filter(
                   (b) => b.status === "checked_out" && !b.review
                 ).length > 0 && (
@@ -1087,7 +1099,7 @@ const UserProfile = () => {
                         rate_review
                       </span>
                       <h3 className="font-headline-md text-base font-bold text-[#A0522D]">
-                        Penginapan selesai — bagikan ulasan Anda!
+                        Stay completed — share your review!
                       </h3>
                     </div>
                     <div className="space-y-2">
@@ -1130,7 +1142,7 @@ const UserProfile = () => {
                       onChange={(e) => setFilterStatus(e.target.value)}
                       className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873] w-full sm:w-auto"
                     >
-                      <option value="All">Semua Pesanan</option>
+                      <option value="All">All Orders</option>
                       <option value="Pending">Menunggu Pembayaran</option>
                       <option value="Upcoming">Upcoming / Lunas</option>
                       <option value="Past">Selesai (Checked Out)</option>
@@ -1147,9 +1159,9 @@ const UserProfile = () => {
                       onChange={(e) => setSortBy(e.target.value)}
                       className="bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-3 py-2 text-sm text-[#1e1b16] font-medium focus:outline-none focus:border-[#778873]"
                     >
-                      <option value="newest">Tanggal (Terbaru)</option>
-                      <option value="oldest">Tanggal (Terlama)</option>
-                      <option value="price_high">Harga (Tertinggi)</option>
+                      <option value="newest">Date (Newest)</option>
+                      <option value="oldest">Date (Oldest)</option>
+                      <option value="price_high">Price (Highest)</option>
                     </select>
                   </div>
                 </div>
@@ -1182,12 +1194,12 @@ const UserProfile = () => {
                     <span className="material-symbols-outlined text-4xl text-[#747871] mb-2">
                       event_busy
                     </span>
-                    <p className="text-[#444842] text-sm">Tidak ada riwayat pemesanan yang sesuai dengan filter.</p>
+                    <p className="text-[#444842] text-sm">No matching bookings found for the applied filters.</p>
                   </div>
                 ) : (
                   filteredBookings.map((item) => {
                     const hotelName = item.hotel?.name || item.hotel_name || "H'Leven Resort";
-                    const roomName = item.booking_rooms?.[0]?.room_type?.name || item.room_name || item.room?.name || "Tipe Kamar";
+                    const roomName = item.booking_rooms?.[0]?.room_type?.name || item.room_name || item.room?.name || "Room Type";
                     const grandTotal = Number(item.grand_total || item.total_price || item.subtotal || 0);
                     const imageUrl = getItemImage(item);
                     const isCancelled = ["Cancelled", "Dibatalkan", "cancelled_by_user", "cancelled_by_system"].includes(item.status);
@@ -1255,7 +1267,7 @@ const UserProfile = () => {
 
                             <div className="text-left sm:text-right">
                               <span className="text-[10px] uppercase font-bold text-[#778873] block">
-                                Total Pembayaran
+                                Total Payment
                               </span>
                               <span className="font-headline-lg text-xl font-bold text-[#778873]">
                                 Rp {grandTotal.toLocaleString("id-ID")}
@@ -1297,7 +1309,7 @@ const UserProfile = () => {
                               onClick={() => setSelectedBooking(item)}
                               className="px-4 py-2 rounded-xl border border-[#778873] text-[#778873] font-label-md text-xs font-semibold hover:bg-[#DCCFC0]/20 transition-colors cursor-pointer"
                             >
-                              Detail Pesanan
+                              Detail Pesanan (Order Details)
                             </button>
 
                             {["pending", "unpaid"].includes(item.status) && (
@@ -1306,7 +1318,7 @@ const UserProfile = () => {
                                 onClick={() => setCancelModalBooking(item)}
                                 className="px-4 py-2 rounded-xl border border-[#ba1a1a] text-[#ba1a1a] font-label-md text-xs font-semibold hover:bg-[#ffdad6]/30 transition-colors cursor-pointer"
                               >
-                                Batalkan Pesanan
+                                Batalkan Pesanan (Cancel Order)
                               </button>
                             )}
 
@@ -1349,7 +1361,7 @@ const UserProfile = () => {
                                 className="px-4 py-2 rounded-xl bg-[#778873] text-white font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-base">autorenew</span>
-                                Pesan Lagi
+                                Pesan Lagi (Book Again)
                               </button>
                             )}
                           </div>
@@ -1371,10 +1383,10 @@ const UserProfile = () => {
         const isPaid = ["Paid", "paid", "confirmed", "Dikonfirmasi"].includes(cancelModalBooking.status);
         const refundPolicy = getRefundPolicy(cancelModalBooking);
         const title = !isPaid
-          ? "Batalkan Pesanan"
+          ? "Cancel Order"
           : refundPolicy.canRefund
             ? "Pengajuan Refund"
-            : "Batalkan Pesanan (Hangus)";
+            : "Cancel Order (Non-refundable)";
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left animate-in zoom-in-95 duration-200">
@@ -1384,12 +1396,12 @@ const UserProfile = () => {
               </p>
               {isPaid && !refundPolicy.isRefundable && (
                 <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
-                  Kamar non-refundable — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar akan dikembalikan, pembayaran tetap hangus.
+                  Non-refundable room — funds are <strong>non-refundable</strong>. Room inventory will be released, payment remains non-refundable.
                 </div>
               )}
               {isPaid && refundPolicy.isRefundable && refundPolicy.withinCutoff && (
                 <div className="bg-[#ffdad6]/50 border border-[#ba1a1a]/30 rounded-xl p-3 text-xs text-[#93000a] leading-relaxed">
-                  Pembatalan kurang dari {refundPolicy.cutoffHours} jam sebelum check-in — dana <strong>hangus tidak dikembalikan</strong>. Stok kamar tetap dikembalikan.
+                  Cancellation less than {refundPolicy.cutoffHours} hours before check-in — funds are <strong>non-refundable</strong>. Room inventory will be released.
                 </div>
               )}
               {isPaid && refundPolicy.canRefund && (
@@ -1431,7 +1443,7 @@ const UserProfile = () => {
                   disabled={isSubmittingCancel || !cancelReason.trim()}
                   className="px-5 py-2 bg-[#ba1a1a] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#93000a] disabled:opacity-50 transition-colors shadow-xs"
                 >
-                  {isSubmittingCancel ? "Memproses..." : isPaid && !refundPolicy.canRefund ? "Ya, Batalkan (Hangus)" : "Konfirmasi Pembatalan"}
+                  {isSubmittingCancel ? "Processing..." : isPaid && !refundPolicy.canRefund ? "Yes, Cancel (Non-Refundable)" : "Confirm Cancellation"}
                 </button>
               </div>
             </div>
@@ -1462,7 +1474,7 @@ const UserProfile = () => {
                 Payment Successful
               </h2>
               <p className="font-body-lg text-sm md:text-base opacity-90">
-                Your journey with H&apos;Leven has begun.
+                Your journey with H'Leven has begun.
               </p>
             </div>
 
@@ -1507,10 +1519,9 @@ const UserProfile = () => {
                     <button
                       type="button"
                       onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code)}
-                      className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-3.5 rounded-xl hover:bg-[#50604d] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                      className="bg-[#778873] text-white px-6 py-2 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-colors"
                     >
-                      <span className="material-symbols-outlined text-lg">download</span>
-                      Unduh E-Tiket (PDF)
+                      Download E-Ticket (PDF)
                     </button>
                     <button
                       type="button"
@@ -1544,7 +1555,7 @@ const UserProfile = () => {
                       {selectedBooking.booking_rooms?.[0]?.room_type?.name || selectedBooking.room_name || selectedBooking.room?.name || "Executive Suite"}
                     </p>
                     <p className="font-body-md text-xs text-[#444842] mt-1">
-                      1 Kamar • 2 Tamu • Termasuk Sarapan Pagi
+                      1 Room • 2 Guests • Breakfast Included
                     </p>
                     <div className="mt-2">
                       {getRefundPolicy(selectedBooking).canRefund ? (
@@ -1607,7 +1618,7 @@ const UserProfile = () => {
 
               <div className="pt-4 border-t border-dashed border-[#DCCFC0] text-center">
                 <p className="font-body-md text-xs text-[#444842] italic">
-                  Thank you for choosing H&apos;Leven. We look forward to welcoming you.
+                  Thank you for choosing H'Leven. We look forward to welcoming you.
                 </p>
               </div>
             </div>

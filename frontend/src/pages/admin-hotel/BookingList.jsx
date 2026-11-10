@@ -107,6 +107,11 @@ const normalizeBooking = (b) => {
       identityNumber: guest.identity_number || b.user?.identity_number || "-",
       gender: guest.gender || b.user?.gender || "Male",
     },
+    booker: {
+      name: b.booker_name || b.user?.name || "-",
+      email: b.booker_email || b.user?.email || "-",
+      phone: b.booker_phone || b.user?.phone || "-",
+    },
     room: {
       id: firstRoom.id || 1,
       name: firstRoom.name || "Room",
@@ -267,7 +272,7 @@ export default function BookingList() {
       setExtensionNotes("");
       loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memperpanjang booking");
+       toast.error(err.response?.data?.message || "Failed to extend booking");
     } finally {
       setIsProcessing(false);
     }
@@ -291,7 +296,7 @@ export default function BookingList() {
           toast.error(
             status === 403
               ? "Akses booking ditolak (403). Login sebagai admin_hotel pemilik hotel ini."
-              : "Gagal memuat data reservasi dari server."
+               : "Failed to load reservation data from server."
           );
         }
       }
@@ -302,7 +307,7 @@ export default function BookingList() {
       }
     } catch (err) {
       console.error("Failed to load bookings:", err);
-      if (!silent) toast.error("Gagal memuat data reservasi dari server.");
+       if (!silent) toast.error("Failed to load reservation data from server.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -417,7 +422,7 @@ export default function BookingList() {
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memproses check in.");
+      toast.error("Failed to process check-in.");
     } finally {
       setIsProcessing(false);
     }
@@ -432,12 +437,12 @@ export default function BookingList() {
       const response = await api.post("/admin/verify-qr", {
         booking_code: checkInCode.trim(),
       });
-      toast.success(response.data?.message || "Check-in berhasil.");
+      toast.success(response.data?.message || "Check-in successful.");
       setCheckInCode("");
       setShowCheckInCode(false);
       loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Kode booking tidak valid.");
+      toast.error(err.response?.data?.message || "Invalid booking code.");
     } finally {
       setIsProcessing(false);
     }
@@ -455,11 +460,11 @@ export default function BookingList() {
       });
       const bookingCode = response.data?.data?.booking_code;
       setManualBookingCode(bookingCode || "");
-      toast.success(`Booking ${bookingCode || "manual"} berhasil dibuat.`);
+      toast.success(`Manual booking ${bookingCode || ""} created successfully.`);
       loadData();
     } catch (err) {
       const validationMessage = Object.values(err.response?.data?.errors || {}).flat()[0];
-      toast.error(err.response?.data?.message || validationMessage || "Gagal membuat booking manual.");
+      toast.error(err.response?.data?.message || validationMessage || "Failed to create manual booking.");
     } finally {
       setIsProcessing(false);
     }
@@ -485,7 +490,7 @@ export default function BookingList() {
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memproses check out.");
+      toast.error("Failed to process check-out.");
     } finally {
       setIsProcessing(false);
     }
@@ -511,7 +516,7 @@ export default function BookingList() {
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal membatalkan reservasi.");
+      toast.error("Failed to cancel reservation.");
     } finally {
       setIsProcessing(false);
     }
@@ -522,7 +527,7 @@ export default function BookingList() {
     setIsProcessing(true);
     try {
       const res = await api.post(`/admin/bookings/${booking.id}/refund-approval`, { action });
-      toast.success(res.data?.message || (action === "approve" ? "Refund disetujui. Stok dikembalikan." : "Refund ditolak. Status kembali Paid."));
+      toast.success(res.data?.message || (action === "approve" ? "Refund approved. Stock restored." : "Refund rejected. Status restored to Paid."));
       setConfirmRefundApprove(null);
       setConfirmRefundReject(null);
       if (viewingBooking && viewingBooking.id === booking.id) {
@@ -534,7 +539,7 @@ export default function BookingList() {
       }
       loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memproses refund.");
+      toast.error(err.response?.data?.message || "Failed to process refund.");
     } finally {
       setIsProcessing(false);
     }
@@ -567,7 +572,7 @@ export default function BookingList() {
             className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-[#E5E1DA] rounded-xl text-sm font-semibold text-[#2D312C] hover:border-[#506147] transition-colors"
           >
             <span className="material-symbols-outlined text-[19px]">key</span>
-            Input Kode Hotel
+            Input Booking Code
           </button>
           <button
             type="button"
@@ -1052,7 +1057,7 @@ export default function BookingList() {
                         <p className="text-xs text-[#6B6E6A] mt-1">
                           {bookings.length === 0
                             ? "Reservasi tamu akan muncul di sini."
-                            : "Tidak ada data reservasi yang sesuai dengan kriteria pencarian/filter."}
+                                                         : "No matching reservation data for the search/filter criteria."}
                         </p>
                       </div>
 
@@ -1232,34 +1237,40 @@ export default function BookingList() {
                   <div className="flex items-center gap-2 text-[#506147]">
                     <span className="material-symbols-outlined text-[20px]">person</span>
                     <h4 className="font-['Newsreader',serif] text-lg font-semibold text-[#2D312C]">
-                      Guest Information
+                      Guest & Booker Information
                     </h4>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-[#6B6E6A]">Guest Name:</span>
-                      <p className="font-semibold text-[#2D312C] text-sm mt-0.5">
-                        {viewingBooking.guest.name}
-                      </p>
+                  <div className="grid grid-cols-1 gap-4 text-xs">
+                    <div className="p-3 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA]">
+                      <span className="text-[#6B6E6A] font-semibold">Tamu (Guest):</span>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <span className="text-[#6B6E6A]">Name:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.guest?.name || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[#6B6E6A]">Phone:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.guest?.phone || "N/A"}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[#6B6E6A]">Contact Phone:</span>
-                      <p className="font-semibold text-[#2D312C] text-sm mt-0.5">
-                        {viewingBooking.guest.phone}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[#6B6E6A]">Email Address:</span>
-                      <p className="font-semibold text-[#2D312C] mt-0.5">
-                        {viewingBooking.guest.email}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[#6B6E6A]">Jumlah Anak:</span>
-                      <p className="font-semibold text-[#2D312C] mt-0.5">
-                        {viewingBooking.childrenCount}
-                      </p>
+                    <div className="p-3 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA]">
+                      <span className="text-[#6B6E6A] font-semibold">Pemesan (Booker):</span>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <span className="text-[#6B6E6A]">Name:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.booker?.name || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[#6B6E6A]">Phone:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.booker?.phone || "N/A"}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-[#6B6E6A]">Email:</span>
+                          <p className="font-semibold text-[#2D312C]">{viewingBooking.booker?.email || "N/A"}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1429,7 +1440,7 @@ export default function BookingList() {
             />
             <div className="flex justify-end gap-3 pt-2 border-t border-[#E5E1DA]">
               <button type="button" onClick={() => setShowCheckInCode(false)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4]">
-                Batal
+                 Cancel
               </button>
               <button type="submit" disabled={isProcessing || !checkInCode.trim()} className="px-5 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] disabled:opacity-50">
                 {isProcessing ? "Memproses..." : "Check-in"}
@@ -1453,7 +1464,7 @@ export default function BookingList() {
             </div>
 
             <label className="block text-xs font-semibold text-[#2D312C] space-y-1.5">
-              Kode booking untuk check-in
+              Booking code for check-in
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1468,9 +1479,9 @@ export default function BookingList() {
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(manualBookingCode);
-                        toast.success("Kode booking disalin.");
+                        toast.success("Booking code copied.");
                       } catch {
-                        toast.error("Kode booking gagal disalin.");
+                        toast.error("Failed to copy booking code.");
                       }
                     }}
                     title="Salin kode booking"
@@ -1488,7 +1499,7 @@ export default function BookingList() {
                 <select name="room_type_id" required value={manualForm.room_type_id} onChange={(event) => setManualForm((prev) => ({ ...prev, room_type_id: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]">
                   <option value="">Pilih tipe kamar</option>
                   {rooms.map((room) => (
-                    <option key={room.id} value={room.id}>{room.name} · {fmtRupiah(room.weekday_price)} / malam</option>
+                    <option key={room.id} value={room.id}>{room.name} · {fmtRupiah(room.weekday_price)} / night</option>
                   ))}
                 </select>
               </label>
@@ -1509,7 +1520,7 @@ export default function BookingList() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-bold text-[#2D312C]">{selectedManualRoom.name}</p>
-                        <p className="text-xs text-[#6B6E6A]">{selectedManualRoom.type || "Tipe kamar"}{selectedManualRoom.bed ? ` · ${selectedManualRoom.bed}` : ""}</p>
+                        <p className="text-xs text-[#6B6E6A]">{selectedManualRoom.type || "Room type"}{selectedManualRoom.bed ? ` · ${selectedManualRoom.bed}` : ""}</p>
                       </div>
                       <span className="text-xs font-semibold text-[#4A5D43]">Stok {selectedManualRoom.stock ?? "-"}</span>
                     </div>
@@ -1572,17 +1583,17 @@ export default function BookingList() {
               <label className="sm:col-span-2 text-xs font-semibold text-[#2D312C] space-y-1.5">
                 Pembayaran
                 <select name="payment_method" required value={manualForm.payment_method} onChange={(event) => setManualForm((prev) => ({ ...prev, payment_method: event.target.value }))} className="w-full px-3 py-2.5 bg-[#fcf9f5] border border-[#E5E0D8] rounded-lg text-sm font-normal focus:outline-none focus:border-[#506147]">
-                  <option value="cash">Tunai · sudah dibayar</option>
-                  <option value="bank_transfer">Transfer bank · sudah dibayar</option>
-                  <option value="card">Kartu · sudah dibayar</option>
-                  <option value="unpaid">Belum dibayar</option>
+                  <option value="cash">Cash · Paid</option>
+                  <option value="bank_transfer">Bank Transfer · Paid</option>
+                  <option value="card">Card · Paid</option>
+                  <option value="unpaid">Unpaid</option>
                 </select>
               </label>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-[#E5E1DA]">
               <button type="button" onClick={() => setShowManualBooking(false)} disabled={isProcessing} className="px-5 py-2 border border-[#c4c8be] rounded-lg text-xs font-semibold text-[#2D312C] hover:bg-[#eae8e4]">
-                {manualBookingCode ? "Selesai" : "Batal"}
+                {manualBookingCode ? "Done" : "Cancel"}
               </button>
               <button type="submit" disabled={isProcessing || rooms.length === 0 || !!manualBookingCode} className="px-5 py-2 bg-[#506147] text-white text-xs font-semibold rounded-lg hover:bg-[#3b4b33] disabled:opacity-50">
                 {isProcessing ? "Menyimpan..." : manualBookingCode ? "Booking Dibuat" : "Buat Booking"}
@@ -1805,7 +1816,7 @@ export default function BookingList() {
                   </div>
                 </div>
                 <div className="bg-white rounded-lg border border-[#E5E1DA] p-3 space-y-1.5">
-                  <div className="flex justify-between"><span className="text-[#6B6E6A]">Rp {basePrice.toLocaleString("id-ID")}/malam × {extensionDuration} hari × {qty} kamar</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
+                  <div className="flex justify-between"><span className="text-[#6B6E6A]">Rp {basePrice.toLocaleString("id-ID")}/night × {extensionDuration} days × {qty} rooms</span><span className="font-bold">{fmtRupiah(sub)}</span></div>
                   <div className="flex justify-between text-[#6B6E6A]"><span>Pajak &amp; Service ({taxRate}%)</span><span>{fmtRupiah(tax)}</span></div>
                   <div className="flex justify-between font-bold text-[#506147] text-sm pt-1 border-t border-[#E5E1DA]"><span>Total Tambahan</span><span>{fmtRupiah(total)}</span></div>
                 </div>
