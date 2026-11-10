@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
 
     // Route untuk user/publik mengecek daftar kamar & stok ketersediaan per tanggal
     Route::get('/hotels/{id}/rooms', [RoomController::class, 'index']);
+    Route::post('/hotels/{hotelId}/alternative-rooms', [BookingController::class, 'alternatives'])->whereNumber('hotelId');
     Route::get('/hotels/{id}/reviews', [ReviewController::class, 'publicIndex']);
 
     // Public booking (guest checkout — auto-creates a session token in controller)

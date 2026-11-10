@@ -21,9 +21,32 @@ class HotelController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Hotel::with(['city', 'photos', 'facilities', 'roomTypes'])
-            ->withCount('reviews')
-            ->withAvg('reviews', 'rating')
+        $query = Hotel::select([
+                'id',
+                'admin_id',
+                'city_id',
+                'name',
+                'slug',
+                'description',
+                'address',
+                'average_rating',
+                'total_review',
+                'latitude',
+                'longitude',
+                'status',
+                'star_rating',
+                'property_type',
+                'year_built',
+                'logo',
+                'allow_pay_at_hotel',
+            ])
+            ->with([
+                'city:id,city',
+                'photos:id,hotel_id,photo,is_thumbnail',
+                'facilities:id,name',
+                'roomTypes:id,hotel_id,name,type,weekday_price,weekend_price,capacity_adult,capacity_child',
+                'roomTypes.facilities:id,name',
+            ])
             ->where('status', 'active');
 
         if ($request->has('search')) {
@@ -106,6 +129,8 @@ class HotelController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
+        $hotel->loadMissing('city');
+
         $hasCoordinates = is_numeric($hotel->latitude) && is_numeric($hotel->longitude);
         $endpoint = $hasCoordinates
             ? 'https://nominatim.openstreetmap.org/reverse'
@@ -125,6 +150,7 @@ class HotelController extends Controller
                 'limit' => 1,
             ];
 
+        $response = null;
         try {
             $response = Http::acceptJson()
                 ->withUserAgent('HLevenHotelPlatform/1.0')
@@ -132,21 +158,11 @@ class HotelController extends Controller
                 ->get($endpoint, $params);
         } catch (ConnectionException $exception) {
             report($exception);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'OpenStreetMap location service is currently unreachable.',
-            ], 503);
         }
 
-        if (! $response->successful()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'OpenStreetMap location service returned an error.',
-            ], 502);
-        }
-
-        $result = $hasCoordinates ? $response->json() : $response->json('0');
+        $result = $response?->successful()
+            ? ($hasCoordinates ? $response->json() : $response->json('0'))
+            : null;
         $address = is_array($result) ? ($result['address'] ?? []) : [];
         $locality = $address['city']
             ?? $address['town']
@@ -161,19 +177,45 @@ class HotelController extends Controller
             ->filter(fn ($part) => is_string($part) && trim($part) !== '')
             ->unique(fn ($part) => mb_strtolower(trim($part)))
             ->implode(', ');
+        $source = 'OpenStreetMap';
 
         if ($locationArea === '') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Hotel location not found on OpenStreetMap. Ensure the hotel name or coordinates are correct.',
-            ], 404);
+            $profileParts = collect([
+                $hotel->city?->city,
+                $hotel->city?->province,
+            ])
+                ->filter(fn ($part) => is_string($part) && trim($part) !== '')
+                ->unique(fn ($part) => mb_strtolower(trim($part)));
+
+            if ($profileParts->isNotEmpty()) {
+                $profileParts->push('Indonesia');
+                $locationArea = $profileParts
+                    ->unique(fn ($part) => mb_strtolower(trim($part)))
+                    ->implode(', ');
+                $source = 'Hotel profile';
+            }
+        }
+
+        if ($locationArea === '') {
+            $locationArea = trim((string) $hotel->address);
+            $source = 'Hotel address';
+        }
+
+        if ($locationArea === '' && $hasCoordinates) {
+            $locationArea = $hotel->latitude.', '.$hotel->longitude;
+            $source = 'Hotel coordinates';
+        }
+
+        if ($locationArea === '') {
+            $locationArea = (string) $hotel->name;
+            $source = 'Hotel profile';
         }
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'location_area' => $locationArea,
-                'source' => 'OpenStreetMap',
+                'source' => $source,
             ],
         ]);
     }

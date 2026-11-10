@@ -115,11 +115,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
                     const imageUrl = hotel.thumbnail
                         ? getStorageUrl(hotel.thumbnail)
-                        : getStorageUrl(hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || "");
-                    
-                    const handleImageError = (e) => {
-                        e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
-                    };
+                        : getStorageUrl(hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || null);
 
                     const price = Number(
                         hotel.starting_price || hotel.price || hotel.rooms?.[0]?.price || 500000

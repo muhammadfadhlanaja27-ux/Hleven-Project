@@ -107,6 +107,8 @@ class BookingController extends Controller
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'qty' => 'required|integer|min:1',
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -132,6 +134,8 @@ class BookingController extends Controller
         $checkOutStr = $checkOut->toDateString();
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $qty = (int) $request->qty;
+        $adults = (int) ($request->input('adults', 1));
+        $children = (int) ($request->input('children', 0));
 
         $totalPhysicalStock = max(0, (int) ($roomType->stock ?? 0));
         $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
@@ -144,22 +148,44 @@ class BookingController extends Controller
 
         $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
         if ($remainingStockDirect < $qty) {
+            $suggestions = $this->getAlternativeRooms(
+                $request->hotel_id,
+                $roomType->id,
+                $checkInStr,
+                $checkOutStr,
+                $adults,
+                $children,
+                $qty
+            );
+
             return response()->json([
                 'status' => 'error',
                 'message' => $remainingStockDirect === 0
                     ? 'This room is out of stock for the selected dates.'
                     : "The number of rooms selected ({$qty} rooms) exceeds available stock ({$remainingStockDirect} rooms).",
                 'available_stock' => $remainingStockDirect,
+                'suggestions' => $suggestions,
             ], 422);
         }
 
         $quote = app(PricingService::class)->quote($roomType, $period, $qty);
 
         if (! empty($quote['closed_dates'])) {
+            $suggestions = $this->getAlternativeRooms(
+                $request->hotel_id,
+                $roomType->id,
+                $checkInStr,
+                $checkOutStr,
+                $adults,
+                $children,
+                $qty
+            );
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'The following dates are closed and cannot be booked: '.implode(', ', $quote['closed_dates']).'.',
                 'closed_dates' => $quote['closed_dates'],
+                'suggestions' => $suggestions,
             ], 422);
         }
 
@@ -169,6 +195,46 @@ class BookingController extends Controller
                 'nights' => max(1, $checkIn->diffInDays($checkOut)),
                 'qty' => $qty,
             ]),
+        ]);
+    }
+
+    public function alternatives(Request $request, int $hotelId)
+    {
+        $validated = $request->validate([
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+        ]);
+
+        $hotel = Hotel::where('status', 'active')->find($hotelId);
+        $roomType = RoomType::where('hotel_id', $hotelId)
+            ->where('id', $validated['room_type_id'])
+            ->where('is_active', true)
+            ->first();
+
+        if (! $hotel || ! $roomType) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hotel atau tipe kamar tidak ditemukan atau tidak aktif.',
+            ], 404);
+        }
+
+        $suggestions = $this->getAlternativeRooms(
+            $hotelId,
+            $roomType->id,
+            Carbon::parse($validated['check_in'])->toDateString(),
+            Carbon::parse($validated['check_out'])->toDateString(),
+            (int) ($validated['adults'] ?? 1),
+            (int) ($validated['children'] ?? 0),
+            (int) $validated['qty']
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $suggestions,
         ]);
     }
 
@@ -950,8 +1016,8 @@ class BookingController extends Controller
 
             if ($adults > $maxAdultAllowed || ($adults + $children) > $maxTotalAllowed) {
                 DB::rollBack();
-                $minQtyNeeded = (int) ceil(($adults + $children) / max(1, ($capacityAdult + $capacityChild)));
-                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
+                $minQtyNeeded = (int) ceil($adults / $capacityAdult);
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults, $children, $qty);
 
                 return response()->json([
                     'status' => 'error',
@@ -974,7 +1040,7 @@ class BookingController extends Controller
 
             if ($remainingStockDirect < $qty) {
                 DB::rollBack();
-                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults);
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults, $children, $qty);
 
                 return response()->json([
                     'status' => 'error',
@@ -1122,7 +1188,7 @@ class BookingController extends Controller
         ], 200);
     }
 
-    private function getAlternativeRooms($hotelId, $currentRoomTypeId, $checkInStr, $checkOutStr, $adults)
+    private function getAlternativeRooms($hotelId, $currentRoomTypeId, $checkInStr, $checkOutStr, $adults, $children = 0, $qty = 1)
     {
         $hasIsActive = Schema::hasColumn('room_types', 'is_active');
 
@@ -1133,71 +1199,121 @@ class BookingController extends Controller
             $sameHotelQuery->where('is_active', true);
         }
 
-        $sameHotelRooms = $sameHotelQuery->with(['hotel.city', 'photos', 'facilities'])
+        $sameHotelRooms = $sameHotelQuery->with(['hotel.city', 'hotel.facilities', 'photos', 'facilities'])
             ->whereHas('hotel', function ($q) {
                 $q->where('status', 'active');
             })
-            ->where('capacity_adult', '>=', $adults)
-            ->get()
-            ->filter(function ($r) use ($checkInStr, $checkOutStr) {
-                $booked = BookingRoom::where('room_type_id', $r->id)
-                    ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
-                        $q->whereIn('status', ['unpaid', 'paid', 'pending', 'confirmed', 'checked_in', 'refund_pending'])
-                            ->where('check_in', '<', $checkOutStr)
-                            ->where('check_out', '>', $checkInStr);
-                    })->sum('qty');
-
-                return (($r->stock ?? 10) - $booked) > 0;
-            });
+            ->get();
+        $sameHotelRooms = $this->filterAvailableAlternativeRooms(
+            $sameHotelRooms,
+            $checkInStr,
+            $checkOutStr,
+            $adults,
+            $children,
+            $qty
+        );
 
         if ($sameHotelRooms->isNotEmpty()) {
             return [
                 'type' => 'same_hotel',
-                'rooms' => $sameHotelRooms->values()->map(function (RoomType $room) {
+                'rooms' => $sameHotelRooms->take(6)->values()->map(function (RoomType $room) {
                     return $this->alternativeRoomDetails($room, null);
                 }),
             ];
         }
 
         $currentHotel = Hotel::with('city')->find($hotelId);
-        $cityId = $currentHotel?->city_id;
 
         $otherHotelQuery = RoomType::query();
         if ($hasIsActive) {
             $otherHotelQuery->where('is_active', true);
         }
 
-        $otherHotelRooms = $otherHotelQuery->with(['hotel.city', 'photos', 'facilities'])
-            ->whereHas('hotel', function ($q) use ($cityId, $hotelId) {
+        $otherHotelRooms = $otherHotelQuery->with([
+            'hotel:id,name,address,city_id,latitude,longitude',
+        ])
+            ->whereHas('hotel', function ($q) use ($hotelId) {
                 $q->where('status', 'active');
-                if ($cityId) {
-                    $q->where('city_id', $cityId);
-                }
                 $q->where('id', '!=', $hotelId);
+                $q->whereNotNull('latitude')
+                    ->whereNotNull('longitude')
+                    ->whereBetween('latitude', [-90, 90])
+                    ->whereBetween('longitude', [-180, 180]);
             })
-            ->where('capacity_adult', '>=', $adults)
-            ->get()
-            ->filter(function ($r) use ($checkInStr, $checkOutStr) {
-                $booked = BookingRoom::where('room_type_id', $r->id)
-                    ->whereHas('booking', function ($q) use ($checkInStr, $checkOutStr) {
-                        $q->whereIn('status', ['unpaid', 'paid', 'pending', 'confirmed', 'checked_in', 'refund_pending'])
-                            ->where('check_in', '<', $checkOutStr)
-                            ->where('check_out', '>', $checkInStr);
-                    })->sum('qty');
-
-                return (($r->stock ?? 10) - $booked) > 0;
-            });
+            ->whereRaw('capacity_adult * ? >= ?', [$qty, $adults])
+            ->whereRaw('capacity_child * ? >= ?', [$qty, $children])
+            ->where('stock', '>=', $qty)
+            ->get();
+        $otherHotelRooms = $this->filterAvailableAlternativeRooms(
+            $otherHotelRooms,
+            $checkInStr,
+            $checkOutStr,
+            $adults,
+            $children,
+            $qty
+        );
 
         $recommendations = $otherHotelRooms->map(function (RoomType $room) use ($currentHotel) {
             $distance = $this->distanceBetweenHotels($currentHotel, $room->hotel);
 
-            return $this->alternativeRoomDetails($room, $distance);
-        })->sortBy(fn (array $room) => $room['distance_km'] ?? INF)->values();
+            $room->setAttribute('recommendation_distance_km', $distance);
+
+            return $room;
+        })->sortBy(fn (RoomType $room) => $room->getAttribute('recommendation_distance_km') ?? INF)
+            ->take(6)
+            ->values();
+
+        $recommendations->each(function (RoomType $room) {
+            $room->load(['hotel.city', 'hotel.facilities', 'photos', 'facilities']);
+        });
+        $recommendations = $recommendations->map(fn (RoomType $room) => $this->alternativeRoomDetails(
+            $room,
+            $room->getAttribute('recommendation_distance_km')
+        ));
 
         return [
-            'type' => 'other_hotels_in_city',
+            'type' => 'other_hotels_nearby',
             'rooms' => $recommendations,
         ];
+    }
+
+    private function filterAvailableAlternativeRooms($rooms, string $checkInStr, string $checkOutStr, int $adults, int $children, int $qty)
+    {
+        if ($rooms->isEmpty()) {
+            return $rooms;
+        }
+
+        $roomTypeIds = $rooms->pluck('id');
+        $bookedQuantities = BookingRoom::whereIn('room_type_id', $roomTypeIds)
+            ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                $query->whereIn('status', ['unpaid', 'paid', 'pending', 'confirmed', 'checked_in', 'refund_pending'])
+                    ->where('check_in', '<', $checkOutStr)
+                    ->where('check_out', '>', $checkInStr);
+            })
+            ->select('room_type_id', DB::raw('SUM(qty) as total_booked'))
+            ->groupBy('room_type_id')
+            ->pluck('total_booked', 'room_type_id');
+
+        $closedRoomTypeIds = RoomAvailability::whereIn('room_type_id', $roomTypeIds)
+            ->where('is_closed', true)
+            ->where('date', '>=', $checkInStr)
+            ->where('date', '<', $checkOutStr)
+            ->pluck('room_type_id')
+            ->unique();
+
+        return $rooms->filter(function (RoomType $room) use ($bookedQuantities, $closedRoomTypeIds, $adults, $children, $qty) {
+            $availableStock = max(0, (int) ($room->stock ?? 0) - (int) ($bookedQuantities[$room->id] ?? 0));
+            $hasCapacity = (int) $room->capacity_adult * $qty >= $adults
+                && (int) $room->capacity_child * $qty >= $children;
+
+            if ($closedRoomTypeIds->contains($room->id) || ! $hasCapacity || $availableStock < $qty) {
+                return false;
+            }
+
+            $room->setAttribute('available_stock', $availableStock);
+
+            return true;
+        })->values();
     }
 
     private function alternativeRoomDetails(RoomType $room, ?float $distanceKm): array
@@ -1208,6 +1324,10 @@ class BookingController extends Controller
                 'name' => $room->hotel->name,
                 'address' => $room->hotel->address,
                 'city' => $room->hotel->city?->city,
+                'facilities' => $room->hotel->facilities->map(fn ($facility) => [
+                    'id' => $facility->id,
+                    'name' => $facility->name,
+                ])->values(),
             ] : null,
             'distance_km' => $distanceKm,
         ]);

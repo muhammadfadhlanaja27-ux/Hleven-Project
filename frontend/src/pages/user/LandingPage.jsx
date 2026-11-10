@@ -120,6 +120,18 @@ const LandingPage = () => {
     setShowRoomModal(false);
   };
 
+  const getHotelFacilityNames = (hotel) => {
+    const hotelFacs = (hotel.facilities || []).map((f) =>
+      (typeof f === "object" ? f.name : String(f)).toLowerCase()
+    );
+
+    const roomFacs = (hotel.roomTypes || []).flatMap((roomType) => roomType.facilities || []).map((f) =>
+      (typeof f === "object" ? f.name : String(f)).toLowerCase()
+    );
+
+    return [...new Set([...hotelFacs, ...roomFacs])];
+  };
+
   const filteredHotels = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
@@ -143,12 +155,36 @@ const LandingPage = () => {
         }
 
         if (selectedFacilities.length > 0) {
-          const hotelFacs = (hotel.facilities || []).map((f) =>
-            (typeof f === "object" ? f.name : String(f)).toLowerCase()
-          );
-          const matchesAllFacs = selectedFacilities.every((fac) =>
-            hotelFacs.some((hf) => hf.includes(fac.toLowerCase()))
-          );
+          const hotelFacs = getHotelFacilityNames(hotel);
+          const matchesAllFacs = selectedFacilities.every((fac) => {
+            const facLower = fac.toLowerCase();
+            let keywords = [facLower];
+            if (facLower.includes("wifi")) keywords = ["wifi", "wi-fi", "internet"];
+            else if (facLower.includes("kolam")) keywords = ["kolam", "pool", "swimming"];
+            else if (facLower.includes("restoran")) keywords = ["restoran", "restaurant", "dining", "bar"];
+            else if (facLower.includes("parkir")) keywords = ["parkir", "parking", "car park"];
+            else if (facLower.includes("gym")) keywords = ["gym", "fitness", "fitness center"];
+            else if (facLower.includes("kamar mandi")) keywords = ["kamar mandi", "bathroom", "shower", "bathtub"];
+            else if (facLower.includes("bathtub")) keywords = ["bathtub", "bathroom"];
+            else if (facLower.includes("meja kerja")) keywords = ["meja kerja", "desk", "work desk"];
+            else if (facLower.includes("tv")) keywords = ["tv", "smart tv"];
+            else if (facLower.includes("ac")) keywords = ["ac", "air conditioning"];
+            else if (facLower.includes("mini fridge")) keywords = ["mini fridge", "kulkas mini", "fridge"];
+            else if (facLower.includes("hair dryer")) keywords = ["hair dryer", "dryer", "pengering rambut"];
+            else if (facLower.includes("lemari")) keywords = ["lemari", "wardrobe", "closet"];
+            else if (facLower.includes("air mineral")) keywords = ["air mineral", "mineral water"];
+            else if (facLower.includes("balkon")) keywords = ["balcon", "balcony", "teras"];
+            else if (facLower.includes("telepon")) keywords = ["telepon", "phone"];
+            else if (facLower.includes("brankas")) keywords = ["brankas", "safe"];
+            else if (facLower.includes("kipas angin")) keywords = ["kipas angin", "fan"];
+            else if (facLower.includes("tirai blackout")) keywords = ["tirai blackout", "blackout curtain", "curtains"];
+            else if (facLower.includes("sofa")) keywords = ["sofa", "chair"];
+            else if (facLower.includes("teh")) keywords = ["teh", "kopi", "coffee", "tea"];
+            else if (facLower.includes("jubah")) keywords = ["jubah mandi", "bathrobe"];
+            else if (facLower.includes("kedap suara")) keywords = ["kedap suara", "soundproof", "noise reduction"];
+
+            return keywords.some((kw) => hotelFacs.some((hf) => hf.includes(kw)));
+          });
           if (!matchesAllFacs) return false;
         }
 

@@ -9,8 +9,18 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   if (!hotel) return null;
 
   const getImageUrl = () => {
-    if (hotel.thumbnail) return getStorageUrl(hotel.thumbnail);
-    if (hotel.photos?.length > 0) return getStorageUrl(hotel.photos[0].photo || hotel.photos[0].url);
+    if (hotel.thumbnail) {
+      const thumbnailUrl = getStorageUrl(hotel.thumbnail);
+      if (thumbnailUrl) return thumbnailUrl;
+    }
+    if (hotel.photos && hotel.photos.length > 0) {
+      const firstPhoto = hotel.photos[0];
+      const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
+      if (photoPath) {
+        const photoUrl = getStorageUrl(photoPath);
+        if (photoUrl) return photoUrl;
+      }
+    }
     return null;
   };
 

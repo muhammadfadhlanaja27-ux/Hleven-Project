@@ -183,7 +183,7 @@ export default function HotelInformation() {
 
     let active = true;
     const cacheKey = `hleven_location_area_${hotelId}`;
-    const cacheFingerprint = `${hotelData.name}|${hotelData.latitude ?? ""}|${hotelData.longitude ?? ""}`;
+    const cacheFingerprint = `${hotelData.name}|${hotelData.city}|${hotelData.address}|${hotelData.latitude ?? ""}|${hotelData.longitude ?? ""}`;
     setResolvedLocationArea("");
     setLocationAreaStatus("loading");
 
@@ -225,8 +225,10 @@ export default function HotelInformation() {
         }
       } catch (error) {
         if (!active) return;
-        console.error("Failed to search hotel location area:", error);
-        setLocationAreaStatus("error");
+        console.warn("Pencarian area lokasi gagal; memakai lokasi dari profil hotel.", error);
+        const fallbackLocation = hotelData.location || hotelData.city || hotelData.address;
+        setResolvedLocationArea(fallbackLocation);
+        setLocationAreaStatus(fallbackLocation ? "resolved" : "error");
       }
     };
 
@@ -235,7 +237,7 @@ export default function HotelInformation() {
     return () => {
       active = false;
     };
-  }, [hotelId, hotelData.name, hotelData.latitude, hotelData.longitude]);
+  }, [hotelId, hotelData.name, hotelData.city, hotelData.address, hotelData.location, hotelData.latitude, hotelData.longitude]);
 
   const fetchHotelInfo = async (forceRefresh = false) => {
     setLoading(true);
