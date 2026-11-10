@@ -4,6 +4,25 @@ const getBackendBaseUrl = () => {
   return apiUrl.replace(/\/api(?:\/v1)?\/?$/, "");
 };
 
+const FALLBACK_HOTEL_IMAGES = [
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1496417263034-38ec4f0b665a?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80"
+];
+
+const getFallbackHotelImage = (seed = "hleven-hotel") => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return FALLBACK_HOTEL_IMAGES[hash % FALLBACK_HOTEL_IMAGES.length];
+};
+
 export const getStorageUrl = (path = "") => {
   if (!path) return "";
   const str = String(path).trim();
@@ -14,6 +33,10 @@ export const getStorageUrl = (path = "") => {
   }
   if (str.includes("/storage/v1/s3")) {
     return str.replace("/storage/v1/s3", "/storage/v1/object/public");
+  }
+
+  if (/pixabay\.com\/get\//i.test(str) || /picsum\.photos\//i.test(str)) {
+    return getFallbackHotelImage(str);
   }
 
   // Already absolute URL, blob URL, or data URI: keep as-is.

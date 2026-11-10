@@ -92,7 +92,6 @@ const BookingPage = () => {
   const [, setOrderId] = useState("");
   const [, setPaymentId] = useState(null);
   const [successModalData, setSuccessModalData] = useState(null);
-  const [expandedSuggestionId, setExpandedSuggestionId] = useState(null);
 
   const minRequiredRooms = useMemo(() => {
     const capacity = room?.capacity_adult || 2;
@@ -277,7 +276,7 @@ const BookingPage = () => {
     let active = true;
 
     const fetchPriceQuote = async () => {
-      if (!hotelId || !room?.id || !checkInDate || !checkOutDate || !roomQty) {
+      if (!hotelId || !room?.id || !checkInDate || !checkOutDate) {
         if (active) {
           setPriceQuote(null);
           setPriceQuoteError("");
@@ -286,13 +285,16 @@ const BookingPage = () => {
       }
 
       setPriceQuoteError("");
+      setSuggestionData(null);
       try {
         const response = await api.post("/bookings/quote", {
           hotel_id: Number(hotelId),
           room_type_id: Number(room.id),
           check_in: checkInDate,
           check_out: checkOutDate,
-          qty: Number(roomQty),
+          qty: Math.max(1, Number(roomQty) || 1),
+          adults: Number(adults),
+          children: Number(children),
         });
         if (active) {
           setPriceQuote(response.data?.data || null);
@@ -310,6 +312,13 @@ const BookingPage = () => {
             validationMessage ||
             "Gagal memeriksa harga dan ketersediaan kamar."
           );
+          if (responseData?.suggestions) {
+            setSuggestionData({
+              message: responseData.message || "Kamar tidak tersedia untuk tanggal yang dipilih.",
+              type: responseData.suggestions.type,
+              rooms: responseData.suggestions.rooms || [],
+            });
+          }
         }
       }
     };
@@ -319,7 +328,7 @@ const BookingPage = () => {
     return () => {
       active = false;
     };
-  }, [hotelId, room?.id, checkInDate, checkOutDate, roomQty]);
+  }, [hotelId, room?.id, checkInDate, checkOutDate, roomQty, adults, children]);
 
   const roomPrice = Number(room?.price || room?.weekday_price || 350000);
   const taxRate = Number(priceQuote?.tax_rate ?? hotel?.tax_rate ?? 5);
@@ -562,7 +571,6 @@ const BookingPage = () => {
             type: responseData.suggestions.type,
             rooms: responseData.suggestions.rooms || [],
           });
-          setExpandedSuggestionId(null);
         }
       } else {
         const errorMessage = responseData?.message || "Terjadi kesalahan saat memproses pesanan.";
@@ -1040,116 +1048,151 @@ const BookingPage = () => {
       {/* MODAL REKOMENDASI KAMAR ALTERNATIF */}
       {suggestionData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl p-6 border border-[#DCCFC0]/60 space-y-4 text-left">
-            <div className="flex justify-between items-start border-b border-[#DCCFC0]/60 pb-3">
+          <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl border border-[#DCCFC0]/60 flex flex-col text-left">
+            <div className="flex justify-between items-start gap-4 border-b border-[#DCCFC0]/60 p-5 sm:p-6">
               <div>
                 <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
-                  Kamar Tidak Tersedia
+                  Pilihan Kamar Alternatif
                 </h3>
                 <p className="text-xs font-semibold text-[#ba1a1a] mt-1">{suggestionData.message}</p>
               </div>
               <button
+                type="button"
+                aria-label="Tutup rekomendasi kamar"
                 onClick={() => setSuggestionData(null)}
-                className="text-[#6B6E6A] hover:text-[#2D312C] text-lg font-bold cursor-pointer"
+                className="shrink-0 rounded-lg px-2 py-1 text-[#6B6E6A] hover:bg-[#F4F0E9] hover:text-[#2D312C] text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <p className="font-body-md text-xs text-[#444842]">
-              {suggestionData.rooms && suggestionData.rooms.length > 0
-                ? (suggestionData.type === "same_hotel"
-                  ? "Pilihan kamar lain yang muat dan tersedia di hotel ini:"
-                  : "Semua kamar di hotel ini penuh. Berikut opsi kamar di hotel lain sekitar kota ini:")
-                : "Tidak ada opsi kamar alternatif yang tersedia untuk tanggal dan kapasitas tamu yang Anda pilih."}
-            </p>
+            <div className="px-5 pt-4 sm:px-6">
+              <p className="font-body-md text-xs text-[#444842]">
+                {suggestionData.rooms && suggestionData.rooms.length > 0
+                  ? (suggestionData.type === "same_hotel"
+                    ? "Kamar berikut tersedia di hotel yang sama. Gulir untuk melihat semua pilihan:"
+                    : "Kamar berikut tersedia di hotel lain, diurutkan dari yang terdekat. Gulir untuk melihat semua pilihan:")
+                  : "Tidak ada opsi kamar alternatif yang tersedia untuk tanggal dan kapasitas tamu yang Anda pilih."}
+              </p>
+            </div>
 
             {suggestionData.rooms && suggestionData.rooms.length > 0 && (
-              <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto p-1">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-3 sm:px-6">
+                <div className="grid grid-cols-1 gap-4">
                 {suggestionData.rooms.map((altRoom) => (
                   <div
                     key={altRoom.id}
-                    className="overflow-hidden border border-[#DCCFC0] rounded-xl bg-[#faf3ea] hover:border-[#778873] transition-colors"
+                    className="overflow-hidden border border-[#DCCFC0] rounded-2xl bg-[#faf3ea] hover:border-[#778873] transition-colors shadow-sm"
                   >
-                    <div className="flex items-center gap-3 p-3 sm:p-4">
-                      {altRoom.photos?.[0] && (
+                    <div className="grid grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)]">
+                      {altRoom.photos?.length > 0 ? (
                         <img
                           src={getStorageUrl(altRoom.photos.find((photo) => photo.is_thumbnail)?.photo || altRoom.photos[0].photo || altRoom.photos[0].url)}
                           alt={altRoom.name}
-                          className="h-16 w-20 shrink-0 rounded-lg object-cover sm:h-20 sm:w-28"
+                          className="h-40 w-full object-cover sm:h-full sm:min-h-52"
                           loading="lazy"
                         />
-                      )}
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p className="truncate font-label-md text-xs font-bold text-[#50604d]">
-                          {altRoom.hotel?.name || "Hotel"}
-                          {suggestionData.type === "same_hotel" && " · Hotel ini"}
-                        </p>
-                        <p className="truncate font-headline-sm text-sm font-bold text-[#2D332C]">{altRoom.name}</p>
-                        <p className="truncate text-xs text-[#5b6058]">
-                          {altRoom.hotel?.address || altRoom.hotel?.city || "Lokasi tidak tersedia"}
-                        </p>
-                        {suggestionData.type === "other_hotels_in_city"
-                          && altRoom.distance_km != null
-                          && Number.isFinite(Number(altRoom.distance_km)) && (
-                          <p className="text-xs text-[#5b6058]">
-                            ±{Number(altRoom.distance_km).toLocaleString("id-ID")} km dari hotel pilihan
-                          </p>
-                        )}
-                        <p className="font-label-md text-xs font-bold text-[#778873]">
-                          Rp {Number(altRoom.weekday_price || altRoom.price || 0).toLocaleString("id-ID")} / malam
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedSuggestionId((current) => current === altRoom.id ? null : altRoom.id)}
-                          aria-expanded={expandedSuggestionId === altRoom.id}
-                          className="rounded-lg border border-[#778873] px-3 py-2 text-[11px] font-bold text-[#50604d] transition-colors hover:bg-[#778873]/10"
-                        >
-                          {expandedSuggestionId === altRoom.id ? "Tutup Detail" : "Detail"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSuggestionData(null);
-                            navigate(`/booking/${altRoom.hotel_id || hotelId}/${altRoom.id}?check_in=${checkInDate}&check_out=${checkOutDate}&adults=${adults}&children=${children}`);
-                          }}
-                          className="rounded-lg bg-[#778873] px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-[#50604d]"
-                        >
-                          Pilih Kamar
-                        </button>
-                      </div>
-                    </div>
-
-                    {expandedSuggestionId === altRoom.id && (
-                      <div className="space-y-3 border-t border-[#DCCFC0] p-3 sm:p-4">
-                        {altRoom.description && (
-                          <p className="text-xs leading-relaxed text-[#5b6058]">{altRoom.description}</p>
-                        )}
-                        <div className="grid grid-cols-2 gap-2 text-xs text-[#444842]">
-                          <p>Kapasitas: {altRoom.capacity_adult} dewasa, {altRoom.capacity_child || 0} anak</p>
-                          <p>Tempat tidur: {altRoom.bed || "Tidak disebutkan"} · {Number(altRoom.bed_count || 1)} kasur</p>
+                      ) : (
+                        <div className="flex h-32 items-center justify-center bg-[#e8e2d9] text-[#778873] sm:h-full sm:min-h-52">
+                          <span className="material-symbols-outlined text-5xl" aria-hidden="true">bed</span>
                         </div>
+                      )}
+                      <div className="flex min-w-0 flex-col p-4 sm:p-5">
+                        <div>
+                          <p className="font-label-md text-xs font-bold uppercase tracking-wide text-[#50604d]">
+                            {altRoom.hotel?.name || "Hotel"}
+                            {suggestionData.type === "same_hotel" && " · Hotel ini"}
+                          </p>
+                          <h4 className="mt-1 font-headline-sm text-lg font-bold text-[#2D332C]">{altRoom.name}</h4>
+                          <p className="mt-1 text-xs leading-relaxed text-[#5b6058]">
+                            {[altRoom.hotel?.address, altRoom.hotel?.city].filter(Boolean).join(" · ") || "Lokasi tidak tersedia"}
+                          </p>
+                          {suggestionData.type === "other_hotels_nearby" && (
+                            <p className="mt-1 text-xs font-semibold text-[#50604d]">
+                              {altRoom.distance_km != null && Number.isFinite(Number(altRoom.distance_km))
+                                ? `±${Number(altRoom.distance_km).toLocaleString("id-ID")} km dari hotel pilihan`
+                                : "Jarak belum tersedia"}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#444842]">
+                          <p className="rounded-lg bg-white/70 p-2">
+                            Kapasitas: {altRoom.capacity_adult} dewasa, {altRoom.capacity_child || 0} anak
+                          </p>
+                          <p className="rounded-lg bg-white/70 p-2">
+                            {altRoom.bed || "Tempat tidur tidak disebutkan"} · {Number(altRoom.bed_count || 1)} kasur
+                          </p>
+                        </div>
+                        {altRoom.description && (
+                          <p className="mt-3 text-xs leading-relaxed text-[#5b6058]">{altRoom.description}</p>
+                        )}
                         {Array.isArray(altRoom.facilities) && altRoom.facilities.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="mt-3">
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#6B6E6A]">Fasilitas kamar</p>
+                            <div className="flex flex-wrap gap-1.5">
                             {altRoom.facilities.map((facility) => (
                               <span
                                 key={facility.id || facility.name || facility}
-                                className="rounded-full border border-[#DCCFC0] bg-white px-2.5 py-1 text-[11px] text-[#444842]"
+                                className="rounded-full border border-[#DCCFC0] bg-white px-2.5 py-1 text-[10px] text-[#444842]"
                               >
                                 {getFacilityDisplayName(facility.name || facility)}
                               </span>
                             ))}
+                            </div>
                           </div>
                         )}
-                        {altRoom.hotel?.address && (
-                          <p className="text-xs text-[#5b6058]">{altRoom.hotel.address}</p>
+                        {Array.isArray(altRoom.hotel?.facilities) && altRoom.hotel.facilities.length > 0 && (
+                          <div className="mt-3">
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#6B6E6A]">Fasilitas hotel</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {altRoom.hotel.facilities.slice(0, 6).map((facility) => (
+                                <span
+                                  key={facility.id || facility.name}
+                                  className="rounded-full border border-[#DCCFC0] bg-white px-2.5 py-1 text-[10px] text-[#444842]"
+                                >
+                                  {getFacilityDisplayName(facility.name)}
+                                </span>
+                              ))}
+                              {altRoom.hotel.facilities.length > 6 && (
+                                <span className="rounded-full bg-[#778873]/10 px-2.5 py-1 text-[10px] text-[#50604d]">
+                                  +{altRoom.hotel.facilities.length - 6} lainnya
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         )}
+                        {(!Array.isArray(altRoom.facilities) || altRoom.facilities.length === 0) && (
+                          <p className="mt-3 text-[11px] italic text-[#777a74]">Fasilitas kamar belum dicantumkan.</p>
+                        )}
+
+                        <div className="mt-auto flex flex-col gap-3 border-t border-[#DCCFC0] pt-3 sm:flex-row sm:items-end sm:justify-between sm:pt-4">
+                          <div>
+                            <p className="text-xs text-[#5b6058]">
+                              {altRoom.available_stock != null
+                                ? `Tersedia ${Number(altRoom.available_stock)} kamar untuk tanggal pilihan`
+                                : "Tersedia untuk tanggal pilihan"}
+                            </p>
+                            <p className="mt-1 font-label-md text-base font-bold text-[#778873]">
+                              Rp {Number(altRoom.weekday_price || altRoom.price || 0).toLocaleString("id-ID")} <span className="text-xs font-normal text-[#5b6058]">/ malam</span>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSuggestionData(null);
+                              navigate(`/booking/${altRoom.hotel_id || hotelId}/${altRoom.id}?check_in=${checkInDate}&check_out=${checkOutDate}&adults=${adults}&children=${children}&rooms=${Math.max(1, Number(roomQty) || 1)}`);
+                            }}
+                            className="w-full rounded-xl bg-[#778873] px-5 py-3 text-xs font-bold text-white transition-colors hover:bg-[#50604d] sm:w-auto"
+                          >
+                            Pilih kamar ini
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 ))}
+                </div>
               </div>
             )}
           </div>

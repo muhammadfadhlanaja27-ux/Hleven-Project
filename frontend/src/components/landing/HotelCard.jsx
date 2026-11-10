@@ -10,15 +10,15 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
 
   const getImageUrl = () => {
     if (hotel.thumbnail) {
-      if (hotel.thumbnail.startsWith('http')) return hotel.thumbnail;
-      return `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, '')}`;
+      const thumbnailUrl = getStorageUrl(hotel.thumbnail);
+      if (thumbnailUrl) return thumbnailUrl;
     }
     if (hotel.photos && hotel.photos.length > 0) {
       const firstPhoto = hotel.photos[0];
       const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
       if (photoPath) {
-        if (photoPath.startsWith('http')) return photoPath;
-        return `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`;
+        const photoUrl = getStorageUrl(photoPath);
+        if (photoUrl) return photoUrl;
       }
     }
     return null;

@@ -27,8 +27,7 @@ class BookingAlternativeRecommendationTest extends TestCase
             'Deluxe Twin',
             3,
             0,
-            0.01,
-            $sourceHotel->city_id
+            0.01
         );
 
         $alternativeRoom->update([
@@ -58,7 +57,7 @@ class BookingAlternativeRecommendationTest extends TestCase
         $response = $this->postJson('/api/v1/bookings', $payload)->assertUnprocessable();
         $suggestion = $response->json('suggestions.rooms.0');
 
-        $this->assertSame('other_hotels_in_city', $response->json('suggestions.type'));
+        $this->assertSame('other_hotels_nearby', $response->json('suggestions.type'));
         $this->assertSame($alternativeHotel->name, $suggestion['hotel']['name']);
         $this->assertSame($alternativeHotel->address, $suggestion['hotel']['address']);
         $this->assertGreaterThan(1, $suggestion['distance_km']);
@@ -66,6 +65,99 @@ class BookingAlternativeRecommendationTest extends TestCase
         $this->assertSame('2 Single Beds', $suggestion['bed']);
         $this->assertSame(2, $suggestion['bed_count']);
         $this->assertSame('Kamar twin dengan balkon.', $suggestion['description']);
+    }
+
+    public function test_quote_returns_nearest_available_hotel_when_selected_room_is_sold_out(): void
+    {
+        [$sourceHotel, $sourceRoom] = $this->createHotelRoom(
+            'Sold Out Hotel',
+            'Standard Room',
+            0,
+            -6.8644,
+            107.6091
+        );
+        [$nearHotel, $nearRoom] = $this->createHotelRoom(
+            'Nearest Hotel',
+            'Available Room',
+            2,
+            -6.8654,
+            107.6101
+        );
+
+        [$farHotel, $farRoom] = $this->createHotelRoom(
+            'Farther Hotel',
+            'Far Room',
+            2,
+            -6.8844,
+            107.6291
+        );
+
+        $response = $this->postJson('/api/v1/bookings/quote', [
+            'hotel_id' => $sourceHotel->id,
+            'room_type_id' => $sourceRoom->id,
+            'check_in' => now()->addDays(3)->toDateString(),
+            'check_out' => now()->addDays(4)->toDateString(),
+            'qty' => 1,
+            'adults' => 2,
+            'children' => 0,
+        ])->assertUnprocessable();
+
+        $response->assertJsonPath('suggestions.type', 'other_hotels_nearby')
+            ->assertJsonPath('suggestions.rooms.0.id', $nearRoom->id)
+            ->assertJsonPath('suggestions.rooms.0.hotel_id', $nearHotel->id)
+            ->assertJsonPath('suggestions.rooms.0.hotel.name', $nearHotel->name)
+            ->assertJsonPath('suggestions.rooms.0.available_stock', 2);
+
+        $this->assertGreaterThan(
+            $response->json('suggestions.rooms.0.distance_km'),
+            $response->json('suggestions.rooms.1.distance_km')
+        );
+        $this->assertSame($farRoom->id, $response->json('suggestions.rooms.1.id'));
+    }
+
+    public function test_alternative_room_search_only_returns_other_hotels_with_coordinates(): void
+    {
+        [$sourceHotel, $sourceRoom] = $this->createHotelRoom(
+            'Source Hotel',
+            'Sold Out Room',
+            0,
+            -6.8644,
+            107.6091
+        );
+        [$locatedHotel, $locatedRoom] = $this->createHotelRoom(
+            'Located Hotel',
+            'Available Room',
+            2,
+            -6.8654,
+            107.6101
+        );
+        [$hotelWithoutCoordinates] = $this->createHotelRoom(
+            'Hotel Without Coordinates',
+            'Unlocated Room',
+            2,
+            0,
+            0
+        );
+        $hotelWithoutCoordinates->update([
+            'latitude' => null,
+            'longitude' => null,
+        ]);
+
+        $response = $this->postJson("/api/v1/hotels/{$sourceHotel->id}/alternative-rooms", [
+            'room_type_id' => $sourceRoom->id,
+            'check_in' => now()->addDays(3)->toDateString(),
+            'check_out' => now()->addDays(4)->toDateString(),
+            'qty' => 1,
+            'adults' => 2,
+            'children' => 0,
+        ])->assertOk();
+
+        $response->assertJsonPath('data.type', 'other_hotels_nearby')
+            ->assertJsonPath('data.rooms.0.id', $locatedRoom->id)
+            ->assertJsonPath('data.rooms.0.hotel_id', $locatedHotel->id)
+            ->assertJsonPath('data.rooms.0.hotel.name', $locatedHotel->name);
+
+        $this->assertCount(1, $response->json('data.rooms'));
     }
 
     private function createHotelRoom(

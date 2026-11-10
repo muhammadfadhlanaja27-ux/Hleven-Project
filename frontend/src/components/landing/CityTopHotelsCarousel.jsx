@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const CityTopHotelsCarousel = ({ hotels = [] }) => {
     const navigate = useNavigate();
@@ -112,10 +113,8 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                         "Bandung";
 
                     const imageUrl = hotel.thumbnail
-                        ? hotel.thumbnail.startsWith("http")
-                            ? hotel.thumbnail
-                            : `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, "")}`
-                        : hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || null;
+                        ? getStorageUrl(hotel.thumbnail)
+                        : getStorageUrl(hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || null);
 
                     const price = Number(
                         hotel.starting_price || hotel.price || hotel.rooms?.[0]?.price || 500000

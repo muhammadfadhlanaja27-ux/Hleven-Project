@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { cachedGet } from "../../services/apiCache";
+import api from "../../services/api";
 import { getStorageUrl } from "../../services/imageUrl";
 import {
   deduplicateFacilities,
@@ -31,6 +32,8 @@ const HotelDetail = () => {
 
   // State untuk menangani gambar kamar yang error/broken URL
   const [imgErrors, setImgErrors] = useState({});
+  const [alternativeRooms, setAlternativeRooms] = useState(null);
+  const [loadingAlternativesFor, setLoadingAlternativesFor] = useState(null);
 
   // Filter States untuk Kamar — prefill dari URL / Storage (Landing → Detail)
   const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
@@ -357,21 +360,65 @@ const HotelDetail = () => {
     }
   };
 
-  const handleBookRoom = (e, room) => {
-    e.preventDefault();
-    if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
-      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
-      return;
-    }
-    const targetHotelId = hotel?.id || id || 1;
+  const navigateToBooking = (room) => {
+    const targetHotelId = room?.hotel?.id || room?.hotel_id || hotel?.id || id || 1;
     const targetRoomId = room?.id || 101;
     const qs = new URLSearchParams();
     if (filterAdults) qs.set("adults", String(filterAdults));
     if (filterChildren) qs.set("children", String(filterChildren));
     if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
     if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+    qs.set("rooms", String(rooms));
     const q = qs.toString();
     navigate(`/booking/${targetHotelId}/${targetRoomId}${q ? `?${q}` : ""}`);
+  };
+
+  const findAlternativeRooms = async (room) => {
+    if (alternativeRooms?.roomId === room.id) {
+      setAlternativeRooms(null);
+      return;
+    }
+
+    setLoadingAlternativesFor(room.id);
+    setAlternativeRooms(null);
+
+    try {
+      const response = await api.post(`/hotels/${hotel?.id || id}/alternative-rooms`, {
+        room_type_id: Number(room.id),
+        check_in: fmtDateParam(filterCheckIn),
+        check_out: fmtDateParam(filterCheckOut),
+        qty: Math.max(1, Number(rooms) || 1),
+        adults: Number(filterAdults) || 1,
+        children: Number(filterChildren) || 0,
+      });
+      const suggestions = response.data?.data;
+      setAlternativeRooms({
+        roomId: room.id,
+        message: suggestions?.rooms?.length
+          ? "Berikut kamar yang tersedia untuk tanggal dan jumlah tamu pilihan."
+          : "Tidak ada kamar alternatif yang cocok untuk tanggal dan jumlah tamu pilihan.",
+        type: suggestions?.type,
+        rooms: suggestions?.rooms || [],
+      });
+    } catch (error) {
+      const responseData = error.response?.data;
+      setAlternativeRooms({
+        roomId: room.id,
+        message: responseData?.message || "Gagal mencari kamar alternatif. Silakan coba lagi.",
+        rooms: [],
+      });
+    } finally {
+      setLoadingAlternativesFor(null);
+    }
+  };
+
+  const handleBookRoom = (e, room) => {
+    e.preventDefault();
+    if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
+      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
+      return;
+    }
+    navigateToBooking(room);
   };
 
   const hasActiveFilters =
@@ -841,8 +888,8 @@ const HotelDetail = () => {
                 const weekendPrice = Math.round(roomPrice * 1.35);
 
                 return (
+                  <div key={room.id} className="space-y-3">
                   <div
-                    key={room.id}
                     className="flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md transition-shadow"
                   >
                     <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-[#E8E2D9] overflow-hidden">
@@ -982,26 +1029,135 @@ const HotelDetail = () => {
                           >
                             Detail Kamar
                           </button>
-                          {room.stock !== undefined && room.stock !== null && Number(room.stock) <= 0 ? (
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full sm:w-auto bg-[#E5E0D8] text-[#8A948C] font-label-md text-xs font-bold px-6 py-3 rounded-2xl cursor-not-allowed shadow-none text-center"
-                            >
-                              Kamar Habis
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => handleBookRoom(e, room)}
-                              className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
-                            >
-                              Pilih Kamar
-                            </button>
-                          )}
+                          <div className="flex w-full flex-col items-center gap-1 sm:w-auto">
+                            {room.stock !== undefined && room.stock !== null && Number(room.stock) <= 0 ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full sm:w-auto bg-[#E5E0D8] text-[#8A948C] font-label-md text-xs font-bold px-6 py-3 rounded-2xl cursor-not-allowed shadow-none text-center"
+                              >
+                                Kamar Habis
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => handleBookRoom(e, room)}
+                                className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
+                              >
+                                Pilih Kamar
+                              </button>
+                            )}
+                            {room.stock !== undefined && room.stock !== null && Number(room.stock) <= 0 && (
+                              <button
+                                type="button"
+                                onClick={() => findAlternativeRooms(room)}
+                                className="text-[10px] font-medium text-[#5F7161] underline underline-offset-2 hover:text-[#4D5E4F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5F7161]"
+                                aria-expanded={alternativeRooms?.roomId === room.id || loadingAlternativesFor === room.id}
+                              >
+                                {loadingAlternativesFor === room.id
+                                  ? "Mencari kamar alternatif..."
+                                  : alternativeRooms?.roomId === room.id
+                                    ? "Tutup rekomendasi"
+                                    : "Cari kamar alternatif"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </div>
+                  {alternativeRooms?.roomId === room.id && (
+                    <section className="rounded-2xl border border-[#DCCFC0] bg-white p-3 text-left shadow-sm sm:p-4">
+                      <div className="mb-2">
+                        <h3 className="font-headline-md text-base font-bold text-[#2D332C]">Kamar alternatif tersedia</h3>
+                        <p className="mt-1 text-[11px] text-[#5A625B]">{alternativeRooms.message}</p>
+                      </div>
+                      {alternativeRooms.rooms.length > 0 ? (
+                        <div className="max-h-[min(45vh,400px)] space-y-2 overflow-y-auto overscroll-contain pr-1">
+                          {alternativeRooms.rooms.map((alternative) => {
+                            const photo = alternative.photos?.find((item) => item.is_thumbnail) || alternative.photos?.[0];
+                            const visibleFacilities = alternative.facilities?.slice(0, 5) || [];
+                            return (
+                              <article key={alternative.id} className="overflow-hidden rounded-xl border border-[#E8E2D9] bg-[#FAF8F5]">
+                                <details className="group">
+                                  <summary className="flex cursor-pointer list-none items-center gap-3 p-2.5 [&::-webkit-details-marker]:hidden">
+                                    {photo?.photo || photo?.url ? (
+                                      <img
+                                        src={getStorageUrl(photo.photo || photo.url)}
+                                        alt=""
+                                        className="h-16 w-20 shrink-0 rounded-lg bg-white object-contain sm:h-[72px] sm:w-24"
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg bg-[#E8E2D9] text-[#5F7161] sm:h-[72px] sm:w-24">
+                                        <span className="material-symbols-outlined text-2xl" aria-hidden="true">bed</span>
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[9px] font-bold uppercase tracking-wide text-[#5F7161]">
+                                        {alternative.hotel?.name || "Hotel"}
+                                      </p>
+                                      <h4 className="mt-0.5 truncate font-headline-sm text-xs font-bold text-[#1C251D]">{alternative.name}</h4>
+                                      <p className="mt-1 text-[10px] font-bold text-[#5F7161]">
+                                        Rp {Number(alternative.weekday_price || alternative.price || 0).toLocaleString("id-ID")} / malam
+                                      </p>
+                                    </div>
+                                    <span className="material-symbols-outlined shrink-0 text-[#5F7161] transition-transform group-open:rotate-180" aria-hidden="true">
+                                      expand_more
+                                    </span>
+                                  </summary>
+                                  <div className="border-t border-[#E8E2D9] px-3 pb-3 pt-2">
+                                    <p className="text-[10px] text-[#5A625B]">
+                                      {[alternative.hotel?.address, alternative.hotel?.city].filter(Boolean).join(" · ") || "Lokasi tidak tersedia"}
+                                    </p>
+                                    {alternative.distance_km != null && Number.isFinite(Number(alternative.distance_km)) && (
+                                      <p className="mt-1 text-[10px] text-[#5A625B]">
+                                        ±{Number(alternative.distance_km).toLocaleString("id-ID")} km dari hotel pilihan
+                                      </p>
+                                    )}
+                                    <p className="mt-1 text-[10px] text-[#444842]">
+                                      Kapasitas {alternative.capacity_adult} dewasa, {alternative.capacity_child || 0} anak
+                                      {alternative.available_stock != null && ` · Tersedia ${alternative.available_stock} kamar`}
+                                    </p>
+                                    {visibleFacilities.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {visibleFacilities.map((facility) => (
+                                          <span key={facility.id || facility.name} className="rounded-full border border-[#DCCFC0] bg-white px-2 py-0.5 text-[9px] text-[#444842]">
+                                            {getFacilityDisplayName(facility.name || facility)}
+                                          </span>
+                                        ))}
+                                        {alternative.facilities.length > visibleFacilities.length && (
+                                          <span className="rounded-full bg-[#778873]/10 px-2 py-0.5 text-[9px] text-[#50604d]">
+                                            +{alternative.facilities.length - visibleFacilities.length}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    {alternative.hotel?.facilities?.length > 0 && (
+                                      <p className="mt-2 text-[9px] text-[#5A625B]">
+                                        Fasilitas hotel: {alternative.hotel.facilities.slice(0, 4).map((facility) => getFacilityDisplayName(facility.name)).join(", ")}
+                                      </p>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => navigateToBooking(alternative)}
+                                      className="mt-3 rounded-lg bg-[#5F7161] px-3 py-2 text-[10px] font-bold text-white transition-colors hover:bg-[#4D5E4F]"
+                                    >
+                                      Pilih kamar ini
+                                    </button>
+                                  </div>
+                                </details>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="rounded-xl bg-[#F7F6F2] p-3 text-xs text-[#5A625B]">
+                          Tidak ada rekomendasi kamar yang cocok untuk tanggal dan jumlah tamu ini. {alternativeRooms.message}
+                        </p>
+                      )}
+                    </section>
+                  )}
                   </div>
                 );
               })}

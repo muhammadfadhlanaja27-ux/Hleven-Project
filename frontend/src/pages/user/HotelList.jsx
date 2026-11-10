@@ -29,7 +29,8 @@ const HotelList = () => {
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedRatings, setSelectedRatings] = useState([]);
-  const [selectedFacilities, setSelectedFacilities] = useState([]);
+  const [selectedHotelFacilities, setSelectedHotelFacilities] = useState([]);
+  const [selectedRoomFacilities, setSelectedRoomFacilities] = useState([]);
   const [sortBy, setSortBy] = useState("recommendation");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -46,7 +47,7 @@ const HotelList = () => {
   // Reset ke halaman 1 setiap kali filter atau kata kunci berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedRatings, selectedFacilities, sortBy, checkInDate, checkOutDate, adults, children]);
+  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedRatings, selectedHotelFacilities, selectedRoomFacilities, sortBy, checkInDate, checkOutDate, adults, children]);
 
   useEffect(() => {
     const fetchHotels = async () => {
@@ -85,8 +86,14 @@ const HotelList = () => {
     );
   };
 
-  const handleFacilityToggle = (fac) => {
-    setSelectedFacilities((prev) =>
+  const handleHotelFacilityToggle = (fac) => {
+    setSelectedHotelFacilities((prev) =>
+      prev.includes(fac) ? prev.filter((f) => f !== fac) : [...prev, fac]
+    );
+  };
+
+  const handleRoomFacilityToggle = (fac) => {
+    setSelectedRoomFacilities((prev) =>
       prev.includes(fac) ? prev.filter((f) => f !== fac) : [...prev, fac]
     );
   };
@@ -133,13 +140,51 @@ const HotelList = () => {
     setMaxPrice("");
     setSelectedStars([]);
     setSelectedRatings([]);
-    setSelectedFacilities([]);
+    setSelectedHotelFacilities([]);
+    setSelectedRoomFacilities([]);
     setSortBy("recommendation");
     setCurrentPage(1);
     setSearchParams({}, { replace: true });
   };
 
   const selectedHotelId = searchParams.get("selected") || searchParams.get("highlight") || searchParams.get("hotelId") || searchParams.get("id") || "";
+
+  const getHotelFacilityNames = (hotel) => {
+    const hotelFacs = (hotel.facilities || []).map((f) =>
+      (typeof f === "object" ? f.name : String(f)).toLowerCase()
+    );
+
+    const roomFacs = (hotel.roomTypes || []).flatMap((roomType) => roomType.facilities || []).map((f) =>
+      (typeof f === "object" ? f.name : String(f)).toLowerCase()
+    );
+
+    return [...new Set([...hotelFacs, ...roomFacs])];
+  };
+
+  const matchesFacilitySelection = (facilityList, selectedFacilities) => {
+    if (!selectedFacilities.length) return true;
+
+    return selectedFacilities.every((fac) => {
+      const facLower = fac.toLowerCase();
+      let keywords = [facLower];
+
+      if (facLower.includes("wifi")) keywords = ["wifi", "wi-fi", "internet"];
+      else if (facLower.includes("kolam")) keywords = ["kolam", "pool", "swimming"];
+      else if (facLower.includes("restoran")) keywords = ["restoran", "restaurant", "dining", "bar"];
+      else if (facLower.includes("parkir")) keywords = ["parkir", "parking", "car park"];
+      else if (facLower.includes("gym")) keywords = ["gym", "fitness", "fitness center"];
+      else if (facLower.includes("kamar mandi")) keywords = ["kamar mandi", "bathroom", "shower", "bathtub"];
+      else if (facLower.includes("bathtub")) keywords = ["bathtub", "bathroom"];
+      else if (facLower.includes("meja kerja")) keywords = ["meja kerja", "desk", "work desk"];
+      else if (facLower.includes("tv")) keywords = ["tv", "smart tv"];
+      else if (facLower.includes("ac")) keywords = ["ac", "air conditioning"];
+      else if (facLower.includes("wi-fi di kamar")) keywords = ["wi-fi di kamar", "wifi di kamar", "wifi", "internet"];
+
+      return keywords.some((kw) =>
+        facilityList.some((hf) => hf.includes(kw))
+      );
+    });
+  };
 
   const filteredHotels = useMemo(() => {
     // 1. Jika URL mengandung parameter ID spesifik
@@ -180,26 +225,13 @@ const HotelList = () => {
           if (!selectedRatings.includes(ratingInt)) return false;
         }
 
-        // Filter Fasilitas Populer (Logika OR)
-        if (selectedFacilities.length > 0) {
-          const hotelFacs = (hotel.facilities || []).map((f) =>
-            (typeof f === "object" ? f.name : String(f)).toLowerCase()
-          );
+        const hotelFacs = getHotelFacilityNames(hotel);
+        const roomFacs = (hotel.roomTypes || []).flatMap((roomType) => roomType.facilities || []).map((f) =>
+          (typeof f === "object" ? f.name : String(f)).toLowerCase()
+        );
 
-          const matchesAny = selectedFacilities.some((fac) => {
-            const facLower = fac.toLowerCase();
-            let keywords = [facLower];
-            if (facLower.includes("wifi")) keywords = ["wifi", "wi-fi", "internet"];
-            else if (facLower.includes("kolam")) keywords = ["kolam", "pool", "swimming"];
-            else if (facLower.includes("restoran")) keywords = ["restoran", "restaurant", "dining", "bar"];
-
-            return keywords.some((kw) =>
-              hotelFacs.some((hf) => hf.includes(kw))
-            );
-          });
-
-          if (!matchesAny) return false;
-        }
+        if (!matchesFacilitySelection(hotelFacs, selectedHotelFacilities)) return false;
+        if (!matchesFacilitySelection(roomFacs, selectedRoomFacilities)) return false;
 
         return true;
       })
@@ -219,7 +251,7 @@ const HotelList = () => {
         }
         return 0;
       });
-  }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedRatings, selectedFacilities, sortBy]);
+  }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedRatings, selectedHotelFacilities, selectedRoomFacilities, sortBy]);
 
   const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -325,7 +357,7 @@ const HotelList = () => {
               <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
                 Filter Pencarian
               </h3>
-              {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedFacilities.length > 0) && (
+              {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedHotelFacilities.length > 0 || selectedRoomFacilities.length > 0) && (
                 <button
                   onClick={handleResetFilters}
                   className="text-xs text-[#778873] font-semibold hover:underline cursor-pointer"
@@ -409,12 +441,12 @@ const HotelList = () => {
                 Fasilitas Hotel
               </h4>
               <div className="flex flex-col gap-2.5">
-                {["WiFi Gratis", "Kolam Renang", "Restoran", "Parkir", "Gym", "Spa", "Resepsionis 24 Jam", "Laundry"].map((fac) => (
+                {["WiFi Gratis", "Kolam Renang", "Restoran", "Parkir", "Gym", "Resepsionis 24 Jam"].map((fac) => (
                   <label key={fac} className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
-                      checked={selectedFacilities.includes(fac)}
-                      onChange={() => handleFacilityToggle(fac)}
+                      checked={selectedHotelFacilities.includes(fac)}
+                      onChange={() => handleHotelFacilityToggle(fac)}
                       className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
                     />
                     <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
@@ -431,12 +463,12 @@ const HotelList = () => {
                 Fasilitas Kamar
               </h4>
               <div className="flex flex-col gap-2.5">
-                {["AC", "TV", "Kamar Mandi Pribadi", "Bathtub", "Meja Kerja"].map((fac) => (
+                {["AC", "TV", "Kamar Mandi Pribadi", "Bathtub", "Meja Kerja", "Wi-Fi di Kamar"].map((fac) => (
                   <label key={fac} className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
-                      checked={selectedFacilities.includes(fac)}
-                      onChange={() => handleFacilityToggle(fac)}
+                      checked={selectedRoomFacilities.includes(fac)}
+                      onChange={() => handleRoomFacilityToggle(fac)}
                       className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
                     />
                     <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
