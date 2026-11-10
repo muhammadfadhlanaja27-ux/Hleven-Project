@@ -125,7 +125,6 @@ const UserProfile = () => {
     resolvedRole === "admin_hotel" || resolvedRole === "super_admin";
 
   const fetchUserBookings = useCallback(async (forceRefresh = false, silent = false) => {
-    // Admin hotel & super admin tidak bisa melihat booking history sebagai tamu
     if (isAdminOrSuperAdmin) return;
     
     if (!silent) setBookingsLoading(true);
@@ -171,12 +170,28 @@ const UserProfile = () => {
     }
   };
 
+  // Ambil dan eliminasi notifikasi duplikat berdasarkan ID / Judul & Pesan
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
       const res = await api.get("/notifications");
-      const data = res.data?.data || res.data || [];
-      setNotifications(Array.isArray(data) ? data : []);
+      const rawData = res.data?.data || res.data || [];
+      const dataList = Array.isArray(rawData) ? rawData : [];
+
+      // Deduplikasi data ganda
+      const uniqueNotifications = dataList.filter(
+        (notif, index, self) =>
+          index ===
+          self.findIndex(
+            (n) =>
+              n.id === notif.id ||
+              (n.title === notif.title &&
+                n.message === notif.message &&
+                n.created_at === notif.created_at)
+          )
+      );
+
+      setNotifications(uniqueNotifications);
     } catch (err) {
       console.warn("Failed to load notifications:", err);
       setNotifications([]);
@@ -250,7 +265,7 @@ const UserProfile = () => {
     fetchNotifications();
     const notificationInterval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(notificationInterval);
-  }, [navigate]);
+  }, [navigate, fetchUserBookings]);
 
   useEffect(() => {
     if (activeTab !== "history") return undefined;
@@ -273,12 +288,10 @@ const UserProfile = () => {
     };
   }, [activeTab, fetchUserBookings]);
 
-  // Reset error avatar setiap kali data user atau foto berubah
   useEffect(() => {
     setAvatarError(false);
   }, [user?.avatar, user?.avatar_url, user?.avatarPreview]);
 
-  // Handler Upload Foto Profil Langsung dari Sidebar
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -445,7 +458,6 @@ const UserProfile = () => {
     }
   };
 
-  // Filter & Sort Logic
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
 
@@ -644,7 +656,6 @@ const UserProfile = () => {
           <aside className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-[#DCCFC0]/20 border border-[#DCCFC0]/40 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm shadow-[#778873]/5">
               
-              {/* Foto Profil + Fallback Inisial + Fitur Upload Foto */}
               <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#778873] to-[#50604d] flex items-center justify-center text-white mb-4 border-2 border-[#778873]/20 overflow-hidden shadow-md group">
                 {userAvatar && !avatarError ? (
                   <img
@@ -659,7 +670,6 @@ const UserProfile = () => {
                   </span>
                 )}
 
-                {/* Overlay Ikon Kamera saat Hover / Loading saat Upload */}
                 <label
                   htmlFor="sidebar-avatar-upload"
                   className={`absolute inset-0 bg-black/40 text-white flex flex-col items-center justify-center cursor-pointer transition-opacity duration-200 z-10 ${
@@ -692,7 +702,7 @@ const UserProfile = () => {
                 {fullName}
               </h2>
               <p className="text-[#778873] font-label-md text-xs font-semibold mb-5">
-                H&apos;Leven Member
+                H'Leven Member
               </p>
 
               <div className="w-full bg-[#DCCFC0]/40 h-px mb-5"></div>
@@ -796,8 +806,6 @@ const UserProfile = () => {
           <div className="lg:col-span-8 flex flex-col gap-8">
             <section className="flex-grow flex flex-col gap-6">
 
-            {/* Section Status Mitra Hotel: hanya tampil untuk user biasa (bukan admin).
-                For admin_hotel / super_admin — this feature is unavailable. */}
             {currentUserRole !== "admin_hotel" &&
               currentUserRole !== "super_admin" &&
               activeTab === "partner" && (
@@ -809,7 +817,7 @@ const UserProfile = () => {
                 />
               )}
             
-{activeTab === "notifications" && (
+            {activeTab === "notifications" && (
                 <section className="bg-white rounded-2xl border border-[#DCCFC0]/40 p-6 md:p-8 shadow-sm shadow-[#778873]/5">
                   <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-4">
                     <div className="flex items-center gap-3">
@@ -1082,7 +1090,6 @@ const UserProfile = () => {
 
             {activeTab === "history" && (
               <div className="flex flex-col gap-6">
-                {/* Banner: ajakan menulis ulasan untuk booking selesai yang belum diulas */}
                 {bookings.filter(
                   (b) => b.status === "checked_out" && !b.review
                 ).length > 0 && (
@@ -1467,7 +1474,7 @@ const UserProfile = () => {
                 Payment Successful
               </h2>
               <p className="font-body-lg text-sm md:text-base opacity-90">
-                Your journey with H&apos;Leven has begun.
+                Your journey with H'Leven has begun.
               </p>
             </div>
 
@@ -1509,13 +1516,13 @@ const UserProfile = () => {
                     Tunjukkan QR code ini di resepsionis saat check-in untuk proses yang cepat dan mudah.
                   </p>
                   <div className="w-full flex flex-col gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadPdf(booking.id, booking.booking_code)}
-                        className="bg-[#778873] text-white px-6 py-2 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-colors"
-                      >
-                        Download E-Ticket (PDF)
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPdf(selectedBooking.id, selectedBooking.booking_code)}
+                      className="bg-[#778873] text-white px-6 py-2 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-colors"
+                    >
+                      Download E-Ticket (PDF)
+                    </button>
                     <button
                       type="button"
                       onClick={() => setSelectedBooking(null)}
@@ -1611,7 +1618,7 @@ const UserProfile = () => {
 
               <div className="pt-4 border-t border-dashed border-[#DCCFC0] text-center">
                 <p className="font-body-md text-xs text-[#444842] italic">
-                  Thank you for choosing H&apos;Leven. We look forward to welcoming you.
+                  Thank you for choosing H'Leven. We look forward to welcoming you.
                 </p>
               </div>
             </div>
