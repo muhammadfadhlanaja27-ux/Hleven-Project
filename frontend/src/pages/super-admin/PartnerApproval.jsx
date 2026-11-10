@@ -16,17 +16,17 @@ const openPartnerDocument = async (appId, docId, fallbackUrl) => {
       window.open(fallbackUrl, "_blank", "noopener,noreferrer");
       return;
     }
-    toast.error(err.response?.data?.message || "Gagal membuka dokumen.");
+    toast.error(err.response?.data?.message || "Failed to open document.");
   }
 };
 
 const getDocLabel = (type) => {
   const map = {
-    ktp: "KTP / Identitas Pemilik",
-    legalitas: "Dokumen Legalitas Hotel",
-    pendukung: "Dokumen Pendukung",
+    ktp: "KTP / Owner ID",
+    legalitas: "Hotel Legality Document",
+    pendukung: "Supporting Document",
   };
-  return map[type] || `Dokumen (${type || "Lainnya"})`;
+  return map[type] || `Document (${type || "Other"})`;
 };
 
 const getDocIcon = (type) => {
@@ -86,9 +86,9 @@ const PartnerApproval = () => {
       const data = response.data?.data || response.data || [];
       setPartners(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Gagal mengambil data pengajuan:", err);
+      console.error("Failed to fetch application data:", err);
       if (partners.length === 0) setError(true);
-      toast.error("Gagal memuat data pengajuan mitra.");
+      toast.error("Failed to load partner application data.");
     } finally {
       setLoading(false);
     }
@@ -115,14 +115,14 @@ const PartnerApproval = () => {
       await api.patch(`/super-admin/partners/${id}/approve`, { star_rating: starToSend, star_verified_reason: approveStarReason || null });
       invalidateCache("/super-admin/partners");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Pengajuan mitra berhasil disetujui!");
+      toast.success("Partner application successfully approved!");
       if (selectedPartner && selectedPartner.id === id) {
         setSelectedPartner((prev) => ({ ...prev, status: "Approved" }));
       }
       setPendingApprove(null);
       fetchPartners(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menyetujui pengajuan.");
+      toast.error(err.response?.data?.message || "Failed to approve application.");
     } finally {
       setIsApproving(false);
     }
@@ -137,7 +137,7 @@ const PartnerApproval = () => {
   const handleConfirmReject = async (e) => {
     e.preventDefault();
     if (!rejectReason.trim()) {
-      toast.error("Alasan penolakan wajib diisi!");
+      toast.error("Rejection reason is required!");
       return;
     }
 
@@ -148,14 +148,14 @@ const PartnerApproval = () => {
       });
       invalidateCache("/super-admin/partners");
       invalidateCache("/super-admin/dashboard");
-      toast.success("Pengajuan mitra berhasil ditolak.");
+      toast.success("Partner application rejected.");
       setIsRejectModalOpen(false);
       if (selectedPartner && selectedPartner.id === rejectPartnerId) {
         setSelectedPartner((prev) => ({ ...prev, status: "Rejected" }));
       }
       fetchPartners(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menolak pengajuan.");
+      toast.error(err.response?.data?.message || "Failed to reject application.");
     } finally {
       setRejectLoading(false);
     }
@@ -205,7 +205,7 @@ const PartnerApproval = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Persetujuan Mitra
+              Partner Approval
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Review and manage new hotel partner applications and compliance documents.
@@ -256,18 +256,18 @@ const PartnerApproval = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
-            <p className="font-hanken text-[14px] text-[#747872]">Memuat pengajuan mitra...</p>
+            <p className="font-hanken text-[14px] text-[#747872]">Loading partner applications...</p>
           </div>
         ) : error ? (
           <div className="p-12 text-center space-y-3 font-hanken">
             <p className="text-[#ba1a1a] font-medium text-[15px]">
-              Terjadi kesalahan saat memuat data pengajuan.
+              An error occurred while loading application data.
             </p>
             <button
               onClick={fetchPartners}
               className="px-4 py-2 bg-[#768875] text-white rounded-lg text-[13px] font-semibold hover:opacity-90 transition-opacity"
             >
-              Coba Lagi
+              Try Again
             </button>
           </div>
         ) : (
@@ -391,14 +391,14 @@ const PartnerApproval = () => {
                                 <>
                                   <button
                                     onClick={() => handleApprove(row.id)}
-                                    title="Setujui Pengajuan"
+                                    title="Approve Application"
                                     className="px-3 py-1.5 bg-[#768875] text-white rounded-lg font-hanken text-[12.5px] font-semibold hover:bg-[#657764] transition-all active:scale-95 shadow-sm"
                                   >
                                     Approve
                                   </button>
                                   <button
                                     onClick={() => openRejectModal(row.id)}
-                                    title="Tolak Pengajuan"
+                                    title="Reject Application"
                                     className="px-3 py-1.5 border border-[#ba1a1a] text-[#ba1a1a] rounded-lg font-hanken text-[12.5px] font-semibold hover:bg-[#ffdad6]/40 transition-all active:scale-95"
                                   >
                                     Reject
@@ -416,7 +416,7 @@ const PartnerApproval = () => {
                         colSpan="5"
                         className="py-12 text-center text-[#747872] font-hanken text-[14px]"
                       >
-                        Tidak ada data pengajuan mitra yang ditemukan.
+                        No partner applications found.
                       </td>
                     </tr>
                   )}
@@ -427,10 +427,10 @@ const PartnerApproval = () => {
             {/* Pagination Controls */}
             <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm text-[#747872] font-hanken">
               <span className="text-[13px]">
-                Menampilkan{" "}
+                Showing{" "}
                 {totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}{" "}
-                hingga {Math.min(currentPage * itemsPerPage, totalItems)} dari{" "}
-                {totalItems} pengajuan
+                to {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
+                {totalItems} applications
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -567,7 +567,7 @@ const PartnerApproval = () => {
                         Property Type
                       </p>
                       <p className="font-medium text-[#191c1b] mt-0.5">
-                        {selectedPartner.property_type || "Belum diisi"}
+                        {selectedPartner.property_type || "Not specified"}
                       </p>
                     </div>
                     <div>
@@ -575,7 +575,7 @@ const PartnerApproval = () => {
                         Year Built
                       </p>
                       <p className="font-medium text-[#191c1b] mt-0.5">
-                        {selectedPartner.year_built || "Belum diisi"}
+                        {selectedPartner.year_built || "Not specified"}
                       </p>
                     </div>
                     <div className="col-span-2">
@@ -587,8 +587,8 @@ const PartnerApproval = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">Bintang (Klaim Mitra)</p>
-                      <p className="font-medium text-[#191c1b] mt-0.5">{selectedPartner.requested_star_rating ? `★ ${selectedPartner.requested_star_rating}` : "Belum Bersertifikat"}</p>
+                      <p className="text-[11px] uppercase tracking-wider text-[#747872]">Stars (Partner Claim)</p>
+                      <p className="font-medium text-[#191c1b] mt-0.5">{selectedPartner.requested_star_rating ? `★ ${selectedPartner.requested_star_rating}` : "Not Certified"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-[#747872]">
@@ -622,23 +622,23 @@ const PartnerApproval = () => {
                       const list = [];
                       docs.forEach((d, i) => {
                         const fallback = getStorageUrl(d.file_path || d.filePath || d.path || d.url);
-                        list.push({ id: d.id, fallback, label: getDocLabel(d.document_type || d.type || `Dokumen ${i + 1}`), icon: getDocIcon(d.document_type || d.type) });
+                        list.push({ id: d.id, fallback, label: getDocLabel(d.document_type || d.type || `Document ${i + 1}`), icon: getDocIcon(d.document_type || d.type) });
                       });
 
                       if (!list.length) {
                         if (!legacyUrl) {
                           return (
                             <div className="border border-dashed border-[#E5E0D8] rounded-lg p-6 text-center text-[#747872] text-[13px]">
-                              Tidak ada lampiran dokumen digital untuk pengajuan ini.
+                              No digital document attachments for this application.
                             </div>
                           );
                         }
                         return (
                           <div className="border border-[#E5E0D8] rounded-lg p-3.5 flex items-center gap-3.5 bg-[#F9F6F1]/40">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-[#191c1b] text-[13.5px]">Dokumen Legalitas Mitra</p>
+                              <p className="font-semibold text-[#191c1b] text-[13.5px]">Partner Legality Document</p>
                               <button onClick={() => window.open(legacyUrl, "_blank", "noopener,noreferrer")} className="text-xs text-[#768875] hover:underline font-medium mt-0.5">
-                                Buka File Dokumen &rarr;
+                                Open Document File &rarr;
                               </button>
                             </div>
                           </div>
@@ -663,13 +663,13 @@ const PartnerApproval = () => {
                               onClick={() => openPartnerDocument(selectedPartner.id, item.id, item.fallback)}
                               className="text-xs text-[#768875] hover:underline font-medium mt-0.5 inline-block"
                             >
-                              Buka File Dokumen &rarr;
+                              Open Document File &rarr;
                             </button>
                           </div>
                           <button
                             onClick={() => openPartnerDocument(selectedPartner.id, item.id, item.fallback)}
                             className="text-[#747872] group-hover:text-[#768875] p-1.5"
-                            title="Preview / Unduh"
+                            title="Preview / Download"
                           >
                             <span className="material-symbols-outlined text-[20px]">
                               visibility
@@ -703,7 +703,7 @@ const PartnerApproval = () => {
                       onClick={() => setIsReviewModalOpen(false)}
                       className="w-full py-2.5 border border-[#E5E0D8] text-[#434842] hover:bg-[#F9F6F1] rounded-lg font-hanken text-[13.5px] font-semibold transition-colors"
                     >
-                      Tutup
+                      Close
                     </button>
                   )}
                 </div>
@@ -724,7 +724,7 @@ const PartnerApproval = () => {
           <div className="relative bg-white rounded-xl shadow-[0_12px_40px_rgba(47,50,49,0.12)] border border-[#E5E0D8] p-6 max-w-md w-full z-10 font-hanken animate-fadeIn">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-[#E5E0D8]">
               <h3 className="font-newsreader text-[20px] font-semibold text-[#ba1a1a]">
-                Tolak Pengajuan Mitra
+                Reject Partner Application
               </h3>
               <button
                 onClick={() => setIsRejectModalOpen(false)}
@@ -737,12 +737,12 @@ const PartnerApproval = () => {
             <form onSubmit={handleConfirmReject} className="space-y-4">
               <div>
                 <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
-                  Alasan Penolakan (Wajib Diisi)
+                  Rejection Reason (Required)
                 </label>
                 <textarea
                   rows="4"
                   required
-                  placeholder="Contoh: Dokumen perizinan tidak valid atau belum lengkap..."
+                  placeholder="e.g. Invalid or incomplete licensing documents..."
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[13.5px] text-[#191c1b] focus:outline-none focus:border-[#ba1a1a] focus:ring-2 focus:ring-[#ba1a1a]/20 transition-all resize-none"
@@ -755,7 +755,7 @@ const PartnerApproval = () => {
                   onClick={() => setIsRejectModalOpen(false)}
                   className="px-4 py-2 border border-[#E5E0D8] rounded-lg font-hanken text-[13px] font-semibold text-[#434842] hover:bg-[#F9F6F1] transition-colors"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -764,7 +764,7 @@ const PartnerApproval = () => {
                     rejectLoading ? "opacity-60 cursor-not-allowed" : "active:scale-95"
                   }`}
                 >
-                  {rejectLoading ? "Menyimpan..." : "Konfirmasi Penolakan"}
+                  {rejectLoading ? "Saving..." : "Confirm Rejection"}
                 </button>
               </div>
             </form>
@@ -776,17 +776,17 @@ const PartnerApproval = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm" onClick={() => !isApproving && setPendingApprove(null)}></div>
           <div className="relative bg-white rounded-xl border border-[#E5E0D8] p-6 max-w-md w-full z-10 font-hanken">
-            <h3 className="font-newsreader text-lg font-semibold mb-1">Setujui Mitra + Bintang</h3>
-            {(() => { const p = partners.find((x) => x.id === pendingApprove); return p?.requested_star_rating ? <p className="text-xs text-[#747872] mb-3">Klaim mitra: ★ {p.requested_star_rating} — koreksi di bawah jika perlu.</p> : null; })()}
+            <h3 className="font-newsreader text-lg font-semibold mb-1">Approve Partner + Star Rating</h3>
+            {(() => { const p = partners.find((x) => x.id === pendingApprove); return p?.requested_star_rating ? <p className="text-xs text-[#747872] mb-3">Partner claim: ★ {p.requested_star_rating} — correct below if needed.</p> : null; })()}
             <div className="space-y-3">
               <select value={approveStar} onChange={(e) => setApproveStar(e.target.value)} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm">
-                <option value="">Belum Terverifikasi</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Bintang</option>)}
+                <option value="">Unverified</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Stars</option>)}
               </select>
-              <textarea value={approveStarReason} onChange={(e) => setApproveStarReason(e.target.value)} placeholder="Alasan koreksi (opsional)" rows={2} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm resize-none" />
+              <textarea value={approveStarReason} onChange={(e) => setApproveStarReason(e.target.value)} placeholder="Correction reason (optional)" rows={2} className="w-full px-3 py-2 border border-[#E5E0D8] rounded-lg text-sm resize-none" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setPendingApprove(null)} disabled={isApproving} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-sm">Batal</button>
-              <button onClick={performApprove} disabled={isApproving} className="px-4 py-2 bg-[#4F6F52] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{isApproving ? "..." : "Ya, Setujui"}</button>
+              <button onClick={() => setPendingApprove(null)} disabled={isApproving} className="px-4 py-2 border border-[#E5E0D8] rounded-lg text-sm">Cancel</button>
+              <button onClick={performApprove} disabled={isApproving} className="px-4 py-2 bg-[#4F6F52] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{isApproving ? "..." : "Yes, Approve"}</button>
             </div>
           </div>
         </div>

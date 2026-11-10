@@ -84,9 +84,9 @@ export default function AdminHotelLayout() {
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-      toast.success('Notifikasi ditandai dibaca.');
+      toast.success('Notification marked as read.');
     } catch (e) {
-      toast.error('Gagal memperbarui status notifikasi.');
+      toast.error('Failed to update notification status.');
     }
   };
 
@@ -96,9 +96,9 @@ export default function AdminHotelLayout() {
       invalidateCache('/notifications');
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
-      toast.success('Semua notifikasi telah dibaca.');
+      toast.success('All notifications marked as read.');
     } catch (e) {
-      toast.error('Gagal memperbarui notifikasi.');
+      toast.error('Failed to update notifications.');
     }
   };
 
@@ -115,7 +115,7 @@ export default function AdminHotelLayout() {
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-1.5 mr-3 pl-2 pr-3 h-9 rounded-lg text-[#506147] hover:bg-[#E4EBE0] hover:text-[#4A5D43] transition-colors border border-transparent hover:border-[#506147]/20 focus:outline-none"
-              title="Kembali ke halaman utama"
+              title="Back to homepage"
             >
               <span className="material-symbols-outlined text-[20px] leading-none">
                 arrow_back
@@ -125,18 +125,18 @@ export default function AdminHotelLayout() {
               </span>
             </button>
             <span className="text-[#6B6E6A] text-xs font-semibold uppercase tracking-wider">
-              Portal Admin Hotel
+              Hotel Admin Portal
             </span>
             <span className="text-[#c4c8be]">/</span>
             <span className="text-[#2D312C] text-sm font-semibold">
               {location.pathname.includes('/hotel')
                 ? 'Hotel Information'
                 : location.pathname.includes('/rooms')
-                ? 'CRUD Tipe Kamar'
+                ? 'Room Type CRUD'
                 : location.pathname.includes('/bookings')
-                ? 'Manajemen Pesanan'
+                ? 'Booking Management'
                 : location.pathname.includes('/reviews')
-                ? 'Manajemen Ulasan'
+                ? 'Review Management'
                 : location.pathname.includes('/revenue')
                 ? 'Revenue Report'
                 : location.pathname.includes('/profile')
@@ -151,7 +151,7 @@ export default function AdminHotelLayout() {
               <button
                 onClick={() => setNotifOpen((o) => !o)}
                 className="text-[#6B6E6A] hover:text-[#506147] transition-colors p-2 rounded-full hover:bg-[#eae8e4] focus:outline-none relative"
-                title="Notifikasi & Warning Peringatan"
+                title="Notifications & Warnings"
               >
                 <span className="material-symbols-outlined text-[22px]">
                   notifications
@@ -168,10 +168,10 @@ export default function AdminHotelLayout() {
                 <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white border border-[#E5E1DA] rounded-xl shadow-xl z-50 overflow-hidden font-['Hanken_Grotesk',sans-serif]">
                   <div className="px-4 py-3 bg-[#F9F6F1] border-b border-[#E5E1DA] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm text-[#2D312C]">Notifikasi</h4>
+                      <h4 className="font-semibold text-sm text-[#2D312C]">Notifications</h4>
                       {unreadCount > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-[#ffdad6] text-[#ba1a1a] text-[11px] font-bold">
-                          {unreadCount} Baru
+                          {unreadCount} New
                         </span>
                       )}
                     </div>
@@ -180,7 +180,7 @@ export default function AdminHotelLayout() {
                         onClick={handleMarkAllAsRead}
                         className="text-xs text-[#506147] hover:underline font-semibold"
                       >
-                        Tandai Semua Dibaca
+                        Mark All as Read
                       </button>
                     )}
                   </div>
@@ -188,11 +188,11 @@ export default function AdminHotelLayout() {
                   <div className="max-h-80 overflow-y-auto divide-y divide-[#E5E1DA]">
                     {loadingNotif ? (
                       <div className="p-6 text-center text-xs text-[#6B6E6A]">
-                        Memuat notifikasi...
+                        Loading notifications...
                       </div>
                     ) : notifications.length === 0 ? (
                       <div className="p-6 text-center text-xs text-[#6B6E6A]">
-                        Tidak ada notifikasi saat ini.
+                        No notifications at the moment.
                       </div>
                     ) : (
                       notifications.map((n) => {
@@ -237,22 +237,22 @@ export default function AdminHotelLayout() {
                                 <p className={`text-xs font-semibold leading-snug ${isWarning ? 'text-[#ba1a1a]' : 'text-[#2D312C]'}`}>
                                   {n.title}
                                 </p>
-                                {!n.is_read && (
-                                  <button
-                                    onClick={() => handleMarkAsRead(n.id)}
-                                    className="text-[10px] text-[#506147] hover:underline font-semibold ml-2 shrink-0"
-                                    title="Tandai Dibaca"
-                                  >
-                                    Dibaca
-                                  </button>
-                                )}
-                              </div>
-                              <p className="text-xs text-[#6B6E6A] mt-1 whitespace-pre-wrap leading-relaxed">
-                                {n.message}
-                              </p>
-                              <p className="text-[10px] text-[#6B6E6A]/70 mt-1">
-                                {n.created_at ? new Date(n.created_at).toLocaleString('id-ID') : ''}
-                              </p>
+                                  {!n.is_read && (
+                                    <button
+                                      onClick={() => handleMarkAsRead(n.id)}
+                                      className="text-[10px] text-[#506147] hover:underline font-semibold ml-2 shrink-0"
+                                      title="Mark as Read"
+                                    >
+                                      Read
+                                    </button>
+                                  )}
+                               </div>
+                               <p className="text-xs text-[#6B6E6A] mt-1 whitespace-pre-wrap leading-relaxed">
+                                 {n.message}
+                               </p>
+                               <p className="text-[10px] text-[#6B6E6A]/70 mt-1">
+                                 {n.created_at ? new Date(n.created_at.replace(' ', 'T')).toLocaleString('en-US') : ''}
+                               </p>
                             </div>
                           </div>
                         );
@@ -300,9 +300,9 @@ export default function AdminHotelLayout() {
                 <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-5 shadow-inner">
                   <span className="material-symbols-outlined text-3xl">gpp_bad</span>
                 </div>
-                <h2 className="font-['Newsreader',serif] text-2xl font-bold text-[#1C251D] mb-2">Hotel Anda Disuspen / Diblokir</h2>
+                <h2 className="font-['Newsreader',serif] text-2xl font-bold text-[#1C251D] mb-2">Hotel Suspended / Blocked</h2>
                 <p className="text-sm text-[#6B6E6A] mb-6 leading-relaxed">
-                  Akun hotel Anda saat ini berstatus diblokir oleh Super Admin karena beberapa peringatan atau kebijakan operasional. Seluruh operasional manajemen kamar ditangguhkan.
+                  Your hotel account is currently suspended by Super Admin due to warnings or operational policy violations. All room management operations are suspended.
                 </p>
                 <div className="flex flex-col gap-3">
                   <button
@@ -313,13 +313,13 @@ export default function AdminHotelLayout() {
                     className="w-full py-3 px-4 rounded-xl bg-[#506147] hover:bg-[#425039] text-white font-semibold text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined text-[18px]">gavel</span>
-                    Buka Halaman Banding & Pemulihan
+                    Open Appeal & Recovery Page
                   </button>
                   <button
                     onClick={() => setShowSuspendPopup(false)}
                     className="w-full py-2.5 px-4 rounded-xl border border-[#DCCFC0] text-[#6B6E6A] hover:bg-[#FDF6ED] font-semibold text-xs transition-colors"
                   >
-                    Tutup Sementara
+                    Close for Now
                   </button>
                 </div>
               </div>

@@ -41,7 +41,7 @@ const Register = () => {
 
   const handleSendOtp = async () => {
     if (!formData.email) {
-      toast.error('Masukkan email terlebih dahulu');
+      toast.error('Enter email first');
       return;
     }
     
@@ -49,11 +49,11 @@ const Register = () => {
     setError({});
     try {
       const res = await api.post('/register/send-otp', { email: formData.email });
-      toast.success(res.data.message || 'OTP terkirim ke email');
+      toast.success(res.data.message || 'OTP sent to email');
       setOtpStatus('sent');
       setTimer(60);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Gagal mengirim OTP';
+      const msg = err.response?.data?.message || 'Failed to send OTP';
       toast.error(msg);
       if (err.response?.data?.errors?.email) {
         setError({ email: err.response.data.errors.email });
@@ -65,7 +65,7 @@ const Register = () => {
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
-      toast.error('Masukkan 6 digit kode OTP');
+      toast.error('Enter 6-digit OTP code');
       return;
     }
 
@@ -75,10 +75,10 @@ const Register = () => {
         email: formData.email,
         otp: otp 
       });
-      toast.success('Email berhasil diverifikasi');
+      toast.success('Email verified successfully');
       setOtpStatus('verified');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'OTP salah atau kadaluarsa');
+      toast.error(err.response?.data?.message || 'OTP code is invalid or expired');
     } finally {
       setOtpLoading(false);
     }
@@ -89,12 +89,12 @@ const Register = () => {
     setError({});
 
     if (otpStatus !== 'verified') {
-      toast.error('Anda harus memverifikasi email dengan OTP terlebih dahulu.');
+      toast.error('You must verify your email with OTP first.');
       return;
     }
 
     if (!isTermsAgreed) {
-      setError({ general: 'Anda harus menyetujui Syarat dan Ketentuan terlebih dahulu.' });
+      setError({ general: 'You must agree to the Terms and Conditions first.' });
       return;
     }
 
@@ -138,7 +138,7 @@ const Register = () => {
       } else if (err.response && err.response.data && err.response.data.message) {
         setError({ general: err.response.data.message });
       } else {
-        setError({ general: 'Gagal melakukan registrasi. Periksa koneksi Anda.' });
+        setError({ general: 'Failed to register. Check your connection.' });
       }
     } finally {
       setLoading(false);
@@ -307,7 +307,7 @@ const Register = () => {
               {error.phone && <p className="text-red-500 text-xs mt-1">{error.phone[0]}</p>}
             </div>
 
-            {/* Password & Konfirmasi dengan Toggle Show/Hide */}
+             {/* Password & Confirmation Toggle Show/Hide */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-[1rem]">
               <div>
                 <label className="block font-label-md text-[14px] text-[#778873] mb-1" htmlFor="password">
@@ -394,13 +394,13 @@ const Register = () => {
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#778873] hover:bg-[#50604d] text-white font-label-md text-[14px] py-4 rounded transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#778873]/20 mt-[2rem] disabled:opacity-50 cursor-pointer"
-            >
-              {loading ? 'Memproses...' : 'Register Account'}
-            </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#778873] hover:bg-[#50604d] text-white font-label-md text-[14px] py-4 rounded transition-all duration-200"
+                >
+                  {loading ? 'Processing...' : 'Register Account'}
+                </button>
 
             <p className="text-center font-body-md text-[16px] text-[#444842] mt-[1rem]">
               Already have an account?{' '}
@@ -422,7 +422,7 @@ const Register = () => {
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#778873] text-2xl">gavel</span>
                 <h3 className="font-headline-md text-xl font-bold text-[#2D332C]">
-                  Syarat dan Ketentuan (Terms & Conditions)
+                   Terms and Conditions
                 </h3>
               </div>
               <button
@@ -438,7 +438,7 @@ const Register = () => {
             <div className="p-6 md:p-8 overflow-y-auto space-y-6 text-[#444842] font-body-md text-sm leading-relaxed">
               <section>
                 <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
-                  1. Ketentuan Akun & Keanggotaan
+                  1. Account & Membership Terms
                 </h4>
                 <p>
                   Dengan membuat akun di platform <strong>H'Leven</strong>, Anda menjamin bahwa informasi yang Anda berikan adalah akurat, sah, dan terkini. Anda bertanggung jawab penuh untuk menjaga kerahasiaan kata sandi dan seluruh aktivitas yang terjadi di bawah akun Anda.
@@ -447,28 +447,28 @@ const Register = () => {
 
               <section>
                 <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
-                  2. Pemesanan & Pembayaran Kamar
+                  2. Booking & Room Payment
                 </h4>
                 <p>
-                  Setiap reservasi kamar yang dilakukan melalui layanan kami akan dikonfirmasi setelah pembayaran terverifikasi. Harga ketersediaan kamar yang ditampilkan sudah mencakup pajak layanan kecuali dinyatakan lain.
+                  Each room reservation made through our services will be confirmed after payment is verified. Room availability prices displayed include service taxes unless otherwise stated.
                 </p>
               </section>
 
               <section>
                 <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
-                  3. Kebijakan Pembatalan & Pengembalian Dana
+                  3. Cancellation & Refund Policy
                 </h4>
                 <p>
-                  Pembatalan pesanan mengacu pada ketentuan masing-masing tipe kamar. Kamar dengan label <em>refundable</em> dapat diajukan pembatalan sesuai batas waktu yang ditentukan sebelum periode check-in.
+                  Cancellation of orders is subject to the policies of each room type. Rooms labeled <em>refundable</em> may be canceled according to the time limits specified before the check-in period.
                 </p>
               </section>
 
               <section>
                 <h4 className="font-headline-sm text-base font-bold text-[#778873] mb-1">
-                  4. Privasi & Perlindungan Data
+                  4. Privacy & Data Protection
                 </h4>
                 <p>
-                  Data pribadi Anda seperti nama, email, dan nomor telepon hanya digunakan untuk keperluan transaksi reservasi serta peningkatan layanan platform H'Leven. Kami tidak akan memperjualbelikan data Anda kepada pihak ketiga.
+                  Your personal data, such as name, email, and phone number, is used solely for reservation transaction purposes and to improve the H'Leven platform's services. We will not sell or share your data with third parties.
                 </p>
               </section>
             </div>
@@ -476,7 +476,7 @@ const Register = () => {
             {/* Modal Footer */}
             <div className="p-6 border-t border-[#DCCFC0] bg-[#faf3ea] flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-xs text-[#747871]">
-                Harap baca seluruh poin sebelum menyetujui pendaftaran.
+                Please read all terms before agreeing to registration.
               </p>
               <div className="flex gap-3 w-full sm:w-auto">
                 <button
@@ -484,14 +484,14 @@ const Register = () => {
                   onClick={() => setShowTermsModal(false)}
                   className="flex-1 sm:flex-none px-5 py-2.5 border border-[#DCCFC0] rounded-xl font-label-md text-xs font-semibold text-[#444842] hover:bg-[#DCCFC0]/20 transition-colors"
                 >
-                  Tutup
+                  Close
                 </button>
                 <button
                   type="button"
                   onClick={handleAgreeTermsModal}
                   className="flex-1 sm:flex-none px-6 py-2.5 bg-[#778873] text-white rounded-xl font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors shadow-xs"
                 >
-                  Saya Setuju
+                  I Agree
                 </button>
               </div>
             </div>

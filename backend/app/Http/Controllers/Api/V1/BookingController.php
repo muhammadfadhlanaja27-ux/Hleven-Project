@@ -55,13 +55,13 @@ class BookingController extends Controller
         $booking = $this->findBookingForActor($request, $id, ['payment']);
 
         if (! $booking || ! $booking->payment) {
-            return response()->json(['status' => 'error', 'message' => 'Booking atau data pembayaran tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking or payment data not found'], 404);
         }
 
         if ($booking->status !== 'pending' && $booking->status !== 'unpaid') {
             return response()->json([
                 'status' => 'success', 
-                'message' => 'Pembayaran sudah memiliki status final: ' . $booking->status,
+                'message' => 'Payment already has a final status: ' . $booking->status,
                 'data' => $booking
             ]);
         }
@@ -71,11 +71,11 @@ class BookingController extends Controller
             
             return response()->json([
                 'status' => 'success',
-                'message' => 'Status pembayaran berhasil disinkronkan',
+                'message' => 'Payment status synchronized successfully',
                 'data' => $booking->fresh(['payment', 'bookingRooms.roomType', 'guests']),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => 'Gagal sinkronisasi: ' . $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Synchronization failed: ' . $e->getMessage()], 500);
         }
     }
 
@@ -122,7 +122,7 @@ class BookingController extends Controller
         if (! $roomType || ! $roomType->is_active) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Tipe kamar atau hotel ini tidak ditemukan atau sedang tidak aktif.',
+                'message' => 'The following dates are closed and cannot be booked: '.implode(', ', $quote['closed_dates']).'.',
             ], 422);
         }
 
@@ -147,8 +147,8 @@ class BookingController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $remainingStockDirect === 0
-                    ? 'Kamar ini sudah habis untuk tanggal yang dipilih.'
-                    : "Jumlah kamar yang dipilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                    ? 'This room is out of stock for the selected dates.'
+                    : "The number of rooms selected ({$qty} rooms) exceeds available stock ({$remainingStockDirect} rooms).",
                 'available_stock' => $remainingStockDirect,
             ], 422);
         }
@@ -158,7 +158,7 @@ class BookingController extends Controller
         if (! empty($quote['closed_dates'])) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                'message' => 'The following dates are closed and cannot be booked: '.implode(', ', $quote['closed_dates']).'.',
                 'closed_dates' => $quote['closed_dates'],
             ], 422);
         }
@@ -194,7 +194,7 @@ class BookingController extends Controller
         $user = $request->user();
         $hotel = $user->hotel ?? $user->hotels()->first();
         if (! $hotel) {
-            return response()->json(['status' => 'error', 'message' => 'Hotel tidak ditemukan.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         $checkIn = Carbon::parse($request->check_in);
@@ -216,19 +216,19 @@ class BookingController extends Controller
             if (! $roomType) {
                 DB::rollBack();
 
-                return response()->json(['status' => 'error', 'message' => 'Tipe kamar tidak ditemukan di hotel ini.'], 422);
+                return response()->json(['status' => 'error', 'message' => 'Room type not found in this hotel.'], 422);
             }
 
             if ($adults > max(1, (int) $roomType->capacity_adult) * $qty) {
                 DB::rollBack();
 
-                return response()->json(['status' => 'error', 'message' => 'Jumlah tamu dewasa melebihi kapasitas kamar.'], 422);
+                return response()->json(['status' => 'error', 'message' => 'Number of adults exceeds room capacity.'], 422);
             }
 
             if ($children > max(0, (int) $roomType->capacity_child) * $qty) {
                 DB::rollBack();
 
-                return response()->json(['status' => 'error', 'message' => 'Jumlah anak melebihi kapasitas kamar.'], 422);
+                return response()->json(['status' => 'error', 'message' => 'Number of children exceeds room capacity.'], 422);
             }
 
             $bookedQty = BookingRoom::where('room_type_id', $roomType->id)
@@ -243,7 +243,7 @@ class BookingController extends Controller
             if ($available < $qty) {
                 DB::rollBack();
 
-                return response()->json(['status' => 'error', 'message' => "Stok tidak cukup. Tersedia {$available} kamar."], 422);
+                return response()->json(['status' => 'error', 'message' => "Insufficient stock. Available: {$available} rooms."], 422);
             }
 
             $weekdayPrice = (float) ($roomType->weekday_price ?? $roomType->price ?? 0);
@@ -348,13 +348,13 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Booking manual berhasil dibuat.',
+                'message' => 'Manual booking created successfully.',
                 'data' => $booking,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['status' => 'error', 'message' => 'Gagal membuat booking: '.$e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Failed to create booking: '.$e->getMessage()], 500);
         }
     }
 
@@ -367,7 +367,7 @@ class BookingController extends Controller
         );
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         return response()->json([
@@ -381,7 +381,7 @@ class BookingController extends Controller
         $internalUpdate = $request->attributes->get('internal_booking_status_update') === true;
 
         if (! $internalUpdate && $request->user()->role !== 'admin_hotel') {
-            return response()->json(['status' => 'error', 'message' => 'Hanya admin hotel yang dapat mengubah status booking.'], 403);
+            return response()->json(['status' => 'error', 'message' => 'Only hotel admins can change booking status.'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -395,22 +395,22 @@ class BookingController extends Controller
         $booking = Booking::with(['bookingRooms'])->find($id);
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         if ($request->user()->role === 'admin_hotel') {
             if (! $request->user()->hotels()->whereKey($booking->hotel_id)->exists()) {
-                return response()->json(['status' => 'error', 'message' => 'Booking ini bukan milik hotel Anda.'], 403);
+                return response()->json(['status' => 'error', 'message' => 'This booking does not belong to your hotel.'], 403);
             }
         } elseif ($internalUpdate && $booking->user_id !== $request->user()->id) {
-            return response()->json(['status' => 'error', 'message' => 'Booking ini bukan milik Anda.'], 403);
+            return response()->json(['status' => 'error', 'message' => 'This booking does not belong to you.'], 403);
         }
 
         $oldStatus = $booking->status;
         $newStatus = $request->status;
 
         if ($newStatus === 'checked_out' && $oldStatus !== 'checked_in') {
-            return response()->json(['status' => 'error', 'message' => 'Booking hanya dapat check-out setelah check-in.'], 422);
+            return response()->json(['status' => 'error', 'message' => 'Booking can only check-out after check-in.'], 422);
         }
 
         DB::beginTransaction();
@@ -456,9 +456,9 @@ class BookingController extends Controller
             if ($newStatus === 'checked_out' && $booking->user_id && ! $booking->review()->exists()) {
                 Notification::create([
                     'user_id' => $booking->user_id,
-                    'title' => 'Tulis Ulasan Anda',
-                    'message' => 'Bagaimana pengalaman menginap Anda di '.($booking->hotel->name ?? 'hotel').
-                                ' (booking '.$booking->booking_code.')? Bagikan ulasan Anda!',
+                    'title' => 'Write Your Review',
+                    'message' => 'How was your stay at '.($booking->hotel->name ?? 'hotel').
+                                ' (booking '.$booking->booking_code.')? Share your experience!',
                     'type' => 'review_request',
                 ]);
             }
@@ -475,7 +475,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal memperbarui status: '.$e->getMessage(),
+                'message' => 'Failed to update status: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -488,12 +488,12 @@ class BookingController extends Controller
             ->first();
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         $blocked = ['cancelled', 'expired', 'refunded', 'refund_pending', 'checked_in', 'checked_out'];
         if (in_array($booking->status, $blocked)) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan atau sedang dalam proses refund'], 400);
+            return response()->json(['status' => 'error', 'message' => 'Booking cannot be cancelled or is in refund process'], 400);
         }
 
         if (in_array($booking->status, ['unpaid', 'pending'])) {
@@ -509,7 +509,7 @@ class BookingController extends Controller
                 return $this->cancelWithoutRefund(
                     $request,
                     $booking,
-                    'Pesanan dibatalkan. Kamar non-refundable — dana hangus tidak dikembalikan.'
+                    'Booking cancelled. Room is non-refundable — funds are forfeited.'
                 );
             }
 
@@ -517,7 +517,7 @@ class BookingController extends Controller
                 return $this->cancelWithoutRefund(
                     $request,
                     $booking,
-                    'Pembatalan berhasil. Dana tidak dapat dikembalikan karena pembatalan dilakukan dalam '.$refundPolicy['refund_cutoff_hours'].' jam sebelum check-in.'
+                    'Cancellation successful. Funds cannot be refunded because cancellation was made within '.$refundPolicy['refund_cutoff_hours'].' hours before check-in.'
                 );
             }
 
@@ -552,7 +552,7 @@ class BookingController extends Controller
             return $response;
         }
 
-        return response()->json(['status' => 'error', 'message' => 'Booking tidak dapat dibatalkan'], 400);
+        return response()->json(['status' => 'error', 'message' => 'Booking cannot be cancelled'], 400);
     }
 
     private function cancelWithoutRefund(Request $request, Booking $booking, string $message)
@@ -602,11 +602,11 @@ class BookingController extends Controller
         $booking = $this->findBookingForActor($request, $id);
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         if ($booking->status !== 'refund_pending') {
-            return response()->json(['status' => 'error', 'message' => 'Pesanan ini tidak sedang dalam pengajuan refund'], 400);
+            return response()->json(['status' => 'error', 'message' => 'This booking is not currently requesting a refund'], 400);
         }
 
         if ($request->action === 'approve') {
@@ -616,8 +616,8 @@ class BookingController extends Controller
             if ($response->getStatusCode() === 200) {
                 Notification::create([
                     'user_id' => $booking->user_id,
-                    'title' => 'Refund Disetujui',
-                    'message' => "Pengajuan refund untuk booking {$booking->booking_code} telah disetujui hotel. Pengembalian dana diproses terpisah.",
+                    'title' => 'Refund Approved',
+                    'message' => "Refund request for booking {$booking->booking_code} has been approved by the hotel. Refund will be processed separately.",
                     'type' => 'refund',
                     'is_read' => false,
                 ]);
@@ -628,15 +628,15 @@ class BookingController extends Controller
             $booking->update(['status' => 'paid']);
             Notification::create([
                 'user_id' => $booking->user_id,
-                'title' => 'Refund Ditolak',
-                'message' => "Pengajuan refund untuk booking {$booking->booking_code} ditolak. Status booking kembali Paid.",
+                'title' => 'Refund Rejected',
+                'message' => "Refund request for booking {$booking->booking_code} was rejected. Booking status returned to Paid.",
                 'type' => 'refund',
                 'is_read' => false,
             ]);
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Pengajuan refund ditolak. Status pesanan kembali menjadi Paid.',
+                'message' => 'Refund request rejected. Booking status returned to Paid.',
                 'data' => $booking,
             ]);
         }
@@ -664,14 +664,14 @@ class BookingController extends Controller
         $booking = $this->findBookingForActor($request, $id, ['bookingRooms.roomType', 'payment', 'hotel', 'guests']);
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         $allowedStatuses = ['paid', 'confirmed', 'checked_in'];
         if (! in_array(strtolower($booking->status), $allowedStatuses)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Hanya pesanan yang lunas (Paid / Confirmed / Checked In) yang dapat diperpanjang.',
+                'message' => 'Only paid / confirmed / checked-in bookings can be extended.',
             ], 400);
         }
 
@@ -690,7 +690,7 @@ class BookingController extends Controller
         try {
             $extensionSubtotal = $basePrice * $duration * $qty;
             $extensionTotals = $pricing->calculate($extensionSubtotal, $extensionTaxRate);
-            $extensionLabel = "[Perpanjang +{$duration} Hari]";
+            $extensionLabel = "[Extend +{$duration} Days]";
 
             $currentCheckOut = Carbon::parse($booking->check_out);
             $newCheckOut = $currentCheckOut->copy()->addDays($duration);
@@ -708,7 +708,7 @@ class BookingController extends Controller
 
                     if ($avail) {
                         if ($avail->available_stock < $bRoom->qty) {
-                            throw new \Exception("Stok kamar tidak cukup untuk periode perpanjangan.");
+                            throw new \Exception("Insufficient room stock for the extension period.");
                         }
                         $avail->decrement('available_stock', $bRoom->qty);
                         $avail->increment('booked_room', $bRoom->qty);
@@ -748,7 +748,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => "Booking berhasil diperpanjang (+{$duration} Hari).",
+                'message' => "Booking extended successfully (+{$duration} Days).",
                 'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
                 'extension_summary' => [
                     'type' => 'days',
@@ -763,7 +763,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal memperpanjang booking: '.$e->getMessage(),
+                'message' => 'Failed to extend booking: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -780,7 +780,7 @@ class BookingController extends Controller
         $booking = $query->first();
 
         if (! $booking) {
-            return response()->json(['status' => 'error', 'message' => 'Booking tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
         $validStatuses = ['paid', 'confirmed', 'checked_in', 'checked_out'];
@@ -1089,7 +1089,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Booking berhasil dibuat. Silakan lakukan pembayaran.',
+                'message' => 'Booking created successfully. Please proceed with payment.',
                 'data' => [
                     'booking' => $booking,
                     'payment' => $payment,
@@ -1100,7 +1100,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal membuat booking: '.$e->getMessage(),
+                'message' => 'Failed to create booking: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1112,7 +1112,7 @@ class BookingController extends Controller
     {
         return response()->json([
             'status' => 'success',
-            'message' => 'Booking sudah dibuat sebelumnya.',
+            'message' => 'Booking was previously created.',
             'duplicate' => true,
             'data' => [
                 'booking' => $booking,

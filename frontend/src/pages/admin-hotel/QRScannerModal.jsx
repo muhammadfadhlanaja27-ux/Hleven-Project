@@ -37,7 +37,7 @@ const QRScannerModal = ({ isOpen, onClose, onSuccessCheckIn }) => {
               booking_code: decodedText.trim(),
             });
 
-            toast.success(response.data?.message || "Check-in Berhasil!");
+            toast.success(response.data?.message || "Check-in Successful!");
             
             if (onSuccessCheckIn) {
               onSuccessCheckIn(response.data?.data);
@@ -48,7 +48,7 @@ const QRScannerModal = ({ isOpen, onClose, onSuccessCheckIn }) => {
             }
             onClose();
           } catch (err) {
-            toast.error(err.response?.data?.message || "Gagal memverifikasi QR Code.");
+            toast.error(err.response?.data?.message || "Failed to verify QR Code.");
             // Beri jeda 2 detik sebelum mengizinkan scan ulang jika gagal
             setTimeout(() => {
               isProcessingRef.current = false;
@@ -70,7 +70,7 @@ const QRScannerModal = ({ isOpen, onClose, onSuccessCheckIn }) => {
       if (scannerRef.current) {
         scannerRef.current
           .clear()
-          .catch((err) => console.error("Gagal membersihkan scanner:", err));
+          .catch((err) => console.error("Failed to clear scanner:", err));
         scannerRef.current = null;
       }
       isProcessingRef.current = false;
@@ -91,10 +91,10 @@ const QRScannerModal = ({ isOpen, onClose, onSuccessCheckIn }) => {
         </button>
 
         <h3 className="font-headline-md text-xl font-bold text-[#778873] mb-1">
-          Pindai E-Tiket Tamu
+          Scan Guest E-Ticket
         </h3>
         <p className="font-body-md text-xs text-[#444842] mb-4">
-          Arahkan kamera ke QR Code E-Tiket milik tamu untuk proses check-in otomatis.
+          Point the camera to the guest's E-Ticket QR Code for automatic check-in.
         </p>
 
         <div 
@@ -104,7 +104,7 @@ const QRScannerModal = ({ isOpen, onClose, onSuccessCheckIn }) => {
 
         {loading && (
           <p className="text-center font-label-md text-xs text-[#778873] font-semibold mt-3 animate-pulse">
-            Memverifikasi Kode Booking...
+            Verifying Booking Code...
           </p>
         )}
       </div>

@@ -195,16 +195,16 @@ const LandingPage = () => {
 
         <div className="relative z-10 w-full max-w-[1280px] px-4 md:px-10 mx-auto flex flex-col items-center text-center">
           <h1 className="font-headline-xl text-3xl md:text-5xl text-white mb-4 max-w-4xl leading-tight drop-shadow-md">
-            Temukan Pengalaman Menginap Terbaik Bersama H'Leven
+            Find the Best Stays with H'Leven
           </h1>
           <p className="font-body-lg text-base md:text-lg text-white/90 mb-10 max-w-2xl drop-shadow">
-            Platform reservasi hotel modern yang memberikan kemudahan pencarian, perbandingan harga, dan manajemen pemesanan secara cerdas dan aman.
+            A modern hotel reservation platform that makes searching, comparing prices, and managing bookings smart and secure.
           </p>
 
           <div className="w-full max-w-5xl bg-[#fff8f0] p-4 rounded-2xl shadow-xl shadow-[#778873]/10 flex flex-col lg:flex-row gap-3 items-center">
             <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
-                Destinasi / Hotel
+                Destination / Hotel
               </label>
               <div className="flex items-center w-full mt-1">
                 <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
@@ -222,7 +222,7 @@ const LandingPage = () => {
 
             <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left relative z-20">
               <label className="font-label-sm text-xs font-semibold text-[#444842]">
-                Tanggal Check-in &amp; Check-out
+                Check-in &amp; Check-out Dates
               </label>
               <div className="flex items-center w-full mt-1">
                 <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
@@ -236,7 +236,7 @@ const LandingPage = () => {
                   minDate={today}
                   monthsShown={window.innerWidth > 640 ? 2 : 1}
                   dateFormat="dd/MM/yyyy"
-                  placeholderText="Pilih Check-in - Check-out"
+                  placeholderText="Select Check-in - Check-out"
                   popperPlacement="bottom-start"
                   popperContainer={({ children }) => <div style={{ zIndex: 9999 }}>{children}</div>}
                   className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
@@ -261,7 +261,7 @@ const LandingPage = () => {
               className="w-full lg:w-auto h-full bg-[#778873] text-white px-8 py-4 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined text-xl">search</span>
-              Cari
+              Search
             </button>
           </div>
         </div>
@@ -277,10 +277,10 @@ const LandingPage = () => {
         <div className="w-full">
           <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 text-left">
             <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-              Rekomendasi Hotel
+              Hotel Recommendations
             </h2>
             <p className="font-body-md text-sm text-[#444842]">
-              Properti pilihan utama berdasarkan pemesanan terbanyak, ulasan terbaik, serta bintang tertinggi. ({filteredHotels.length} ditemukan)
+              Top selected properties based on bookings, ratings, and stars. ({filteredHotels.length} found)
             </p>
           </div>
 
@@ -296,16 +296,16 @@ const LandingPage = () => {
                 search_off
               </span>
               <h3 className="font-headline-md text-lg text-[#2D332C] mb-2 font-semibold">
-                Hotel Tidak Ditemukan
+                Hotel Not Found
               </h3>
               <p className="text-sm text-[#444842] mb-6 max-w-md mx-auto">
-                Maaf, tidak ada hotel yang sesuai dengan kata kunci atau kriteria filter yang Anda pilih.
+                Sorry, no hotels match your search or criteria.
               </p>
               <button
                 onClick={handleResetFilters}
                 className="bg-[#778873] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#50604d] transition-colors"
               >
-                Reset Semua Filter
+                Reset Filters
               </button>
             </div>
           ) : (
@@ -345,10 +345,10 @@ const LandingPage = () => {
           <div className="relative bg-white rounded-2xl shadow-lg p-8 max-w-md z-10 border border-[#DCCFC0]">
             <div className="mb-6">
               <h3 className="font-headline-md text-2xl font-semibold text-[#2D332C] mb-2">
-                Tambah Kamar?
+                Add Room?
               </h3>
               <p className="font-body-md text-[#747872]">
-                Jumlah tamu ({pendingAdults} dewasa) melebihi kapasitas satu kamar. Apakah Anda ingin menambahkan kamar tambahan?
+                Total guests ({pendingAdults} adults) exceed one room's capacity. Do you want to add an extra room?
               </p>
             </div>
 
@@ -357,13 +357,13 @@ const LandingPage = () => {
                 onClick={() => setShowRoomModal(false)}
                 className="px-6 py-2.5 border border-[#DCCFC0] rounded-lg font-label-md text-sm font-semibold text-[#434842] hover:bg-[#FDF6ED] transition-colors"
               >
-                Tidak
+                No
               </button>
               <button
                 onClick={handleConfirmAddRoom}
                 className="px-6 py-2.5 bg-[#778873] rounded-lg font-label-md text-sm font-semibold text-white hover:bg-[#50604d] transition-colors"
               >
-                Ya, Tambah
+                Yes, Add
               </button>
             </div>
           </div>

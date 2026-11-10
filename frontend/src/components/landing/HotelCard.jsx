@@ -9,23 +9,15 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
   if (!hotel) return null;
 
   const getImageUrl = () => {
-    if (hotel.thumbnail) {
-      if (hotel.thumbnail.startsWith('http')) return hotel.thumbnail;
-      return `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, '')}`;
-    }
-    if (hotel.photos && hotel.photos.length > 0) {
-      const firstPhoto = hotel.photos[0];
-      const photoPath = typeof firstPhoto === 'object' ? firstPhoto.photo || firstPhoto.url || firstPhoto.image_path : firstPhoto;
-      if (photoPath) {
-        if (photoPath.startsWith('http')) return photoPath;
-        return `http://localhost:8000/storage/${photoPath.replace(/^\//, '')}`;
-      }
-    }
+    if (hotel.thumbnail) return getStorageUrl(hotel.thumbnail);
+    if (hotel.photos?.length > 0) return getStorageUrl(hotel.photos[0].photo || hotel.photos[0].url);
     return null;
   };
 
-  const imageUrl = !imgError ? getImageUrl() : null;
+  const imageUrl = !imgError ? getImageUrl() : "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
   const hasValidImage = !!imageUrl;
+
+  const handleImageError = () => setImgError(true);
 
   const getPrice = () => {
     const rawPrice = hotel.starting_price || hotel.price || (hotel.rooms && hotel.rooms[0]?.price) || 500000;
@@ -93,59 +85,59 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               src={imageUrl}
               alt={hotel.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              onError={() => setImgError(true)}
+              onError={handleImageError}
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
               <span className="material-symbols-outlined text-[#778873] text-5xl mb-2 opacity-60">
                 image_not_supported
               </span>
-              <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
-                Belum Ada Foto
-              </p>
-            </div>
-          )}
-
-          <div className="absolute top-3 left-3 bg-[#1C251D]/75 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-            {cityName}
-          </div>
-
-          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
-            <span className="material-symbols-outlined text-[#D97706] text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
-              star
-            </span>
-            <span className="font-label-sm text-[11px] font-bold text-[#1C251D]">
-              {starCount} Bintang
-            </span>
-          </div>
-        </div>
-
-        <div className="p-5 flex flex-col flex-grow justify-between min-w-0">
-          <div>
-            <div className="flex justify-between items-start gap-2 mb-1">
-              <h3 className="font-headline-md text-xl font-bold text-[#2D332C] leading-tight group-hover:text-[#778873] transition-colors">
-                {hotel.name}
-              </h3>
-            </div>
-
-            {/* Badge Rating & Ulasan */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center gap-1 bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md font-bold text-xs border border-[#FDE68A]">
-                <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  star
-                </span>
-            <span>{averageRating ? averageRating : "0.0"}</span>
+                <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
+                  No Photos Available
+                </p>
               </div>
-              {totalReviews > 0 ? (
-                <span className="text-xs text-[#747871] font-medium">
-                  ({totalReviews} ulasan)
-                </span>
-              ) : (
-                <span className="text-xs text-[#747871] italic">
-                  Belum ada ulasan
-                </span>
-              )}
+            )}
+
+            <div className="absolute top-3 left-3 bg-[#1C251D]/75 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+              {cityName}
             </div>
+
+            <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-black/5">
+              <span className="material-symbols-outlined text-[#D97706] text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                star
+              </span>
+              <span className="font-label-sm text-[11px] font-bold text-[#1C251D]">
+                {starCount} Star(s)
+              </span>
+            </div>
+          </div>
+
+          <div className="p-5 flex flex-col flex-grow justify-between min-w-0">
+            <div>
+              <div className="flex justify-between items-start gap-2 mb-1">
+                <h3 className="font-headline-md text-xl font-bold text-[#2D332C] leading-tight group-hover:text-[#778873] transition-colors">
+                  {hotel.name}
+                </h3>
+              </div>
+
+              {/* Badge Rating & Ulasan */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-1 bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-md font-bold text-xs border border-[#FDE68A]">
+                  <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    star
+                  </span>
+              <span>{averageRating ? averageRating : "0.0"}</span>
+                </div>
+                {totalReviews > 0 ? (
+                  <span className="text-xs text-[#747871] font-medium">
+                    ({totalReviews} reviews)
+                  </span>
+                ) : (
+                  <span className="text-xs text-[#747871] italic">
+                    No reviews yet
+                  </span>
+                )}
+              </div>
 
             <div className="flex items-center gap-1 text-[#444842] mb-3 text-sm">
               <span className="material-symbols-outlined text-sm text-[#778873]">location_on</span>
@@ -161,9 +153,9 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
 
           <div className="flex items-end justify-between pt-3 border-t border-[#E8E2D9]">
             <div>
-              <p className="text-xs text-[#444842]">Mulai dari</p>
+              <p className="text-xs text-[#444842]">Starting from</p>
               <p className="font-headline-md text-xl font-bold text-[#778873]">
-                Rp {getPrice()} <span className="text-xs font-normal text-[#444842]">/ malam</span>
+                Rp {getPrice()} <span className="text-xs font-normal text-[#444842]">/ night</span>
               </p>
             </div>
 
@@ -172,7 +164,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               onClick={(e) => e.stopPropagation()}
               className="bg-[#778873] text-white px-5 py-2.5 rounded-xl font-label-md text-xs font-semibold hover:bg-[#50604d] transition-colors inline-block text-center shadow-xs"
             >
-              Lihat Detail
+              View Details
             </Link>
           </div>
         </div>
@@ -201,7 +193,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
               image_not_supported
             </span>
             <p className="font-label-md text-xs font-bold text-[#778873] uppercase tracking-wider">
-              Belum Ada Foto
+              No Photos Available
             </p>
           </div>
         )}
@@ -210,13 +202,18 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
           {cityName}
         </div>
 
-        {hotel.logo && (
-          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5">
+        {hotel.logo ? (
+          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5 overflow-hidden">
             <img
               src={getStorageUrl(hotel.logo)}
               alt={`${hotel.name} logo`}
               className="w-full h-full object-contain"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
+          </div>
+        ) : (
+          <div className="absolute bottom-2.5 left-2.5 w-12 h-12 rounded-xl bg-white/95 backdrop-blur-xs border border-white/80 shadow-md p-1.5 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#778873] text-2xl">apartment</span>
           </div>
         )}
 
@@ -225,7 +222,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
             star
           </span>
           <span className="font-label-sm text-[11px] md:text-xs font-bold text-[#1C251D]">
-            {starCount} Bintang
+            {starCount} Star(s)
           </span>
         </div>
       </div>
@@ -242,15 +239,15 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
             <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
               star
             </span>
-            <span>{averageRating ? averageRating : "Baru"}</span>
+            <span>{averageRating ? averageRating : "New"}</span>
           </div>
           {totalReviews > 0 ? (
             <span className="text-xs text-[#747871] font-medium">
-              ({totalReviews} ulasan)
+              ({totalReviews} reviews)
             </span>
           ) : (
             <span className="text-xs text-[#747871] italic">
-              Belum ada ulasan
+              No reviews yet
             </span>
           )}
         </div>
@@ -270,11 +267,11 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
         {/* Bottom Price & Action */}
         <div className="mt-auto flex items-end justify-between pt-4 border-t border-[#E8E2D9]">
           <div>
-            <p className="text-xs text-[#444842] mb-0.5">Mulai dari</p>
+            <p className="text-xs text-[#444842] mb-0.5">Starting from</p>
             <p className="font-headline-md text-lg font-bold text-[#778873]">
               Rp {getPrice()}
             </p>
-            <p className="text-[11px] text-[#747871]">/ malam</p>
+            <p className="text-[11px] text-[#747871]">/ night</p>
           </div>
 
           <Link
@@ -282,7 +279,7 @@ const HotelCard = ({ hotel, adults, children, variant = "vertical" }) => {
             onClick={(e) => e.stopPropagation()}
             className="bg-[#faf3ea] border border-[#778873] text-[#778873] px-4 py-2 rounded-lg font-label-md text-xs font-semibold hover:bg-[#778873] hover:text-white transition-colors inline-block text-center"
           >
-            Lihat Detail
+            View Details
           </Link>
         </div>
       </div>

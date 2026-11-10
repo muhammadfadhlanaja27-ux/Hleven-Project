@@ -33,7 +33,7 @@ const Table = ({ columns, data, onAction }) => {
           ) : (
             <tr>
               <td colSpan={columns.length} className="px-6 py-4 text-center text-sm text-gray-500">
-                Tidak ada data.
+                No data available.
               </td>
             </tr>
           )}

@@ -7,10 +7,10 @@ export default function Warnings() {
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
-            Surat Peringatan Kepatuhan
+            Compliance Warning Letters
           </h2>
           <p className="text-base text-[#6B6E6A] mt-1">
-            Daftar pemberitahuan resmi dari Super Admin mengenai standar operasional dan kepatuhan mitra.
+            List of official notifications from Super Admin regarding operational standards and partner compliance.
           </p>
         </div>
         <WarningList />

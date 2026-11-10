@@ -65,6 +65,13 @@ class ReportController extends Controller
         return $this->successResponse($this->reportService->getPartnerReport($filters));
     }
 
+    public function summary(Request $request): JsonResponse
+    {
+        $filters = $request->only(['start_date', 'end_date']);
+        return $this->successResponse($this->reportService->getFinancialSummary($filters, $request->user()));
+    }
+
+
     public function export(Request $request): JsonResponse
     {
         // PERBAIKAN: Tambahkan 'user' ke dalam daftar validasi 'in:'

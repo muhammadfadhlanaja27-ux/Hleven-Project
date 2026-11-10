@@ -32,7 +32,7 @@ export default function RoomTypeManager() {
       setCategories(list);
     } catch (e) {
       console.error(e);
-      toast.error(getErrorMessage(e, "Gagal memuat tipe kamar."));
+       toast.error(getErrorMessage(e, "Failed to load room types."));
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export default function RoomTypeManager() {
 
   const validate = () => {
     const err = {};
-    if (!formValues.name.trim()) err.name = "Nama tipe kamar diperlukan.";
+     if (!formValues.name.trim()) err.name = "Room type name is required.";
     return err;
   };
 
@@ -93,17 +93,17 @@ export default function RoomTypeManager() {
     try {
       if (modalMode === "add") {
         await api.post("/admin/room-type-categories", formValues);
-        toast.success("Tipe kamar ditambahkan.");
+        toast.success("Room type added.");
       } else if (modalMode === "edit" && selectedCategory) {
         await api.put(`/admin/room-type-categories/${selectedCategory.id}`, formValues);
-        toast.success("Tipe kamar diperbarui.");
+        toast.success("Room type updated.");
       }
       invalidateCache("/admin/room-type-categories");
       await fetchCategories(true);
       closeModal();
     } catch (e) {
       console.error(e);
-      toast.error(getErrorMessage(e, "Operasi gagal."));
+       toast.error(getErrorMessage(e, "Operation failed."));
     } finally {
       setSubmitting(false);
     }
@@ -114,13 +114,13 @@ export default function RoomTypeManager() {
     setSubmitting(true);
     try {
       await api.delete(`/admin/room-type-categories/${selectedCategory.id}`);
-      toast.success("Tipe kamar dihapus.");
+      toast.success("Room type deleted.");
       invalidateCache("/admin/room-type-categories");
       await fetchCategories(true);
       closeModal();
     } catch (e) {
       console.error(e);
-      toast.error(getErrorMessage(e, "Gagal menghapus tipe kamar."));
+       toast.error(getErrorMessage(e, "Failed to delete room type."));
     } finally {
       setSubmitting(false);
     }
@@ -134,10 +134,10 @@ export default function RoomTypeManager() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
-              Manajemen Tipe Kamar
+              Room Type Management
             </h2>
             <p className="text-base text-[#6B6E6A] mt-1">
-              Atur daftar kategori tipe kamar untuk keperluan pengelolaan inventaris.
+              Manage room type categories for inventory management.
             </p>
           </div>
 
@@ -146,7 +146,7 @@ export default function RoomTypeManager() {
             className="bg-[#506147] text-white text-xs font-semibold px-6 py-2.5 rounded-lg flex items-center gap-2 hover:bg-[#3b4b33] transition-all shadow-sm active:scale-[0.98]"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Tambah Tipe
+            Add Room Type
           </button>
         </div>
 
@@ -155,7 +155,7 @@ export default function RoomTypeManager() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 gap-4">
               <div className="w-10 h-10 border-4 border-[#E5E1DA] border-t-[#506147] rounded-full animate-spin"></div>
-              <p className="text-[#6B6E6A] text-sm font-medium">Memuat daftar tipe kamar...</p>
+              <p className="text-[#6B6E6A] text-sm font-medium">Loading room types...</p>
             </div>
           ) : categories.length === 0 ? (
             <div className="text-center py-24 flex flex-col items-center gap-4 bg-[#fcf9f5]/30">
@@ -163,14 +163,14 @@ export default function RoomTypeManager() {
                 <span className="material-symbols-outlined text-[32px]">category</span>
               </div>
               <div>
-                <p className="text-[#2D312C] font-bold text-lg">Belum ada tipe kamar</p>
-                <p className="text-[#6B6E6A] text-sm mt-1">Mulai dengan menambahkan kategori tipe kamar baru.</p>
+                <p className="text-[#2D312C] font-bold text-lg">No room types found</p>
+                <p className="text-[#6B6E6A] text-sm mt-1">Start by adding a new room type category.</p>
               </div>
               <button 
                 onClick={handleOpenAdd}
                 className="mt-2 text-[#506147] text-sm font-bold hover:underline"
               >
-                Tambahkan Sekarang
+                Add Now
               </button>
             </div>
           ) : (
@@ -178,10 +178,10 @@ export default function RoomTypeManager() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#F9F6F1] border-b border-[#E5E1DA]">
                   <tr>
-                    <th className="px-6 py-4 text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Tipe Kamar</th>
+                    <th className="px-6 py-4 text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Room Type</th>
                     <th className="px-6 py-4 text-center text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Status</th>
-                    <th className="px-6 py-4 text-center text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Dipakai</th>
-                    <th className="px-6 py-4 text-right text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Aksi</th>
+                    <th className="px-6 py-4 text-center text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Used</th>
+                    <th className="px-6 py-4 text-right text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0EDE9]">
@@ -190,20 +190,16 @@ export default function RoomTypeManager() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="text-[#2D312C] font-bold text-sm">{category.name}</span>
-                          <span className="text-[#6B6E6A] text-[12px] mt-0.5">{category.description || "Tanpa deskripsi"}</span>
+                           <span className="text-[#6B6E6A] text-[12px] mt-0.5">{category.description || "No description"}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          category.status === "inactive"
-                            ? "bg-[#FFDAD6] text-[#93000A]"
-                            : "bg-[#E4EBE0] text-[#506147]"
-                        }`}>
-                          {category.status === "inactive" ? "Nonaktif" : "Aktif"}
-                        </span>
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${category.status === "inactive" ? "bg-[#FFDAD6] text-[#93000A]" : "bg-[#E4EBE0] text-[#506147]"}`}>
+                  {category.status === "inactive" ? "Inactive" : "Active"}
+                </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="text-xs font-semibold text-[#6B6E6A] bg-[#f0ede9] px-2 py-0.5 rounded">{category.room_types_count ?? 0} Kamar</span>
+                        <span className="text-xs font-semibold text-[#6B6E6A] bg-[#f0ede9] px-2 py-0.5 rounded">{category.room_types_count ?? 0} Rooms</span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -238,12 +234,12 @@ export default function RoomTypeManager() {
           <div className="fixed inset-0 bg-[#2D312C]/40 backdrop-blur-sm animate-fadeIn" onClick={closeModal}></div>
           <div className="relative bg-white rounded-2xl shadow-2xl border border-[#E5E1DA] max-w-md w-full z-10 overflow-hidden animate-slideUp">
             
-            <div className="bg-[#fcf9f5] px-6 py-5 border-b border-[#E5E1DA] flex justify-between items-start">
+             <div className="bg-[#fcf9f5] px-6 py-5 border-b border-[#E5E1DA] flex justify-between items-start">
               <div>
                 <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C]">
-                  {modalMode === "add" ? "Tambah Tipe Kamar" : "Edit Tipe Kamar"}
+                  {modalMode === "add" ? "Add Room Type" : "Edit Room Type"}
                 </h3>
-                <p className="text-xs text-[#6B6E6A] mt-1 font-medium">Lengkapi rincian tipe kamar di bawah ini.</p>
+                <p className="text-xs text-[#6B6E6A] mt-1 font-medium">Complete the room type details below.</p>
               </div>
               <button onClick={closeModal} className="text-[#6B6E6A] hover:text-[#2D312C] transition-colors p-1">
                 <span className="material-symbols-outlined">close</span>
@@ -252,39 +248,39 @@ export default function RoomTypeManager() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-wider">Nama Tipe Kamar *</label>
+                <label className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-[0.1em]">Room Type Name *</label>
                 <input
                   name="name"
                   value={formValues.name}
                   onChange={handleChange}
-                  placeholder="Contoh: Standard, Deluxe, Suite"
+                  placeholder="Example: Standard, Deluxe, Suite"
                   className={`w-full h-11 px-4 rounded-xl border ${errors.name ? 'border-[#BA1A1A] bg-[#BA1A1A]/5' : 'border-[#E8EAE8] focus:border-[#506147]'} outline-none text-sm font-semibold text-[#2D312C] transition-all`}
                 />
                 {errors.name && <p className="text-[11px] text-[#BA1A1A] font-bold ml-1">{errors.name}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-wider">Deskripsi</label>
+                <label className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-[0.1em]">Description</label>
                 <textarea
                   name="description"
                   value={formValues.description}
                   onChange={handleChange}
-                  placeholder="Opsional..."
+                  placeholder="Optional..."
                   rows="3"
                   className="w-full p-4 rounded-xl border border-[#E8EAE8] focus:border-[#506147] outline-none text-sm font-semibold text-[#2D312C] transition-all resize-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-wider">Status Operasional</label>
+                <label className="text-[11px] font-bold text-[#6B6E6A] uppercase tracking-[0.1em]">Operational Status</label>
                 <select
                   name="status"
                   value={formValues.status}
                   onChange={handleChange}
                   className="w-full h-11 px-4 rounded-xl border border-[#E8EAE8] focus:border-[#506147] outline-none bg-white text-sm font-semibold text-[#2D312C] transition-all"
                 >
-                  <option value="active">Aktif (Tersedia)</option>
-                  <option value="inactive">Nonaktif (Sembunyikan)</option>
+                  <option value="active">Active (Available)</option>
+                  <option value="inactive">Inactive (Hidden)</option>
                 </select>
               </div>
 
@@ -294,14 +290,14 @@ export default function RoomTypeManager() {
                   onClick={closeModal}
                   className="flex-1 h-11 border border-[#E5E0D8] text-[#434842] rounded-xl font-bold hover:bg-[#FBFBFA] transition-all"
                 >
-                  Batal
+                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="flex-1 h-11 bg-[#506147] text-white rounded-xl font-bold hover:bg-[#3D4B36] transition-all shadow-md active:scale-95 disabled:bg-[#a2ba9c]"
                 >
-                  {submitting ? "Memproses..." : modalMode === "add" ? "Simpan Tipe" : "Simpan Perubahan"}
+                  {submitting ? "Processing..." : modalMode === "add" ? "Save Type" : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -317,23 +313,23 @@ export default function RoomTypeManager() {
             <div className="w-16 h-16 bg-[#FFDAD6] text-[#93000A] rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
               <span className="material-symbols-outlined text-[32px]">delete_forever</span>
             </div>
-            <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mb-2">Hapus Tipe Kamar?</h3>
+            <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mb-2">Delete Room Type?</h3>
             <p className="text-[#6B6E6A] text-sm mb-6 leading-relaxed">
-              Anda akan menghapus kategori <span className="font-bold text-[#2D312C]">"{selectedCategory.name}"</span>. Pastikan kategori ini tidak diperlukan oleh kamar aktif.
+              You are about to delete category <span className="font-bold text-[#2D312C]">"{selectedCategory.name}"</span>. Make sure this category is not required by active rooms.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={closeModal}
                 className="flex-1 h-11 border border-[#E5E0D8] text-[#434842] rounded-xl font-bold hover:bg-[#FBFBFA] transition-all"
               >
-                Batal
+                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={submitting}
                 className="flex-1 h-11 bg-[#BA1A1A] text-white rounded-xl font-bold hover:bg-[#93000A] transition-all shadow-md active:scale-95"
               >
-                {submitting ? "..." : "Ya, Hapus"}
+                {submitting ? "..." : "Yes, Delete"}
               </button>
             </div>
           </div>

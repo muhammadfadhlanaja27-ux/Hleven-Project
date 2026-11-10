@@ -6,10 +6,10 @@ import { useEffect } from "react";
  */
 const ConfirmDialog = ({
   open,
-  title = "Konfirmasi Tindakan",
+  title = "Action Confirmation",
   message,
-  confirmText = "Ya, Lanjutkan",
-  cancelText = "Batal",
+  confirmText = "Yes, Proceed",
+  cancelText = "Cancel",
   type = "default", // 'default' | 'danger' | 'success'
   onConfirm,
   onCancel,
@@ -73,7 +73,7 @@ const ConfirmDialog = ({
             disabled={processing}
             className={`px-5 py-2.5 rounded-xl font-label-md text-sm font-semibold text-white transition-colors shadow-sm cursor-pointer active:scale-95 disabled:opacity-50 ${styles.btn}`}
           >
-            {processing ? "Memproses..." : confirmText}
+            {processing ? "Processing..." : confirmText}
           </button>
         </div>
       </div>

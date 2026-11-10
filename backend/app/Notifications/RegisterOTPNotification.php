@@ -2,14 +2,11 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class RegisterOTPNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(public string $otp) {}
 
     /**

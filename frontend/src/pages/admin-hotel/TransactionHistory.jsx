@@ -69,7 +69,7 @@ const TransactionHistory = () => {
         return response.data.data;
       }
     } catch (error) {
-      if (!silent) toast.error("Gagal memuat riwayat transaksi.");
+      if (!silent) toast.error("Failed to load transaction history.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -140,11 +140,11 @@ const TransactionHistory = () => {
       const response = await api.post(`/hotel/payments/${orderId}/check-status`);
       if (response.data?.not_midtrans) {
         skippedSyncRef.current.add(orderId);
-        toast("Transaksi manual / belum di Midtrans.", { icon: "ℹ️" });
+        toast("Manual transaction / not in Midtrans.", { icon: "ℹ️" });
         return;
       }
       if (response.data.success) {
-        toast.success("Status transaksi berhasil diperbarui.");
+        toast.success("Success, transaction status updated.");
         skippedSyncRef.current.delete(orderId);
         fetchPayments(currentPage, true);
       }
@@ -152,9 +152,9 @@ const TransactionHistory = () => {
       const d = error?.response?.data;
       if (d?.not_midtrans || error?.response?.status === 404) {
         skippedSyncRef.current.add(orderId);
-        toast("Transaksi tidak ditemukan di Midtrans.", { icon: "ℹ️" });
+        toast("Transaction not found in Midtrans.", { icon: "ℹ️" });
       } else {
-        toast.error("Gagal menyinkronkan dengan Midtrans.");
+        toast.error("Failed to sync with Midtrans.");
       }
     } finally { setSyncing(null); }
   };
@@ -163,10 +163,10 @@ const TransactionHistory = () => {
     const s = String(status || "").toLowerCase();
     const style = "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider";
     switch (s) {
-      case "success": case "settlement": case "capture": return <span className={`${style} bg-[#E4EBE0] text-[#4A5D43]`}>Berhasil</span>;
-      case "pending": return <span className={`${style} bg-[#FFF0E0] text-[#9B5235]`}>Menunggu</span>;
-      case "expire": case "expired": case "failure": case "failed": return <span className={`${style} bg-[#FFDAD6] text-[#93000A]`}>Gagal/Kedaluwarsa</span>;
-      case "cancel": case "cancelled": return <span className={`${style} bg-[#F0EDE9] text-[#6B6E6A]`}>Dibatalkan</span>;
+      case "success": case "settlement": case "capture": return <span className={`${style} bg-[#E4EBE0] text-[#4A5D43]`}>Success</span>;
+      case "pending": return <span className={`${style} bg-[#FFF0E0] text-[#9B5235]`}>Pending</span>;
+      case "expire": case "expired": case "failure": case "failed": return <span className={`${style} bg-[#FFDAD6] text-[#93000A]`}>Failed/Expired</span>;
+      case "cancel": case "cancelled": return <span className={`${style} bg-[#F0EDE9] text-[#6B6E6A]`}>Cancelled</span>;
       default: return <span className={`${style} bg-gray-100 text-gray-700`}>{status || "—"}</span>;
     }
   };
@@ -178,9 +178,9 @@ const TransactionHistory = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
             <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
-              Riwayat Transaksi
+              Transaction History
             </h2>
-            <p className="text-base text-[#6B6E6A] mt-1">Pantau pembayaran tamu dan kelola status transaksi.</p>
+            <p className="text-base text-[#6B6E6A] mt-1">Monitor guest payments and manage transaction statuses.</p>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[#E5E1DA] bg-white px-4 py-2 text-[11px] font-semibold text-[#506147]">
             <span className="relative flex h-2 w-2">
@@ -198,13 +198,13 @@ const TransactionHistory = () => {
             <h3 className="font-semibold text-[#2D312C]">Filter Transaksi</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari pesanan/tamu..." className="h-11 px-4 rounded-xl border border-[#E5E1DA] text-sm focus:border-[#506147] outline-none" />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order/guest..." className="h-11 px-4 rounded-xl border border-[#E5E1DA] text-sm focus:border-[#506147] outline-none" />
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-11 px-4 rounded-xl border border-[#E5E1DA] text-sm focus:border-[#506147] outline-none">
-              <option value="">Semua Status</option>
-              <option value="success">Berhasil</option>
-              <option value="pending">Menunggu</option>
-              <option value="expired">Kedaluwarsa</option>
-              <option value="cancelled">Dibatalkan</option>
+              <option value="">All Statuses</option>
+              <option value="success">Success</option>
+              <option value="pending">Pending</option>
+              <option value="expired">Expired</option>
+              <option value="cancelled">Cancelled</option>
             </select>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-11 px-4 rounded-xl border border-[#E5E1DA] text-sm focus:border-[#506147] outline-none" />
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-11 px-4 rounded-xl border border-[#E5E1DA] text-sm focus:border-[#506147] outline-none" />
@@ -217,7 +217,7 @@ const TransactionHistory = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-[#F9F6F1] border-b border-[#E5E1DA]">
                 <tr>
-                  {["Info Pesanan", "Pelanggan", "Total Biaya", "Metode", "Status", "Aksi"].map((h) => (
+                  {["Order Info", "Customer", "Total Amount", "Method", "Status", "Actions"].map((h) => (
                     <th key={h} className="px-6 py-4 text-[12px] font-bold text-[#757870] uppercase tracking-[0.1em]">{h}</th>
                   ))}
                 </tr>
@@ -245,7 +245,7 @@ const TransactionHistory = () => {
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan="6" className="py-24 text-center text-sm text-[#6B6E6A]">Tidak ada transaksi ditemukan.</td></tr>
+                  <tr><td colSpan="6" className="py-24 text-center text-sm text-[#6B6E6A]">No transactions found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -257,14 +257,14 @@ const TransactionHistory = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-[#2D312C]/40 backdrop-blur-sm animate-fadeIn" onClick={() => setSelected(null)}></div>
             <div className="relative bg-white rounded-2xl shadow-2xl border border-[#E5E1DA] max-w-lg w-full z-10 p-8 animate-slideUp">
-              <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mb-6">Detail Transaksi</h3>
+               <h3 className="font-['Newsreader',serif] text-2xl font-semibold text-[#2D312C] mb-6">Transaction Details</h3>
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between border-b pb-2"><span className="text-[#6B6E6A]">Order ID</span><span className="font-bold">{selected.order_id}</span></div>
                 <div className="flex justify-between border-b pb-2"><span className="text-[#6B6E6A]">Pelanggan</span><span className="font-bold">{selected.booking?.guests?.[0]?.name}</span></div>
                 <div className="flex justify-between border-b pb-2"><span className="text-[#6B6E6A]">Total</span><span className="font-bold text-[#506147]">{fmtRupiah(selected.gross_amount)}</span></div>
               </div>
               <div className="mt-8 flex gap-3">
-                <button onClick={() => setSelected(null)} className="flex-1 h-11 border border-[#E5E0D8] rounded-xl font-bold hover:bg-[#F9F6F1]">Tutup</button>
+                 <button onClick={() => setSelected(null)} className="flex-1 h-11 border border-[#E5E0D8] rounded-xl font-bold hover:bg-[#F9F6F1]">Close</button>
               </div>
             </div>
           </div>

@@ -45,8 +45,8 @@ class HotelController extends Controller
         $hotels = $query->get();
 
         return response()->json([
-            'success' => true,
-            'message' => 'Daftar hotel berhasil dimuat',
+            'status' => 'success',
+            'message' => 'Hotel list loaded successfully',
             'data' => $hotels,
         ], 200);
     }
@@ -65,12 +65,12 @@ class HotelController extends Controller
         ])->find($id);
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found'], 404);
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Detail hotel berhasil dimuat',
+            'status' => 'success',
+            'message' => 'Hotel details loaded successfully',
             'data' => $hotel,
         ], 200);
     }
@@ -85,14 +85,14 @@ class HotelController extends Controller
         $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         $hotel->load(['city', 'facilities', 'photos', 'admin']);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Profil hotel berhasil dimuat',
+            'status' => 'success',
+            'message' => 'Hotel profile loaded successfully',
             'data' => $hotel,
         ], 200);
     }
@@ -103,7 +103,7 @@ class HotelController extends Controller
         $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         $hasCoordinates = is_numeric($hotel->latitude) && is_numeric($hotel->longitude);
@@ -134,15 +134,15 @@ class HotelController extends Controller
             report($exception);
 
             return response()->json([
-                'success' => false,
-                'message' => 'Layanan pencarian lokasi OpenStreetMap sedang tidak dapat diakses.',
+                'status' => 'error',
+                'message' => 'OpenStreetMap location service is currently unreachable.',
             ], 503);
         }
 
         if (! $response->successful()) {
             return response()->json([
-                'success' => false,
-                'message' => 'Layanan pencarian lokasi OpenStreetMap mengembalikan kesalahan.',
+                'status' => 'error',
+                'message' => 'OpenStreetMap location service returned an error.',
             ], 502);
         }
 
@@ -164,13 +164,13 @@ class HotelController extends Controller
 
         if ($locationArea === '') {
             return response()->json([
-                'success' => false,
-                'message' => 'Lokasi hotel tidak ditemukan di OpenStreetMap. Pastikan nama hotel atau koordinatnya benar.',
+                'status' => 'error',
+                'message' => 'Hotel location not found on OpenStreetMap. Ensure the hotel name or coordinates are correct.',
             ], 404);
         }
 
         return response()->json([
-            'success' => true,
+            'status' => 'success',
             'data' => [
                 'location_area' => $locationArea,
                 'source' => 'OpenStreetMap',
@@ -188,7 +188,7 @@ class HotelController extends Controller
         $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         $fileStorage = app(FileStorageService::class);
@@ -201,8 +201,8 @@ class HotelController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Logo hotel berhasil diperbarui.',
+            'status' => 'success',
+            'message' => 'Hotel logo updated successfully.',
             'data' => ['logo' => $hotel->logo],
         ], 201);
     }
@@ -213,7 +213,7 @@ class HotelController extends Controller
         $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         if ($hotel->logo) {
@@ -223,8 +223,8 @@ class HotelController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Logo hotel berhasil dihapus.',
+            'status' => 'success',
+            'message' => 'Hotel logo deleted successfully.',
             'data' => ['logo' => null],
         ]);
     }
@@ -239,12 +239,12 @@ class HotelController extends Controller
         $hotel = $user->hotel ?? $user->hotels()->first();
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Data hotel berhasil diambil',
+            'status' => 'success',
+            'message' => 'Hotel data retrieved successfully',
             'data' => [$hotel->load(['city', 'facilities', 'photos', 'admin'])],
         ], 200);
     }
@@ -262,13 +262,13 @@ class HotelController extends Controller
         )));
 
         if ($id && ! in_array((int) $id, $ownedHotelIds, true)) {
-            return response()->json(['success' => false, 'message' => 'Anda tidak berhak mengakses hotel ini.'], 403);
+            return response()->json(['status' => 'error', 'message' => 'You are not authorized to access this hotel.'], 403);
         }
 
         $hotel = $id ? Hotel::find($id) : ($user->hotel ?? $user->hotels()->first());
 
         if (! $hotel) {
-            return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
         }
 
         $admin = $hotel->admin ?? $user;
@@ -353,8 +353,8 @@ class HotelController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Profil hotel berhasil diperbarui',
+            'status' => 'success',
+            'message' => 'Hotel profile updated successfully',
             'data' => $hotel->fresh(['city', 'facilities', 'photos', 'admin']),
         ], 200);
     }

@@ -29,7 +29,7 @@ const FileUpload = ({
     if (!selected) return;
 
     if (selected.size > maxSize) {
-      toast.error(`File terlalu besar. Maksimal ${formatBytes(maxSize)}.`);
+      toast.error(`File is too large. Max ${formatBytes(maxSize)}.`);
       inputRef.current.value = "";
       return;
     }
@@ -84,10 +84,10 @@ const FileUpload = ({
             upload_file
           </span>
           <span className="font-label-md text-sm font-semibold text-[#50604d]">
-            Klik untuk unggah atau seret file ke sini
+            Click to upload or drag file here
           </span>
           <span className="text-[11px] text-[#747871]">
-            {accept} • Maks. {formatBytes(maxSize)}
+            {accept} • Max. {formatBytes(maxSize)}
           </span>
           <input
             ref={inputRef}
@@ -120,7 +120,7 @@ const FileUpload = ({
               ) : (
                 <span className="inline-flex items-center gap-1 mt-1.5 font-label-sm text-[11px] font-semibold text-[#50604d]">
                   <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                  Berhasil diunggah
+                  Uploaded successfully
                 </span>
               )}
             </div>
@@ -130,7 +130,7 @@ const FileUpload = ({
             onClick={handleRemove}
             disabled={isUploading}
             className="ml-3 p-2 text-[#ba1a1a] hover:bg-[#ffdad6]/30 rounded-lg transition-colors shrink-0 disabled:opacity-40"
-            title="Hapus file"
+            title="Remove file"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>

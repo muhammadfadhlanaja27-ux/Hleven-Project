@@ -62,9 +62,9 @@ const ActivityLogs = () => {
         });
       }
     } catch (err) {
-      console.error("Gagal mengambil data log aktivitas:", err);
+      console.error("Failed to fetch activity log data:", err);
       if (logs.length === 0) setError(true);
-      toast.error("Gagal memuat log aktivitas. Pastikan server backend berjalan.");
+      toast.error("Failed to load activity logs. Ensure the backend server is running.");
     } finally {
       setLoading(false);
     }
@@ -158,7 +158,7 @@ const ActivityLogs = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-              Riwayat Aktivitas
+               Activity History
             </h2>
           <p className="font-hanken text-[14px] text-[#747872] mt-1">
             Track and audit all administrative actions and system events across the platform.
@@ -179,7 +179,7 @@ const ActivityLogs = () => {
         {/* Search Activity */}
         <div className="flex-1">
           <label className="block font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872] mb-1.5">
-            Cari Aktivitas
+             Search Activity
           </label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747872] text-[20px] pointer-events-none">
@@ -198,7 +198,7 @@ const ActivityLogs = () => {
         {/* Date Range Start */}
         <div className="w-full md:w-52">
           <label className="block font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872] mb-1.5">
-            Tanggal Mulai
+             Start Date
           </label>
           <input
             type="date"
@@ -211,7 +211,7 @@ const ActivityLogs = () => {
         {/* Date Range End */}
         <div className="w-full md:w-52">
           <label className="block font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase text-[#747872] mb-1.5">
-            Tanggal Akhir
+             End Date
           </label>
           <input
             type="date"
@@ -236,7 +236,7 @@ const ActivityLogs = () => {
       {error && (
         <div className="bg-[#ffdad6] border border-[#ffbab1] text-[#93000a] px-5 py-4 rounded-xl font-hanken text-[14px] flex items-center gap-3">
           <span className="material-symbols-outlined">error</span>
-          <span>Terjadi kesalahan saat memuat log aktivitas. Pastikan backend aktif.</span>
+          <span>An error occurred while loading activity logs. Ensure the backend is active.</span>
         </div>
       )}
 
@@ -245,7 +245,7 @@ const ActivityLogs = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
-            <p className="font-hanken text-[14px] text-[#747872]">Memuat rekam aktivitas...</p>
+            <p className="font-hanken text-[14px] text-[#747872]">Loading activity history...</p>
           </div>
         ) : (
           <>
@@ -335,7 +335,7 @@ const ActivityLogs = () => {
                         colSpan="4"
                         className="py-12 text-center text-[#747872] font-hanken text-[14px]"
                       >
-                        Tidak ada catatan log aktivitas yang ditemukan.
+                        No activity logs found.
                       </td>
                     </tr>
                   )}
@@ -346,9 +346,9 @@ const ActivityLogs = () => {
             {/* Pagination Controls */}
             <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm text-[#747872] font-hanken">
               <span className="text-[13px]">
-                Menampilkan halaman <strong className="text-[#191c1b]">{meta.current_page}</strong> dari{" "}
+                Showing page <strong className="text-[#191c1b]">{meta.current_page}</strong> of{" "}
                 <strong className="text-[#191c1b]">{meta.last_page}</strong>{" "}
-                {meta.total ? `(Total: ${meta.total} aktivitas)` : ""}
+                {meta.total ? `(Total: ${meta.total} activities)` : ""}
               </span>
 
               <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ const ActivityLogs = () => {
                   disabled={page <= 1}
                   className="px-3 py-1.5 rounded-md border border-[#E5E0D8] bg-white text-[#434842] hover:bg-[#F9F6F1] font-medium text-[13px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Sebelumnya
+                  Previous
                 </button>
 
                 <div className="px-2 font-medium text-[13px] text-[#191c1b]">
@@ -369,7 +369,7 @@ const ActivityLogs = () => {
                   disabled={page >= meta.last_page}
                   className="px-3 py-1.5 rounded-md border border-[#E5E0D8] bg-white text-[#434842] hover:bg-[#F9F6F1] font-medium text-[13px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Selanjutnya
+                  Next
                 </button>
               </div>
             </div>

@@ -8,7 +8,7 @@ const PartnerStepper = ({ currentStep, steps }) => {
     <div className="w-full mb-8">
       <div className="flex justify-between items-center mb-2">
         <span className="font-label-sm text-[12px] font-semibold tracking-wider text-[#444842]">
-          Langkah {currentStep} dari {totalSteps}
+          Step {currentStep} of {totalSteps}
         </span>
         <span className="font-label-sm text-[12px] font-bold tracking-wider text-[#50604d]">
           {steps[currentStep - 1]}

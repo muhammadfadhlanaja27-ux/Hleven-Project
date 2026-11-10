@@ -86,9 +86,9 @@ const SuperAdminDashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Period Filters
-  const [revenuePeriod, setRevenuePeriod] = useState('Bulan');
+  const [revenuePeriod, setRevenuePeriod] = useState('Month');
   const [bookingRange, setBookingRange] = useState('Last 6 Months');
-  const [userGrowthPeriod, setUserGrowthPeriod] = useState('Bulanan');
+  const [userGrowthPeriod, setUserGrowthPeriod] = useState('Monthly');
   const [hotelPerfLimit, setHotelPerfLimit] = useState('Top 5');
 
   const fetchDashboardData = async (forceRefresh = false) => {
@@ -128,11 +128,11 @@ const SuperAdminDashboard = () => {
       }
 
       if (forceRefresh) {
-        toast.success('Data dashboard berhasil diperbarui');
+        toast.success('Dashboard data updated successfully');
       }
     } catch (err) {
-      console.error('Gagal mengambil data dashboard:', err);
-      toast.error('Gagal memuat data backend.');
+      console.error('Failed to fetch dashboard data:', err);
+      toast.error('Failed to load backend data.');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -161,9 +161,9 @@ const SuperAdminDashboard = () => {
 
   // 2. Status Pembayaran (Donut Chart)
   const paymentStatusData = [
-    { name: 'Berhasil', value: paymentStats?.success ?? 0, color: COLORS.active },
+    { name: 'Success', value: paymentStats?.success ?? 0, color: COLORS.active },
     { name: 'Pending', value: paymentStats?.pending ?? 0, color: COLORS.pending },
-    { name: 'Gagal', value: paymentStats?.failed ?? 0, color: COLORS.error },
+    { name: 'Failed', value: paymentStats?.failed ?? 0, color: COLORS.error },
     { name: 'Expired', value: paymentStats?.expired ?? 0, color: COLORS.outline },
     { name: 'Refund', value: paymentStats?.cancelled ?? 0, color: COLORS.primaryLight },
   ];
@@ -174,16 +174,23 @@ const SuperAdminDashboard = () => {
   const totalCancelledBookings = (bookingStats?.cancelled || 0) + (bookingStats?.expired || 0);
 
   const bookingChartData = [
-    { name: 'Jan', Berhasil: 0, Menunggu: 0, Dibatalkan: 0 },
-    { name: 'Feb', Berhasil: 0, Menunggu: 0, Dibatalkan: 0 },
-    { name: 'Mar', Berhasil: 0, Menunggu: 0, Dibatalkan: 0 },
-    { name: 'Apr', Berhasil: 0, Menunggu: 0, Dibatalkan: 0 },
-    { name: 'Mei', Berhasil: 0, Menunggu: 0, Dibatalkan: 0 },
+    { name: 'Jan', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Feb', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Mar', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Apr', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'May', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Jun', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Jul', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Aug', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Sep', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Oct', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Nov', Success: 0, Pending: 0, Cancelled: 0 },
+    { name: 'Dec', Success: 0, Pending: 0, Cancelled: 0 },
     {
-      name: 'Bulan Ini',
-      Berhasil: totalPaidBookings,
-      Menunggu: totalPendingBookings,
-      Dibatalkan: totalCancelledBookings,
+      name: 'This Month',
+      Success: totalPaidBookings,
+      Pending: totalPendingBookings,
+      Cancelled: totalCancelledBookings,
     },
   ];
 
@@ -195,7 +202,7 @@ const SuperAdminDashboard = () => {
     { name: 'Mar', 'User Aktif': 0, 'User Baru': 0 },
     { name: 'Apr', 'User Aktif': 0, 'User Baru': 0 },
     { name: 'Mei', 'User Aktif': 0, 'User Baru': 0 },
-    { name: 'Bulan Ini', 'User Aktif': totalUsers, 'User Baru': summary?.new_users ?? 0 },
+    { name: 'This Month', 'Active Users': totalUsers, 'New Users': summary?.new_users ?? 0 },
   ];
 
   // 5. Performa Hotel (Bar Chart)
@@ -234,7 +241,7 @@ const SuperAdminDashboard = () => {
             Dashboard
           </h2>
           <p className="text-sm text-[#434842] mt-1">
-            Terakhir diperbarui: Hari ini pukul {lastUpdatedTime} WIB
+            Last updated: Today at {lastUpdatedTime} WIB
           </p>
         </div>
         <button
@@ -245,7 +252,7 @@ const SuperAdminDashboard = () => {
           <span className={`material-symbols-outlined text-[16px] ${isRefreshing ? 'animate-spin' : ''}`}>
             refresh
           </span>
-          {isRefreshing ? 'Memperbarui...' : 'Segarkan Data'}
+          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>
 
@@ -300,7 +307,7 @@ const SuperAdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Card 1: Total User */}
         <SummaryCard
-          title="Total User"
+          title="Total Users"
           value={summary?.total_users !== undefined ? summary.total_users.toLocaleString('id-ID') : '0'}
           icon="group"
           trend={summary?.total_users ? "+ Real-time" : "0 user"}
@@ -308,7 +315,7 @@ const SuperAdminDashboard = () => {
 
         {/* Card 2: Total Hotel */}
         <SummaryCard
-          title="Total Hotel"
+          title="Total Hotels"
           value={summary?.total_hotels !== undefined ? summary.total_hotels.toLocaleString('id-ID') : '0'}
           icon="domain"
           trend={summary?.total_hotels ? "+ Real-time" : "0 hotel"}
@@ -322,9 +329,9 @@ const SuperAdminDashboard = () => {
           trend={summary?.total_bookings ? "+ Real-time" : "0 booking"}
         />
 
-        {/* Card 4: Pendapatan Hari Ini */}
+        {/* Card 4: Today's Revenue */}
         <SummaryCard
-          title="Pendapatan Hari Ini"
+          title="Today's Revenue"
           value={formatCurrency(summary?.today_revenue ?? 0)}
           icon="payments"
           trend={summary?.today_revenue ? "+ Real-time" : "Rp 0"}
@@ -335,7 +342,7 @@ const SuperAdminDashboard = () => {
           title="Active Booking"
           value={summary?.active_bookings !== undefined ? summary.active_bookings.toLocaleString('id-ID') : '0'}
           icon="hourglass_empty"
-          trend="Menunggu konfirmasi / Aktif"
+          trend="Pending confirmation / Active"
           isNeutral
         />
 
@@ -356,18 +363,18 @@ const SuperAdminDashboard = () => {
         <div className="bg-white rounded-lg p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] lg:col-span-2 flex flex-col justify-between">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-['Newsreader',serif] text-xl font-medium text-[#4f604f]">
-              Grafik Pendapatan
-            </h3>
-            <select
-              value={revenuePeriod}
-              onChange={(e) => setRevenuePeriod(e.target.value)}
-              className="border border-[#E5E0D8] rounded px-3 py-1 text-xs text-[#191c1b] bg-white focus:outline-none focus:ring-1 focus:ring-[#4f604f] cursor-pointer"
-            >
-              <option value="Hari">Hari</option>
-              <option value="Minggu">Minggu</option>
-              <option value="Bulan">Bulan</option>
-              <option value="Tahun">Tahun</option>
-            </select>
+            Revenue Chart
+          </h3>
+          <select
+            value={revenuePeriod}
+            onChange={(e) => setRevenuePeriod(e.target.value)}
+            className="border border-[#E5E0D8] rounded px-3 py-1 text-xs text-[#191c1b] bg-white focus:outline-none focus:ring-1 focus:ring-[#4f604f] cursor-pointer"
+          >
+            <option value="Day">Day</option>
+            <option value="Week">Week</option>
+            <option value="Month">Month</option>
+            <option value="Year">Year</option>
+          </select>
           </div>
           <div className="w-full h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -382,7 +389,7 @@ const SuperAdminDashboard = () => {
                 <XAxis dataKey="name" stroke="#747872" tick={{ fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#E5E0D8' }} />
                 <YAxis tickFormatter={(v) => formatCurrency(v)} stroke="#747872" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <RechartsTooltip content={<CustomTooltip isCurrency />} />
-                <Area type="monotone" dataKey="revenue" name="Pendapatan" stroke={COLORS.primary} strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke={COLORS.primary} strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -391,7 +398,7 @@ const SuperAdminDashboard = () => {
         {/* Status Pembayaran (Donut Chart) */}
         <div className="bg-white rounded-lg p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] flex flex-col justify-between">
           <h3 className="font-['Newsreader',serif] text-xl font-medium text-[#4f604f] mb-4">
-            Status Pembayaran
+            Payment Status
           </h3>
           <div className="w-full h-[220px] relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
@@ -435,7 +442,7 @@ const SuperAdminDashboard = () => {
       <div className="bg-white rounded-lg p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] flex flex-col justify-between">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-['Newsreader',serif] text-xl font-medium text-[#4f604f]">
-            Grafik Booking
+            Booking Chart
           </h3>
           <select
             value={bookingRange}
@@ -454,9 +461,9 @@ const SuperAdminDashboard = () => {
               <YAxis stroke="#747872" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <RechartsTooltip content={<CustomTooltip />} />
               <Legend verticalAlign="top" height={36} iconType="circle" />
-              <Area type="monotone" dataKey="Berhasil" stackId="1" stroke={COLORS.active} fill={COLORS.active} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="Menunggu" stackId="1" stroke={COLORS.pending} fill={COLORS.pending} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="Dibatalkan" stackId="1" stroke={COLORS.error} fill={COLORS.error} fillOpacity={0.6} />
+              <Area type="monotone" dataKey="Success" stackId="1" stroke={COLORS.active} fill={COLORS.active} fillOpacity={0.6} />
+              <Area type="monotone" dataKey="Pending" stackId="1" stroke={COLORS.pending} fill={COLORS.pending} fillOpacity={0.6} />
+              <Area type="monotone" dataKey="Cancelled" stackId="1" stroke={COLORS.error} fill={COLORS.error} fillOpacity={0.6} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -468,16 +475,16 @@ const SuperAdminDashboard = () => {
         <div className="bg-white rounded-lg p-6 shadow-[0_4px_20px_rgba(47,50,49,0.06)] flex flex-col justify-between">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-['Newsreader',serif] text-xl font-medium text-[#4f604f]">
-              Pertumbuhan User
+              User Growth
             </h3>
             <select
               value={userGrowthPeriod}
               onChange={(e) => setUserGrowthPeriod(e.target.value)}
               className="border border-[#E5E0D8] rounded px-3 py-1 text-xs text-[#191c1b] bg-white focus:outline-none focus:ring-1 focus:ring-[#4f604f] cursor-pointer"
             >
-              <option value="Harian">Harian</option>
-              <option value="Mingguan">Mingguan</option>
-              <option value="Bulanan">Bulanan</option>
+              <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
             </select>
           </div>
           <div className="w-full h-[260px]">
@@ -488,8 +495,8 @@ const SuperAdminDashboard = () => {
                 <YAxis stroke="#747872" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Legend verticalAlign="top" height={36} iconType="circle" />
-                <Line type="monotone" dataKey="User Aktif" stroke={COLORS.primary} strokeWidth={2.5} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="User Baru" stroke={COLORS.secondary} strokeWidth={2.5} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="Active Users" stroke={COLORS.primary} strokeWidth={2.5} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="New Users" stroke={COLORS.secondary} strokeWidth={2.5} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -501,15 +508,15 @@ const SuperAdminDashboard = () => {
             <h3 className="font-['Newsreader',serif] text-xl font-medium text-[#4f604f]">
               Performa Hotel (Booking)
             </h3>
-            <select
-              value={hotelPerfLimit}
-              onChange={(e) => setHotelPerfLimit(e.target.value)}
-              className="border border-[#E5E0D8] rounded px-3 py-1 text-xs text-[#191c1b] bg-white focus:outline-none focus:ring-1 focus:ring-[#4f604f] cursor-pointer"
-            >
-              <option value="Top 5">Top 5</option>
-              <option value="Top 10">Top 10</option>
-              <option value="All">Semua</option>
-            </select>
+          <select
+            value={hotelPerfLimit}
+            onChange={(e) => setHotelPerfLimit(e.target.value)}
+            className="border border-[#E5E0D8] rounded px-3 py-1 text-xs text-[#191c1b] bg-white focus:outline-none focus:ring-1 focus:ring-[#4f604f] cursor-pointer"
+          >
+            <option value="Top 5">Top 5</option>
+            <option value="Top 10">Top 10</option>
+            <option value="All">All</option>
+          </select>
           </div>
           <div className="w-full h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -568,7 +575,7 @@ const SuperAdminDashboard = () => {
               ) : (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-[#747872]">
-                    Belum ada aktivitas terbaru.
+                    No recent activities.
                   </td>
                 </tr>
               )}

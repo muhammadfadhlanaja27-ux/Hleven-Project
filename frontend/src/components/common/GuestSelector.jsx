@@ -59,22 +59,22 @@ const GuestSelector = ({ adults, children, rooms, onGuestChange, capacityAdult, 
             <div className="w-12 h-12 rounded-full bg-[#778873]/10 text-[#778873] flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-2xl">meeting_room</span>
             </div>
-            <h3 className="font-bold text-lg text-[#1C251D] mb-2">Tambah Kamar?</h3>
+            <h3 className="font-bold text-lg text-[#1C251D] mb-2">Add Room?</h3>
             <p className="text-sm text-[#444842] mb-6 leading-relaxed">
-              Total tamu melebihi kapasitas standar per kamar (maksimal 4 orang per kamar). Apakah Anda ingin menambah 1 kamar lagi agar lebih nyaman?
+              Total guests exceed standard capacity per room (maximum 4 people per room). Do you want to add 1 more room for comfort?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => confirmAddRoom(false)}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-[#DCCFC0] text-[#444842] hover:bg-[#FDF6ED] font-semibold text-sm transition-colors"
               >
-                Tetap Saja
+                Keep Current
               </button>
               <button
                 onClick={() => confirmAddRoom(true)}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-[#778873] text-white hover:bg-[#50604d] font-semibold text-sm transition-colors shadow-sm"
               >
-                Ya, Tambah Kamar
+                Yes, Add Room
               </button>
             </div>
           </div>
@@ -90,7 +90,7 @@ const GuestSelector = ({ adults, children, rooms, onGuestChange, capacityAdult, 
         </div>
         <div className="flex flex-col flex-1 min-w-0">
           <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">
-            Tamu &amp; Kamar
+            Guests & Rooms
           </label>
           <span className="w-full bg-transparent font-body-md text-sm font-bold text-[#1C251D] outline-none truncate">
             {adults} Adult{adults !== 1 ? "s" : ""}, {children} Child{children !== 1 ? "ren" : ""}, {rooms} Room{rooms !== 1 ? "s" : ""}

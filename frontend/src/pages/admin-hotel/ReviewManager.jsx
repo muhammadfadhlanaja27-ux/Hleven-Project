@@ -79,7 +79,7 @@ export default function ReviewManager() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Gagal memuat ulasan.");
+       toast.error("Failed to load reviews.");
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export default function ReviewManager() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Gagal mengirim balasan.");
+       toast.error("Failed to send reply.");
     } finally {
       setIsSendingReply(false);
     }

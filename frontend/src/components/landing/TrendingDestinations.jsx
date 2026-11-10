@@ -49,10 +49,10 @@ const TrendingDestinations = () => {
       {/* Header Inside Big Card */}
       <div className="mb-6">
         <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-          Destinasi Populer
+          Trending Destinations
         </h2>
         <p className="font-body-md text-sm text-[#444842]">
-          Pilihan lokasi favorit wisatawan untuk liburan dan perjalanan di Indonesia.
+          Favorite locations chosen by travelers for vacations and trips in Indonesia.
         </p>
       </div>
 

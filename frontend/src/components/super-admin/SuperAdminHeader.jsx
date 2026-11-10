@@ -65,9 +65,9 @@ const SuperAdminHeader = ({ onMenuClick }) => {
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-      toast.success('Notifikasi ditandai dibaca.');
+      toast.success('Notification marked as read.');
     } catch (e) {
-      toast.error('Gagal memperbarui status notifikasi.');
+      toast.error('Failed to update notification status.');
     }
   };
 
@@ -77,21 +77,21 @@ const SuperAdminHeader = ({ onMenuClick }) => {
       invalidateCache('/notifications');
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
-      toast.success('Semua notifikasi telah dibaca.');
+      toast.success('All notifications marked as read.');
     } catch (e) {
-      toast.error('Gagal memperbarui notifikasi.');
+      toast.error('Failed to update notifications.');
     }
   };
 
   const getPageTitle = () => {
     const pathname = location.pathname;
-    if (pathname.includes("/users")) return "Manajemen User";
-    if (pathname.includes("/hotels")) return "Manajemen Hotel";
+    if (pathname.includes("/users")) return "User Management";
+    if (pathname.includes("/hotels")) return "Hotel Management";
     if (pathname.includes("/master")) return "Master Data";
-    if (pathname.includes("/bookings")) return "Manajemen Pesanan";
-    if (pathname.includes("/reviews")) return "Manajemen Ulasan";
-    if (pathname.includes("/transactions")) return "Transaksi";
-    if (pathname.includes("/reports")) return "Laporan";
+    if (pathname.includes("/bookings")) return "Booking Management";
+    if (pathname.includes("/reviews")) return "Review Management";
+    if (pathname.includes("/transactions")) return "Transactions";
+    if (pathname.includes("/reports")) return "Reports";
     if (pathname.includes("/profile")) return "Profile";
     return "Dashboard Overview";
   };
@@ -146,14 +146,14 @@ const SuperAdminHeader = ({ onMenuClick }) => {
             )}
           </button>
 
-          {notifOpen && (
+              {notifOpen && (
             <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white border border-[#E5E1DA] rounded-xl shadow-xl z-50 overflow-hidden font-['Hanken_Grotesk',sans-serif]">
               <div className="px-4 py-3 bg-[#F9F6F1] border-b border-[#E5E1DA] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-sm text-[#2D312C]">Notifikasi</h4>
+                  <h4 className="font-semibold text-sm text-[#2D312C]">Notifications</h4>
                   {unreadCount > 0 && (
                     <span className="px-2 py-0.5 rounded-full bg-[#ffdad6] text-[#ba1a1a] text-[11px] font-bold">
-                      {unreadCount} Baru
+                      {unreadCount} New
                     </span>
                   )}
                 </div>
@@ -162,16 +162,16 @@ const SuperAdminHeader = ({ onMenuClick }) => {
                     onClick={handleMarkAllAsRead}
                     className="text-xs text-[#506147] hover:underline font-semibold"
                   >
-                    Tandai Semua Dibaca
+                    Mark All as Read
                   </button>
                 )}
               </div>
 
               <div className="max-h-80 overflow-y-auto divide-y divide-[#E5E1DA]">
                 {loadingNotif ? (
-                  <div className="p-6 text-center text-xs text-[#6B6E6A]">Memuat notifikasi...</div>
+                  <div className="p-6 text-center text-xs text-[#6B6E6A]">Loading notifications...</div>
                 ) : notifications.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-[#6B6E6A]">Tidak ada notifikasi saat ini.</div>
+                  <div className="p-6 text-center text-xs text-[#6B6E6A]">No notifications at the moment.</div>
                 ) : (
                   notifications.map((n) => {
                     const isWarning = n.type === 'warning' || (n.title || '').toLowerCase().includes('peringatan');
@@ -218,15 +218,15 @@ const SuperAdminHeader = ({ onMenuClick }) => {
                               <button
                                 onClick={() => handleMarkAsRead(n.id)}
                                 className="text-[10px] text-[#506147] hover:underline font-semibold ml-2 shrink-0"
-                                title="Tandai Dibaca"
+                                title="Mark as Read"
                               >
-                                Dibaca
+                                Read
                               </button>
                             )}
                           </div>
                           <p className="text-xs text-[#6B6E6A] mt-1 whitespace-pre-wrap leading-relaxed">{n.message}</p>
                           <p className="text-[10px] text-[#6B6E6A]/70 mt-1">
-                            {n.created_at ? new Date(n.created_at).toLocaleString('id-ID') : ''}
+                            {n.created_at ? new Date(n.created_at.replace(' ', 'T')).toLocaleString('en-US') : ''}
                           </p>
                         </div>
                       </div>

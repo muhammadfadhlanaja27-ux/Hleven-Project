@@ -47,15 +47,13 @@ class HotelFromCsvSeeder extends Seeder
 
     private function getPhotoFromPool($type, $seedId)
     {
-        if (empty($this->exteriorPhotos)) {
-            $this->exteriorPhotos = $this->fetchPixabayImages('luxury hotel exterior, modern resort lobby');
-        }
-        if (empty($this->roomPhotos)) {
-            $this->roomPhotos = $this->fetchPixabayImages('hotel room interior, luxury hotel suite');
-        }
+        $hotelKeywords = ['hotel,exterior', 'resort,view', 'luxury,building', 'modern,architecture', 'hotel,garden'];
+        $roomKeywords = ['hotel,bedroom', 'modern,suite', 'luxury,interior', 'cozy,room', 'apartment,bedroom'];
 
-        $pool = ($type === 'exterior') ? $this->exteriorPhotos : $this->roomPhotos;
-        return !empty($pool) ? $pool[array_rand($pool)] : "https://picsum.photos/seed/{$seedId}/1200/800";
+        $pool = ($type === 'exterior') ? $hotelKeywords : $roomKeywords;
+        $kw = $pool[array_rand($pool)];
+        
+        return "https://loremflickr.com/1200/800/{$kw}?lock={$seedId}";
     }
 
     public function run(): void

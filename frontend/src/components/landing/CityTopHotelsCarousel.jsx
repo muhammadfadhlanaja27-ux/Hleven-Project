@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getStorageUrl } from "../../services/imageUrl";
 
 const CityTopHotelsCarousel = ({ hotels = [] }) => {
     const navigate = useNavigate();
@@ -89,10 +90,10 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
             {/* Header dengan background putih */}
             <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-6 text-left">
                 <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
-                    Hotel Terbaik di Setiap Kota
+                    Best Hotels in Each City
                 </h2>
                 <p className="font-body-md text-sm text-[#444842]">
-                    Rekomendasi akomodasi pilihan dengan ulasan tertinggi di berbagai kota destinasi.
+                    Recommended accommodations with the highest reviews across various destination cities.
                 </p>
             </div>
 
@@ -113,10 +114,12 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                         "Bandung";
 
                     const imageUrl = hotel.thumbnail
-                        ? hotel.thumbnail.startsWith("http")
-                            ? hotel.thumbnail
-                            : `http://localhost:8000/storage/${hotel.thumbnail.replace(/^\//, "")}`
-                        : hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || null;
+                        ? getStorageUrl(hotel.thumbnail)
+                        : getStorageUrl(hotel.photos?.[0]?.photo || hotel.photos?.[0]?.url || "");
+                    
+                    const handleImageError = (e) => {
+                        e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
+                    };
 
                     const price = Number(
                         hotel.starting_price || hotel.price || hotel.rooms?.[0]?.price || 500000
@@ -142,7 +145,8 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                     <img
                                         src={imageUrl}
                                         alt={hotel.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        onError={handleImageError}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-duration-500"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[#778873]">
@@ -164,7 +168,7 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                         star
                                     </span>
                                     <span className="font-label-sm text-xs font-bold text-[#1C251D]">
-                                        {starCount} Bintang
+                                        {starCount} Star(s)
                                     </span>
                                 </div>
                             </div>
@@ -184,10 +188,10 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
                                             >
                                                 star
                                             </span>
-                                            <span>{reviewRating > 0 ? reviewRating : "Baru"}</span>
+                                            <span>{reviewRating > 0 ? reviewRating : "New"}</span>
                                         </div>
                                         <span className="text-[11px] text-[#747871] truncate">
-                                            Rating Ulasan
+                                            Review Rating
                                         </span>
                                     </div>
 
@@ -201,13 +205,13 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
 
                                 <div className="flex items-end justify-between pt-3 border-t border-[#E8E2D9]">
                                     <div>
-                                        <span className="text-[10px] text-[#444842] block">Mulai dari</span>
+                                        <span className="text-[10px] text-[#444842] block">Starting from</span>
                                         <span className="font-headline-sm text-base font-bold text-[#778873]">
-                                            Rp {price} <span className="text-[10px] font-normal text-[#444842]">/malam</span>
+                                            Rp {price} <span className="text-[10px] font-normal text-[#444842]">/night</span>
                                         </span>
                                     </div>
                                     <span className="text-xs font-bold text-[#778873] group-hover:translate-x-1 transition-transform flex items-center">
-                                        Detail <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                        Details <span className="material-symbols-outlined text-sm">chevron_right</span>
                                     </span>
                                 </div>
                             </div>
