@@ -1,6 +1,6 @@
 // Helper to resolve backend storage URL dynamically based on environment
 const getBackendBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || "https://api.hleven.my.id/api/v1";
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
   return apiUrl.replace(/\/api(?:\/v1)?\/?$/, "");
 };
 

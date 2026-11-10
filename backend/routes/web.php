@@ -2,11 +2,28 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Mail;
 use App\Models\HotelPhoto;
 use App\Models\RoomPhoto;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::get('/debug-email', function (Request $request) {
+    if ($request->query('token') !== 'debug-2026') {
+        abort(403, 'Unauthorized');
+    }
+
+    try {
+        Mail::raw('Halo, ini adalah tes debug email dari HLeven!', function ($message) {
+            $message->to('muhammadfadhlanaja27@gmail.com')
+                    ->subject('Tes Debug Email');
+        });
+        return "Berhasil mengirim email! Cek inbox/spam.";
+    } catch (\Exception $e) {
+        return "Gagal mengirim email. Error: " . $e->getMessage();
+    }
 });
 
 Route::get('/fix-photos', function (Request $request) {
@@ -20,7 +37,6 @@ Route::get('/fix-photos', function (Request $request) {
     $getFlickr = fn($pool) => "https://loremflickr.com/1200/800/{$pool[array_rand($pool)]}?random=" . uniqid();
 
     $hCount = HotelPhoto::all()->each(function($p) use ($getFlickr, $hotelKeywords) {
-        // ID 1793 = Budi House, 1794 = Padma Hotel
         if ($p->hotel_id == 1793) {
             $p->update(['photo' => '/images/hotel-lokal/budi-house.jpg']);
         } elseif ($p->hotel_id == 1794) {
@@ -41,5 +57,3 @@ Route::get('/fix-photos', function (Request $request) {
         'rooms_updated' => $rCount
     ]);
 });
-
-

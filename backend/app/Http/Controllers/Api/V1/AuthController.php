@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -28,7 +29,23 @@ class AuthController extends Controller
         $request->validate(['email' => 'required|email|unique:users,email'], [
             'email.unique' => 'This email is already registered. Please use another email or log in.'
         ]);
-// ...
+
+        $otp = rand(100000, 999999);
+        $cacheKey = 'register_otp_' . $request->email;
+
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $otp, now()->addMinutes(10));
+
+        $user = new User(['email' => $request->email, 'name' => 'User']);
+        try {
+            $user->notify(new RegisterOTPNotification($otp));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send register OTP: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengirim email OTP. Silakan coba lagi nanti.',
+            ], 500);
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'OTP code has been sent to your email',
@@ -247,7 +264,15 @@ class AuthController extends Controller
         Cache::put($cacheKey, $otp, now()->addMinutes(10));
 
         $user = User::where('email', $request->email)->first();
-        $user->notify(new PasswordResetNotification($otp));
+        try {
+            $user->notify(new PasswordResetNotification($otp));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send password reset OTP: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengirim email OTP. Silakan coba lagi nanti.',
+            ], 500);
+        }
 
         return response()->json([
             'status' => 'success',
