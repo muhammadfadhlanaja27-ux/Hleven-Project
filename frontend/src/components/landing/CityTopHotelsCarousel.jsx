@@ -7,6 +7,9 @@ const CityTopHotelsCarousel = ({ hotels = [] }) => {
     const scrollRef = useRef(null);
     const [isHovered, setIsHovered] = useState(false);
     const animFrameRef = useRef(null);
+    const handleImageError = (e) => {
+        e.target.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; // Transparent pixel
+    };
 
     // Filter 1 hotel terbaik per kota & urutkan dari skor/bintang tertinggi ke terendah
     const topHotelsPerCity = useMemo(() => {

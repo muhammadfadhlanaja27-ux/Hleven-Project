@@ -1146,7 +1146,7 @@ class BookingController extends Controller
                 'payment_status' => 'pending',
                 'gross_amount' => $grandTotal,
                 'order_id' => $bookingCode,
-                'expired_at' => Carbon::now()->addMinutes(15),
+                'expired_at' => Carbon::now()->addMinutes(30),
             ]);
 
             DB::commit();

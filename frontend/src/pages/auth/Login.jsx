@@ -266,7 +266,7 @@ const Login = () => {
 
           {/* Google Login Button */}
           <button
-            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/google`}
+            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'https://api.hleven.my.id/api/v1'}/auth/google`}
             className="w-full flex justify-center items-center gap-3 py-3 px-4 rounded border border-[#DCCFC0] bg-white text-[#444842] hover:bg-[#faf3ea] transition-all duration-200 font-label-md text-[14px] shadow-sm cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 18 18">

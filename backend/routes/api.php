@@ -29,6 +29,7 @@ use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\PublicStatsController;
 use App\Http\Controllers\WarningController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\QRCodeController;
 
 
 /*
@@ -95,10 +96,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/user/bookings/{id}/sync-payment', [BookingController::class, 'syncPayment']);
             Route::get('/user/bookings/{id}/e-ticket', [BookingController::class, 'downloadETicket']);
             Route::get('/user/partner-application', [PartnerApplicationController::class, 'getUserApplication']);
+            Route::post('/partner-applications', [PartnerApplicationController::class, 'store']);
         });
 
         // --- Reviews ---
-        Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
+        // Route::post('/hotels/{id}/reviews', [ReviewController::class, 'store']);
 
         // --- Admin Hotel Management (legacy prefix, tetap dipakai frontend) ---
         Route::middleware(['role:admin_hotel', 'hotel_suspended'])->group(function () {

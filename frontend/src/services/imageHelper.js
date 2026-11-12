@@ -35,8 +35,8 @@ export const getPublicImageUrl = (path) => {
   // Remove duplicate bucket name occurrences if present
   str = str.replace("/object/public/hleven/hleven/", "/object/public/hleven/");
 
-  // If it's a localhost URL pointing to /storage/, convert it to Supabase public URL
-  if (str.includes("localhost:8000/storage/")) {
+  // If it's a localhost or old API URL pointing to /storage/, convert it to Supabase public URL
+  if (str.includes("localhost:8000/storage/") || str.includes("api.hleven.my.id/storage/")) {
     const relativePath = str.substring(str.indexOf("/storage/") + 9).replace(/^\/+/, "");
     return `${SUPABASE_STORAGE_URL}/${relativePath}`;
   }

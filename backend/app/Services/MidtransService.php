@@ -64,7 +64,7 @@ class MidtransService
             'expiry' => [
                 'start_time' => now()->format('Y-m-d H:i:s O'),
                 'unit' => 'minute',
-                'duration' => 15,
+                'duration' => 30,
             ],
         ];
 

@@ -1,231 +1,779 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { toast } from 'react-hot-toast';
+import { getStorageUrl } from "../../services/imageUrl";
 
-const SuperAdminProfile = () => {
-  // Profile Data State
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  
-  // Password Change State
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+// ─── Initial Fallback Data ───────────────────────────────────────────────────
+const INITIAL_PROFILE = {
+  name: "Super Administrator",
+  email: "super@example.com",
+  phone: "+62 812 3456 7890",
+  role: "Super Administrator",
+  avatar: null,
+};
 
-  // UI Status State
-  const [loadingProfile, setLoadingProfile] = useState(false);
-  const [loadingPassword, setLoadingPassword] = useState(false);
+const asText = (value, fallback = "") => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return fallback;
+};
 
-  // Fetch logged-in user data from localStorage on load
-  useEffect(() => {
+// ─── Password Strength Evaluator ──────────────────────────────────────────────
+const evaluatePasswordStrength = (pwd) => {
+  if (!pwd) return { score: 0, label: "Weak", color: "bg-gray-200", text: "text-gray-400" };
+  let score = 0;
+  if (pwd.length >= 8) score += 1;
+  if (/[A-Z]/.test(pwd)) score += 1;
+  if (/[a-z]/.test(pwd)) score += 1;
+  if (/[0-9]/.test(pwd)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+
+  if (score <= 2) return { score, label: "Weak", color: "bg-red-500", text: "text-red-600" };
+  if (score <= 4) return { score, label: "Medium", color: "bg-amber-500", text: "text-amber-600" };
+  return { score, label: "Strong", color: "bg-[#506147]", text: "text-[#506147]" };
+};
+
+export default function SuperAdminProfile() {
+  // ─── Local State ────────────────────────────────────────────────────────────
+  const [profile, setProfile] = useState(() => {
     try {
-      const userData = JSON.parse(localStorage.getItem('user'));
-      if (userData) {
-        setName(userData.name || '');
-        setEmail(userData.email || '');
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        return {
+          name: u.name || INITIAL_PROFILE.name,
+          email: u.email || INITIAL_PROFILE.email,
+          phone: u.phone || INITIAL_PROFILE.phone,
+          role: u.role || INITIAL_PROFILE.role,
+          avatar: u.avatar_url || (u.avatar ? getStorageUrl(u.avatar) : null),
+        };
       }
     } catch (e) {
       console.error(e);
     }
+    return { ...INITIAL_PROFILE };
+  });
+
+  // Account Edit State
+  const [editAccount, setEditAccount] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    name: profile?.name || "",
+    email: profile?.email || "",
+    phone: profile?.phone || "",
+  });
+  const [accountErrors, setAccountErrors] = useState({});
+  const [savingAccount, setSavingAccount] = useState(false);
+
+  // Password Modal State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  // Hidden File Input Ref
+  const avatarInputRef = useRef(null);
+
+  // Fetch real profile from backend
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const res = await api.get("/profile");
+        const u = res.data?.data || res.data?.user || res.data;
+        if (u) {
+          setProfile((prev) => ({
+            ...prev,
+            name: u.name || prev.name,
+            email: u.email || prev.email,
+            phone: u.phone || prev.phone,
+            avatar: u.avatar_url || (u.avatar ? getStorageUrl(u.avatar) : prev.avatar),
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      }
+    };
+
+    fetchProfileData();
   }, []);
 
-  // Profile Update Function
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setLoadingProfile(true);
-
-    const updatePromise = api.put('/user/profile', { name, email });
-
-    toast.promise(updatePromise, {
-      loading: 'Saving profile...',
-      success: () => {
-        try {
-          const userData = JSON.parse(localStorage.getItem('user')) || {};
-          userData.name = name;
-          userData.email = email;
-          localStorage.setItem('user', JSON.stringify(userData));
-        } catch (err) {
-          console.error(err);
-        }
-        return 'Profile updated successfully!';
-      },
-      error: (err) => err.response?.data?.message || 'Failed to update profile.'
+  // Keep form states in sync when profile updates
+  useEffect(() => {
+    setAccountForm({
+      name: profile?.name || "",
+      email: profile?.email || "",
+      phone: profile?.phone || "",
     });
+  }, [profile]);
 
-    try {
-      await updatePromise;
-    } catch (error) {
-      // Error handled by toast
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
+  // ─── Image Handlers ─────────────────────────────────────────────────────────
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // Password Update Function
-  const handleUpdatePassword = async (e) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      toast.error('New password and confirmation do not match!');
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Avatar image size must be under 2MB.");
+      e.target.value = "";
       return;
     }
 
-    setLoadingPassword(true);
-
-    const updatePromise = api.put('/user/change-password', {
-      current_password: currentPassword,
-      password: newPassword,
-      password_confirmation: confirmPassword
-    });
-
-    toast.promise(updatePromise, {
-      loading: 'Updating password...',
-      success: () => {
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        return 'Password changed successfully!';
-      },
-      error: (err) => err.response?.data?.message || 'Failed to change password.'
-    });
-
     try {
-      await updatePromise;
-    } catch (error) {
-      // Error handled by toast
+      const formData = new FormData();
+      formData.append("_method", "PUT");
+      formData.append("avatar", file);
+      const safeName = String(profile?.name || "").trim();
+      const nameParts = safeName ? safeName.split(/\s+/) : ["Admin"];
+      formData.append("first_name", nameParts[0]);
+      formData.append("last_name", nameParts.slice(1).join(" ") || "");
+      formData.append("email", profile?.email || "");
+
+      const response = await api.post("/user/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const updatedUser = response.data?.user || response.data?.data;
+      if (!updatedUser?.avatar) {
+        throw new Error("Respons server tidak berisi foto profil yang tersimpan.");
+      }
+
+      const avatarUrl = updatedUser.avatar_url || (updatedUser.avatar ? getStorageUrl(updatedUser.avatar) : null);
+      setProfile((prev) => ({
+        ...prev,
+        avatar: avatarUrl,
+      }));
+
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      localStorage.setItem("user", JSON.stringify({
+        ...storedUser,
+        avatar: updatedUser.avatar,
+        avatar_url: updatedUser.avatar_url || avatarUrl,
+      }));
+      window.dispatchEvent(new Event("userUpdated"));
+      toast.success("Profile photo updated successfully.");
+    } catch (err) {
+       console.error("Failed to upload profile photo:", err);
+       toast.error(err.response?.data?.message || err.message || "Failed to upload profile photo to server.");
     } finally {
-      setLoadingPassword(false);
+      e.target.value = "";
     }
   };
 
+  // ─── Account Information Actions ────────────────────────────────────────────
+  const validateAccountForm = () => {
+    const errs = {};
+    if (!accountForm.name || accountForm.name.trim().length < 2) {
+      errs.name = "Full name is required (minimum 2 characters).";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!accountForm.email || !emailRegex.test(accountForm.email.trim())) {
+      errs.email = "Please enter a valid email address.";
+    }
+    if (accountForm.phone && accountForm.phone.trim() !== "") {
+      const phoneRegex = /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/;
+      if (!phoneRegex.test(accountForm.phone.trim()) || accountForm.phone.trim().length < 6) {
+        errs.phone = "Please enter a valid phone number.";
+      }
+    }
+    setAccountErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSaveAccount = async (e) => {
+    e.preventDefault();
+    if (!validateAccountForm()) return;
+
+    setSavingAccount(true);
+
+    try {
+      const nameParts = accountForm.name.trim().split(" ");
+      const first_name = nameParts[0];
+      const last_name = nameParts.slice(1).join(" ") || "";
+
+      const res = await api.put("/user/profile", {
+        first_name,
+        last_name,
+        email: (accountForm.email || "").trim(),
+        phone: (accountForm.phone || "").trim(),
+      });
+
+      const updatedUser =
+        res.data?.user || res.data?.data || {};
+
+      try {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const mergedUser = {
+          ...localUser,
+          name: updatedUser.name || accountForm.name.trim(),
+          email: updatedUser.email || accountForm.email.trim(),
+          phone: updatedUser.phone || accountForm.phone.trim(),
+        };
+        localStorage.setItem("user", JSON.stringify(mergedUser));
+      } catch (err) {
+        console.error(err);
+      }
+
+      setProfile((prev) => ({
+        ...prev,
+        name: (accountForm.name || "").trim(),
+        email: (accountForm.email || "").trim(),
+        phone: (accountForm.phone || "").trim(),
+      }));
+
+      setEditAccount(false);
+      toast.success("Profile updated successfully.");
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || "Failed to update profile.";
+      toast.error(msg);
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
+  const handleCancelAccount = () => {
+    setAccountForm({
+      name: profile.name,
+      email: profile.email,
+      phone: profile.phone,
+    });
+    setAccountErrors({});
+    setEditAccount(false);
+  };
+
+  // ─── Change Password Actions ────────────────────────────────────────────────
+  const validatePasswordForm = () => {
+    const errs = {};
+    if (!passwordForm.currentPassword) {
+      errs.currentPassword = "Current password is required.";
+    }
+    if (!passwordForm.newPassword || passwordForm.newPassword.length < 8) {
+      errs.newPassword = "New password must be at least 8 characters.";
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      errs.confirmPassword = "Passwords do not match.";
+    }
+    setPasswordErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (!validatePasswordForm()) return;
+
+    setUpdatingPassword(true);
+
+    try {
+      await api.put("/user/change-password", {
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      });
+
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordErrors({});
+      toast.success("Password updated successfully.");
+    } catch (err) {
+      console.error(err);
+      const msg =
+        err.response?.data?.message || "Failed to change password.";
+      toast.error(msg);
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const pwdStrength = evaluatePasswordStrength(passwordForm.newPassword);
+
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8 font-hanken">
-      {/* Header */}
-      <div>
-        <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
-          Profile Settings
-        </h2>
-        <p className="font-hanken text-[15px] text-[#747872] mt-1">
-          Manage your personal information and Super Administrator account security.
-        </p>
-      </div>
+    <div className="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-8 font-['Hanken_Grotesk',sans-serif]">
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={avatarInputRef}
+        onChange={handleAvatarChange}
+        accept="image/*"
+        className="hidden"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Profile Update Form */}
-        <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
-          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
-            <span className="material-symbols-outlined text-[#768875]">person</span>
-            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Personal Information</h3>
-          </div>
-
-          <form onSubmit={handleUpdateProfile} className="space-y-5">
-            <div>
-              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={loadingProfile}
-                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loadingProfile}
-                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loadingProfile}
-              className={`w-full py-3 rounded-lg text-white font-hanken text-[14px] font-semibold tracking-[0.01em] transition-all ${
-                loadingProfile ? 'bg-[#A2BA9C] cursor-not-allowed' : 'bg-[#768875] hover:bg-[#657764] shadow-sm'
-              }`}
-            >
-              {loadingProfile ? 'Saving...' : 'Save Profile'}
-            </button>
-          </form>
-        </div>
-
-        {/* Password Update Form */}
-        <div className="bg-white p-7 rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8]">
-          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-[#E5E0D8]">
-            <span className="material-symbols-outlined text-[#768875]">lock</span>
-            <h3 className="font-newsreader text-[20px] font-medium text-[#2F3231]">Change Password</h3>
-          </div>
-
-          <form onSubmit={handleUpdatePassword} className="space-y-5">
-            <div>
-              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Current Password
-              </label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                disabled={loadingPassword}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                New Password
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                disabled={loadingPassword}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block font-hanken text-[12px] font-semibold tracking-[0.05em] uppercase text-[#434842] mb-1.5">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={loadingPassword}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#2F3231] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 disabled:bg-[#f2f4f2] transition-all"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loadingPassword}
-              className={`w-full py-3 rounded-lg text-white font-hanken text-[14px] font-semibold tracking-[0.01em] transition-all ${
-                loadingPassword ? 'bg-[#747872] cursor-not-allowed' : 'bg-[#2F3231] hover:bg-[#1a1c1b] shadow-sm'
-              }`}
-            >
-              {loadingPassword ? 'Updating...' : 'Update Password'}
-            </button>
-          </form>
+      {/* ══════════════════════════════════════════════════════════
+          1. PAGE HEADER
+      ══════════════════════════════════════════════════════════ */}
+      <div className="pb-6 border-b border-[#E5E1DA] flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="font-['Newsreader',serif] text-3xl sm:text-4xl font-semibold text-[#2D312C] tracking-tight">
+            Profile
+          </h2>
+          <p className="text-sm text-[#6B6E6A] mt-1">
+            Manage your account and security.
+          </p>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          2. PROFILE HEADER CARD
+      ══════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8 flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8 relative overflow-hidden">
+        {/* Profile Avatar */}
+        <div className="relative group shrink-0">
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-[#fcf9f5] overflow-hidden shadow-md bg-[#F2EBE1] flex items-center justify-center text-[#506147] font-bold text-3xl">
+            {profile.avatar ? (
+              <img
+                src={profile.avatar}
+                alt={profile.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="font-['Newsreader',serif] text-4xl">
+                {(profile?.name || "Super")
+                  .split(" ")
+                  .filter(Boolean)
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            title="Change Photo"
+            className="absolute bottom-1 right-1 bg-[#506147] hover:bg-[#3b4b33] text-white p-2.5 rounded-full shadow-md transition-transform active:scale-95 flex items-center justify-center cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+          </button>
+        </div>
+
+        {/* Profile Text Info */}
+        <div className="flex-1 text-center md:text-left">
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <h1 className="font-['Newsreader',serif] text-2xl sm:text-3xl font-semibold text-[#2D312C]">
+              {profile.name}
+            </h1>
+            <span className="inline-flex items-center self-center md:self-auto px-3 py-1 rounded-full text-xs font-semibold bg-[#E4EBE0] text-[#506147] border border-[#506147]/20">
+              {profile.role}
+            </span>
+          </div>
+          <p className="text-sm text-[#6B6E6A] mt-1">{profile.email}</p>
+          <div className="flex items-center justify-center md:justify-start gap-1.5 text-xs text-[#506147] font-medium mt-3">
+            <span className="material-symbols-outlined text-[16px]">location_on</span>
+            <span>{profile.name} &bull; Super Administrator</span>
+          </div>
+        </div>
+
+        {/* Profile Action Buttons */}
+        <div className="flex flex-wrap sm:flex-col gap-3 w-full md:w-auto shrink-0 justify-center">
+          <button
+            onClick={() => {
+              setEditAccount(true);
+              document.getElementById("account-info-section")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="flex-1 sm:flex-initial bg-[#506147] hover:bg-[#3b4b33] text-white text-xs font-semibold py-2.5 px-5 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">edit</span>
+            Edit Profile
+          </button>
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className="flex-1 sm:flex-initial border border-[#506147] text-[#506147] hover:bg-[#506147]/10 text-xs font-semibold py-2.5 px-5 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">lock</span>
+            Change Password
+          </button>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          3. ACCOUNT INFORMATION SECTION
+      ══════════════════════════════════════════════════════════ */}
+      <div id="account-info-section" className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8">
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#E5E1DA]">
+          <div>
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C] flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#506147]">manage_accounts</span>
+              Account Information
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Manage your personal account information.
+            </p>
+          </div>
+          {!editAccount && (
+            <button
+              onClick={() => setEditAccount(true)}
+              className="text-xs font-semibold text-[#506147] hover:text-[#3b4b33] flex items-center gap-1.5 bg-[#f0ede9] hover:bg-[#e5e2de] px-3.5 py-2 rounded-lg transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">edit</span>
+              Edit Profile
+            </button>
+          )}
+        </div>
+
+        {editAccount ? (
+          <form onSubmit={handleSaveAccount} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={accountForm.name}
+                  onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                    accountErrors.name
+                      ? "border-red-400 focus:ring-red-200"
+                      : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                  }`}
+                  placeholder="e.g. Name"
+                />
+                {accountErrors.name && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {accountErrors.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={accountForm.email}
+                  onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                    accountErrors.email
+                      ? "border-red-400 focus:ring-red-200"
+                      : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                  }`}
+                  placeholder="admin@example.com"
+                />
+                {accountErrors.email && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {accountErrors.email}
+                  </p>
+                )}
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={accountForm.phone}
+                  onChange={(e) => setAccountForm({ ...accountForm, phone: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                    accountErrors.phone
+                      ? "border-red-400 focus:ring-red-200"
+                      : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                  }`}
+                  placeholder="+62 812 3456 7890"
+                />
+                {accountErrors.phone && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {accountErrors.phone}
+                  </p>
+                )}
+              </div>
+
+              {/* Role (Read Only) */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
+                  System Role (Read-only)
+                </label>
+                <input
+                  type="text"
+                  value={profile.role}
+                  disabled
+                  className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#eae8e4] border border-[#E5E1DA] text-[#6B6E6A] cursor-not-allowed font-medium"
+                />
+                <p className="text-[11px] text-[#6B6E6A] mt-1">Role assignment cannot be edited.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5E1DA]">
+              <button
+                type="button"
+                onClick={handleCancelAccount}
+                disabled={savingAccount}
+                className="px-5 py-2.5 text-xs font-semibold text-[#6B6E6A] bg-[#f0ede9] hover:bg-[#e5e2de] rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingAccount}
+                className="px-6 py-2.5 text-xs font-semibold text-white bg-[#506147] hover:bg-[#3b4b33] rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {savingAccount ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">save</span>
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
+              <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">Full Name</span>
+              <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.name}</span>
+            </div>
+            <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
+              <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">Email Address</span>
+              <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.email}</span>
+            </div>
+            <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
+              <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">Phone Number</span>
+              <span className="text-sm font-semibold text-[#2D312C] mt-1 block">{profile.phone || "-"}</span>
+            </div>
+            <div className="bg-[#fcf9f5] p-4 rounded-lg border border-[#E5E1DA]">
+              <span className="text-[11px] font-semibold text-[#6B6E6A] uppercase tracking-wider block">System Role</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#d2e5cb] text-[#3a4b38] mt-1">
+                {profile.role}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          4. HOTEL INFORMATION SECTION - REMOVED FOR SUPER ADMIN
+      ══════════════════════════════════════════════════════════ */}
+      {/* (Removed - not applicable for Super Admin) */}
+
+      {/* ══════════════════════════════════════════════════════════
+          5. SECURITY SECTION
+      ══════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-[#E5E1DA]">
+          <div>
+            <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C] flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#506147]">security</span>
+              Security
+            </h3>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Manage your account security and password.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className="border border-[#506147] text-[#506147] hover:bg-[#506147]/10 text-xs font-semibold py-2.5 px-5 rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0"
+          >
+            <span className="material-symbols-outlined text-[18px]">key</span>
+            Change Password
+          </button>
+        </div>
+
+        <div className="bg-[#fcf9f5] p-5 rounded-xl border border-[#E5E1DA] flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#E4EBE0] text-[#506147] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[24px]">verified_user</span>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-[#2D312C]">Password & Security Status</h4>
+            <p className="text-xs text-[#6B6E6A] mt-0.5">
+              Your account password was configured. Keep your password secure and do not share it with anyone.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          6. PREFERENCES SECTION - REMOVED FOR SUPER ADMIN
+      ══════════════════════════════════════════════════════════ */}
+      {/* (Removed - not applicable for Super Admin) */}
+
+      {/* ══════════════════════════════════════════════════════════
+          7. CHANGE PASSWORD MODAL
+      ══════════════════════════════════════════════════════════ */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#E5E1DA] shadow-2xl max-w-md w-full p-6 sm:p-8 space-y-6 relative overflow-hidden">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E5E1DA]">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#506147]">lock</span>
+                <h3 className="font-['Newsreader',serif] text-xl font-semibold text-[#2D312C]">
+                  Change Password
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                  setPasswordErrors({});
+                }}
+                className="text-[#6B6E6A] hover:text-[#2D312C] transition-colors p-1 rounded-full hover:bg-[#f0ede9]"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              {/* Current Password */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-1.5">
+                  Current Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswords.current ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    className={`w-full pl-4 pr-10 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                      passwordErrors.currentPassword ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                    }`}
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B6E6A] hover:text-[#2D312C]"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showPasswords.current ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+                {passwordErrors.currentPassword && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {passwordErrors.currentPassword}
+                  </p>
+                )}
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-1.5">
+                  New Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    className={`w-full pl-4 pr-10 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                      passwordErrors.newPassword ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                    }`}
+                    placeholder="Min 8 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B6E6A] hover:text-[#2D312C]"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showPasswords.new ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+                {passwordErrors.newPassword && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {passwordErrors.newPassword}
+                  </p>
+                )}
+
+                {/* Password Strength Indicator */}
+                {passwordForm.newPassword && (
+                  <div className="mt-2.5 p-2.5 bg-[#fcf9f5] rounded-lg border border-[#E5E1DA] space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[#6B6E6A]">Password Strength:</span>
+                      <span className={`font-bold ${pwdStrength.color}`}>{pwdStrength.label}</span>
+                    </div>
+                    <div className="w-full bg-[#E5E1DA] rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className={`h-full ${pwdStrength.color} transition-all duration-300`}
+                        style={{ width: `${(pwdStrength.score / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-1.5">
+                  Confirm New Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    className={`w-full pl-4 pr-10 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border transition-colors focus:outline-none focus:ring-2 ${
+                      passwordErrors.confirmPassword ? "border-red-400 focus:ring-red-200" : "border-[#E5E1DA] focus:border-[#506147] focus:ring-[#506147]/20"
+                    }`}
+                    placeholder="Repeat new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B6E6A] hover:text-[#2D312C]"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showPasswords.confirm ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+                {passwordErrors.confirmPassword && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {passwordErrors.confirmPassword}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5E1DA]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                    setPasswordErrors({});
+                  }}
+                  disabled={updatingPassword}
+                  className="px-4 py-2 text-xs font-semibold text-[#6B6E6A] bg-[#f0ede9] hover:bg-[#e5e2de] rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingPassword}
+                  className="px-5 py-2 text-xs font-semibold text-white bg-[#506147] hover:bg-[#3b4b33] rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {updatingPassword ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Update Password"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default SuperAdminProfile;
+}

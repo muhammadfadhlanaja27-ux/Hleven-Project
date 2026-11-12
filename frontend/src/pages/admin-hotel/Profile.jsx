@@ -27,8 +27,6 @@ const INITIAL_PROFILE = {
     reviewNotifications: true,
     revenueNotifications: false,
     systemNotifications: true,
-    language: "English",
-    timezone: "Asia/Jakarta",
   },
 };
 
@@ -1275,40 +1273,6 @@ export default function Profile() {
                 />
                 <div className="w-11 h-6 bg-[#c4c8be] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#506147]" />
               </label>
-            </div>
-          </div>
-
-          {/* Regional & Language Settings */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-[#E5E1DA]">
-            {/* Language Select */}
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
-                Language
-              </label>
-              <select
-                value={preferencesForm.language}
-                onChange={(e) => setPreferencesForm({ ...preferencesForm, language: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border border-[#E5E1DA] text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
-              >
-                <option value="English">English</option>
-                <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-              </select>
-            </div>
-
-            {/* Timezone Select */}
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B6E6A] mb-2">
-                Timezone
-              </label>
-              <select
-                value={preferencesForm.timezone}
-                onChange={(e) => setPreferencesForm({ ...preferencesForm, timezone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#fcf9f5] border border-[#E5E1DA] text-[#2D312C] focus:outline-none focus:border-[#506147] focus:ring-2 focus:ring-[#506147]/20"
-              >
-                <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
-                <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
-                <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
-              </select>
             </div>
           </div>
 
