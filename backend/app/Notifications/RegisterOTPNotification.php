@@ -10,7 +10,7 @@ class RegisterOTPNotification extends Notification
     public function __construct(public string $otp) {}
 
     /**
-     * Get the notification's delivery channels.
+     * Tentukan saluran pengiriman notifikasi.
      *
      * @return array<int, string>
      */
@@ -20,7 +20,7 @@ class RegisterOTPNotification extends Notification
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Representasi pesan email untuk verifikasi pendaftaran (OTP).
      */
     public function toMail(object $notifiable): MailMessage
     {
@@ -34,7 +34,7 @@ class RegisterOTPNotification extends Notification
     }
 
     /**
-     * Get the array representation of the notification.
+     * Representasi notifikasi dalam bentuk array.
      *
      * @return array<string, mixed>
      */

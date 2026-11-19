@@ -122,6 +122,20 @@ class AuthController extends Controller
     /**
      * Login User & Generate Sanctum Token
      */
+    /**
+     * Login User & Generate Sanctum Token.
+     *
+ * Mengesot otentikasi pengguna dengan email dan kata sandi.
+ * Proses:
+ * 1. Cek kredensial email/password via Auth::attempt()
+ * 2. Validasi status akun: pastikan status='active' (tidak diblokir)
+ * 3. Jika role='admin_hotel', ambil status hotel terkait (dari user->hotel atau user->hotels pertama)
+ * 4. Generate token Sanctum (plainTextToken) untuk akses API
+ * 5. Kembalikan data user lengkap beserta hotel_status dan token
+ *
+ * @param \App\Http\Requests\Auth\LoginRequest $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi user data dan access token
+     */
     public function login(LoginRequest $request): JsonResponse
     {
         if (! Auth::attempt($request->only('email', 'password'))) {
@@ -178,6 +192,22 @@ class AuthController extends Controller
     /**
      * Update Profile Pengguna (Disesuaikan agar mendukung first_name & last_name)
      */
+    /**
+     * Update Profile Pengguna (Disesuaikan agar mendukung first_name & last_name).
+     *
+ * Proses update profile:
+ * 1. Ambil data user yang login
+ * 2. Tentukan nama lengkap: jika dikirim first_name dan/atau last_name, gabungkan keduanya.
+ *    Jika tidak dikirim, gunakan nilai name dari user model.
+ * 3. Update field: name, email, phone berdasarkan input request atau nilai lama
+ * 4. Handle upload avatar jika file baru dikirim:
+ *    - Hapus avatar lama jika ada
+ *    - Unggah avatar baru ke storage 'avatars'
+ * 5. Simpan perubahan ke database
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data user yang sudah diupdate
+     */
     public function updateProfile(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -212,6 +242,16 @@ class AuthController extends Controller
 
     /**
      * Ganti Password Pengguna
+     */
+    /**
+     * Ganti Password Pengguna.
+     *
+ * Proses mengganti password pengguna dengan validasi fleksibel.
+ * Input password saat ini bisa berupa 'current_password' atau 'old_password'.
+ * Input password baru bisa berupa 'new_password' atau 'password' (untuk mengganti password lama).
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses
      */
     public function changePassword(Request $request): JsonResponse
     {

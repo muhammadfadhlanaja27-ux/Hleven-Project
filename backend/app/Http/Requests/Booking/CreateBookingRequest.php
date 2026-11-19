@@ -4,6 +4,30 @@ namespace App\Http\Requests\Booking;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Request validasi pembuatan pemesanan kamar.
+ *
+ * Validasi input lengkap untuk creating booking beserta relasi hotel,
+ * tanggal mengin/out, jumlah malam, harga, dan informasi tamu.
+ *
+ * Aturan validasi meliputi:
+ * - hotel_id: wajib, hotel harus existence di database
+ * - check_in: wajib, tanggal minimal hari ini, harus sebelum check_out
+ * - check_out: wajib, harus setelah check_in
+ * - total_night: wajib, bilangan bulat minimal 1
+ * - subtotal/tax/grand_total: wajib, numerik minimal 0
+ * - special_request: opsional, string
+ * - is_for_other_guest: boolean, menentukan pemesanan untuk tamu lain
+ * - guest_name/email/phone: wajib jika is_for_other_guest true, tanpa user_id
+ * - rooms: array wajib minimal 1 record, setiap recordbutuh room_type_id dan quantity
+ *
+ * Logika tambahan:
+ * - Jika user terlogin, user_id otomatis diisi dari auth sanctum
+ * - Field guest_name/email/phone wajib jika pesan untuk tamu lain atau user belum login
+ *
+ * @param \Illuminate\Foundation\Http\FormRequest $request
+ * @return void
+     */
 class CreateBookingRequest extends FormRequest
 {
     public function authorize(): bool

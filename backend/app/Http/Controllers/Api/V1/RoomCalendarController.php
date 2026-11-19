@@ -29,6 +29,22 @@ class RoomCalendarController extends Controller
 
     public function show(Request $request, $id): JsonResponse
     {
+        /**
+         * Menampilkan kalender ketersediaan kamar untuk bulan tertentu.
+         *
+         * Alur kerja:
+         * 1. Cari room type berdasarkan ID dan user yang login (via findRoomForUser)
+         * 2. Ambil parameter bulan dari query params (default: bulan ini)
+         * 3. Tentukan rentang waktu: startOfMonth hingga endOfMonth
+         * 4. Load override ketersediaan dari RoomAvailability (jika ada)
+         * 5. Hitung jumlah kamar yang sudah dibooking per hari melalui bookedQtyByDate
+         * 6. Bangun struktur data per hari: date, is_weekend, base_price, price (dengan override), is_closed, booked_room, available_stock
+         * 7. Return response JSON dengan detail kamar dan array hari-hari dalam bulan
+         *
+         * @param \Illuminate\Http\Request $request
+         * @param int $id ID kamar (room_type_id)
+         * @return \Illuminate\Http\JsonResponse JSON response berisi struktur kalender lengkap
+         */
         $room = $this->findRoomForUser($request, $id);
 
         if (! $room) {
@@ -86,6 +102,24 @@ class RoomCalendarController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
+        /**
+         * Memperbarui kalender ketersediaan kamar (harga dan status tertutup).
+         *
+         * Proses update:
+         * 1. Cari room type berdasarkan ID dan user yang login (via findRoomForUser)
+         * 2. Validasi input: array 'days' wajib ada dengan min 1 record
+         * 3. Setiap record hari harus memiliki: date (Y-m-d), price (numeric >= 0 opsional), is_closed (boolean opsional)
+         * 4. Untuk setiap hari:
+ *       - Cek apakah record RoomAvailability sudah ada (firstOrNew)
+ *       - Jika belum ada: inisialisasi available_stock dari room stock, booked_room = 0
+ *       - Update fields: price dan is_closed sesuai input
+ *       - Simpan ke database
+         * 5. Return response dengan count jumlah hari yang berhasil diupdate
+         *
+         * @param \Illuminate\Http\Request $request
+         * @param int $id ID kamar (room_type_id)
+         * @return \Illuminate\Http\JsonResponse JSON response berisi status sukses dan count update
+         */
         $room = $this->findRoomForUser($request, $id);
 
         if (! $room) {
@@ -123,7 +157,21 @@ class RoomCalendarController extends Controller
     }
 
     /**
-     * @return array<string, int>
+     * Menghitung kuantitas kamar yang sudah dibooking per tanggal.
+     *
+ * Algoritma perhitungan:
+ * 1. Query BookingRoom untuk room_type_id tertentu dengan status aktif
+ * 2. Filter booking yang overlap dengan rentang waktu [start, end]
+ *    - check_in <= end && check_out > start (overlap condition)
+ * 3. Group by booking_id dan total qty per hari
+ * 4. Untuk setiap booking, hitung jumlah hari overlap dengan period [start, end]
+ *    - Mulai dari max(check_in, start) hingga min(check_out, end)
+ * 5. Akumulasi total qty per hari ke dalam array associative
+ *
+ * @param int $roomTypeId ID tipe kamar
+ * @param \Carbon\Carbon $start Tanggal awal rentang (mulai dari startOfMonth)
+ * @param \Carbon\Carbon $end Tanggal akhir rentang (akhir dari endOfMonth)
+ * @return array<string, int> Array asosiatif kunci Y-m-d dengan nilai qty total booking
      */
     private function bookedQtyByDate(int $roomTypeId, Carbon $start, Carbon $end): array
     {

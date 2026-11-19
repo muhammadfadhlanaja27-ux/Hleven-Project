@@ -9,6 +9,33 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
+    /**
+     * Menampilkan laporan pendapatan berdasarkan period (daily, weekly, monthly, yearly) atau rentang tanggal.
+     *
+     * Parameter yang dapat dikirim:
+     * - start_date: tanggal mulai (format Y-m-d), opsional jika menggunakan parameter period
+     * - end_date: tanggal akhir (format Y-m-d), opsional jika menggunakan parameter period
+     * - period: periode yang dipilih (daily, weekly, monthly, yearly). Default: monthly
+     *
+ * Jika diberikan start_date dan end_date, laporan akan filter berdasarkan rentang tanggal tersebut.
+ * Jika tidak, akan menggunakan periode 'default' (bulan ini) atau periode yang spesifik.
+ *
+ * Data yang dikembalikan meliputi:
+ * - hotel_name: nama hotel
+ * - total_revenue: total pendapatan seluruh transaksi sesuai periode
+ * - period_revenue: alias dari total_revenue (pendapatan sesuai periode yang dipilih)
+ * - transactions_count: jumlah total transaksi (payments)
+ * - details: array of detail transaksi setiap payment beserta booking code, metode pembayaran, dan amount
+ *
+ * Setiap detail transaksi berisi:
+ * - date: tanggal pembuatan pembayaran format Y-m-d H:i
+ * - booking_code: kode booking atau INV-{id} jika booking code tidak tersedia
+ * - payment_method: metode pembayaran (Transfer, Cash, dll)
+ * - amount: jumlah pembayaran (gross_amount)
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi laporan pendapatan lengkap
+ */
     // Menampilkan laporan pendapatan berdasarkan period (daily, weekly, monthly, yearly) atau rentang tanggal
     public function revenueReport(Request $request)
     {
@@ -23,6 +50,8 @@ class ReportController extends Controller
         $endDate = $request->get('end_date');
 
         // Filter berdasarkan rentang tanggal atau periode
+        $query = Payment::where('hotel_id', $hotel->id);
+
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [
                 Carbon::parse($startDate)->startOfDay(),
@@ -32,7 +61,7 @@ class ReportController extends Controller
             $allowedPeriods = ['daily', 'weekly', 'monthly', 'yearly'];
             $period = in_array($request->get('period'), $allowedPeriods) ? $request->get('period') : 'monthly';
             $now = Carbon::now();
-            
+
             if ($period === 'daily') {
                 $query->whereDate('created_at', $now->toDateString());
             } elseif ($period === 'weekly') {

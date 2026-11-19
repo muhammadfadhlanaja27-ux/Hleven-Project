@@ -33,6 +33,16 @@ class RoomTypeController extends Controller
     /**
      * Menampilkan daftar tipe kamar milik hotel yang sedang login
      */
+    /**
+     * Daftar tipe kamar untuk hotel tertentu.
+     *
+ * Menampilkan daftar semua tipe kamar yang tersedia pada hotel yang
+ * dimiliki user yang login. Setiap tipe kamar dilengkapi relasi:
+ * photos, facilities, bedType, dan category.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi array tipe kamar
+     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -50,8 +60,22 @@ class RoomTypeController extends Controller
         ]);
     }
 
-    /**
-     * Menambah tipe kamar baru (Disesuaikan dengan RoomCreate.jsx & Model RoomType)
+/**
+     * Menambah tipe kamar baru.
+     *
+ * Proses create room type meliputi validasi input comprehensive,
+ * pembuatan data RoomType beserta relasi foto, fasilitas, dan tipe tidur.
+ * Urutan operasi:
+ * 1. Validasi input terhadap 20+ field termasuk nama, harga, kapasitas,
+ *    kategori kamar, tipe tidur, kebijakan, dan foto
+ * 2. Resolve kapasitas dewasa dan anak melalui helper resolveCapacities
+ * 3. Buat record RoomType utama dalam transaksi database
+ * 4. Sync relasi fasilitas ke pivot table room_facilities
+ * 5. Upload dan simpan multiple foto ke storage 'room_types'
+ * 6. Return data room type yang sudah diload relasi lengkap
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data room type yang baru dibuat
      */
     public function store(Request $request)
     {
@@ -159,8 +183,16 @@ class RoomTypeController extends Controller
         }
     }
 
-    /**
-     * Menampilkan detail tipe kamar tertentu
+/**
+     * Menampilkan detail tipe kamar tertentu.
+     *
+ * Mengambil data lengkap tipe kamar berdasarkan ID beserta relasinya:
+ * photos (foto kamar), facilities (fasilitas), hotel (detail hotel),
+ * dan bedType (jenis tempat tidur).
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID tipe kamar
+ * @return \Illuminate\Http\JsonResponse JSON response berisi detail tipe kamar
      */
     public function show(Request $request, $id)
     {
@@ -176,8 +208,28 @@ class RoomTypeController extends Controller
         ]);
     }
 
-    /**
-     * Mengubah data tipe kamar
+/**
+     * Mengubah data tipe kamar.
+     *
+ * Proses update room type dengan validasi fleksibel ("sometimes")
+ * yang memungkinkan mengupdate sebagian atau seluruh field.
+ * Input yang didukung: nama, tipe, kategori, tipe tidur,
+ * deskripsi, harga hari kerja/akhir pekan, stok, kapasitas,
+ * kebijakan (refundable, policies), fasilitas, dan foto.
+ *
+ * Logika update:
+ * 1. Validasi input dengan aturan conditional ("sometimes")
+ * 2. Mapping input ke array updateData dengan hanya field yang dikirim
+ * 3. Handle room_type_category_id: jika dikirim, cari kategori dan update type
+ * 4. Handle bed/bed_type_id: jika ada, update relasi dan recalculate capacities
+ * 5. Handle boolean fields: breakfast, smoking_area, is_refundable, policies
+ * 6. Simpan perubahan ke database
+ * 7. Sync relasi fasilitas ke pivot table
+ * 8. Handle foto baru: nonaktifkan thumbnail lama, buat foto baru jadi thumbnail
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID tipe kamar
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data room type yang sudah diupdate
      */
     public function update(Request $request, $id)
     {
@@ -297,8 +349,21 @@ class RoomTypeController extends Controller
         ]);
     }
 
-    /**
-     * Menghapus tipe kamar
+/**
+     * Menghapus tipe kamar.
+     *
+ * Proses delete room type meliputi penghapusan bersih:
+ * 1. Validasi keberadaan room type berdasarkan ID dan user yang login
+ * 2. Hapus foto-foto terkait di storage melalui FileStorageService
+ * 3. Hapus relasi pivot fasilitas di tabel room_facilities
+ * 4. Hapus record RoomType dari database
+ *
+ * Catatan: Penghapusan ini bersifat permanen dan menghapus data
+ * lengkap termasuk media dan relasi terkait.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID tipe kamar
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penghapusan
      */
     public function destroy(Request $request, $id)
     {

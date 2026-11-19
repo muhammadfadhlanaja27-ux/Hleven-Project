@@ -12,6 +12,16 @@ use Illuminate\Validation\Rule;
 
 class RoomTypeCategoryController extends Controller
 {
+    /**
+ * Daftar kategori tipe kamar hotel.
+ *
+ * Menampilkan daftar semua kategori tipe kamar untuk hotel yang
+ * dimiliki user yang login. Setiap kategori mencakup penghitungan
+ * jumlah tipe kamar yang terkait ($withCount('roomTypes')).
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi array kategori beserta jumlah kamar
+     */
     public function index(Request $request): JsonResponse
     {
         $hotel = $this->currentHotel($request);
@@ -36,6 +46,20 @@ class RoomTypeCategoryController extends Controller
         ]);
     }
 
+    /**
+ * Menambah kategori tipe kamar baru.
+ *
+ * Proses create room type category beserta validasi unik terhadap
+ * nama kategori dalam scope hotel yang sama.
+ *
+ * Validasi input:
+ * - name: required, string, max 100, harus unik di dalam hotel
+ * - description: opsional, string, max 1000 karakter
+ * - status: opsional, harus 'active' atau 'inactive' (default: active)
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data kategori yang baru dibuat
+     */
     public function store(Request $request): JsonResponse
     {
         $hotel = $this->currentHotel($request);
@@ -76,6 +100,16 @@ class RoomTypeCategoryController extends Controller
         ], 201);
     }
 
+    /**
+ * Menampilkan detail kategori tipe kamar tertentu.
+ *
+ * Mengambil data kategori tipe kamar berdasarkan ID beserta
+ * penghitungan jumlah tipe kamar yang terkait.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID kategori tipe kamar
+ * @return \Illuminate\Http\JsonResponse JSON response berisi detail kategori
+     */
     public function show(Request $request, int $id): JsonResponse
     {
         $category = $this->findForHotel($request, $id);
@@ -95,6 +129,21 @@ class RoomTypeCategoryController extends Controller
         ]);
     }
 
+    /**
+ * Mengubah kategori tipe kamar.
+ *
+ * Proses update kategori tipe kamar dengan validasi fleksibel ("sometimes")
+ * yang mencakup pembaharuan nama, deskripsi, dan status.
+ * Validasi unik nama kategori diabaikan jika nama tidak berubah.
+ *
+ * Logika bisnis: apabila nama kategori diubah, field `type` di
+ * tabel room_types juga akan diperbarui secara otomatis untuk
+ * mencocokkan dengan nama kategori baru.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID kategori tipe kamar
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data kategori yang sudah diupdate
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         $category = $this->findForHotel($request, $id);
@@ -140,6 +189,17 @@ class RoomTypeCategoryController extends Controller
         ]);
     }
 
+    /**
+ * Menghapus kategori tipe kamar.
+ *
+ * Proses delete kategori tipe kamar dengan validasi dependent:
+ * mengecek apakah kategori masih digunakan oleh tipe kamar
+ * sebelum melakukan penghapusan.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID kategori tipe kamar
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses/gagal penghapusan
+     */
     public function destroy(Request $request, int $id): JsonResponse
     {
         $category = $this->findForHotel($request, $id);

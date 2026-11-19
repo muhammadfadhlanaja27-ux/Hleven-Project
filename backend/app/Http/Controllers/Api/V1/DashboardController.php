@@ -12,6 +12,36 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
+/**
+ * Menampilkan dashboard data lengkap untuk hotel tertentu.
+ *
+ * Parameter query optional:
+ * - rev_from: tanggal mulai (format Y-m-d) untuk range kustom
+ * - rev_to: tanggal akhir (format Y-m-d) untuk range kustom
+ * - rev_month: bulan format Y-MM untuk periode kustom
+ *
+ * Tiga mode pemilihan periode:
+ * 1. Range tanggal custom (rev_from + rev_to): filter created_at dan bookingTrend antara dua tanggal
+ * 2. Bulan custom (rev_month): filter berdasarkan tahun dan bulan tertentu
+ * 3. Default (tidak ada parameter): gunakan tahun/current year saat ini
+ *
+ * Data yang dikembalikan meliputi:
+ * - Occupancy: total_rooms, occupied_rooms, available_rooms (dari HotelOccupancyService)
+ * - Revenue: totalRevenue per periode, rincian harian/mingguan/bulan/tahunan
+ * - Booking breakdown: count per status (pending, unpaid, paid, checked_in, checked_out, cancelled, expired)
+ * - Chart data: monthly_chart, weekly_revenue_chart, monthly_booking_chart, daily_booking_chart, weekly_booking_chart, yearly_booking_chart
+ * - Recent bookings: 5 booking terbaru
+ *
+ * Penghitungan detail:
+ * - $occupancy dari app(HotelOccupancyService::class)->summary($hotel)
+ * - $totalRevenue dari query Booking dengan filter status "paid", "checked_in", "checked_out"
+ * - $bookingBreakdown dari grup status booking
+ * - Chart data dibangun berdasarkan rentang waktu yang dipilih
+ * - $recentBookings dari 5 booking terbaru berdasarkan created_at desc
+ *
+ * @param IlluminateHttpRequest $request
+ * @return IlluminateHttpJsonResponse JSON response berisi objek dashboard lengkap
+ */
 {
     public function index(Request $request): JsonResponse
     {

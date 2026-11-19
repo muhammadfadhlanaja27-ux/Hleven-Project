@@ -18,6 +18,10 @@ class ReviewController extends Controller
      * Resync kolom average_rating & total_review di tabel hotels
      * agar rating yang tampil di landing page selalu ter-update.
      */
+    /**
+     * Resync kolom average_rating & total_review di tabel hotels
+     * agar rating yang tampil di landing page selalu ter-update.
+     */
     private function syncHotelRatingStats(int $hotelId): void
     {
         Hotel::where('id', $hotelId)->update([
@@ -26,6 +30,18 @@ class ReviewController extends Controller
         ]);
     }
 
+    /**
+     * Menampilkan daftar ulasan publik untuk hotel tertentu.
+     *
+     * Fitur filter:
+     * - search: mencari kata kunci dalam kolom comment
+     * - rating: filter berdasarkan rating (1-5 atau 'all')
+     * - roomTypeId: filter berdasarkan room type yang digunakan di booking
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $hotelId ID hotel
+     * @return \Illuminate\Http\JsonResponse JSON response berisi daftar ulasan dan statistik
+     */
     public function publicIndex(Request $request, $hotelId)
     {
         $query = Review::with(['user', 'booking.bookingRooms.roomType', 'booking.guests'])
@@ -57,6 +73,21 @@ class ReviewController extends Controller
         ]);
     }
 
+    /**
+     * Menampilkan daftar booking yang eligible untuk review.
+     *
+ * Booking eligible harus memenuhi kriteria:
+ * - Status booking harus 'checked_out'
+ * - Belum ada ulasan sebelumnya (doesntHave 'review')
+ * - Milik user yang sedang login
+ *
+ * Setiap booking disertai detail kamar (bookingRooms.roomType) untuk
+ * membantu pengguna memilih booking yang akan diulas.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $hotelId ID hotel
+ * @return \Illuminate\Http\JsonResponse JSON response berisi array booking eligible
+     */
     public function eligibleBookings(Request $request, $hotelId)
     {
         $user = $request->user();
@@ -78,6 +109,28 @@ class ReviewController extends Controller
         return response()->json(['status' => 'success', 'data' => $bookings]);
     }
 
+    /**
+     * Menyimpan ulasan baru beserta notifikasi low rating alert ke super admin.
+     *
+ * Proses:
+ * 1. Validasi input: booking_id, rating (1-5), comment (optional)
+ * 2. Cek eligibility: booking harus status 'checked_out', milik user,
+ *    belum ada ulasan sebelumnya
+ * 3. Simpan ulasan ke database
+ * 4. Sync statistik rating ke tabel hotels (average_rating, total_review)
+ * 5. Cek apakah rating hotel turun di bawah 3.0 dengan minimal 5 ulasan
+ *    - Jika ya, kirim notifikasi ke semua super admin
+ *
+ * Notifikasi low rating akan mengandung:
+ * - Nama hotel yang ratingnya turun
+ * - Rating baru yang diterima
+ * - Total ulasan saat ini
+ * - Saran untuk review atau pemberian peringatan
+     *
+ * @param \Illuminate\Http\Request $request
+ * @param int $hotelId ID hotel
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data ulasan yang baru disimpan
+     */
     public function store(Request $request, $hotelId)
     {
         $validator = Validator::make($request->all(), [
@@ -141,6 +194,15 @@ class ReviewController extends Controller
     }
 
     // Menampilkan daftar ulasan yang diberikan untuk hotel
+    /**
+     * Menampilkan daftar ulasan yang diberikan untuk hotel.
+     *
+ * Mengambil semua ulasan untuk hotel tertentu beserta relasi user
+ * dan booking rooms. Urutan: terbaru pertama.
+     *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar ulasan
+     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -166,6 +228,13 @@ class ReviewController extends Controller
         ]);
     }
 
+/**
+ * Menanggapi ulasan dari tamu (menambahkan reply).
+ *
+ * Validasi input: reply (string, max 1000 karakter)
+ * Cek kepemilikan review oleh user yang login dan hotel yang sesuai.
+ * Tambahkan reply dan timestamp reply_at.
+ */
     // Menanggapi ulasan dari tamu
     public function reply(Request $request, $id)
     {

@@ -9,6 +9,16 @@ use Illuminate\Http\Request;
 
 class FacilityController extends Controller
 {
+    /**
+     * Katalog fasilitas hotel.
+     *
+     * Menampilkan daftar fasilitas lengkap.opsional filter berdasarkan kategori.
+     * Kategori difilter dengan mengubah nama menjadi lowercase untuk mencocokkan
+     * dengan nilai kolom category di database.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi array fasilitas
+     */
     public function index(Request $request): JsonResponse
     {
         $query = Facility::query();

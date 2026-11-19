@@ -6,10 +6,31 @@ use App\Http\Controllers\Controller;
 use App\Services\FileStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
+    /**
+     * Memperbarui profil pengguna.
+     *
+     * Proses update profil meliputi validasi input, penggabungan first_name dan
+     * last_name menjadi nama lengkap, serta upload avatar jika baru dikirim.
+     *
+     * Validasi input:
+     * - first_name: wajib, string, max 255 karakter
+     * - last_name: opsional, string, max 255 karakter
+     * - email: wajib format email, unik di tabel users (kecuali user saat ini)
+     * - phone: opsional, string, max 20 karakter
+     * - avatar: opsional, file image (jpeg, png, jpg, webp, max 2048KB)
+     *
+     * Logika alur:
+     * 1. Validasi input sesuai aturan di atas
+     * 2. Gabungkan first_name dan last_name menjadi field name
+     * 3. Simpan data ke database melalui eloquent update
+     * 4. Jika avatar baru dikirim: unggah ke storage 'avatars' dan hapus avatar lama
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses dan data user yang sudah diupdate
+     */
     public function update(Request $request)
     {
         $user = $request->user();
@@ -50,6 +71,21 @@ class ProfileController extends Controller
         ], 200);
     }
 
+    /**
+     * Mengganti kata sandi pengguna.
+     *
+     * Validasi memeriksa password saat ini melalui Hash::check sebelum
+     * mengganti ke password baru. Password baru minimal 8 karakter.
+     *
+     * Alur proses:
+     * 1. Validasi input: current_password (wajib) dan new_password (wajib, min 8 char)
+     * 2. Cek kecocokan password lama dengan Hash::check terhadap password di database
+     * 3. Jika cocok: update password ke database
+     * 4. Jika salah: return response error 422 dengan pesan "Kata sandi saat ini salah."
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penggantian password
+     */
     public function changePassword(Request $request)
     {
         $user = $request->user();

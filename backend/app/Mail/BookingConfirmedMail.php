@@ -19,6 +19,9 @@ class BookingConfirmedMail extends Mailable
         public Booking $booking,
     ) {}
 
+    /**
+     * Tentukan subjek dan amplop pesan email.
+     */
     public function envelope(): Envelope
     {
         return new Envelope(
@@ -26,6 +29,9 @@ class BookingConfirmedMail extends Mailable
         );
     }
 
+    /**
+     * Tentukan isi konten pesan email (view).
+     */
     public function content(): Content
     {
         return new Content(
@@ -33,6 +39,11 @@ class BookingConfirmedMail extends Mailable
         );
     }
 
+    /**
+     * Tentukan lampiran untuk pesan email (E-Ticket PDF).
+     *
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
     public function attachments(): array
     {
         $pdf = Pdf::loadView('pdf.e-ticket', ['booking' => $this->booking]);
