@@ -1,0 +1,157 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Payout;
+use App\Services\PayoutService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
+
+class SuperAdminPayoutController extends Controller
+{
+    public function __construct(
+        private PayoutService $payoutService,
+        private \App\Services\SuperAdminDashboardService $dashboardService
+    ) {}
+
+    /**
+ * Menampilkan daftar permintaan pencairan.
+ *
+ * Menampilkan daftar semua permintaan pencairan dengan filter opsional
+ * berdasarkan status, pencarian, dan pagination. Termasuk rincian statistik
+ * komisi hotel melalui dashboard service.
+ *
+ * Fitur filter:
+ * - status: filter berdasarkan status pending, approved, rejected, atau paid
+ * - search: pencarian pada data hotel atau requester
+ * - per_page: jumlah data per halaman
+ * - breakdown_page: halaman rincian pendapatan per hotel
+ * - page: halaman utama
+ *
+ * Statistik yang dihitung:
+ * - totalGross: total gross amount pembayaran sukses
+ * - platformCommission: komisi platform (rate * totalGross)
+ * - hotelNetRevenue: pendapatan bersih hotel setelah komisi
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar pencairan dengan statistik komisi
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $request->validate([
+            'status' => 'nullable|in:pending,approved,rejected,paid',
+            'search' => 'nullable|string|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'breakdown_page' => 'nullable|integer|min:1',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $rate = (float) config('hleven.commission_rate', 0.05);
+        $totalGross = (float) \App\Models\Payment::where('payment_status', 'success')->sum('gross_amount');
+        $platformCommission = $totalGross * $rate;
+        $hotelNetRevenue = $totalGross - $platformCommission;
+
+        // Ambil rincian pendapatan per hotel dengan paginasi terpisah
+        $hotelStats = $this->dashboardService->getHotelCommissionStats(
+            null, 
+            null, 
+            'platform_commission', 
+            'desc', 
+            10, 
+            $request->query('search'),
+            'breakdown_page'
+        );
+
+        $query = Payout::with([
+            'hotel:id,name,admin_id,bank_name,bank_account_number,bank_account_name',
+            'requester:id,name,email',
+            'approver:id,name',
+        ]);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->whereHas('hotel', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+        }
+
+        $payouts = $query->latest()->paginate((int) $request->query('per_page', 15));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data keuangan dan pencairan berhasil dimuat',
+            'data' => [
+                'summary' => [
+                    'total_gross' => $totalGross,
+                    'platform_commission' => $platformCommission,
+                    'hotel_net_revenue' => $hotelNetRevenue,
+                    'commission_rate' => $rate
+                ],
+                'hotel_breakdown' => [
+                    'data' => $hotelStats['hotels'] ?? [],
+                    'pagination' => $hotelStats['pagination'] ?? null
+                ],
+                'payouts' => $payouts
+            ]
+        ], 200);
+    }
+
+    /**
+ * Memperbarui status pencairan oleh super admin.
+ *
+ * Proses persetujuan atau penolakan permintaan pencairan oleh super admin.
+ * Meliputi validasi input, pencarian data pencairan, dan pemanggilan
+ * payoutService untuk memperbarui status.
+ *
+ * Validasi input:
+ * - status: wajib, salah satu: approved, rejected, paid
+ * - admin_note: opsibel, maksimal 1000 karakter (catatan admin)
+ * - reference: opsional, referensi tambahan maksimal 100 karakter
+ *
+ * Proses:
+ * 1. Validasi input status, admin_note, dan reference
+ * 2. Cek keberadaan data pencarian berdasarkan ID
+ * 3. Panggil payoutService->updateStatus untuk memperbarui status
+ * 4. Jika RuntimeException: kembalikan response error 422 dengan pesan
+ * 5. Jika sukses: kembalikan response dengan pesan berhasil dan data terbaru
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID pencairan
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses dan data pencairan
+     */
+    public function updateStatus(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|in:approved,rejected,paid',
+            'admin_note' => 'nullable|string|max:1000',
+            'reference' => 'nullable|string|max:100',
+        ]);
+
+        $payout = Payout::find($id);
+
+        if (! $payout) {
+            return response()->json(['success' => false, 'message' => 'Data pencairan tidak ditemukan.'], 404);
+        }
+
+        try {
+            $payout = $this->payoutService->updateStatus(
+                $payout,
+                $request->user(),
+                $request->input('status'),
+                $request->input('admin_note'),
+                $request->input('reference')
+            );
+        } catch (RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status pencairan berhasil diperbarui.',
+            'data' => $payout,
+        ], 200);
+    }
+}

@@ -1,0 +1,1509 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Mail\BookingConfirmedMail;
+use App\Models\Booking;
+use App\Models\BookingRoom;
+use App\Models\Guest;
+use App\Models\Hotel;
+use App\Models\Notification;
+use App\Models\Payment;
+use App\Models\RoomAvailability;
+use App\Models\RoomType;
+use App\Models\User;
+use App\Services\PricingService;
+use App\Services\QRCodeService;
+use App\Services\RefundPolicyService;
+use App\Services\WalletLedgerService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
+
+class BookingController extends Controller
+{
+    /**
+     * Cari booking sesuai aktor yang login: admin_hotel dibatasi ke hotelnya,
+     * user biasa dibatasi ke booking miliknya sendiri. Mencegah IDOR lintas tenant.
+     */
+/**
+ * Cari booking sesuai aktor yang login: admin_hotel dibatasi ke hotelnya,
+ * user biasa dibatasi ke booking miliknya sendiri. Mencegah IDOR lintas tenant.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking yang dicari
+ * @param array $with Eager loading relations
+ * @return \App\Models\Booking|null Booking instance or null if not found/authorized
+ */
+private function findBookingForActor(Request $request, $id, array $with = []): ?Booking
+{
+    $user = $request->user();
+    $query = Booking::with($with)->where('id', $id);
+
+    if ($user->role === 'admin_hotel') {
+        $hotel = $user->hotel ?? $user->hotels()->first();
+        if (! $hotel) {
+            return null;
+        }
+        $query->where('hotel_id', $hotel->id);
+    } elseif ($user->role === 'user') {
+        $query->where('user_id', $user->id);
+    }
+
+    return $query->first();
+}
+
+    public function syncPayment(Request $request, $id)
+    {
+        /**
+         * Sinkronisasi status pembayaran ke Midtrans.
+         *
+         * Mendapatkan data pembayaran berdasarkan booking ID dan memanggil
+         * MidtransService untuk menyinkronkan status terbaru dari API Midtrans.
+         *
+         * @param \Illuminate\Http\Request $request
+         * @param int $id ID booking
+         * @return \Illuminate\Http\JsonResponse JSON response dengan status dan data booking terbaru
+         */
+        $booking = $this->findBookingForActor($request, $id, ['payment']);
+
+        if (! $booking || ! $booking->payment) {
+            return response()->json(['status' => 'error', 'message' => 'Booking or payment data not found'], 404);
+        }
+
+        if ($booking->status !== 'pending' && $booking->status !== 'unpaid') {
+            return response()->json([
+                'status' => 'success', 
+                'message' => 'Payment already has a final status: ' . $booking->status,
+                'data' => $booking
+            ]);
+        }
+
+        try {
+            app(\App\Services\MidtransService::class)->syncPaymentStatus($booking->payment);
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Payment status synchronized successfully',
+                'data' => $booking->fresh(['payment', 'bookingRooms.roomType', 'guests']),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Synchronization failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function index(Request $request)
+    {
+        /**
+         * Daftar booking berdasarkan aktor yang login.
+         *
+         * Admin hotel: terbatas ke booking hotel-nya sendiri.
+         * User biasa: terbuka booking-milik-nya (user_id).
+         *
+         * @param \Illuminate\Http\Request $request
+         * @return \Illuminate\Http\JsonResponse JSON response berisi array booking
+         */
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+
+        if (! $hotel) {
+            return response()->json(['status' => 'success', 'data' => []]);
+        }
+
+        $bookings = Booking::with(['user', 'bookingRooms.roomType', 'payment', 'guests'])
+            ->where('hotel_id', $hotel->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $bookings,
+        ]);
+    }
+
+    public function quote(Request $request)
+    {
+        /**
+         * Dapatkan quote harga untuk pemesanan kamar.
+         *
+         * Proses:
+         * 1. Validasi input: hotel_id, room_type_id, check_in, check_out, qty, adults, children
+         * 2. Cek ketersediaan fisik stock di room_type
+         * 3. Hitung booked qty dalam periode check-in/check-out
+         * 4. Validasi sisa stock mencukupi untuk qty yang diminta
+         * 5. Dapatkan quote harga dari PricingService
+         * 6. Jika ada closure dates, cari alternative rooms
+         *
+         * @param \Illuminate\Http\Request $request
+         * @return \Illuminate\Http\JsonResponse JSON response berisi quote dan sisa_stock
+         */
+        $validator = Validator::make($request->all(), [
+            'hotel_id' => 'required|integer|exists:hotels,id',
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $roomType = RoomType::with('hotel')
+            ->where('id', $request->room_type_id)
+            ->where('hotel_id', $request->hotel_id)
+            ->whereHas('hotel', fn ($query) => $query->where('status', 'active'))
+            ->first();
+
+        if (! $roomType || ! $roomType->is_active) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The following dates are closed and cannot be booked: '.implode(', ', $quote['closed_dates']).'.',
+            ], 422);
+        }
+
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $checkInStr = $checkIn->toDateString();
+        $checkOutStr = $checkOut->toDateString();
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $qty = (int) $request->qty;
+        $adults = (int) ($request->input('adults', 1));
+        $children = (int) ($request->input('children', 0));
+
+        $totalPhysicalStock = max(0, (int) ($roomType->stock ?? 0));
+        $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
+            ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
+                    ->where('check_in', '<', $checkOutStr)
+                    ->where('check_out', '>', $checkInStr);
+            })
+            ->sum('qty');
+
+        $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
+        if ($remainingStockDirect < $qty) {
+            $suggestions = $this->getAlternativeRooms(
+                $request->hotel_id,
+                $roomType->id,
+                $checkInStr,
+                $checkOutStr,
+                $adults,
+                $children,
+                $qty
+            );
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $remainingStockDirect === 0
+                    ? 'This room is out of stock for the selected dates.'
+                    : "The number of rooms selected ({$qty} rooms) exceeds available stock ({$remainingStockDirect} rooms).",
+                'available_stock' => $remainingStockDirect,
+                'suggestions' => $suggestions,
+            ], 422);
+        }
+
+        $quote = app(PricingService::class)->quote($roomType, $period, $qty);
+
+        if (! empty($quote['closed_dates'])) {
+            $suggestions = $this->getAlternativeRooms(
+                $request->hotel_id,
+                $roomType->id,
+                $checkInStr,
+                $checkOutStr,
+                $adults,
+                $children,
+                $qty
+            );
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The following dates are closed and cannot be booked: '.implode(', ', $quote['closed_dates']).'.',
+                'closed_dates' => $quote['closed_dates'],
+                'suggestions' => $suggestions,
+            ], 422);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => array_merge($quote, [
+                'nights' => max(1, $checkIn->diffInDays($checkOut)),
+                'qty' => $qty,
+            ]),
+        ]);
+    }
+
+    public function alternatives(Request $request, int $hotelId)
+    {
+        /**
+         * Dapatkan kamar alternatif saat stock kamar utama tidak mencukupi.
+         *
+         * Mencari kamar yang tersedia di hotel yang sama (kecuali tipe kamar yang
+         * sedang dicari) atau di hotel lain di sekitarnya. Filter berdasarkan:
+         * - Kapasitas dewasa dan anak
+         * - Stok yang tersedia
+         * - Ketersediaan tanggal (check-in/check-out)
+         * - Jarak terhadap hotel utama
+         *
+         * @param \Illuminate\Http\Request $request
+         * @param int $hotelId ID hotel utama
+         * @return \Illuminate\Http\JsonResponse JSON response berisi data kamar alternatif
+         */
+        $validated = $request->validate([
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+        ]);
+
+        $hotel = Hotel::where('status', 'active')->find($hotelId);
+        $roomType = RoomType::where('hotel_id', $hotelId)
+            ->where('id', $validated['room_type_id'])
+            ->where('is_active', true)
+            ->first();
+
+        if (! $hotel || ! $roomType) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hotel atau tipe kamar tidak ditemukan atau tidak aktif.',
+            ], 404);
+        }
+
+        $suggestions = $this->getAlternativeRooms(
+            $hotelId,
+            $roomType->id,
+            Carbon::parse($validated['check_in'])->toDateString(),
+            Carbon::parse($validated['check_out'])->toDateString(),
+            (int) ($validated['adults'] ?? 1),
+            (int) ($validated['children'] ?? 0),
+            (int) $validated['qty']
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $suggestions,
+        ]);
+    }
+
+    public function storeManual(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'required|integer|min:1',
+            'children' => 'required|integer|between:0,32767',
+            'guest_name' => 'required|string|max:255',
+            'guest_email' => 'nullable|email|max:255',
+            'guest_phone' => 'required|string|max:30',
+            'payment_method' => 'required|in:cash,bank_transfer,card,unpaid',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $user = $request->user();
+        $hotel = $user->hotel ?? $user->hotels()->first();
+        if (! $hotel) {
+            return response()->json(['status' => 'error', 'message' => 'Hotel not found.'], 404);
+        }
+
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $checkInStr = $checkIn->toDateString();
+        $checkOutStr = $checkOut->toDateString();
+        $qty = (int) $request->qty;
+        $adults = (int) $request->adults;
+        $children = (int) $request->children;
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+
+        DB::beginTransaction();
+        try {
+            $roomType = RoomType::where('id', $request->room_type_id)
+                ->where('hotel_id', $hotel->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $roomType) {
+                DB::rollBack();
+
+                return response()->json(['status' => 'error', 'message' => 'Room type not found in this hotel.'], 422);
+            }
+
+            if ($adults > max(1, (int) $roomType->capacity_adult) * $qty) {
+                DB::rollBack();
+
+                return response()->json(['status' => 'error', 'message' => 'Number of adults exceeds room capacity.'], 422);
+            }
+
+            if ($children > max(0, (int) $roomType->capacity_child) * $qty) {
+                DB::rollBack();
+
+                return response()->json(['status' => 'error', 'message' => 'Number of children exceeds room capacity.'], 422);
+            }
+
+            $bookedQty = BookingRoom::where('room_type_id', $roomType->id)
+                ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                    $query->whereIn('status', ['paid', 'checked_in', 'confirmed', 'refund_pending'])
+                        ->where('check_in', '<', $checkOutStr)
+                        ->where('check_out', '>', $checkInStr);
+                })
+                ->sum('qty');
+            $available = max(0, (int) ($roomType->stock ?? 10) - $bookedQty);
+
+            if ($available < $qty) {
+                DB::rollBack();
+
+                return response()->json(['status' => 'error', 'message' => "Insufficient stock. Available: {$available} rooms."], 422);
+            }
+
+            $weekdayPrice = (float) ($roomType->weekday_price ?? $roomType->price ?? 0);
+            $weekendPrice = (float) ($roomType->weekend_price ?? $weekdayPrice);
+
+            $quote = app(PricingService::class)->quote($roomType, $period, $qty);
+            if (! empty($quote['closed_dates'])) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                ], 422);
+            }
+
+            $subtotal = (float) $quote['subtotal'];
+            $tax = (float) $quote['tax'];
+            $grandTotal = (float) $quote['grand_total'];
+            $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
+            $isPaid = $request->payment_method !== 'unpaid';
+
+            $booking = Booking::create([
+                'booking_code' => $bookingCode,
+                'user_id' => $user->id,
+                'hotel_id' => $hotel->id,
+                'is_for_other_guest' => false,
+                'guest_name' => $request->guest_name,
+                'guest_email' => $request->guest_email,
+                'guest_phone' => $request->guest_phone,
+                'check_in' => $checkInStr,
+                'check_out' => $checkOutStr,
+                'total_night' => max(1, $checkIn->diffInDays($checkOut)),
+                'children_count' => $children,
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'tax_rate' => $quote['tax_rate'],
+                'grand_total' => $grandTotal,
+                'status' => $isPaid ? 'paid' : 'unpaid',
+            ]);
+
+            BookingRoom::create([
+                'booking_id' => $booking->id,
+                'room_type_id' => $roomType->id,
+                'qty' => $qty,
+                'price_per_night' => ($weekdayPrice + $weekendPrice) / 2,
+                'subtotal' => $subtotal,
+            ]);
+
+            Guest::create([
+                'booking_id' => $booking->id,
+                'name' => $request->guest_name,
+                'phone' => $request->guest_phone,
+                'email' => $request->filled('guest_email') ? strtolower(trim($request->guest_email)) : null,
+                'identity_number' => null,
+            ]);
+
+            foreach ($period as $date) {
+                $availability = RoomAvailability::where('room_type_id', $roomType->id)
+                    ->where('date', $date->format('Y-m-d'))
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($availability) {
+                    $availability->decrement('available_stock', $qty);
+                    $availability->increment('booked_room', $qty);
+                } else {
+                    RoomAvailability::create([
+                        'room_type_id' => $roomType->id,
+                        'date' => $date->format('Y-m-d'),
+                        'available_stock' => max(0, (int) ($roomType->stock ?? 10) - $qty),
+                        'booked_room' => $qty,
+                    ]);
+                }
+            }
+
+            Payment::create([
+                'booking_id' => $booking->id,
+                'payment_method' => $isPaid ? $request->payment_method : null,
+                'payment_status' => $isPaid ? 'success' : 'pending',
+                'gross_amount' => $grandTotal,
+                'order_id' => $bookingCode,
+                'paid_at' => $isPaid ? Carbon::now() : null,
+            ]);
+
+            DB::commit();
+
+            $booking->load(['user', 'bookingRooms.roomType', 'payment', 'guests']);
+
+            // Send email if paid
+            if ($isPaid) {
+                try {
+                    app(QRCodeService::class)->generateTicket($booking);
+                    $booking->load('eTicket');
+                    $recipient = $booking->guests->first()->email ?? $booking->user->email;
+                    if ($recipient) {
+                        Mail::to($recipient)->send(new BookingConfirmedMail($booking));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send manual booking confirmation: '.$e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Manual booking created successfully.',
+                'data' => $booking,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json(['status' => 'error', 'message' => 'Failed to create booking: '.$e->getMessage()], 500);
+        }
+    }
+
+    public function show(Request $request, $id)
+    {
+        $booking = $this->findBookingForActor(
+            $request,
+            $id,
+            ['user', 'bookingRooms.roomType', 'payment', 'guests', 'hotel']
+        );
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $booking,
+        ]);
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        /**
+         * Update status booking.
+         *
+         * Hanya boleh diakses admin hotel atau pengupdate internal.
+         * Validasi status yang diterima: pending, unpaid, paid, checked_in,
+         * checked_out, cancelled, expired, refunded, refund_pending.
+         *
+ * Jika status baru adalah 'checked_out', tetapkan notifikasi review request
+ * ke user. Jika status 'refunded' atau 'cancelled' dengan payment success,
+ * panggil WalletLedgerService untuk reverse/release transaksi.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking
+ * @return \Illuminate\Http\JsonResponse
+ */
+        $internalUpdate = $request->attributes->get('internal_booking_status_update') === true;
+
+        if (! $internalUpdate && $request->user()->role !== 'admin_hotel') {
+            return response()->json(['status' => 'error', 'message' => 'Only hotel admins can change booking status.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:pending,unpaid,paid,checked_in,checked_out,cancelled,expired,refunded,refund_pending',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = Booking::with(['bookingRooms'])->find($id);
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+        }
+
+        if ($request->user()->role === 'admin_hotel') {
+            if (! $request->user()->hotels()->whereKey($booking->hotel_id)->exists()) {
+                return response()->json(['status' => 'error', 'message' => 'This booking does not belong to your hotel.'], 403);
+            }
+        } elseif ($internalUpdate && $booking->user_id !== $request->user()->id) {
+            return response()->json(['status' => 'error', 'message' => 'This booking does not belong to you.'], 403);
+        }
+
+        $oldStatus = $booking->status;
+        $newStatus = $request->status;
+
+        if ($newStatus === 'checked_out' && $oldStatus !== 'checked_in') {
+            return response()->json(['status' => 'error', 'message' => 'Booking can only check-out after check-in.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $cancelStatuses = ['cancelled', 'expired', 'refunded'];
+            $activeStatuses = ['pending', 'unpaid', 'paid', 'confirmed', 'checked_in', 'refund_pending'];
+
+            if (in_array($newStatus, $cancelStatuses) && in_array($oldStatus, $activeStatuses)) {
+                $checkIn = Carbon::parse($booking->check_in);
+                $checkOut = Carbon::parse($booking->check_out);
+                $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+
+                foreach ($booking->bookingRooms as $bRoom) {
+                    foreach ($period as $date) {
+                        $dateStr = $date->format('Y-m-d');
+                        $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
+                            ->where(function ($q) use ($dateStr) {
+                                $q->where('date', $dateStr)
+                                    ->orWhere('date', $dateStr.' 00:00:00');
+                            })
+                            ->first();
+
+                        if ($avail) {
+                            $avail->increment('available_stock', $bRoom->qty);
+                            $avail->decrement('booked_room', $bRoom->qty);
+                        }
+                    }
+                }
+            }
+
+            $booking->update(['status' => $newStatus]);
+
+            if ($newStatus === 'checked_out') {
+                app(WalletLedgerService::class)->releaseBooking($booking);
+            } elseif ($newStatus === 'refunded' && $booking->payment?->payment_status === 'success') {
+                app(WalletLedgerService::class)->reverseBooking($booking);
+            } elseif ($newStatus === 'cancelled' && $booking->payment?->payment_status === 'success') {
+                app(WalletLedgerService::class)->releaseForfeitedBooking($booking);
+            }
+
+            // Saat admin menandai booking selesai (checked out), ajukan user menulis ulasan.
+            // Ulasan hanya boleh ditulis setelah checkout (lihat ReviewController::eligibleBookings).
+            if ($newStatus === 'checked_out' && $booking->user_id && ! $booking->review()->exists()) {
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'title' => 'Write Your Review',
+                    'message' => 'How was your stay at '.($booking->hotel->name ?? 'hotel').
+                                ' (booking '.$booking->booking_code.')? Share your experience!',
+                    'type' => 'review_request',
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Booking status updated successfully',
+                'data' => $booking,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update status: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function cancelBooking(Request $request, $id)
+    {
+        /**
+         * Batalkan booking.
+         *
+         * Logika utama:
+         * 1. Cari booking berdasarkan user_id (mencegah IDOR). Jika tidak ditemukan, return 404.
+         * 2. Cek status booking: jika sudah dalam status blocked (cancelled, expired, refunded, refund_pending, checked_in, checked_out), return error 400.
+         * 3. Jika status 'unpaid' atau 'pending': ubah status menjadi 'cancelled' langsung via updateStatusInternally.
+         * 4. Jika status 'paid' atau 'confirmed':
+ *    a. Evaluasi refund policy melalui RefundPolicyService.
+ *    b. Jika tidak refundable: batal tanpa refund (funds forfeited).
+ *    c. Jika within cutoff hours: batal tanpa refund, info cutoff hours.
+ *    d. Jika outside cutoff: proses refund otomatis, update status menjadi 'refunded'.
+ *       Kirim notifikasi ke user dan hotel admin tentang refund yang disetujui otomatis.
+ *
+ * Status blocked: ['cancelled', 'expired', 'refunded', 'refund_pending', 'checked_in', 'checked_out']
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking
+ * @return \Illuminate\Http\JsonResponse
+ */
+        $user = $request->user();
+        $booking = Booking::with(['bookingRooms.roomType', 'payment'])->where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+        }
+
+        $blocked = ['cancelled', 'expired', 'refunded', 'refund_pending', 'checked_in', 'checked_out'];
+        if (in_array($booking->status, $blocked)) {
+            return response()->json(['status' => 'error', 'message' => 'Booking cannot be cancelled or is in refund process'], 400);
+        }
+
+        if (in_array($booking->status, ['unpaid', 'pending'])) {
+            $request->merge(['status' => 'cancelled']);
+
+            return $this->updateStatusInternally($request, $booking->id);
+        }
+
+        if (in_array($booking->status, ['paid', 'confirmed'])) {
+            $refundPolicy = app(RefundPolicyService::class)->evaluate($booking);
+
+            if (! $refundPolicy['is_refundable']) {
+                return $this->cancelWithoutRefund(
+                    $request,
+                    $booking,
+                    'Booking cancelled. Room is non-refundable — funds are forfeited.'
+                );
+            }
+
+            if ($refundPolicy['is_within_cutoff']) {
+                return $this->cancelWithoutRefund(
+                    $request,
+                    $booking,
+                    'Cancellation successful. Funds cannot be refunded because cancellation was made within '.$refundPolicy['refund_cutoff_hours'].' hours before check-in.'
+                );
+            }
+
+            $request->merge(['status' => 'refunded']);
+            $response = $this->updateStatusInternally($request, $booking->id);
+
+            if ($response->getStatusCode() === 200) {
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'title' => 'Refund Disetujui Otomatis',
+                    'message' => "Pembatalan booking {$booking->booking_code} dilakukan di luar batas {$refundPolicy['refund_cutoff_hours']} jam sebelum check-in. Refund disetujui otomatis; pengembalian dana diproses terpisah.",
+                    'type' => 'refund',
+                    'is_read' => false,
+                ]);
+
+                $hotelAdminId = $booking->hotel?->admin_id;
+                if ($hotelAdminId) {
+                    Notification::create([
+                        'user_id' => $hotelAdminId,
+                        'title' => 'Booking Dibatalkan',
+                        'message' => "Booking {$booking->booking_code} dibatalkan dan refund disetujui otomatis.",
+                        'type' => 'refund',
+                        'is_read' => false,
+                    ]);
+                }
+
+                $data = json_decode($response->getContent(), true);
+                $data['message'] = "Refund disetujui otomatis karena pembatalan dilakukan di luar batas {$refundPolicy['refund_cutoff_hours']} jam sebelum check-in. Pengembalian dana diproses terpisah.";
+                $response->setData($data);
+            }
+
+            return $response;
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Booking cannot be cancelled'], 400);
+    }
+
+    private function cancelWithoutRefund(Request $request, Booking $booking, string $message)
+    {
+        $request->merge(['status' => 'cancelled']);
+        $response = $this->updateStatusInternally($request, $booking->id);
+
+        if ($response->getStatusCode() === 200) {
+            Notification::create([
+                'user_id' => $booking->user_id,
+                'title' => 'Pembatalan Tanpa Refund',
+                'message' => "Booking {$booking->booking_code} dibatalkan. {$message}",
+                'type' => 'refund',
+                'is_read' => false,
+            ]);
+
+            $hotelAdminId = $booking->hotel?->admin_id;
+            if ($hotelAdminId) {
+                Notification::create([
+                    'user_id' => $hotelAdminId,
+                    'title' => 'Booking Dibatalkan Tanpa Refund',
+                    'message' => "Booking {$booking->booking_code} dibatalkan oleh pengguna. {$message}",
+                    'type' => 'refund',
+                    'is_read' => false,
+                ]);
+            }
+
+            $data = json_decode($response->getContent(), true);
+            $data['message'] = $message;
+            $response->setData($data);
+        }
+
+        return $response;
+    }
+
+    public function handleRefundApproval(Request $request, $id)
+    {
+        /**
+         * Handle persetujuan penolakan refund oleh admin hotel.
+         *
+ * Validasi input: action (approve/reject) dan optional reason.
+ * Jika action 'approve': ubah status booking menjadi 'refunded', panggil
+ * updateStatusInternally, dan kirim notifikasi ke user tentang refund yang
+ * disetujui. Jika action 'reject': kembalikan status booking menjadi 'paid',
+ * kirim notifikasi bahwa refund ditolak.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking
+ * @return \Illuminate\Http\JsonResponse
+ */
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:approve,reject',
+            'reason' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = $this->findBookingForActor($request, $id);
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+        }
+
+        if ($booking->status !== 'refund_pending') {
+            return response()->json(['status' => 'error', 'message' => 'This booking is not currently requesting a refund'], 400);
+        }
+
+        if ($request->action === 'approve') {
+            $request->merge(['status' => 'refunded']);
+
+            $response = $this->updateStatusInternally($request, $booking->id);
+            if ($response->getStatusCode() === 200) {
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'title' => 'Refund Approved',
+                    'message' => "Refund request for booking {$booking->booking_code} has been approved by the hotel. Refund will be processed separately.",
+                    'type' => 'refund',
+                    'is_read' => false,
+                ]);
+            }
+
+            return $response;
+        } else {
+            $booking->update(['status' => 'paid']);
+            Notification::create([
+                'user_id' => $booking->user_id,
+                'title' => 'Refund Rejected',
+                'message' => "Refund request for booking {$booking->booking_code} was rejected. Booking status returned to Paid.",
+                'type' => 'refund',
+                'is_read' => false,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Refund request rejected. Booking status returned to Paid.',
+                'data' => $booking,
+            ]);
+        }
+    }
+
+    private function updateStatusInternally(Request $request, int $bookingId)
+    {
+        $request->attributes->set('internal_booking_status_update', true);
+
+        return $this->updateStatus($request, $bookingId);
+    }
+/**
+ * Perpanjang masa booking.
+ *
+ * Hanya booking dengan status 'paid', 'confirmed', atau 'checked_in' yang boleh diperpanjang. Proses:
+ * 1. Validasi input: type (hanya 'days'), duration (integer min 1), notes (optional)
+ * 2. Cari booking dengan relasi: bookingRooms.roomType, payment, hotel, guests
+ * 3. Validasi status booking: hanya 'paid', 'confirmed', 'checked_in' yang boleh
+ * 4. Dapatkan base price dari first booking room atau roomType weekday_price
+ * 5. Hitung tax rate via PricingService::taxRateForBooking
+ * 6. Buat CarbonPeriod dari check_out lama hingga check_out baru (+ duration days)
+ * 7. Untuk setiap tanggal di periode: cek stok availability, kurangi available_stock,
+ *    increment booked_room. Throw exception jika stok tidak mencukupi.
+ * 8. Update booking: check_out baru, total_night bertambah duration,
+ *    subtotal/tax/grand_total ditambahkan dengan extension totals.
+ * 9. Tambahkan special_request dengan label '[Extend +N Days] dan notes optional.
+ * 10. Simpan payment gross_amount dengan grand_total baru.
+ * 11. Return booking data lengkap dengan extension_summary.
+ */
+
+    public function extendBooking(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:days',
+            'duration' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = $this->findBookingForActor($request, $id, ['bookingRooms.roomType', 'payment', 'hotel', 'guests']);
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+        }
+
+        $allowedStatuses = ['paid', 'confirmed', 'checked_in'];
+        if (! in_array(strtolower($booking->status), $allowedStatuses)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Only paid / confirmed / checked-in bookings can be extended.',
+            ], 400);
+        }
+
+        $duration = (int) $request->duration;
+        $notes = $request->notes;
+
+        $firstBookingRoom = $booking->bookingRooms->first();
+        $roomType = $firstBookingRoom?->roomType;
+        $qty = $booking->bookingRooms->sum('qty') ?: 1;
+
+        $basePrice = (float) ($firstBookingRoom?->price_per_night ?? $roomType?->weekday_price ?? 350000);
+        $pricing = app(PricingService::class);
+        $extensionTaxRate = $pricing->taxRateForBooking($booking);
+
+        DB::beginTransaction();
+        try {
+            $extensionSubtotal = $basePrice * $duration * $qty;
+            $extensionTotals = $pricing->calculate($extensionSubtotal, $extensionTaxRate);
+            $extensionLabel = "[Extend +{$duration} Days]";
+
+            $currentCheckOut = Carbon::parse($booking->check_out);
+            $newCheckOut = $currentCheckOut->copy()->addDays($duration);
+            $period = CarbonPeriod::create($currentCheckOut, $newCheckOut->copy()->subDay());
+
+            foreach ($booking->bookingRooms as $bRoom) {
+                $totalPhysicalStock = max(1, (int) ($bRoom->roomType?->stock ?? 10));
+
+                foreach ($period as $date) {
+                    $dateStr = $date->format('Y-m-d');
+                    $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
+                        ->where('date', $dateStr)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($avail) {
+                        if ($avail->available_stock < $bRoom->qty) {
+                            throw new \Exception("Insufficient room stock for the extension period.");
+                        }
+                        $avail->decrement('available_stock', $bRoom->qty);
+                        $avail->increment('booked_room', $bRoom->qty);
+                    } else {
+                        RoomAvailability::create([
+                            'room_type_id' => $bRoom->room_type_id,
+                            'date' => $dateStr,
+                            'available_stock' => max(0, $totalPhysicalStock - $bRoom->qty),
+                            'booked_room' => $bRoom->qty,
+                        ]);
+                    }
+                }
+            }
+
+            $booking->check_out = $newCheckOut->toDateString();
+            $booking->total_night = ($booking->total_night ?? 1) + $duration;
+
+            $addedTax = (float) $extensionTotals['tax'];
+            $addedGrandTotal = (float) $extensionTotals['grand_total'];
+
+            $booking->subtotal = ($booking->subtotal ?? 0) + $extensionTotals['subtotal'];
+            $booking->tax = ($booking->tax ?? 0) + $addedTax;
+            $booking->grand_total = ($booking->grand_total ?? 0) + $addedGrandTotal;
+
+            $existingNote = $booking->special_request ?? '';
+            $newNote = trim("{$existingNote} {$extensionLabel} ".($notes ? "({$notes})" : ''));
+            $booking->special_request = $newNote;
+
+            $booking->save();
+
+            if ($booking->payment) {
+                $booking->payment->gross_amount = $booking->grand_total;
+                $booking->payment->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Booking extended successfully (+{$duration} Days).",
+                'data' => $booking->fresh(['user', 'bookingRooms.roomType', 'payment', 'guests']),
+                'extension_summary' => [
+                    'type' => 'days',
+                    'duration' => $duration,
+                    'subtotal_added' => $extensionSubtotal,
+                    'tax_added' => $addedTax,
+                    'grand_total_added' => $addedGrandTotal,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to extend booking: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function downloadETicket(Request $request, $id)
+    {
+        $user = $request->user();
+        $query = Booking::with(['hotel', 'bookingRooms.roomType', 'guests', 'user'])->where('id', $id);
+
+        if ($user) {
+            $query->where('user_id', $user->id);
+        }
+
+        $booking = $query->first();
+
+        if (! $booking) {
+            return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
+        }
+
+        $validStatuses = ['paid', 'confirmed', 'checked_in', 'checked_out'];
+        if (! in_array(strtolower($booking->status), $validStatuses)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'E-Tiket hanya tersedia untuk pemesanan yang telah lunas. Status saat ini: '.$booking->status,
+            ], 400);
+        }
+
+        $pdf = Pdf::loadView('pdf.e-ticket', compact('booking'));
+
+        return $pdf->download("E-Ticket-{$booking->booking_code}.pdf");
+    }
+
+    public function userBookings(Request $request)
+    {
+        /**
+         * Daftar booking user dengan evaluasi refund policy.
+         *
+         * Menampilkan semua booking user dilengkapi perhitungan refund policy.
+         * Setiap booking di-map dengan data refund policy termasuk is_refundable,
+         * refund_cutoff_hours, dan status refund.
+         *
+         * @param \Illuminate\Http\Request $request
+         * @return \Illuminate\Http\JsonResponse JSON response berisi array booking dengan refund policy
+         */
+        $user = $request->user();
+
+        $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'bookingRooms.roomType', 'payment', 'review', 'guests'])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        $refundPolicy = app(RefundPolicyService::class);
+
+        $bookings = $bookings->map(fn (Booking $booking) => array_merge(
+            $booking->toArray(),
+            $refundPolicy->evaluate($booking)
+        ));
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $bookings,
+        ]);
+    }
+/**
+ * Membuat booking baru pelanggan.
+ *
+ * Proses lengkap:
+ * 1. Validasi input: hotel_id, room_type_id, check_in, check_out, qty, adults, children,
+ *    is_for_other_guest, guest details, special requests, idempotency key
+ * 2. Cek ketersediaan hotel pelanggan
+ * 3. Validasi kapasitas kamar: physical stock & booked stock di periode
+ * 4. Validasi batas kapasitas dewasa/anak per kamar
+ * 5. Cek tanggal closure dari PricingService
+ * 6. Validasi duplikat booking (idempotency key atau query overlap)
+ * 7. Ambil data room type dengan lockForUpdate
+ * 8. Buat record Booking dengan status 'unpaid'
+ * 9. Buat record BookingRoom untuk setiap kamar
+ * 10. Buat record Guest dari data pemesan
+ * 11. Tambahkan guests ekstra jika dikirim array 'guests'
+ * 12. Buat RoomAvailability per tanggal dalam periode check-in/out
+ * 13. Buat Payment dengan status 'pending' dan expired_at +30 menit
+ * 14. Commit transaksi dan return booking + payment data
+ *
+ * Fitur idempotency key: jika key sudah pernah digunakan, return booking sebelumnya
+ * tanpa membuat booking duplicate.
+ */
+
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'hotel_id' => 'required|integer|exists:hotels,id',
+            'room_type_id' => 'required|integer|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'qty' => 'required|integer|min:1',
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
+            'is_for_other_guest' => 'nullable|boolean',
+            'guest_name' => 'required_if:is_for_other_guest,true|nullable|string|max:255',
+            'guest_email' => 'required_if:is_for_other_guest,true|nullable|email|max:255',
+            'guest_phone' => 'required_if:is_for_other_guest,true|nullable|string|max:30',
+            'guest_identity' => 'nullable|string|max:50',
+            'special_request' => 'nullable|string',
+            'special_requests' => 'nullable|string',
+            'guests' => 'nullable|array',
+            'guests.*.name' => 'required_with:guests|string|max:255',
+            'guests.*.phone' => 'nullable|string|max:30',
+            'guests.*.identity_number' => 'nullable|string|max:50',
+            'idempotency_key' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $qty = (int) $request->qty;
+        $adults = (int) ($request->adults ?? 1);
+        $children = (int) ($request->children ?? 0);
+        $specialNotes = $request->special_requests ?? $request->special_request ?? null;
+
+        // Guest checkout: data pemesan diambil dari payload
+        $guestName = $request->guest_name;
+        $guestEmail = $request->guest_email;
+        $guestPhone = $request->guest_phone;
+        
+        $bookerName = $request->booker_name ?: ($user->name ?? $guestName);
+        $bookerEmail = $request->booker_email ?: ($user->email ?? $guestEmail);
+        $bookerPhone = $request->booker_phone ?: ($user->phone ?? $guestPhone);
+        
+        $isForOtherGuest = (bool) $request->is_for_other_guest
+            || ($request->filled('guest_name') && (! $user || $request->guest_name !== $user->name));
+
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $checkInStr = $checkIn->toDateString();
+        $checkOutStr = $checkOut->toDateString();
+        $totalNight = max(1, $checkIn->diffInDays($checkOut));
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existing = Booking::with(['hotel', 'bookingRooms.roomType', 'payment', 'guests'])
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+
+            if ($existing) {
+                return $this->duplicateBookingResponse($existing);
+            }
+        }
+
+        $duplicateQuery = Booking::with(['hotel', 'bookingRooms.roomType', 'payment', 'guests'])
+            ->where('hotel_id', $request->hotel_id)
+            ->whereDate('check_in', $checkInStr)
+            ->whereDate('check_out', $checkOutStr)
+            ->whereIn('status', ['pending', 'unpaid', 'paid', 'checked_in', 'confirmed']);
+
+        if ($user) {
+            $duplicateQuery->where('user_id', $user->id);
+        } else {
+            $duplicateQuery->whereNull('user_id')->where('guest_email', $guestEmail);
+        }
+
+        if ($isForOtherGuest) {
+            $duplicateQuery->where('is_for_other_guest', true)
+                ->where('guest_email', $guestEmail);
+        } else {
+            $duplicateQuery->where(function ($q) {
+                $q->whereNull('is_for_other_guest')->orWhere('is_for_other_guest', false);
+            });
+        }
+
+        $duplicate = $duplicateQuery
+            ->whereHas('bookingRooms', function ($query) use ($request, $qty) {
+                $query->where('room_type_id', $request->room_type_id)->where('qty', $qty);
+            })
+            ->latest()
+            ->first();
+
+        if ($duplicate) {
+            return $this->duplicateBookingResponse($duplicate);
+        }
+
+        DB::beginTransaction();
+        try {
+            $queryRoomType = RoomType::where('id', $request->room_type_id)
+                ->where('hotel_id', $request->hotel_id)
+                ->lockForUpdate();
+
+            if (Schema::hasColumn('room_types', 'is_active')) {
+                $queryRoomType->where('is_active', true);
+            }
+
+            $queryRoomType->whereHas('hotel', function ($query) {
+                $query->where('status', 'active');
+            });
+
+            $roomType = $queryRoomType->first();
+
+            if (! $roomType) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tipe kamar atau hotel ini tidak ditemukan, sedang tidak aktif, atau ID tidak valid.',
+                ], 422);
+            }
+
+            $capacityAdult = max(1, (int) ($roomType->capacity_adult ?? 2));
+            $capacityChild = max(0, (int) ($roomType->capacity_child ?? 2));
+            
+            $maxAdultAllowed = $capacityAdult * $qty;
+            $maxTotalAllowed = ($capacityAdult + $capacityChild) * $qty;
+
+            if ($adults > $maxAdultAllowed || ($adults + $children) > $maxTotalAllowed) {
+                DB::rollBack();
+                $minQtyNeeded = (int) ceil($adults / $capacityAdult);
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults, $children, $qty);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Untuk {$adults} dewasa dan {$children} anak, Anda membutuhkan minimal {$minQtyNeeded} kamar. Silakan tambah jumlah kamar.",
+                    'suggestions' => $suggestions,
+                ], 422);
+            }
+
+            $totalPhysicalStock = max(0, (int) ($roomType->stock ?? 0));
+
+            $bookedQtyInPeriod = BookingRoom::where('room_type_id', $roomType->id)
+                ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                    $query->whereIn('status', ['unpaid', 'paid', 'checked_in', 'pending', 'confirmed', 'refund_pending'])
+                        ->where('check_in', '<', $checkOutStr)
+                        ->where('check_out', '>', $checkInStr);
+                })
+                ->sum('qty');
+
+            $remainingStockDirect = max(0, $totalPhysicalStock - $bookedQtyInPeriod);
+
+            if ($remainingStockDirect < $qty) {
+                DB::rollBack();
+                $suggestions = $this->getAlternativeRooms($request->hotel_id, $roomType->id, $checkInStr, $checkOutStr, $adults, $children, $qty);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $remainingStockDirect === 0
+                        ? 'Kamar ini sudah habis untuk tanggal yang dipilih.'
+                        : "Jumlah kamar yang Anda pilih ({$qty} kamar) melebihi stok yang tersedia ({$remainingStockDirect} kamar).",
+                    'suggestions' => $suggestions,
+                ], 422);
+            }
+
+            $weekdayPrice = $roomType->weekday_price ?? $roomType->price ?? 0;
+            $weekendPrice = $roomType->weekend_price ?? $weekdayPrice;
+
+            $quote = app(PricingService::class)->quote($roomType, $period, $qty);
+            if (! empty($quote['closed_dates'])) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal berikut ditutup dan tidak dapat dipesan: '.implode(', ', $quote['closed_dates']).'.',
+                ], 422);
+            }
+
+            $subtotal = (float) $quote['subtotal'];
+            $tax = (float) $quote['tax'];
+            $grandTotal = (float) $quote['grand_total'];
+
+            $bookingCode = 'HLVN-'.strtoupper(substr(md5(uniqid()), 0, 5)).'-'.Carbon::now()->format('my');
+
+            $booking = Booking::create([
+                'booking_code' => $bookingCode,
+                'idempotency_key' => $idempotencyKey,
+                'user_id' => $user?->id,
+                'hotel_id' => $request->hotel_id,
+                'is_for_other_guest' => $isForOtherGuest,
+                'booker_name' => $bookerName,
+                'booker_email' => $bookerEmail,
+                'booker_phone' => $bookerPhone,
+                'guest_name' => $guestName,
+                'guest_email' => $guestEmail,
+                'guest_phone' => $guestPhone,
+                'check_in' => $checkInStr,
+                'check_out' => $checkOutStr,
+                'total_night' => $totalNight,
+                'children_count' => $children,
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'tax_rate' => $quote['tax_rate'],
+                'grand_total' => $grandTotal,
+                'special_request' => $specialNotes,
+                'status' => 'unpaid',
+            ]);
+
+            BookingRoom::create([
+                'booking_id' => $booking->id,
+                'room_type_id' => $roomType->id,
+                'qty' => $qty,
+                'price_per_night' => ($weekdayPrice + $weekendPrice) / 2,
+                'subtotal' => $subtotal,
+            ]);
+
+            foreach ($period as $date) {
+                $dateStr = $date->format('Y-m-d');
+                $avail = RoomAvailability::where('room_type_id', $roomType->id)
+                    ->where('date', $dateStr)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($avail) {
+                    $avail->decrement('available_stock', $qty);
+                    $avail->increment('booked_room', $qty);
+                } else {
+                    RoomAvailability::create([
+                        'room_type_id' => $roomType->id,
+                        'date' => $dateStr,
+                        'available_stock' => max(0, $totalPhysicalStock - $qty),
+                        'booked_room' => $qty,
+                    ]);
+                }
+            }
+
+            Guest::create([
+                'booking_id' => $booking->id,
+                'name' => $guestName,
+                'email' => $guestEmail ? strtolower(trim($guestEmail)) : null,
+                'phone' => $guestPhone,
+                'identity_number' => $request->guest_identity ?? '-',
+            ]);
+
+            if ($request->has('guests') && is_array($request->guests)) {
+                foreach ($request->guests as $g) {
+                    Guest::create([
+                        'booking_id' => $booking->id,
+                        'name' => $g['name'],
+                        'phone' => $g['phone'] ?? null,
+                        'identity_number' => $g['identity_number'] ?? '-',
+                    ]);
+                }
+            }
+
+            $payment = Payment::create([
+                'booking_id' => $booking->id,
+                'payment_status' => 'pending',
+                'gross_amount' => $grandTotal,
+                'order_id' => $bookingCode,
+                'expired_at' => Carbon::now()->addMinutes(30),
+            ]);
+
+            DB::commit();
+
+            $booking->load(['hotel', 'bookingRooms.roomType.photos', 'payment', 'guests']);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Booking created successfully. Please proceed with payment.',
+                'data' => [
+                    'booking' => $booking,
+                    'payment' => $payment,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create booking: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Response untuk booking yang terdeteksi duplikat (idempotency key atau retry identik).
+     */
+    private function duplicateBookingResponse(Booking $booking)
+    {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking was previously created.',
+            'duplicate' => true,
+            'data' => [
+                'booking' => $booking,
+                'payment' => $booking->payment,
+                'token' => null,
+            ],
+        ], 200);
+    }
+
+    private function getAlternativeRooms($hotelId, $currentRoomTypeId, $checkInStr, $checkOutStr, $adults, $children = 0, $qty = 1)
+    {
+        $hasIsActive = Schema::hasColumn('room_types', 'is_active');
+
+        $sameHotelQuery = RoomType::where('hotel_id', $hotelId)
+            ->where('id', '!=', $currentRoomTypeId);
+
+        if ($hasIsActive) {
+            $sameHotelQuery->where('is_active', true);
+        }
+
+        $sameHotelRooms = $sameHotelQuery->with(['hotel.city', 'hotel.facilities', 'photos', 'facilities'])
+            ->whereHas('hotel', function ($q) {
+                $q->where('status', 'active');
+            })
+            ->get();
+        $sameHotelRooms = $this->filterAvailableAlternativeRooms(
+            $sameHotelRooms,
+            $checkInStr,
+            $checkOutStr,
+            $adults,
+            $children,
+            $qty
+        );
+
+        if ($sameHotelRooms->isNotEmpty()) {
+            return [
+                'type' => 'same_hotel',
+                'rooms' => $sameHotelRooms->take(6)->values()->map(function (RoomType $room) {
+                    return $this->alternativeRoomDetails($room, null);
+                }),
+            ];
+        }
+
+        $currentHotel = Hotel::with('city')->find($hotelId);
+
+        $otherHotelQuery = RoomType::query();
+        if ($hasIsActive) {
+            $otherHotelQuery->where('is_active', true);
+        }
+
+        $otherHotelRooms = $otherHotelQuery->with([
+            'hotel:id,name,address,city_id,latitude,longitude',
+        ])
+            ->whereHas('hotel', function ($q) use ($hotelId) {
+                $q->where('status', 'active');
+                $q->where('id', '!=', $hotelId);
+                $q->whereNotNull('latitude')
+                    ->whereNotNull('longitude')
+                    ->whereBetween('latitude', [-90, 90])
+                    ->whereBetween('longitude', [-180, 180]);
+            })
+            ->whereRaw('capacity_adult * ? >= ?', [$qty, $adults])
+            ->whereRaw('capacity_child * ? >= ?', [$qty, $children])
+            ->where('stock', '>=', $qty)
+            ->get();
+        $otherHotelRooms = $this->filterAvailableAlternativeRooms(
+            $otherHotelRooms,
+            $checkInStr,
+            $checkOutStr,
+            $adults,
+            $children,
+            $qty
+        );
+
+        $recommendations = $otherHotelRooms->map(function (RoomType $room) use ($currentHotel) {
+            $distance = $this->distanceBetweenHotels($currentHotel, $room->hotel);
+
+            $room->setAttribute('recommendation_distance_km', $distance);
+
+            return $room;
+        })->sortBy(fn (RoomType $room) => $room->getAttribute('recommendation_distance_km') ?? INF)
+            ->take(6)
+            ->values();
+
+        $recommendations->each(function (RoomType $room) {
+            $room->load(['hotel.city', 'hotel.facilities', 'photos', 'facilities']);
+        });
+        $recommendations = $recommendations->map(fn (RoomType $room) => $this->alternativeRoomDetails(
+            $room,
+            $room->getAttribute('recommendation_distance_km')
+        ));
+
+        return [
+            'type' => 'other_hotels_nearby',
+            'rooms' => $recommendations,
+        ];
+    }
+
+    private function filterAvailableAlternativeRooms($rooms, string $checkInStr, string $checkOutStr, int $adults, int $children, int $qty)
+    {
+        if ($rooms->isEmpty()) {
+            return $rooms;
+        }
+
+        $roomTypeIds = $rooms->pluck('id');
+        $bookedQuantities = BookingRoom::whereIn('room_type_id', $roomTypeIds)
+            ->whereHas('booking', function ($query) use ($checkInStr, $checkOutStr) {
+                $query->whereIn('status', ['unpaid', 'paid', 'pending', 'confirmed', 'checked_in', 'refund_pending'])
+                    ->where('check_in', '<', $checkOutStr)
+                    ->where('check_out', '>', $checkInStr);
+            })
+            ->select('room_type_id', DB::raw('SUM(qty) as total_booked'))
+            ->groupBy('room_type_id')
+            ->pluck('total_booked', 'room_type_id');
+
+        $closedRoomTypeIds = RoomAvailability::whereIn('room_type_id', $roomTypeIds)
+            ->where('is_closed', true)
+            ->where('date', '>=', $checkInStr)
+            ->where('date', '<', $checkOutStr)
+            ->pluck('room_type_id')
+            ->unique();
+
+        return $rooms->filter(function (RoomType $room) use ($bookedQuantities, $closedRoomTypeIds, $adults, $children, $qty) {
+            $availableStock = max(0, (int) ($room->stock ?? 0) - (int) ($bookedQuantities[$room->id] ?? 0));
+            $hasCapacity = (int) $room->capacity_adult * $qty >= $adults
+                && (int) $room->capacity_child * $qty >= $children;
+
+            if ($closedRoomTypeIds->contains($room->id) || ! $hasCapacity || $availableStock < $qty) {
+                return false;
+            }
+
+            $room->setAttribute('available_stock', $availableStock);
+
+            return true;
+        })->values();
+    }
+
+    private function alternativeRoomDetails(RoomType $room, ?float $distanceKm): array
+    {
+        return array_merge($room->toArray(), [
+            'hotel' => $room->hotel ? [
+                'id' => $room->hotel->id,
+                'name' => $room->hotel->name,
+                'address' => $room->hotel->address,
+                'city' => $room->hotel->city?->city,
+                'facilities' => $room->hotel->facilities->map(fn ($facility) => [
+                    'id' => $facility->id,
+                    'name' => $facility->name,
+                ])->values(),
+            ] : null,
+            'distance_km' => $distanceKm,
+        ]);
+    }
+
+    private function distanceBetweenHotels(?Hotel $origin, ?Hotel $destination): ?float
+    {
+        if (! $origin || ! $destination
+            || ! is_numeric($origin->latitude) || ! is_numeric($origin->longitude)
+            || ! is_numeric($destination->latitude) || ! is_numeric($destination->longitude)) {
+            return null;
+        }
+
+        $latitudeDelta = deg2rad((float) $destination->latitude - (float) $origin->latitude);
+        $longitudeDelta = deg2rad((float) $destination->longitude - (float) $origin->longitude);
+        $originLatitude = deg2rad((float) $origin->latitude);
+        $destinationLatitude = deg2rad((float) $destination->latitude);
+
+        $a = sin($latitudeDelta / 2) ** 2
+            + cos($originLatitude) * cos($destinationLatitude) * sin($longitudeDelta / 2) ** 2;
+
+        return round(6371 * 2 * asin(sqrt(min(1, $a))), 1);
+    }
+}

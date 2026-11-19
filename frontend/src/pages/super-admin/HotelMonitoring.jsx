@@ -1,0 +1,601 @@
+import React, { useState, useEffect } from "react";
+import api from "../../services/api";
+import { cachedGet, getCachedData, getCacheKey, invalidateCache } from "../../services/apiCache";
+import { toast } from "react-hot-toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+
+const HotelMonitoring = () => {
+  const initialKey = getCacheKey("/super-admin/hotels", { search: "", status: "" });
+  const cachedInitialHotels = getCachedData(initialKey)?.data || getCachedData(initialKey) || null;
+
+  const [hotels, setHotels] = useState(Array.isArray(cachedInitialHotels) ? cachedInitialHotels : []);
+  const [loading, setLoading] = useState(!cachedInitialHotels);
+  const [error, setError] = useState(false);
+
+  // State for search and status filter
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  // State for Detail Modal
+  const [selectedHotel, setSelectedHotel] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // State for Pagination (Set to exactly 10 rows per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const [pendingToggle, setPendingToggle] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [starRating, setStarRating] = useState("");
+  const [starReason, setStarReason] = useState("");
+  const [savingStar, setSavingStar] = useState(false);
+
+  const fetchHotels = async (forceRefresh = false) => {
+    const key = getCacheKey("/super-admin/hotels", { search, status: statusFilter });
+    const cached = getCachedData(key);
+
+    if (!forceRefresh && cached) {
+      const data = cached.data || cached || [];
+      setHotels(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } else if (hotels.length === 0 || forceRefresh) {
+      if (hotels.length === 0) setLoading(true);
+    }
+
+    try {
+      setError(false);
+      const response = await cachedGet(
+        "/super-admin/hotels",
+        {
+          params: {
+            search,
+            status: statusFilter,
+          },
+        },
+        forceRefresh
+      );
+
+      const resData = response.data?.data || response.data || [];
+      setHotels(Array.isArray(resData) ? resData : []);
+    } catch (err) {
+      console.error("Failed to fetch hotel data:", err);
+      if (hotels.length === 0) setError(true);
+      toast.error("Failed to load hotel data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchHotels(false);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search, statusFilter]);
+
+  // Reset page to 1 whenever filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  const handleToggleStatus = (id, currentStatus) => {
+    const lowerStatus = currentStatus ? currentStatus.toLowerCase() : "";
+    const newStatus = lowerStatus === "active" ? "inactive" : "active";
+    setPendingToggle({ id, newStatus });
+  };
+
+  const performToggleStatus = async () => {
+    if (!pendingToggle) return;
+    const { id, newStatus } = pendingToggle;
+    setIsToggling(true);
+    try {
+      await api.patch(`/super-admin/hotels/${id}/status`, {
+        status: newStatus,
+      });
+      invalidateCache("/super-admin/hotels");
+      invalidateCache("/super-admin/dashboard");
+      toast.success("Hotel status updated successfully!");
+      if (selectedHotel && selectedHotel.id === id) {
+        setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
+      }
+      setPendingToggle(null);
+      fetchHotels(true);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Failed to update hotel status."
+      );
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleDeleteHotel = (id, name) => {
+    setPendingDelete({ id, name });
+  };
+
+  const performDeleteHotel = async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/super-admin/hotels/${id}`);
+      invalidateCache("/super-admin/hotels");
+      invalidateCache("/super-admin/dashboard");
+      toast.success("Hotel successfully deleted!");
+      if (selectedHotel && selectedHotel.id === id) {
+        setModalOpen(false);
+        setSelectedHotel(null);
+      }
+      setPendingDelete(null);
+      fetchHotels(true);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Failed to delete hotel."
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleOpenDetail = (hotel) => {
+    setSelectedHotel(hotel);
+    setStarRating(hotel.star_rating ? String(hotel.star_rating) : "");
+    setStarReason(hotel.star_verified_reason || "");
+    setModalOpen(true);
+  };
+
+  const handleSaveStar = async () => {
+    if (!selectedHotel) return;
+    setSavingStar(true);
+    try {
+      await api.patch(`/super-admin/hotels/${selectedHotel.id}/star`, { 
+        star_rating: starRating ? Number(starRating) : null, 
+        star_verified_reason: starReason || null 
+      });
+      invalidateCache("/super-admin/hotels");
+      toast.success("Hotel star rating updated");
+      fetchHotels(true);
+      setSelectedHotel((p) => ({ 
+        ...p, 
+        star_rating: starRating ? Number(starRating) : null, 
+        star_verified_reason: starReason || null 
+      }));
+    } catch (e) { 
+      toast.error(e.response?.data?.message || "Failed to save rating"); 
+    } finally { 
+      setSavingStar(false); 
+    }
+  };
+
+  // Pagination Logic per 10 items
+  const totalItems = hotels.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const paginatedHotels = hotels.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Pagination Nav Buttons Calculation
+  const maxVisiblePages = 10;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = startPage + maxVisiblePages - 1;
+
+  if (endPage > totalPages) {
+    endPage = totalPages;
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  const visiblePages = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, i) => startPage + i
+  );
+
+  return (
+    <div className="w-full max-w-7xl mx-auto space-y-8 font-hanken">
+      {/* Header & Filter Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="font-newsreader text-[32px] font-semibold text-[#4f604f] tracking-[-0.02em] leading-tight font-['Newsreader',serif]">
+            Hotel Monitoring
+          </h2>
+          <p className="font-hanken text-[14px] text-[#747872] mt-1">
+            Manage and monitor all partner hotel properties within the H'Leven network.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Search Box */}
+          <div className="relative flex-1 md:w-72">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#747872] text-[20px] pointer-events-none">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Search hotel or city..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] placeholder-[#747872] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3.5 py-2 bg-white border border-[#E5E0D8] rounded-lg font-hanken text-[14px] text-[#191c1b] focus:outline-none focus:border-[#768875] focus:ring-2 focus:ring-[#768875]/20 transition-all shadow-sm cursor-pointer"
+          >
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pending">Pending</option>
+          </select>
+
+          {/* Refresh Button */}
+          <button
+            onClick={() => fetchHotels(true)}
+            title="Refresh Data"
+            className="flex items-center gap-1.5 px-3 py-2 border border-[#E5E0D8] rounded-lg bg-white text-[#434842] hover:bg-[#F9F6F1] transition-all font-hanken text-[13px] font-semibold shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[18px]">refresh</span>
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Data Table Card */}
+      <div className="bg-white rounded-lg shadow-[0_4px_20px_rgba(47,50,49,0.06)] border border-[#E5E0D8] overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-10 h-10 border-4 border-[#E5E0D8] border-t-[#768875] rounded-full animate-spin"></div>
+            <p className="font-hanken text-[14px] text-[#747872]">Loading hotel property data...</p>
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center space-y-3">
+            <p className="font-hanken text-[#ba1a1a] font-medium text-[15px]">
+              An error occurred while loading hotel data.
+            </p>
+            <button
+              onClick={() => fetchHotels(true)}
+              className="px-4 py-2 bg-[#768875] text-white rounded-lg font-hanken text-[13px] font-semibold hover:opacity-90 transition-opacity"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#F9F6F1] border-b border-[#E5E0D8] font-hanken text-[12px] font-semibold leading-[1] text-[#434842] uppercase tracking-[0.05em]">
+                    <th className="py-4 px-6">Hotel Name &amp; ID</th>
+                    <th className="py-4 px-6">Location</th>
+                    <th className="py-4 px-6">Admin Contact</th>
+                    <th className="py-4 px-6 text-center">Stars</th>
+                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="font-hanken text-[14px] text-[#191c1b] divide-y divide-[#E5E0D8]">
+                  {paginatedHotels.length > 0 ? (
+                    paginatedHotels.map((hotel) => {
+                      const statusStr = hotel.status ? hotel.status.toLowerCase() : "";
+                      const isActive = statusStr === "active";
+                      const isPending = statusStr === "pending" || statusStr === "pending review";
+
+                      let statusBadge = (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-[#ffdad6] text-[#93000a]">
+                          INACTIVE
+                        </span>
+                      );
+
+                      if (isActive) {
+                        statusBadge = (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-[#d1eac9] text-[#0c200c]">
+                            ACTIVE
+                          </span>
+                        );
+                      } else if (isPending) {
+                        statusBadge = (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-[#DED3C7] text-[#2F3231]">
+                            PENDING
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <tr
+                          key={hotel.id}
+                          className="hover:bg-[#F9F6F1]/50 transition-colors"
+                        >
+                          <td className="py-4 px-6">
+                            <div className="font-medium text-[#191c1b] font-hanken">
+                              {hotel.name}
+                            </div>
+                            <div className="text-[#747872] text-[12px] mt-0.5">
+                              ID: HTL-{String(hotel.id).padStart(4, "0")}
+                            </div>
+                          </td>
+
+                          <td className="py-4 px-6 text-[#434842]">
+                            {hotel.city?.name ||
+                              hotel.city?.city_name ||
+                              hotel.address ||
+                              "-"}
+                          </td>
+
+                          <td className="py-4 px-6 text-[#434842]">
+                            {hotel.admin?.email || hotel.email || "-"}
+                          </td>
+                          <td className="py-4 px-6 text-[#434842] text-center">
+                            {hotel.star_rating ? `★ ${hotel.star_rating}` : <span className="text-[#747872] text-xs">-</span>}
+                          </td>
+                          <td className="py-4 px-6">{statusBadge}</td>
+
+                          <td className="py-4 px-6 text-right space-x-2 whitespace-nowrap">
+                            <button
+                              onClick={() => handleOpenDetail(hotel)}
+                              className="font-hanken text-[13px] font-semibold text-[#768875] hover:text-[#4f604f] transition-colors border border-[#768875] px-3 py-1.5 rounded-lg hover:bg-[#768875]/5 active:scale-95"
+                            >
+                              View Detail
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleToggleStatus(hotel.id, hotel.status)
+                              }
+                              className={`font-hanken text-[13px] font-medium transition-colors px-3 py-1.5 rounded-lg active:scale-95 ${
+                                isActive
+                                  ? "text-[#747872] hover:text-[#ba1a1a] hover:bg-[#ffdad6]/40"
+                                  : "text-[#768875] hover:text-[#4f604f] hover:bg-[#d1eac9]/40"
+                              }`}
+                            >
+                              {isActive ? "Suspend" : "Activate"}
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleDeleteHotel(hotel.id, hotel.name)
+                              }
+                              className="font-hanken text-[13px] font-medium text-[#ba1a1a] hover:text-[#93000a] border border-[#ffdad6] hover:bg-[#ffdad6]/40 px-3 py-1.5 rounded-lg transition-colors active:scale-95"
+                               title="Delete Hotel"
+                            >
+                                Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-[#747872] font-hanken text-[14px]">
+                        No hotels found matching the filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="bg-[#F9F6F1] border-t border-[#E5E0D8] p-4 flex flex-col md:flex-row justify-between items-center gap-4 text-[#747872] font-hanken">
+              <span className="text-[13px] shrink-0">
+                Showing{" "}
+                {totalItems > 0
+                  ? (currentPage - 1) * itemsPerPage + 1
+                  : 0}{" "}
+                to {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
+                {totalItems} hotels
+              </span>
+
+              {/* Centered Navigation Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-full">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border border-[#E5E0D8] rounded-md bg-white hover:bg-[#F9F6F1] transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-[13px] font-medium text-[#434842]"
+                >
+                  Prev
+                </button>
+
+                {visiblePages.map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1 border rounded-md text-[13px] font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? "bg-[#768875] text-white border-[#768875]"
+                        : "bg-white border-[#E5E0D8] text-[#434842] hover:bg-[#F9F6F1]"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="px-3 py-1 border border-[#E5E0D8] rounded-md bg-white hover:bg-[#F9F6F1] transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-[13px] font-medium text-[#434842]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Modal: Hotel Details */}
+      {modalOpen && selectedHotel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-[#2e3130]/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setModalOpen(false)}
+          ></div>
+
+          <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-[0_12px_40px_rgba(47,50,49,0.12)] p-7 border border-[#E5E0D8] z-10 font-hanken animate-fadeIn">
+            <div className="flex justify-between items-start mb-6 pb-4 border-b border-[#E5E0D8]">
+              <div>
+                <h3 className="font-newsreader text-[24px] font-semibold text-[#4f604f] font-['Newsreader',serif]">
+                  {selectedHotel.name}
+                </h3>
+                <p className="font-hanken text-[13px] text-[#747872] mt-1">
+                  ID: HTL-{String(selectedHotel.id).padStart(4, "0")} •{" "}
+                  {selectedHotel.city?.name ||
+                    selectedHotel.city?.city_name ||
+                    "Partner Location"}
+                </p>
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="text-[#747872] hover:text-[#191c1b] p-1.5 rounded-lg hover:bg-[#F9F6F1] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[22px]">
+                  close
+                </span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
+                  Full Address
+                </label>
+                <p className="font-hanken text-[14px] text-[#191c1b]">
+                  {selectedHotel.address || "-"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
+                  Total Rooms
+                </label>
+                <p className="font-hanken text-[14px] text-[#191c1b]">
+                  {selectedHotel.rooms_count ??
+                    selectedHotel.total_rooms ??
+                     "24 Rooms"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
+                  Hotel Admin (Contact)
+                </label>
+                <p className="font-hanken text-[14px] text-[#191c1b]">
+                  {selectedHotel.admin?.name
+                    ? `${selectedHotel.admin.name} (${selectedHotel.admin.email})`
+                    : selectedHotel.admin?.email || selectedHotel.email || "-"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1">
+                  Operational Status
+                </label>
+                <div className="mt-1">
+                  {selectedHotel.status?.toLowerCase() === "active" ? (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-[#d1eac9] text-[#0c200c]">
+                      ACTIVE
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full font-hanken text-[11px] font-semibold tracking-[0.05em] uppercase bg-[#ffdad6] text-[#93000a]">
+                      INACTIVE
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {selectedHotel.description && (
+              <div className="mb-6">
+                <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-1.5">
+                  Property Description
+                </label>
+                <p className="font-hanken text-[13px] text-[#434842] leading-relaxed bg-[#F9F6F1] p-3.5 rounded-lg border border-[#E5E0D8]">
+                  {selectedHotel.description}
+                </p>
+              </div>
+            )}
+
+            <div className="bg-[#F9F6F1] border border-[#E5E0D8] rounded-lg p-4 mb-6">
+              <label className="block font-hanken text-[11px] font-semibold text-[#747872] uppercase tracking-[0.05em] mb-2">Verified Star Rating (Super Admin)</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select value={starRating} onChange={(e) => setStarRating(e.target.value)} className="px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-sm">
+                  <option value="">Unverified</option>{[1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n} Stars</option>)}
+                </select>
+                <input value={starReason} onChange={(e) => setStarReason(e.target.value)} placeholder="Correction reason (optional)" className="flex-1 px-3 py-2 bg-white border border-[#E5E0D8] rounded-lg text-sm" />
+                <button onClick={handleSaveStar} disabled={savingStar} className="px-4 py-2 bg-[#768875] text-white rounded-lg text-sm font-semibold disabled:opacity-50">{savingStar ? "..." : "Save Rating"}</button>
+              </div>
+              {selectedHotel.star_rating && <p className="text-xs text-[#747872] mt-2">Verified: ★ {selectedHotel.star_rating} {selectedHotel.star_verified_reason ? `— ${selectedHotel.star_verified_reason}` : ""}</p>}
+            </div>
+            <div className="flex justify-end items-center gap-3 pt-4 border-t border-[#E5E0D8]">
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="px-4 py-2 border border-[#E5E0D8] rounded-lg font-hanken text-[13px] font-semibold text-[#434842] hover:bg-[#F9F6F1] transition-colors"
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteHotel(selectedHotel.id, selectedHotel.name);
+                }}
+                className="px-4 py-2 border border-[#ffdad6] rounded-lg font-hanken text-[13px] font-semibold text-[#ba1a1a] hover:bg-[#ffdad6]/30 transition-colors"
+              >
+                Delete Hotel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleToggleStatus(selectedHotel.id, selectedHotel.status);
+                }}
+                className={`px-5 py-2 rounded-lg font-hanken text-[13px] font-semibold text-white transition-all shadow-sm ${
+                  selectedHotel.status?.toLowerCase() === "active"
+                    ? "bg-[#ba1a1a] hover:bg-[#93000a]"
+                    : "bg-[#768875] hover:bg-[#4f604f]"
+                }`}
+              >
+                {selectedHotel.status?.toLowerCase() === "active"
+                  ? "Suspend Hotel"
+                  : "Activate Hotel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Toggle Status Dialog */}
+      <ConfirmDialog
+        open={!!pendingToggle}
+        title="Change Hotel Status"
+        message={`Are you sure you want to change the status of this hotel to ${(pendingToggle?.newStatus || "").toUpperCase()}?`}
+        confirmText="Yes, Change Status"
+        processing={isToggling}
+        onConfirm={performToggleStatus}
+        onCancel={() => setPendingToggle(null)}
+      />
+
+      {/* Confirm Delete Hotel Dialog */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        type="danger"
+        title="Delete Hotel"
+        message={`Are you sure you want to delete hotel "${pendingDelete?.name}"? This action cannot be undone.`}
+        confirmText="Yes, Delete Hotel"
+        processing={isDeleting}
+        onConfirm={performDeleteHotel}
+        onCancel={() => setPendingDelete(null)}
+      />
+    </div>
+  );
+
+};
+
+export default HotelMonitoring;

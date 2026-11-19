@@ -1,0 +1,571 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import HotelCard from "../../components/landing/HotelCard";
+import Pagination from "../../components/common/Pagination";
+import GuestSelector from "../../components/common/GuestSelector";
+import { cachedGet } from "../../services/apiCache";
+import { fmtDateStr, getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
+
+const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80";
+const ITEMS_PER_PAGE = 9;
+
+const HotelList = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [hotels, setHotels] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const today = useMemo(() => new Date(), []);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+
+  const [searchTerm, setSearchTerm] = useState(init.searchTerm || "");
+  const [adults, setAdults] = useState(init.adults || 2);
+  const [children, setChildren] = useState(init.children || 0);
+  const [rooms, setRooms] = useState(init.rooms || 1);
+  const [checkInDate, setCheckInDate] = useState(init.checkInDate || today);
+  const [checkOutDate, setCheckOutDate] = useState(init.checkOutDate || null);
+
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedStars, setSelectedStars] = useState([]);
+  const [selectedRatings, setSelectedRatings] = useState([]);
+  const [selectedHotelFacilities, setSelectedHotelFacilities] = useState([]);
+  const [selectedRoomFacilities, setSelectedRoomFacilities] = useState([]);
+  const [sortBy, setSortBy] = useState("recommendation");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Sync state kata kunci pencarian saat URL searchParams berubah
+  useEffect(() => {
+    const queryFromUrl = searchParams.get("search") || "";
+    setSearchTerm(queryFromUrl);
+  }, [searchParams]);
+
+  useEffect(() => {
+    saveSearchState({ search: searchTerm, checkIn: checkInDate, checkOut: checkOutDate, adults, children });
+  }, [searchTerm, checkInDate, checkOutDate, adults, children]);
+
+  // Reset ke halaman 1 setiap kali filter atau kata kunci berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, minPrice, maxPrice, selectedStars, selectedRatings, selectedHotelFacilities, selectedRoomFacilities, sortBy, checkInDate, checkOutDate, adults, children]);
+
+  useEffect(() => {
+    const fetchHotels = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ adults, children, rooms });
+        const { data: responseData, fromCache } = await cachedGet(`/hotels?${params.toString()}`);
+        if (responseData && (responseData.data || Array.isArray(responseData))) {
+          const apiHotels = responseData.data || responseData;
+          setHotels(apiHotels);
+        } else {
+          setHotels([]);
+        }
+        if (fromCache) {
+          console.debug("[Cache Hit] HotelList loaded from cache");
+        }
+      } catch (err) {
+        console.error("Backend Error:", err);
+        setHotels([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHotels();
+  }, [adults, children, rooms]);
+
+  const handleStarToggle = (star) => {
+    setSelectedStars((prev) =>
+      prev.includes(star) ? prev.filter((s) => s !== star) : [...prev, star]
+    );
+  };
+
+  const handleRatingToggle = (rating) => {
+    setSelectedRatings((prev) =>
+      prev.includes(rating) ? prev.filter((r) => r !== rating) : [...prev, rating]
+    );
+  };
+
+  const handleHotelFacilityToggle = (fac) => {
+    setSelectedHotelFacilities((prev) =>
+      prev.includes(fac) ? prev.filter((f) => f !== fac) : [...prev, fac]
+    );
+  };
+
+  const handleRoomFacilityToggle = (fac) => {
+    setSelectedRoomFacilities((prev) =>
+      prev.includes(fac) ? prev.filter((f) => f !== fac) : [...prev, fac]
+    );
+  };
+
+  const syncUrlParams = (overrides = {}) => {
+    const next = {
+      search: searchTerm,
+      adults,
+      children,
+      rooms,
+      checkInDate,
+      checkOutDate,
+      ...overrides,
+    };
+    const params = new URLSearchParams();
+    if (next.search.trim()) params.append("search", next.search.trim());
+    if (next.checkInDate) params.append("check_in_date", fmtDateStr(next.checkInDate));
+    if (next.checkOutDate) params.append("check_out_date", fmtDateStr(next.checkOutDate));
+    if (next.adults) params.append("adults", next.adults);
+    if (next.children) params.append("children", next.children);
+    if (next.rooms) params.append("rooms", next.rooms);
+    setSearchParams(params, { replace: true });
+  };
+
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setCheckInDate(start);
+    setCheckOutDate(end);
+    syncUrlParams({ checkInDate: start, checkOutDate: end });
+  };
+
+  const handleGuestChange = ({ adults: newAdults, children: newChildren, rooms: newRooms }) => {
+    setAdults(newAdults);
+    setChildren(newChildren);
+    setRooms(newRooms);
+    syncUrlParams({ adults: newAdults, children: newChildren, rooms: newRooms });
+  };
+
+  const handleSearchSubmit = () => {
+    syncUrlParams();
+    setCurrentPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setMinPrice("");
+    setMaxPrice("");
+    setSelectedStars([]);
+    setSelectedRatings([]);
+    setSelectedHotelFacilities([]);
+    setSelectedRoomFacilities([]);
+    setSortBy("recommendation");
+    setCurrentPage(1);
+    setSearchParams({}, { replace: true });
+  };
+
+  const selectedHotelId = searchParams.get("selected") || searchParams.get("highlight") || searchParams.get("hotelId") || searchParams.get("id") || "";
+
+  const getHotelFacilityNames = (hotel) => {
+    const hotelFacs = (hotel.facilities || []).map((f) =>
+      (typeof f === "object" ? f.name : String(f)).toLowerCase()
+    );
+
+    const roomFacs = (hotel.roomTypes || []).flatMap((roomType) => roomType.facilities || []).map((f) =>
+      (typeof f === "object" ? f.name : String(f)).toLowerCase()
+    );
+
+    return [...new Set([...hotelFacs, ...roomFacs])];
+  };
+
+  const matchesFacilitySelection = (facilityList, selectedFacilities) => {
+    if (!selectedFacilities.length) return true;
+
+    return selectedFacilities.every((fac) => {
+      const facLower = fac.toLowerCase();
+      let keywords = [facLower];
+
+      if (facLower.includes("wifi")) keywords = ["wifi", "wi-fi", "internet"];
+      else if (facLower.includes("kolam")) keywords = ["kolam", "pool", "swimming"];
+      else if (facLower.includes("restoran")) keywords = ["restoran", "restaurant", "dining", "bar"];
+      else if (facLower.includes("parkir")) keywords = ["parkir", "parking", "car park"];
+      else if (facLower.includes("gym")) keywords = ["gym", "fitness", "fitness center"];
+      else if (facLower.includes("kamar mandi")) keywords = ["kamar mandi", "bathroom", "shower", "bathtub"];
+      else if (facLower.includes("bathtub")) keywords = ["bathtub", "bathroom"];
+      else if (facLower.includes("meja kerja")) keywords = ["meja kerja", "desk", "work desk"];
+      else if (facLower.includes("tv")) keywords = ["tv", "smart tv"];
+      else if (facLower.includes("ac")) keywords = ["ac", "air conditioning"];
+      else if (facLower.includes("wi-fi di kamar")) keywords = ["wi-fi di kamar", "wifi di kamar", "wifi", "internet"];
+
+      return keywords.some((kw) =>
+        facilityList.some((hf) => hf.includes(kw))
+      );
+    });
+  };
+
+  const filteredHotels = useMemo(() => {
+    // 1. Jika URL mengandung parameter ID spesifik
+    if (selectedHotelId) {
+      const target = hotels.find((hotel) => String(hotel.id) === String(selectedHotelId));
+      if (target) return [target];
+    }
+
+    const query = searchTerm.trim().toLowerCase();
+
+    return hotels
+      .filter((hotel) => {
+        // Pencarian Kata Kunci (Nama, Kota, Alamat)
+        if (query) {
+          const matchName = hotel.name?.toLowerCase().includes(query);
+          const cityStr = typeof hotel.city === "object" ? hotel.city?.city : hotel.city;
+          const matchCity = cityStr?.toLowerCase().includes(query);
+          const matchAddress = hotel.address?.toLowerCase().includes(query);
+          if (!matchName && !matchCity && !matchAddress) return false;
+        }
+
+        // Filter Rentang Harga
+        const price = Number(hotel.starting_price || hotel.price || (hotel.rooms && hotel.rooms[0]?.price) || 0);
+        if (minPrice && price < Number(minPrice)) return false;
+        if (maxPrice && price > Number(maxPrice)) return false;
+
+        // Filter Bintang Hotel
+        if (selectedStars.length > 0) {
+          const starVal = Number(hotel.star_rating || hotel.stars || hotel.rating || hotel.average_rating || 0);
+          const starInt = Math.floor(starVal);
+          if (!selectedStars.includes(starInt)) return false;
+        }
+
+        // Filter Rating Ulasan
+        if (selectedRatings.length > 0) {
+          const ratingVal = Number(hotel.average_rating || hotel.rating || 0);
+          const ratingInt = Math.floor(ratingVal);
+          if (!selectedRatings.includes(ratingInt)) return false;
+        }
+
+        const hotelFacs = getHotelFacilityNames(hotel);
+        const roomFacs = (hotel.roomTypes || []).flatMap((roomType) => roomType.facilities || []).map((f) =>
+          (typeof f === "object" ? f.name : String(f)).toLowerCase()
+        );
+
+        if (!matchesFacilitySelection(hotelFacs, selectedHotelFacilities)) return false;
+        if (!matchesFacilitySelection(roomFacs, selectedRoomFacilities)) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        const priceA = Number(a.starting_price || a.price || 0);
+        const priceB = Number(b.starting_price || b.price || 0);
+        const ratingA = Number(a.rating || a.average_rating || 0);
+        const ratingB = Number(b.rating || b.average_rating || 0);
+
+        if (sortBy === "price_asc") return priceA - priceB;
+        if (sortBy === "price_desc") return priceB - priceA;
+        if (sortBy === "rating_desc") return ratingB - ratingA;
+        if (sortBy === "recommendation") {
+            const scoreA = (ratingA * 0.7) + (Math.min(a.total_review || 0, 50) / 50 * 5 * 0.3);
+            const scoreB = (ratingB * 0.7) + (Math.min(b.total_review || 0, 50) / 50 * 5 * 0.3);
+            return scoreB - scoreA;
+        }
+        return 0;
+      });
+  }, [hotels, searchTerm, selectedHotelId, minPrice, maxPrice, selectedStars, selectedRatings, selectedHotelFacilities, selectedRoomFacilities, sortBy]);
+
+  const totalPages = Math.ceil(filteredHotels.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayedHotels = filteredHotels.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 450, behavior: "smooth" });
+  };
+
+  return (
+    <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen overflow-x-hidden max-w-full">
+      {/* Hero Section dengan Foto Background */}
+      <section className="relative w-full min-h-[560px] lg:h-[600px] flex items-center justify-center bg-[#DCCFC0] overflow-visible py-12 px-4">
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-1000"
+            style={{ backgroundImage: `url('${HERO_BG_IMAGE}')` }}
+          >
+            <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"></div>
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-[1280px] px-4 md:px-10 mx-auto flex flex-col items-center text-center">
+          <h1 className="font-headline-xl text-3xl md:text-5xl text-white mb-4 max-w-4xl leading-tight drop-shadow-md">
+            Jelajah Hotel &amp; Resort H'Leven
+          </h1>
+          <p className="font-body-lg text-base md:text-lg text-white/90 mb-10 max-w-2xl drop-shadow">
+            Temukan akomodasi mewah terbaik di berbagai destinasi impian Anda dengan harga dan kenyamanan tak tertandingi.
+          </p>
+
+          {/* Floating Search Bar */}
+          <div className="w-full max-w-5xl bg-[#fff8f0] p-4 rounded-2xl shadow-xl shadow-[#778873]/10 flex flex-col lg:flex-row gap-3 items-center">
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left">
+              <label className="font-label-sm text-xs font-semibold text-[#444842]">
+                Destinasi / Hotel
+              </label>
+              <div className="flex items-center w-full mt-1">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
+                  location_on
+                </span>
+                <input
+                  type="text"
+                  placeholder="Bandung, Jakarta, Bali..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-sm text-[#1e1b16] placeholder-[#747871] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="w-full lg:w-1/3 flex flex-col items-start bg-[#FDF6ED] px-4 py-2.5 rounded-xl border border-[#DCCFC0]/60 focus-within:border-[#778873] focus-within:ring-1 focus-within:ring-[#778873] transition-all text-left relative z-20">
+              <label className="font-label-sm text-xs font-semibold text-[#444842]">
+                Tanggal Check-in &amp; Check-out
+              </label>
+              <div className="flex items-center w-full mt-1">
+                <span className="material-symbols-outlined text-[#778873] mr-2 text-lg">
+                  date_range
+                </span>
+                <DatePicker
+                  selectsRange={true}
+                  startDate={checkInDate}
+                  endDate={checkOutDate}
+                  onChange={handleDateRangeChange}
+                  minDate={today}
+                  monthsShown={window.innerWidth > 640 ? 2 : 1}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Select Check-in - Check-out"
+                  popperPlacement="bottom-start"
+                  popperContainer={({ children }) => <div style={{ zIndex: 9999 }}>{children}</div>}
+                  className="w-full bg-transparent border-none p-0 font-body-md text-sm text-[#1e1b16] outline-none cursor-pointer placeholder-[#747871]"
+                />
+              </div>
+            </div>
+
+            <div className="w-full lg:w-1/3">
+              <GuestSelector
+                adults={adults}
+                children={children}
+                rooms={rooms}
+                onGuestChange={handleGuestChange}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSearchSubmit}
+              className="w-full lg:w-auto h-full bg-[#778873] text-white px-8 py-4 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+            >
+              <span className="material-symbols-outlined text-xl">search</span>
+              Search
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content Area: Sidebar Filter + Hotel List */}
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-16 flex flex-col lg:flex-row gap-8">
+        {/* Sidebar Filters */}
+        <aside className="w-full lg:w-1/4 flex flex-col gap-6">
+          <div className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm shadow-[#778873]/5 border border-[#DCCFC0]/40 text-left">
+            <div className="flex items-center justify-between mb-6 border-b border-[#DCCFC0]/30 pb-3">
+              <h3 className="font-headline-md text-xl font-semibold text-[#2D332C]">
+                Search Filters
+              </h3>
+              {(searchTerm || minPrice || maxPrice || selectedStars.length > 0 || selectedHotelFacilities.length > 0 || selectedRoomFacilities.length > 0) && (
+                <button
+                  onClick={handleResetFilters}
+                  className="text-xs text-[#778873] font-semibold hover:underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* Rentang Harga Filter */}
+            <div className="mb-6">
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Price Range (per night)
+              </h4>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  placeholder="Rp Min"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="w-full bg-[#ffffff] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
+                />
+                <span className="text-[#c4c8bf] font-bold">-</span>
+                <input
+                  type="number"
+                  placeholder="Rp Max"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="w-full bg-[#ffffff] border border-[#DCCFC0] rounded-lg px-3 py-2 text-sm focus:border-[#778873] focus:ring-1 focus:ring-[#778873] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Bintang Hotel Filter */}
+            <div className="mb-6">
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Bintang Hotel
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                {[5, 4, 3, 2, 1].map((star) => (
+                  <label key={star} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedStars.includes(star)}
+                      onChange={() => handleStarToggle(star)}
+                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                    />
+                    <div className="flex text-[#D48C45]">
+                      {Array.from({ length: star }).map((_, i) => (
+                        <span key={i} className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      ))}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Rating Ulasan Filter */}
+            <div className="mb-6">
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Review Ratings
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                {[5, 4, 3, 2, 1].map((rating) => (
+                  <label key={rating} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedRatings.includes(rating)}
+                      onChange={() => handleRatingToggle(rating)}
+                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-sm text-[#1e1b16]">{rating} Bintang</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Fasilitas Hotel Filter */}
+            <div className="mb-6">
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Fasilitas Hotel
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                {["WiFi Gratis", "Kolam Renang", "Restoran", "Parkir", "Gym", "Resepsionis 24 Jam"].map((fac) => (
+                  <label key={fac} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedHotelFacilities.includes(fac)}
+                      onChange={() => handleHotelFacilityToggle(fac)}
+                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
+                      {fac}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Fasilitas Kamar Filter */}
+            <div>
+              <h4 className="font-label-md text-xs font-semibold text-[#444842] mb-3 uppercase tracking-wider">
+                Fasilitas Kamar
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                {["AC", "TV", "Kamar Mandi Pribadi", "Bathtub", "Meja Kerja", "Wi-Fi di Kamar"].map((fac) => (
+                  <label key={fac} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedRoomFacilities.includes(fac)}
+                      onChange={() => handleRoomFacilityToggle(fac)}
+                      className="rounded border-[#DCCFC0] text-[#778873] focus:ring-[#778873] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="font-body-md text-sm text-[#1e1b16] group-hover:text-[#778873] transition-colors">
+                      {fac}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* List Hotel Area */}
+        <div className="w-full lg:w-3/4">
+          {/* Card Putih Header & Sort */}
+          <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#E8E2D9] shadow-xs mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
+            <div>
+              <h2 className="font-headline-lg text-2xl md:text-3xl font-semibold text-[#778873] mb-1">
+                Search Results ({filteredHotels.length})
+              </h2>
+              <p className="font-body-md text-sm text-[#444842]">
+                Ready-to-stay accommodation options for your business or vacation.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm bg-[#FDF6ED] px-3.5 py-2 rounded-xl border border-[#DCCFC0]/60 shrink-0">
+              <span className="text-[#444842] text-xs font-semibold">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent border-none font-label-md text-xs font-semibold text-[#778873] focus:ring-0 cursor-pointer outline-none p-0"
+              >
+                <option value="recommendation">Recommendation</option>
+                <option value="price_asc">Lowest Price</option>
+                <option value="price_desc">Highest Price</option>
+                <option value="rating_desc">Highest Rating</option>
+              </select>
+            </div>
+          </div>
+
+          {/* List Card Hotel Horizontal */}
+          {loading ? (
+            <div className="flex flex-col gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white rounded-2xl h-48 animate-pulse border border-[#E8E2D9] shadow-xs"></div>
+              ))}
+            </div>
+          ) : filteredHotels.length === 0 ? (
+            <div className="bg-white border border-[#E8E2D9] rounded-2xl p-12 text-center my-6 shadow-xs">
+              <span className="material-symbols-outlined text-4xl text-[#747871] mb-3">
+                search_off
+              </span>
+                <h3 className="font-headline-md text-lg text-[#2D332C] mb-2 font-semibold">
+                  No Hotels Found
+                </h3>
+                <p className="text-sm text-[#444842] mb-6 max-w-md mx-auto">
+                  Try adjusting the keywords or resetting the search filters.
+                </p>
+              <button
+                onClick={handleResetFilters}
+                className="bg-[#778873] text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#50604d] transition-colors cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {displayedHotels.map((hotel) => (
+                <HotelCard
+                  key={hotel.id}
+                  hotel={hotel}
+                  adults={adults}
+                  children={children}
+                  variant="horizontal"
+                />
+              ))}
+            </div>
+          )}
+
+          {!loading && filteredHotels.length > ITEMS_PER_PAGE && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={filteredHotels.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default HotelList;

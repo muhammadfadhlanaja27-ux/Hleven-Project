@@ -1,0 +1,7 @@
+# Root: composer artifacts yang salah ter-commit di root (backend punya vendor sendiri)
+/vendor/
+
+# Frontend: dependency & build output
+frontend/node_modules/
+frontend/dist/
+kebutuhan ai

@@ -1,0 +1,1397 @@
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { cachedGet } from "../../services/apiCache";
+import api from "../../services/api";
+import { getStorageUrl } from "../../services/imageUrl";
+import {
+  deduplicateFacilities,
+  getFacilityDisplayName,
+  resolveFacilityIcon,
+} from "../../utils/facilities";
+import GuestSelector from "../../components/common/GuestSelector";
+import ReviewSection from "../../components/ReviewSection";
+import Modal from "../../components/common/Modal";
+import { getInitialSearchValues, saveSearchState } from "../../services/searchStorage";
+
+const HotelDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const [hotel, setHotel] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionType, setActionType] = useState(null);
+  const [showRoomAlert, setShowRoomAlert] = useState(false);
+  const [alertData, setAlertData] = useState({
+    minRooms: 0,
+    finalRooms: 0,
+    totalTamu: 0,
+    targetHotelId: null,
+    targetRoomId: null,
+  });
+
+  const handleRoomNavigation = (room, isBooking) => {
+    const totalTamu = Number(filterAdults) + Number(filterChildren);
+    const kapasitasPerKamar = Number(room.capacity_adult || 2) + Number(room.capacity_child || 0);
+    const minRoomsNeeded = Math.ceil(totalTamu / Math.max(1, kapasitasPerKamar));
+    const finalRooms = Math.max(rooms, minRoomsNeeded);
+    if (minRoomsNeeded > rooms) {
+      setAlertData({
+        minRooms: minRoomsNeeded,
+        finalRooms,
+        totalTamu,
+        targetHotelId: hotel?.id || id || 1,
+        targetRoomId: room?.id || 101,
+      });
+      setActionType(isBooking ? "book" : "detail");
+      setShowRoomAlert(true);
+      return;
+    }
+    const targetHotelId = hotel?.id || id || 1;
+    const targetRoomId = room?.id || 101;
+    const qs = new URLSearchParams();
+    if (filterAdults) qs.set("adults", String(filterAdults));
+    if (filterChildren) qs.set("children", String(filterChildren));
+    if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
+    if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+    qs.set("rooms", String(isBooking ? rooms : finalRooms));
+    const q = qs.toString();
+    if (isBooking) {
+      navigate(`/booking/${targetHotelId}/${targetRoomId}${q ? `?${q}` : ""}`);
+    } else {
+      navigate(`/hotels/${targetHotelId}/rooms/${targetRoomId}${q ? `?${q}` : ""}`);
+    }
+  };
+
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // State untuk menangani gambar kamar yang error/broken URL
+  const [imgErrors, setImgErrors] = useState({});
+  const [alternativeRooms, setAlternativeRooms] = useState(null);
+  const [loadingAlternativesFor, setLoadingAlternativesFor] = useState(null);
+
+  // Filter States untuk Kamar — prefill dari URL / Storage (Landing → Detail)
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+  const [filterAdults, setFilterAdults] = useState(String(init.adults));
+  const [filterChildren, setFilterChildren] = useState(init.children > 0 ? String(init.children) : "");
+  const [filterCheckIn, setFilterCheckIn] = useState(init.checkInDate);
+  const [filterCheckOut, setFilterCheckOut] = useState(init.checkOutDate);
+  const [rooms, setRooms] = useState(init.rooms);
+  
+  // Ekstraksi opsi filter unik dari data kamar
+  const { filterOptionsRoomTypes, filterOptionsBedTypes } = useMemo(() => {
+    if (!hotel || !hotel.rooms) return { filterOptionsRoomTypes: [], filterOptionsBedTypes: [] };
+    const roomTypes = [...new Set(hotel.rooms.map((r) => r.type || "Standard"))];
+    const bedTypes = [...new Set(hotel.rooms.map((r) => r.bed || "1 King Bed"))];
+    return { filterOptionsRoomTypes: roomTypes, filterOptionsBedTypes: bedTypes };
+  }, [hotel]);
+
+  useEffect(() => {
+    saveSearchState({
+      checkIn: filterCheckIn,
+      checkOut: filterCheckOut,
+      adults: Number(filterAdults) || 2,
+      children: Number(filterChildren) || 0,
+      rooms,
+    });
+  }, [filterCheckIn, filterCheckOut, filterAdults, filterChildren, rooms]);
+
+  const [filterRoomType, setFilterRoomType] = useState("all");
+  const [filterBedType, setFilterBedType] = useState("all");
+  const [filterRoomName, setFilterRoomName] = useState("");
+  const [filterBreakfast, setFilterBreakfast] = useState(false);
+  const [filterSmoking, setFilterSmoking] = useState(false);
+  const [filterRefundable, setFilterRefundable] = useState(false);
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
+  const INITIAL_FACILITIES_COUNT = 9;
+
+  const today = useMemo(() => new Date(), []);
+  const handleDateRangeChange = (dates) => {
+    const [start, end] = dates;
+    setFilterCheckIn(start || null);
+    setFilterCheckOut(end || null);
+  };
+
+  const handleGuestChange = ({ adults: a, children: c, rooms: r }) => {
+    setFilterAdults(a > 0 ? String(a) : "");
+    setFilterChildren(c > 0 ? String(c) : "");
+    setRooms(r);
+  };
+
+  const fmtDateParam = (d) => {
+    if (!d || isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // Pagination Kamar
+  const ROOMS_PER_PAGE = 5;
+  const [roomPage, setRoomPage] = useState(1);
+
+  const lightboxContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (lightboxOpen) {
+      setScale(1);
+      setPanX(0);
+      setPanY(0);
+    }
+  }, [lightboxOpen, lightboxIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+    };
+    if (lightboxOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [lightboxOpen]);
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setScale((s) => Math.min(Math.max(s + delta, 0.5), 3));
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragOffset({ x: panX, y: panY });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    setPanX(dragOffset.x + dx);
+    setPanY(dragOffset.y + dy);
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    const fetchHotelDetail = async () => {
+      setLoading(true);
+
+      try {
+        const { data: responseData, fromCache } = await cachedGet(`/hotels/${id}`);
+        if (responseData && responseData.data) {
+          const apiData = responseData.data;
+
+          let liveRooms = [];
+          if (filterCheckIn && filterCheckOut) {
+            const { data: liveResponse } = await cachedGet(`/hotels/${id}/rooms`, {
+              params: { check_in: fmtDateParam(filterCheckIn), check_out: fmtDateParam(filterCheckOut) },
+            });
+            liveRooms = liveResponse?.data || [];
+          }
+
+          const mappedRooms = (apiData.room_types || []).map((rt) => {
+            const thumbnailPhoto =
+              rt.photos && rt.photos.length > 0
+                ? rt.photos.find((p) => p.is_thumbnail) || rt.photos[0]
+                : null;
+            const photoPath = thumbnailPhoto ? thumbnailPhoto.photo || thumbnailPhoto.url : null;
+            const roomImage = photoPath ? getStorageUrl(photoPath) : null;
+            return {
+              id: rt.id,
+              name: rt.name,
+              type: rt.type || "Standard",
+              price: rt.weekday_price,
+              weekday_price: rt.weekday_price,
+              weekend_price: rt.weekend_price,
+              thumbnail: roomImage,
+              hasPhoto: !!roomImage,
+              capacity_adult: rt.capacity_adult ?? 2,
+              capacity_child: rt.capacity_child ?? 0,
+              capacity: `${rt.capacity_adult ?? 2} Dewasa, ${rt.capacity_child ?? 0} Anak`,
+              description: rt.description,
+              bed: rt.bed || (rt.description?.includes("Bed") ? rt.description : "1 King Bed"),
+              bed_count: Number(rt.bed_count || 1),
+              breakfast: Boolean(rt.breakfast),
+              smoking_area: Boolean(rt.smoking_area),
+              is_refundable: rt.is_refundable !== undefined ? Boolean(rt.is_refundable) : true,
+              stock: (liveRooms.find((r) => String(r.id) === String(rt.id)) || {}).available_stock ?? rt.stock,
+            };
+          });
+
+          setHotel({
+            ...apiData,
+            rooms: mappedRooms,
+          });
+        } else {
+          setHotel(null);
+        }
+        if (fromCache) {
+          console.debug(`[Cache Hit] HotelDetail id=${id} loaded from cache`);
+        }
+      } catch (err) {
+        console.error("Backend Error / Failed to load hotel data:", err);
+        setHotel(null);
+      }
+      setLoading(false);
+    };
+
+    fetchHotelDetail();
+  }, [id, filterCheckIn, filterCheckOut]);
+
+  const [liveRating, setLiveRating] = useState(0);
+  useEffect(() => {
+    setLiveRating(Number(hotel?.rating || hotel?.average_rating || 0));
+  }, [hotel]);
+
+  const filteredRooms = useMemo(() => {
+    if (!hotel || !hotel.rooms) return [];
+
+    return hotel.rooms.filter((room) => {
+      // Kita hapus pengecekan return false untuk kapasitas, 
+      // supaya semua kamar muncul di hasil pencarian.
+      if (filterRoomType !== "all" && room.type?.toLowerCase() !== filterRoomType.toLowerCase()) return false;
+      if (filterRoomName.trim() && !room.name.toLowerCase().includes(filterRoomName.toLowerCase())) return false;
+      if (filterBedType !== "all") {
+        const bedStr = (room.bed || "").toLowerCase();
+        if (!bedStr.includes(filterBedType.toLowerCase())) return false;
+      }
+      if (filterBreakfast && !room.breakfast) return false;
+      if (filterSmoking && !room.smoking_area) return false;
+      if (filterRefundable && !room.is_refundable) return false;
+
+      return true;
+    });
+  }, [
+    hotel,
+    filterAdults,
+    filterChildren,
+    filterRoomType,
+    filterBedType,
+    filterRoomName,
+    filterBreakfast,
+    filterSmoking,
+    filterRefundable,
+  ]);
+
+  useEffect(() => {
+    setRoomPage(1);
+  }, [
+    filterAdults,
+    filterChildren,
+    filterCheckIn,
+    filterCheckOut,
+    filterRoomType,
+    filterBedType,
+    filterRoomName,
+    filterBreakfast,
+    filterSmoking,
+    filterRefundable,
+  ]);
+
+  // Sync URL agar RoomDetail/Booking dapat prefill
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (filterAdults) params.set("adults", filterAdults); else params.delete("adults");
+    if (filterChildren) params.set("children", filterChildren); else params.delete("children");
+    if (filterCheckIn) params.set("check_in", fmtDateParam(filterCheckIn)); else params.delete("check_in");
+    if (filterCheckOut) params.set("check_out", fmtDateParam(filterCheckOut)); else params.delete("check_out");
+    const qs = params.toString();
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    if (qs !== searchParams.toString()) window.history.replaceState(null, "", newUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterAdults, filterChildren, filterCheckIn, filterCheckOut]);
+
+  const totalRoomPages = Math.ceil(filteredRooms.length / ROOMS_PER_PAGE) || 1;
+  const paginatedRooms = useMemo(
+    () => filteredRooms.slice((roomPage - 1) * ROOMS_PER_PAGE, roomPage * ROOMS_PER_PAGE),
+    [filteredRooms, roomPage]
+  );
+
+  const handleResetRoomFilters = () => {
+    setFilterAdults("");
+    setFilterChildren("");
+    setFilterCheckIn(null);
+    setFilterCheckOut(null);
+    setRooms(1);
+    setFilterRoomType("all");
+    setFilterBedType("all");
+    setFilterRoomName("");
+    setFilterBreakfast(false);
+    setFilterSmoking(false);
+    setFilterRefundable(false);
+  };
+
+  const getImageUrl = (photoItem) => {
+    if (!photoItem) return null;
+    let path = typeof photoItem === "object" ? photoItem.photo || photoItem.url || photoItem.image_path : photoItem;
+    if (!path) return null;
+    return getStorageUrl(path);
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-12 animate-pulse text-left">
+        <div className="h-8 bg-[#E8E2D9]/60 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-[#E8E2D9]/60 rounded w-1/4 mb-6"></div>
+        <div className="h-[500px] bg-[#E8E2D9]/60 rounded-3xl mb-8"></div>
+        <div className="h-32 bg-[#E8E2D9]/60 rounded-2xl"></div>
+      </div>
+    );
+  }
+
+  if (!hotel) {
+    return (
+      <div className="w-full max-w-[1280px] mx-auto py-20 text-center">
+        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1C251D]">Hotel Not Found</h2>
+        <button
+          onClick={() => navigate("/")}
+          className="bg-[#5F7161] text-white px-6 py-3 rounded-2xl font-bold hover:bg-[#4D5E4F] transition-colors"
+        >
+          Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  const rawPhotos = (hotel.photos && hotel.photos.length > 0 ? hotel.photos : []).filter((p) => {
+    const pth = typeof p === "object" ? p.photo || p.url || p.image_path : p;
+    return !!pth;
+  });
+
+  const thumbObj = hotel && hotel.thumbnail != null ? hotel.thumbnail : null;
+  const hotelThumb = thumbObj
+    ? typeof thumbObj === "object"
+      ? thumbObj.photo || thumbObj.url || thumbObj.image_path || null
+      : thumbObj
+    : null;
+
+  const resolvedUrls = rawPhotos.map(getImageUrl).filter(Boolean);
+  if (hotelThumb) {
+    const resolvedThumb = getImageUrl(hotelThumb);
+    if (resolvedThumb && !resolvedUrls.includes(resolvedThumb)) {
+      resolvedUrls.unshift(resolvedThumb);
+    }
+  }
+
+  const photosList = Array.from(new Set(resolvedUrls));
+  const hasHotelPhotos = photosList.length > 0;
+
+  const rawFacilities = Array.isArray(hotel.facilities) ? hotel.facilities : [];
+  const facilitiesList = deduplicateFacilities(
+    rawFacilities,
+    rawFacilities.map((facility) => facility.id)
+  );
+
+  const getFacilityIcon = (fac) => {
+    return resolveFacilityIcon(fac?.name || fac, fac?.icon, "stars");
+  };
+
+  const hotelCityName = typeof hotel.city === "object" ? hotel.city?.city : hotel.city || "Bandung";
+  const hotelAddress = hotel.address || `${hotelCityName}, Jawa Barat`;
+
+  const verifiedStar = hotel?.star_rating ? Number(hotel.star_rating) : null;
+  const starCount = verifiedStar || 0;
+  const reviewCount = Number(hotel?.reviews_count ?? hotel?.total_review ?? hotel?.total_reviews ?? 0);
+
+  const handleReviewSubmitted = (newStats) => {
+    if (newStats?.average_rating) {
+      setLiveRating(Number(newStats.average_rating));
+    }
+  };
+
+  const navigateToBooking = (room) => {
+    const targetHotelId = room?.hotel?.id || room?.hotel_id || hotel?.id || id || 1;
+    const targetRoomId = room?.id || 101;
+    const qs = new URLSearchParams();
+    if (filterAdults) qs.set("adults", String(filterAdults));
+    if (filterChildren) qs.set("children", String(filterChildren));
+    if (filterCheckIn) qs.set("check_in", fmtDateParam(filterCheckIn));
+    if (filterCheckOut) qs.set("check_out", fmtDateParam(filterCheckOut));
+    qs.set("rooms", String(rooms));
+    const q = qs.toString();
+    navigate(`/hotels/${targetHotelId}/rooms/${targetRoomId}${q ? `?${q}` : ""}`);
+  };
+
+  const findAlternativeRooms = async (room) => {
+    if (alternativeRooms?.roomId === room.id) {
+      setAlternativeRooms(null);
+      return;
+    }
+
+    setLoadingAlternativesFor(room.id);
+    setAlternativeRooms(null);
+
+    try {
+      const response = await api.post(`/hotels/${hotel?.id || id}/alternative-rooms`, {
+        room_type_id: Number(room.id),
+        check_in: fmtDateParam(filterCheckIn),
+        check_out: fmtDateParam(filterCheckOut),
+        qty: Math.max(1, Number(rooms) || 1),
+        adults: Number(filterAdults) || 1,
+        children: Number(filterChildren) || 0,
+      });
+      const suggestions = response.data?.data;
+      setAlternativeRooms({
+        roomId: room.id,
+        message: suggestions?.rooms?.length
+          ? "Berikut kamar yang tersedia untuk tanggal dan jumlah tamu pilihan."
+          : "Tidak ada kamar alternatif yang cocok untuk tanggal dan jumlah tamu pilihan.",
+        type: suggestions?.type,
+        rooms: suggestions?.rooms || [],
+      });
+    } catch (error) {
+      const responseData = error.response?.data;
+      setAlternativeRooms({
+        roomId: room.id,
+        message: responseData?.message || "Gagal mencari kamar alternatif. Silakan coba lagi.",
+        rooms: [],
+      });
+    } finally {
+      setLoadingAlternativesFor(null);
+    }
+  };
+
+  const handleBookRoom = (e, room) => {
+    e.preventDefault();
+    if (room?.stock !== undefined && room?.stock !== null && Number(room?.stock) <= 0) {
+      toast.error("Kamar ini sudah habis untuk tanggal yang dipilih.");
+      return;
+    }
+    navigateToBooking(room);
+  };
+
+  const hasActiveFilters =
+    filterAdults ||
+    filterChildren ||
+    filterCheckIn ||
+    filterCheckOut ||
+    filterRoomType !== "all" ||
+    filterBedType !== "all" ||
+    filterRoomName ||
+    filterBreakfast ||
+    filterSmoking ||
+    filterRefundable;
+
+  const handleImageError = (e) => {
+    e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=60";
+  };
+
+  return (
+    <div className="bg-[#FAF8F5] text-[#1e1b16] font-body-md antialiased min-h-screen">
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 pt-8 pb-20 text-left">
+        
+        {/* Photo Gallery with Floating Back Button */}
+        <section className="mb-10 relative">
+          {/* Tombol X Kembali ke Halaman Sebelumnya */}
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="absolute top-4 left-4 z-30 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer flex items-center justify-center shadow-md"
+            title="Back"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+
+          {hasHotelPhotos ? (
+            photosList.length === 1 ? (
+              <div
+                className="w-full h-[350px] md:h-[500px] rounded-3xl overflow-hidden shadow-xs bg-[#E8E2D9] cursor-pointer border border-[#E8E2D9]"
+                onClick={() => {
+                  setLightboxIndex(0);
+                  setLightboxOpen(true);
+                }}
+              >
+                <img src={photosList[0]} alt={hotel.name} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-[450px] md:h-[580px] rounded-3xl overflow-hidden shadow-xs border border-[#E8E2D9]">
+                <div
+                  className="md:col-span-2 md:row-span-2 h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
+                  onClick={() => {
+                    setLightboxIndex(0);
+                    setLightboxOpen(true);
+                  }}
+                >
+                <img
+                  src={photosList[0]}
+                  alt={hotel.name}
+                  onError={handleImageError}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                </div>
+                {photosList[1] && (
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(1);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[1]}
+                      alt="Room detail 1"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  </div>
+                )}
+                {photosList[2] && (
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(2);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[2]}
+                      alt="Room detail 2"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  </div>
+                )}
+                {photosList[3] && (
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(3);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[3]}
+                      alt="Room detail 3"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  </div>
+                )}
+                {photosList[4] && (
+                  <div
+                    className="hidden md:block h-full w-full relative group overflow-hidden bg-[#E8E2D9] cursor-pointer"
+                    onClick={() => {
+                      setLightboxIndex(4);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photosList[4]}
+                      alt="Room detail 4"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/45 flex items-center justify-center hover:bg-black/55 transition-colors">
+                      <span className="text-white font-label-md text-sm font-bold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg">grid_view</span>
+                        View All Photos ({photosList.length})
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          ) : (
+            <div className="h-[350px] md:h-[450px] rounded-3xl bg-white border border-[#E8E2D9] flex flex-col items-center justify-center text-center p-8 shadow-xs">
+              <span className="material-symbols-outlined text-[#5F7161] text-7xl mb-4 opacity-50">
+                image_not_supported
+              </span>
+              <h3 className="font-headline-md text-2xl font-bold text-[#1C251D] mb-2">Belum Ada Foto Hotel</h3>
+              <p className="font-body-md text-sm text-[#5A625B] max-w-md">
+                The hotel has not uploaded gallery photos yet. See the Room Options section below for room type photos.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Main 2-Column Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Left Column: Info & Description & Amenities Cards */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Card 1: Hotel Info & Description */}
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
+              {/* Klasifikasi Bintang Hotel & Rating Ulasan Tamu */}
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <div className="flex items-center gap-1.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] px-3 py-1 rounded-full">
+                  <div className="flex text-[#D97706]">
+                    {Array.from({ length: starCount || 4 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="material-symbols-outlined text-sm"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        star
+                      </span>
+                    ))}
+                  </div>
+                  <span className="font-label-sm text-xs font-bold">
+                    {starCount || 4}-Star
+                  </span>
+                </div>
+
+                {liveRating > 0 && (
+                  <div className="flex items-center gap-1.5 bg-[#4F6F52]/10 text-[#4F6F52] border border-[#4F6F52]/20 px-3 py-1 rounded-full">
+                    <span
+                      className="material-symbols-outlined text-sm"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      star
+                    </span>
+                    <span className="font-label-sm text-xs font-bold">
+                      {liveRating.toFixed(1)} / 5.0
+                    </span>
+                    {reviewCount > 0 && (
+                      <span className="text-xs text-[#5A625B]">
+                        ({reviewCount} Reviews)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <h1 className="font-headline-xl text-3xl md:text-4xl font-extrabold text-[#1C251D] mb-4 leading-tight">
+                {hotel.name}
+              </h1>
+
+              <div className="flex items-start gap-2 text-[#5A625B] mb-6">
+                <span className="material-symbols-outlined text-[#5F7161] mt-0.5 shrink-0">location_on</span>
+                <p className="font-body-md text-sm md:text-base leading-snug">{hotelAddress}</p>
+              </div>
+
+              <hr className="border-[#F0EBE1] my-6" />
+
+              <div>
+                <h3 className="font-headline-md text-lg font-bold text-[#1C251D] mb-3">About the Hotel</h3>
+                <p className="font-body-md text-sm md:text-base text-[#5A625B] leading-relaxed">
+                  {hotel.description ||
+                    `Strategically located in ${hotelCityName}, ${hotel.name} offers the perfect blend of modern luxury and tranquil natural comfort.`}
+                </p>
+              </div>
+            </div>
+
+            {/* Card 2: Fasilitas Hotel */}
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[#5F7161] text-2xl">home_repair_service</span>
+                  Hotel Amenities
+                </h2>
+                {facilitiesList.length > 0 && (
+                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#5F7161]/10 text-[#5F7161] border border-[#5F7161]/20">
+                    {facilitiesList.length} Amenities
+                  </span>
+                )}
+              </div>
+              {facilitiesList.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                    {(showAllFacilities
+                      ? facilitiesList
+                      : facilitiesList.slice(0, INITIAL_FACILITIES_COUNT)
+                    ).map((fac, idx) => {
+                      const facName = getFacilityDisplayName(fac);
+                      const iconName = getFacilityIcon(fac);
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#F7F6F2] hover:bg-[#EFECE6] border border-[#E2DDD3] transition-all"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-xl">{iconName}</span>
+                          </div>
+                          <span className="font-label-md text-xs font-bold text-[#1C251D] truncate" title={facName}>
+                            {facName}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {facilitiesList.length > INITIAL_FACILITIES_COUNT && (
+                    <div className="mt-5 pt-4 border-t border-[#F0EBE1] flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllFacilities((prev) => !prev)}
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl border border-[#5F7161] text-[#5F7161] hover:bg-[#5F7161]/10 font-label-md text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          {showAllFacilities ? "expand_less" : "expand_more"}
+                        </span>
+                        {showAllFacilities
+                          ? "Show Less"
+                          : `View All Amenities (${facilitiesList.length})`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-[#8A948C] italic bg-[#F7F6F2] p-4 rounded-2xl border border-[#E2DDD3]">
+                  No specific amenities listed for this hotel.
+                </p>
+              )}
+            </div>
+
+            {/* Card 3: Kebijakan Hotel */}
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xs border border-[#E8E2D9] text-left">
+              <h2 className="font-headline-lg text-xl md:text-2xl font-bold text-[#1C251D] mb-4">
+                Hotel Policies
+              </h2>
+              {hotel.policies ? (
+                <>
+                  <div className="text-sm text-[#5A625B] leading-relaxed whitespace-pre-wrap bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3]">
+                    {hotel.policies}
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-[#4F6F52]/20 bg-[#4F6F52]/10 p-4 text-left">
+                    <h4 className="font-semibold text-[#1C251D] text-sm">System Refund Policy</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Automatic refund applies if canceled more than 24 hours before check-in. Within the last 24 hours before check-in, the funds are non-refundable.</p>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-[#F7F6F2] p-5 rounded-2xl border border-[#E2DDD3] space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Check-in &amp; Check-out Times</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Check-in starts from 14:00. Check-out is by 12:00.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Smoke-Free Policy</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">All rooms are smoke-free. Designated smoking areas are available on the outdoor terrace.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Pets</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Pets are not allowed to maintain hygiene for all guests.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#1C251D] text-sm">Cancellation</h4>
+                    <p className="text-xs text-[#5A625B] mt-1">Refundable: Automatic refund applies if canceled more than 24 hours before check-in. Within the last 24 hours, the funds are non-refundable.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Location Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-white p-6 rounded-3xl shadow-xs border border-[#E8E2D9] text-left space-y-5 sticky top-24">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#5F7161]/10 text-[#5F7161] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-xl">map</span>
+                </div>
+                <h2 className="font-headline-lg text-xl font-bold text-[#1C251D]">Hotel Location</h2>
+              </div>
+
+              <div className="rounded-2xl overflow-hidden border border-[#E2DDD3] shadow-xs relative h-60 bg-[#F7F6F2]">
+                <iframe
+                  title={`Location Map for ${hotel.name}`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                    (hotel.name || "") + " " + (hotel.address || hotelCityName)
+                  )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                  className="absolute inset-0 w-full h-full border-0"
+                  loading="lazy"
+                  allowFullScreen
+                ></iframe>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <p className="font-label-md text-sm font-bold text-[#1C251D]">{hotel.name}</p>
+                  <p className="font-body-md text-xs text-[#5A625B] mt-1 leading-relaxed">{hotelAddress}</p>
+                </div>
+
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    hotel.name + " " + hotelAddress
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-[#5F7161] hover:bg-[#4D5E4F] text-white rounded-2xl font-label-md text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">open_in_new</span>
+                  Open in Google Maps
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Room Types & Availability Section */}
+        <section className="mt-16 pt-10 border-t border-[#E8E2D9]">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+            <div>
+                <h2 className="font-headline-lg text-2xl md:text-3xl font-bold text-[#5F7161] mb-1">
+                  Room Options
+                </h2>
+                <p className="font-body-md text-xs text-[#5A625B]">
+                  Displaying {paginatedRooms.length} of {(hotel.rooms || []).length} available room types (page{" "}
+                  {roomPage}/{totalRoomPages})
+                </p>
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetRoomFilters}
+                  className="text-xs text-[#5F7161] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">restart_alt</span>
+                  Reset Room Filters
+                </button>
+              )}
+            </div>
+
+            {/* Room Filter Box */}
+            <div className="bg-white border border-[#E8E2D9] rounded-3xl p-5 mb-8 shadow-xs">
+              <h3 className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-base">tune</span>
+                Filter Rooms as Needed
+              </h3>
+
+            {/* Prefill dari Landing: Tanggal + Tamu */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
+              <div className="w-full group flex items-center gap-3 bg-[#F7F6F2] hover:bg-[#EFECE6] px-4 py-3 rounded-2xl border border-[#E2DDD3] focus-within:bg-white focus-within:border-[#5F7161] focus-within:ring-2 focus-within:ring-[#5F7161]/20 transition-all text-left relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-[#5F7161]/10 group-hover:bg-[#5F7161] text-[#5F7161] group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
+                  <span className="material-symbols-outlined text-xl">calendar_month</span>
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <label className="font-label-sm text-[11px] font-bold text-[#7A857B] uppercase tracking-wider cursor-pointer">Check-in & Check-out</label>
+                  <DatePicker selectsRange={true} startDate={filterCheckIn} endDate={filterCheckOut} onChange={handleDateRangeChange} minDate={today} monthsShown={2} dateFormat="dd/MM/yyyy" placeholderText="Select Date" popperClassName="!z-[9999]" className="w-full bg-transparent border-none p-0 font-body-md text-sm font-bold text-[#1C251D] outline-none cursor-pointer placeholder-[#9EA6A0] truncate" />
+                </div>
+              </div>
+              <GuestSelector 
+                adults={Number(filterAdults) || 2} 
+                children={Number(filterChildren) || 0} 
+                rooms={rooms} 
+                onGuestChange={(g) => {
+                  setFilterAdults(g.adults);
+                  setFilterChildren(g.children);
+                  setRooms(g.rooms);
+                }}
+                capacityAdult={Math.max(...(hotel?.room_types?.map(r => r.capacity_adult) || [4]))} 
+                capacityChild={Math.max(...(hotel?.room_types?.map(r => r.capacity_child) || [2]))} 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
+                  Room Type
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="material-symbols-outlined text-[#5F7161] text-base select-none">
+                    meeting_room
+                  </span>
+                  <select
+                    value={filterRoomType}
+                    onChange={(e) => setFilterRoomType(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
+                  >
+                    <option value="all">Semua Tipe</option>
+                    {filterOptionsRoomTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-[#E2DDD3] rounded-2xl p-3 bg-[#F7F6F2] focus-within:bg-white focus-within:border-[#5F7161] transition-colors text-left">
+                <label className="block font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider mb-1">
+                  Tipe Kasur
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="material-symbols-outlined text-[#5F7161] text-base select-none">bed</span>
+                  <select
+                    value={filterBedType}
+                    onChange={(e) => setFilterBedType(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 text-xs font-bold text-[#1C251D] outline-none cursor-pointer"
+                  >
+                    <option value="all">Semua Jenis Kasur</option>
+                    {filterOptionsBedTypes.map((bed) => (
+                      <option key={bed} value={bed}>{bed}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5 justify-center">
+                <label className="font-label-sm text-[10px] font-bold text-[#5A625B] uppercase tracking-wider">Search Room Name</label>
+                <input type="text" placeholder="Room name..." value={filterRoomName} onChange={(e) => setFilterRoomName(e.target.value)} className="w-full bg-[#F7F6F2] border border-[#E2DDD3] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#1C251D] focus:outline-none focus:border-[#5F7161] placeholder:#8A948C" />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 pt-3 border-t border-[#F0EBE1]">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={filterBreakfast}
+                  onChange={(e) => setFilterBreakfast(e.target.checked)}
+                  className="rounded border-[#E2DDD3] text-[#5F7161] focus:ring-[#5F7161] w-4 h-4 cursor-pointer"
+                />
+                Gratis Sarapan
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={filterSmoking}
+                  onChange={(e) => setFilterSmoking(e.target.checked)}
+                  className="rounded border-[#E2DDD3] text-[#5F7161] focus:ring-[#5F7161] w-4 h-4 cursor-pointer"
+                />
+                Area Merokok (Smoking)
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#1C251D] hover:text-[#5F7161] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={filterRefundable}
+                  onChange={(e) => setFilterRefundable(e.target.checked)}
+                  className="rounded border-[#E2DDD3] text-[#5F7161] focus:ring-[#5F7161] w-4 h-4 cursor-pointer"
+                />
+                Bisa Refund
+              </label>
+            </div>
+          </div>
+
+          {/* Rooms List Rendering */}
+          {filteredRooms && filteredRooms.length > 0 ? (
+            <div className="space-y-6">
+              {paginatedRooms.map((room) => {
+                const roomPrice = Number(room.price || room.weekday_price || 1250000);
+                const weekendPrice = Math.round(roomPrice * 1.35);
+
+                return (
+                  <div key={room.id} className="space-y-3">
+                  <div
+                    className="flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden border border-[#E8E2D9] shadow-xs hover:shadow-md transition-shadow"
+                  >
+                    <div className="w-full md:w-72 lg:w-80 shrink-0 min-h-[200px] md:min-h-[250px] relative bg-[#E8E2D9] overflow-hidden">
+                      {room.thumbnail ? (
+                        <img
+                          src={room.thumbnail}
+                          alt={room.name || "Kamar Hotel"}
+                          onError={handleImageError}
+                          className="w-full h-full object-cover absolute inset-0"
+                        />
+                      ) : (
+                        <div className="w-full h-full min-h-[200px] flex flex-col items-center justify-center text-center p-6">
+                          <span className="material-symbols-outlined text-[#5F7161] text-5xl mb-3 opacity-60">
+                            no_photography
+                          </span>
+                          <p className="font-label-md text-xs font-bold text-[#5F7161] uppercase tracking-wider">
+                            No Room Photos Yet
+                          </p>
+                          <p className="font-body-md text-[11px] text-[#5A625B] mt-1 opacity-80">
+                            The hotel admin has not uploaded photos for this room type.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-6 flex flex-col justify-between flex-grow min-w-0 text-left">
+                      <div>
+                        <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
+                          <h3 className="font-headline-md text-xl font-bold text-[#1C251D]">
+                            {room.name || room.type || "Deluxe Room"}
+                          </h3>
+                          <span className="bg-[#5F7161]/10 text-[#5F7161] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shrink-0">
+                            <span className="material-symbols-outlined text-sm">group</span>
+                            {room.capacity || "2 Tamu"}
+                          </span>
+                        </div>
+
+                        <p className="font-body-md text-sm text-[#5A625B] mb-4 line-clamp-3 leading-relaxed">
+                          {room.description ||
+                            `Kamar seluas 45 meter persegi dengan ${room.bed || "1 King Bed"
+                            }, pemandangan memukau, dan kamar mandi marmer yang luas.`}
+                        </p>
+
+                        {/* Features Checkmarks */}
+                        <div className="flex flex-wrap gap-2.5 mb-3 text-xs">
+                          {Boolean(room.bed) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
+                              <span className="material-symbols-outlined text-[14px]">bed</span>
+                              {room.bed_count > 1
+                                ? `${room.bed_count} × ${(room.bed || "").replace(/^1\s+/, "")}`
+                                : room.bed}
+                            </div>
+                          )}
+
+                          {Boolean(room.breakfast) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5F7161]/10 border border-[#5F7161]/20 text-[#5F7161] font-bold">
+                              <span className="material-symbols-outlined text-[14px]">check</span>
+                              Sarapan Termasuk
+                            </div>
+                          )}
+
+                          {Boolean(room.smoking_area) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold">
+                              <span className="material-symbols-outlined text-[14px]">smoking_rooms</span>
+                              Smoking Area
+                            </div>
+                          )}
+
+                          {Boolean(room.type) && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#A0522D]/10 border border-[#A0522D]/20 text-[#A0522D] font-bold uppercase tracking-wide">
+                              <span className="material-symbols-outlined text-[14px]">apartment</span>
+                              {room.type}
+                            </div>
+                          )}
+
+                          <div
+                            className={
+                              room.is_refundable
+                                ? "inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#4F6F52]/10 border border-[#4F6F52]/20 text-[#4F6F52] font-bold"
+                                : "inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 text-[#ba1a1a] font-bold"
+                            }
+                          >
+                            <span className="material-symbols-outlined text-[14px]">
+                              {room.is_refundable ? "verified" : "block"}
+                            </span>
+                            {room.is_refundable ? "Bisa Refund" : "Non-Refundable"}
+                          </div>
+                        </div>
+                      </div>
+
+                        {/* Peringatan Kapasitas */}
+                        {(() => {
+                          const totalTamu = Number(filterAdults) + Number(filterChildren);
+    const kapasitasPerKamar = Number(room.capacity_adult || 0) + Number(room.capacity_child || 0);
+    // Jika kapasitas 0, fallback ke 1 agar tidak division by zero
+    const effectiveCapacity = Math.max(1, kapasitasPerKamar);
+    const minRoomsNeeded = Math.ceil(totalTamu / effectiveCapacity);
+                          if (minRoomsNeeded > rooms) {
+                            return (
+                              <p className="text-xs text-amber-600 font-bold mt-2 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                ⚠️ A minimum of {minRoomsNeeded} rooms is required for this number of guests.
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mt-4 pt-4 border-t border-[#F0EBE1] gap-4">
+                        <div>
+                          <p className="text-xs text-[#8A948C] line-through">
+                            Rp {weekendPrice.toLocaleString("id-ID")} (Weekend)
+                          </p>
+                          <p className="font-headline-lg text-2xl font-extrabold text-[#5F7161]">
+                            Rp {roomPrice.toLocaleString("id-ID")}{" "}
+                            <span className="text-xs font-normal text-[#5A625B]">/ night (Weekday)</span>
+                          </p>
+                          {room.stock !== undefined && room.stock !== null ? (
+                            Number(room.stock) <= 0 ? (
+                              <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">block</span>
+                                Room Sold Out
+                              </p>
+                            ) : Number(room.stock) <= 3 ? (
+                              <p className="text-xs text-[#ba1a1a] font-bold mt-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">
+                                  local_fire_department
+                                </span>
+                                Hanya sisa {room.stock} kamar!
+                              </p>
+                            ) : (
+                              <p className="text-xs text-[#4F6F52] font-bold mt-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                                Available ({room.stock} rooms)
+                              </p>
+                            )
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
+                          <button
+                            type="button"
+onClick={() => handleRoomNavigation(room, false)}
+                            className="w-full sm:w-auto border border-[#5F7161] text-[#5F7161] font-label-md text-xs font-bold px-5 py-3 rounded-2xl hover:bg-[#5F7161]/10 transition-colors cursor-pointer text-center"
+                          >
+                            Detail Kamar
+                          </button>
+                          <div className="flex w-full flex-col items-center gap-1 sm:w-auto">
+                            {room.stock !== undefined && room.stock !== null && Number(room.stock) <= 0 ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full sm:w-auto bg-[#E5E0D8] text-[#8A948C] font-label-md text-xs font-bold px-6 py-3 rounded-2xl cursor-not-allowed shadow-none text-center"
+                              >
+                                Kamar Habis
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => handleBookRoom(e, room)}
+                                className="w-full sm:w-auto bg-[#5F7161] text-white font-label-md text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#4D5E4F] transition-colors shadow-xs cursor-pointer text-center"
+                              >
+                                Pilih Kamar
+                              </button>
+                            )}
+                            {room.stock !== undefined && room.stock !== null && Number(room.stock) <= 0 && (
+                              <button
+                                type="button"
+                                onClick={() => findAlternativeRooms(room)}
+                                className="text-[10px] font-medium text-[#5F7161] underline underline-offset-2 hover:text-[#4D5E4F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5F7161]"
+                                aria-expanded={alternativeRooms?.roomId === room.id || loadingAlternativesFor === room.id}
+                              >
+                                {loadingAlternativesFor === room.id
+                                  ? "Mencari kamar alternatif..."
+                                  : alternativeRooms?.roomId === room.id
+                                    ? "Tutup rekomendasi"
+                                    : "Cari kamar alternatif"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {alternativeRooms?.roomId === room.id && (
+                    <section className="rounded-2xl border border-[#DCCFC0] bg-white p-3 text-left shadow-sm sm:p-4">
+                      <div className="mb-2">
+                        <h3 className="font-headline-md text-base font-bold text-[#2D332C]">Kamar alternatif tersedia</h3>
+                        <p className="mt-1 text-[11px] text-[#5A625B]">{alternativeRooms.message}</p>
+                      </div>
+                      {alternativeRooms.rooms.length > 0 ? (
+                        <div className="max-h-[min(45vh,400px)] space-y-2 overflow-y-auto overscroll-contain pr-1">
+                          {alternativeRooms.rooms.map((alternative) => {
+                            const photo = alternative.photos?.find((item) => item.is_thumbnail) || alternative.photos?.[0];
+                            const visibleFacilities = alternative.facilities?.slice(0, 5) || [];
+                            return (
+                              <article key={alternative.id} className="overflow-hidden rounded-xl border border-[#E8E2D9] bg-[#FAF8F5]">
+                                <details className="group">
+                                  <summary className="flex cursor-pointer list-none items-center gap-3 p-2.5 [&::-webkit-details-marker]:hidden">
+                                    {photo?.photo || photo?.url ? (
+                                      <img
+                                        src={getStorageUrl(photo.photo || photo.url)}
+                                        alt=""
+                                        className="h-16 w-20 shrink-0 rounded-lg bg-white object-contain sm:h-[72px] sm:w-24"
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg bg-[#E8E2D9] text-[#5F7161] sm:h-[72px] sm:w-24">
+                                        <span className="material-symbols-outlined text-2xl" aria-hidden="true">bed</span>
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[9px] font-bold uppercase tracking-wide text-[#5F7161]">
+                                        {alternative.hotel?.name || "Hotel"}
+                                      </p>
+                                      <h4 className="mt-0.5 truncate font-headline-sm text-xs font-bold text-[#1C251D]">{alternative.name}</h4>
+                                      <p className="mt-1 text-[10px] font-bold text-[#5F7161]">
+                                        Rp {Number(alternative.weekday_price || alternative.price || 0).toLocaleString("id-ID")} / malam
+                                      </p>
+                                    </div>
+                                    <span className="material-symbols-outlined shrink-0 text-[#5F7161] transition-transform group-open:rotate-180" aria-hidden="true">
+                                      expand_more
+                                    </span>
+                                  </summary>
+                                  <div className="border-t border-[#E8E2D9] px-3 pb-3 pt-2">
+                                    <p className="text-[10px] text-[#5A625B]">
+                                      {[alternative.hotel?.address, alternative.hotel?.city].filter(Boolean).join(" · ") || "Lokasi tidak tersedia"}
+                                    </p>
+                                    {alternative.distance_km != null && Number.isFinite(Number(alternative.distance_km)) && (
+                                      <p className="mt-1 text-[10px] text-[#5A625B]">
+                                        ±{Number(alternative.distance_km).toLocaleString("id-ID")} km dari hotel pilihan
+                                      </p>
+                                    )}
+                                    <p className="mt-1 text-[10px] text-[#444842]">
+                                      Kapasitas {alternative.capacity_adult} dewasa, {alternative.capacity_child || 0} anak
+                                      {alternative.available_stock != null && ` · Tersedia ${alternative.available_stock} kamar`}
+                                    </p>
+                                    {visibleFacilities.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {visibleFacilities.map((facility) => (
+                                          <span key={facility.id || facility.name} className="rounded-full border border-[#DCCFC0] bg-white px-2 py-0.5 text-[9px] text-[#444842]">
+                                            {getFacilityDisplayName(facility.name || facility)}
+                                          </span>
+                                        ))}
+                                        {alternative.facilities.length > visibleFacilities.length && (
+                                          <span className="rounded-full bg-[#778873]/10 px-2 py-0.5 text-[9px] text-[#50604d]">
+                                            +{alternative.facilities.length - visibleFacilities.length}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    {alternative.hotel?.facilities?.length > 0 && (
+                                      <p className="mt-2 text-[9px] text-[#5A625B]">
+                                        Fasilitas hotel: {alternative.hotel.facilities.slice(0, 4).map((facility) => getFacilityDisplayName(facility.name)).join(", ")}
+                                      </p>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => navigateToBooking(alternative)}
+                                      className="mt-3 rounded-lg bg-[#5F7161] px-3 py-2 text-[10px] font-bold text-white transition-colors hover:bg-[#4D5E4F]"
+                                    >
+                                      Pilih kamar ini
+                                    </button>
+                                  </div>
+                                </details>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="rounded-xl bg-[#F7F6F2] p-3 text-xs text-[#5A625B]">
+                          Tidak ada rekomendasi kamar yang cocok untuk tanggal dan jumlah tamu ini. {alternativeRooms.message}
+                        </p>
+                      )}
+                    </section>
+                  )}
+                  </div>
+                );
+              })}
+
+              {totalRoomPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+                  <p className="text-xs text-[#5A625B]">
+                    Page <span className="font-bold text-[#5F7161]">{roomPage}</span> of {totalRoomPages}{" "}
+                    — showing {(roomPage - 1) * ROOMS_PER_PAGE + 1}–
+                    {Math.min(roomPage * ROOMS_PER_PAGE, filteredRooms.length)} of {filteredRooms.length}{" "}
+                    rooms
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRoomPage((p) => Math.max(1, p - 1))}
+                      disabled={roomPage === 1}
+                      className="px-4 py-2 border border-[#E8E2D9] text-[#5F7161] rounded-xl text-xs font-bold hover:bg-[#F7F6F2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      ‹ Previous
+                    </button>
+                    {Array.from({ length: totalRoomPages }).map((_, idx) => (
+                      <button
+                        key={idx + 1}
+                        type="button"
+                        onClick={() => setRoomPage(idx + 1)}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                          roomPage === idx + 1
+                            ? "bg-[#5F7161] text-white shadow-xs"
+                            : "border border-[#E8E2D9] text-[#5F7161] hover:bg-[#F7F6F2]"
+                        }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}
+                      disabled={roomPage === totalRoomPages}
+                      className="px-4 py-2 border border-[#E8E2D9] text-[#5F7161] rounded-xl text-xs font-bold hover:bg-[#F7F6F2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Next ›
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-12 text-center bg-white rounded-3xl border border-[#E8E2D9] shadow-xs">
+              <span className="material-symbols-outlined text-4xl text-[#8A948C] mb-2">filter_alt_off</span>
+                  <h4 className="font-headline-md text-lg font-bold text-[#1C251D] mb-1">
+                    Room Not Found
+                  </h4>
+                <p className="text-[#5A625B] text-sm mb-4">
+                  No matching room types found for the selected filters.
+                </p>
+                  <button
+                    type="button"
+                    onClick={handleResetRoomFilters}
+                    className="bg-[#5F7161] text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-[#4D5E4F] transition-colors"
+                  >
+                    Reset Room Filters
+                  </button>
+            </div>
+          )}
+        </section>
+
+        <ReviewSection hotelId={id} roomTypes={hotel?.rooms || []} onReviewSubmitted={handleReviewSubmitted} />
+      </main>
+
+              {showRoomAlert && (
+          <Modal
+            isOpen={showRoomAlert}
+            onClose={() => setShowRoomAlert(false)}
+            title="Room Capacity"
+            message={`This room type requires ${alertData.minRooms} rooms to accommodate ${alertData.totalTamu} guests. Continue with ${alertData.finalRooms} rooms?`}
+            onConfirm={() => {
+              const qs = new URLSearchParams();
+              if (filterAdults) qs.set('adults', String(filterAdults));
+              if (filterChildren) qs.set('children', String(filterChildren));
+              if (filterCheckIn) qs.set('check_in', fmtDateParam(filterCheckIn));
+              if (filterCheckOut) qs.set('check_out', fmtDateParam(filterCheckOut));
+              qs.set('rooms', String(alertData.finalRooms));
+              const q = qs.toString();
+              if (actionType === 'book') {
+                navigate(`/booking/${alertData.targetHotelId}/${alertData.targetRoomId}${q ? `?${q}` : ''}`);
+              } else {
+                navigate(`/hotels/${alertData.targetHotelId}/rooms/${alertData.targetRoomId}${q ? `?${q}` : ''}`);
+              }
+              setShowRoomAlert(false);
+            }}
+            onCancel={() => setShowRoomAlert(false)}
+          />
+        )}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLightboxOpen(false);
+          }}
+        >
+          <div
+            ref={lightboxContainerRef}
+            className="relative w-full h-full flex items-center justify-center touch-none select-none"
+            onWheel={handleWheel}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            <button
+              className="absolute top-4 left-4 text-white text-3xl z-10 hover:text-gray-300 cursor-pointer"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => setLightboxOpen(false)}
+            >
+              ✕
+            </button>
+            {photosList.length > 1 && (
+              <>
+                <button
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300 cursor-pointer"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLightboxIndex((i) => (i - 1 + photosList.length) % photosList.length)}
+                >
+                  ‹
+                </button>
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-gray-300 cursor-pointer"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLightboxIndex((i) => (i + 1) % photosList.length)}
+                >
+                  ›
+                </button>
+              </>
+            )}
+            <img
+              src={photosList[lightboxIndex]}
+              alt={`Foto ${lightboxIndex + 1}`}
+              className="max-w-[90vw] max-h-[90vh] object-contain transition-transform duration-200"
+              style={{ transform: `translate(${panX}px, ${panY}px) scale(${scale})` }}
+              draggable={false}
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+              {lightboxIndex + 1} / {photosList.length}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default HotelDetail;

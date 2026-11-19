@@ -1,0 +1,1221 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
+import api from "../../services/api";
+import { cachedGet, invalidateCache } from "../../services/apiCache";
+import { getStorageUrl } from "../../services/imageUrl";
+import { getInitialSearchValues, fmtDateStr } from "../../services/searchStorage";
+import { getFacilityDisplayName } from "../../utils/facilities";
+
+const SNAP_URL = "https://app.sandbox.midtrans.com/snap/snap.js";
+const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+
+// Helper validasi token ketat
+const isUserLoggedIn = () => {
+  const token = localStorage.getItem("token");
+  return Boolean(
+    token &&
+    token !== "null" &&
+    token !== "undefined" &&
+    token.trim() !== ""
+  );
+};
+
+const loadSnapScript = () =>
+  new Promise((resolve, reject) => {
+    if (window.snap) return resolve();
+
+    const existingScript = document.querySelector(`script[src="${SNAP_URL}"]`);
+    if (existingScript) {
+      const check = setInterval(() => {
+        if (window.snap) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+      setTimeout(() => {
+        clearInterval(check);
+        reject(new Error("Snap load timeout"));
+      }, 8000);
+      return;
+    }
+
+    const s = document.createElement("script");
+    s.src = SNAP_URL;
+    s.setAttribute("data-client-key", CLIENT_KEY || "");
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load Midtrans Snap"));
+    document.body.appendChild(s);
+  });
+
+const BookingPage = () => {
+  const { hotelId, roomId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const init = useMemo(() => getInitialSearchValues(searchParams), [searchParams]);
+
+  const [hotel, setHotel] = useState(null);
+  const [room, setRoom] = useState(null);
+  const [priceQuote, setPriceQuote] = useState(null);
+  const [priceQuoteError, setPriceQuoteError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [bookerContact, setBookerContact] = useState({ name: '', email: '', phone: '' });
+
+  // Synchronous submission locks
+  const isSubmittingRef = useRef(false);
+  const submitLockRef = useRef(false);
+  const pollRef = useRef(null);
+  const idempotencyKeyRef = useRef(null);
+
+  // Form State: Pemesan Utama
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  // Form State: Opsi Pemesanan & Tamu Menginap
+  const [bookingFor, setBookingFor] = useState("me"); // 'me' | 'someone_else'
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [checkInDate] = useState(init.checkInStr);
+  const [checkOutDate] = useState(init.checkOutStr);
+
+  const [adults] = useState(init.adults);
+  const [children] = useState(init.children);
+  const [roomQty, setRoomQty] = useState(init.rooms);
+
+  const [suggestionData, setSuggestionData] = useState(null);
+  const [, setOrderId] = useState("");
+  const [, setPaymentId] = useState(null);
+  const [successModalData, setSuccessModalData] = useState(null);
+
+  const minRequiredRooms = useMemo(() => {
+    const capacity = room?.capacity_adult || 2;
+    return Math.max(1, Math.ceil(adults / capacity));
+  }, [adults, room]);
+
+  const maxAvailableStock = useMemo(() => {
+    if (room?.stock === undefined || room?.stock === null) return 10;
+    return Math.max(0, Number(room.stock));
+  }, [room]);
+
+  // PROTEKSI HALAMAN ON-MOUNT: Jika guest, langsung alihkan ke login
+  useEffect(() => {
+    if (!isUserLoggedIn()) {
+      toast.error("Please login first to make a booking.");
+      navigate("/login", { state: { from: location }, replace: true });
+    }
+  }, [navigate, location]);
+
+  useEffect(() => {
+    if (maxAvailableStock <= 0) {
+      setRoomQty(0);
+    } else if (roomQty < minRequiredRooms) {
+      setRoomQty(minRequiredRooms);
+    } else if (roomQty > maxAvailableStock) {
+      setRoomQty(maxAvailableStock);
+    }
+  }, [minRequiredRooms, maxAvailableStock, roomQty]);
+
+  // Autofill data pemesan dari profile user yang terautentikasi
+  useEffect(() => {
+    if (!isUserLoggedIn()) return;
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        setBookerContact({
+          name: u.name || "",
+          email: u.email || "",
+          phone: u.phone || "",
+        });
+        if (u.name) setFullName(u.name);
+        if (u.email) setEmail(u.email);
+        if (u.phone) setPhone(u.phone);
+      } catch (err) {
+        console.error("Failed to read user data:", err);
+      }
+    }
+  }, []);
+
+  const handleBookingForSomeoneElseChange = (checked) => {
+    setBookingFor(checked ? "someone_else" : "me");
+    if (checked) {
+      setFullName("");
+      setEmail("");
+      setPhone("");
+      return;
+    }
+
+    setFullName(bookerContact.name);
+    setEmail(bookerContact.email);
+    setPhone(bookerContact.phone);
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBookingData = async () => {
+      setLoading(true);
+
+      if (!hotelId || !roomId) {
+        if (isMounted) {
+          setHotel(null);
+          setRoom(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const TTL_2MENIT = 2 * 60 * 1000;
+        const { data: responseData } = await cachedGet(
+          `/hotels/${hotelId}`,
+          {},
+          false,
+          TTL_2MENIT
+        );
+
+        if (responseData && responseData.data && isMounted) {
+          const apiHotel = responseData.data;
+          const apiRooms = (apiHotel.room_types || apiHotel.roomTypes || []).filter((r) => r.is_active !== false);
+          const matchedRoomType = apiRooms.find((r) => String(r.id) === String(roomId));
+
+          if (matchedRoomType) {
+            const thumbnailPhoto = matchedRoomType.photos && matchedRoomType.photos.length > 0
+              ? (matchedRoomType.photos.find((p) => p.is_thumbnail) || matchedRoomType.photos[0])
+              : null;
+            const roomPhotoPath = thumbnailPhoto ? (thumbnailPhoto.photo || thumbnailPhoto.url) : null;
+            const roomImage = roomPhotoPath
+              ? getStorageUrl(roomPhotoPath)
+              : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300' fill='%23ccc'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Ctext x='200' y='160' font-family='sans-serif' font-size='18' fill='%23666' text-anchor='middle'%3ENo Photo Available%3C/text%3E%3C/svg%3E";
+
+            const hotelThumbRaw = apiHotel.thumbnail;
+            const hotelImage = hotelThumbRaw
+              ? (typeof hotelThumbRaw === "object"
+                  ? (hotelThumbRaw.photo || hotelThumbRaw.url ? getStorageUrl(hotelThumbRaw.photo || hotelThumbRaw.url) : null)
+                  : getStorageUrl(hotelThumbRaw))
+              : null;
+
+            let liveStock = null;
+            if (checkInDate && checkOutDate) {
+              try {
+                const ci = checkInDate instanceof Date ? fmtDateStr(checkInDate) : String(checkInDate).split("T")[0];
+                const co = checkOutDate instanceof Date ? fmtDateStr(checkOutDate) : String(checkOutDate).split("T")[0];
+                const { data: liveResponse } = await cachedGet(`/hotels/${hotelId}/rooms`, { params: { check_in: ci, check_out: co } });
+                const liveRooms = liveResponse?.data || [];
+                const liveRoom = liveRooms.find((r) => String(r.id) === String(matchedRoomType.id));
+                if (liveRoom && liveRoom.available_stock !== undefined) liveStock = liveRoom.available_stock;
+              } catch (e) {
+                console.error("Failed to fetch live stock:", e);
+              }
+            }
+
+            const mappedRoom = {
+              id: matchedRoomType.id,
+              name: matchedRoomType.name,
+              price: matchedRoomType.weekday_price,
+              weekday_price: matchedRoomType.weekday_price,
+              weekend_price: matchedRoomType.weekend_price,
+              stock: liveStock ?? matchedRoomType.stock ?? 10,
+              capacity: `${matchedRoomType.capacity_adult || 2} Adults, ${matchedRoomType.capacity_child || 0} Children`,
+              capacity_adult: matchedRoomType.capacity_adult || 2,
+              capacity_child: matchedRoomType.capacity_child || 0,
+              description: matchedRoomType.description,
+              is_refundable: matchedRoomType.is_refundable !== undefined ? matchedRoomType.is_refundable : true,
+              thumbnail: roomImage,
+            };
+
+            setHotel({ ...apiHotel, thumbnail: hotelImage });
+            setRoom(mappedRoom);
+          } else {
+            setHotel(apiHotel);
+            setRoom(null);
+          }
+        } else if (isMounted) {
+          setHotel(null);
+          setRoom(null);
+        }
+      } catch (err) {
+        console.error("Backend Error / Failed to load booking data:", err);
+        if (isMounted) {
+          setHotel(null);
+          setRoom(null);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchBookingData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hotelId, roomId, checkInDate, checkOutDate]);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const nightsCount = useMemo(() => {
+    if (!checkInDate || !checkOutDate) return 1;
+    const start = new Date(checkInDate);
+    const end = new Date(checkOutDate);
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  }, [checkInDate, checkOutDate]);
+
+  // Update roomQty saat load pertama kali berdasarkan URL params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const roomsFromUrl = params.get('rooms');
+    if (roomsFromUrl) {
+      setRoomQty(Number(roomsFromUrl));
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchPriceQuote = async () => {
+      if (!hotelId || !room?.id || !checkInDate || !checkOutDate) {
+        if (active) {
+          setPriceQuote(null);
+          setPriceQuoteError("");
+        }
+        return;
+      }
+
+      setPriceQuoteError("");
+      setSuggestionData(null);
+      try {
+        const response = await api.post("/bookings/quote", {
+          hotel_id: Number(hotelId),
+          room_type_id: Number(room.id),
+          check_in: checkInDate,
+          check_out: checkOutDate,
+          qty: Math.max(1, Number(roomQty) || 1),
+          adults: Number(adults),
+          children: Number(children),
+        });
+        if (active) {
+          setPriceQuote(response.data?.data || null);
+          setPriceQuoteError("");
+        }
+      } catch (error) {
+        if (active) {
+          setPriceQuote(null);
+          const responseData = error.response?.data;
+          const validationMessage = responseData?.errors
+            ? Object.values(responseData.errors).flat().find(Boolean)
+            : null;
+          setPriceQuoteError(
+            responseData?.message ||
+            validationMessage ||
+            "Failed to check price and availability."
+          );
+          if (responseData?.suggestions) {
+            setSuggestionData({
+              message: responseData.message || "Kamar tidak tersedia untuk tanggal yang dipilih.",
+              type: responseData.suggestions.type,
+              rooms: responseData.suggestions.rooms || [],
+            });
+          }
+        }
+      }
+    };
+
+    fetchPriceQuote();
+
+    return () => {
+      active = false;
+    };
+  }, [hotelId, room?.id, checkInDate, checkOutDate, roomQty, adults, children]);
+
+  const roomPrice = Number(room?.price || room?.weekday_price || 350000);
+  const taxRate = Number(priceQuote?.tax_rate ?? hotel?.tax_rate ?? 5);
+  const subtotalPrice = Number(priceQuote?.subtotal ?? roomPrice * nightsCount * roomQty);
+  const taxAndFees = Number(priceQuote?.tax ?? (subtotalPrice * taxRate) / 100);
+  const totalPrice = Number(priceQuote?.grand_total ?? subtotalPrice + taxAndFees);
+
+  // Formatted price string for info
+  const pricePerNight = Number(room?.price || room?.weekday_price || 350000);
+  const priceInfoText = `Rp ${pricePerNight.toLocaleString("en-US")} x ${nightsCount} night(s) x ${roomQty} room(s)`;
+
+  const showSuccess = (oid, methodName = "Midtrans", bookingId = null) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setSuccessModalData({
+      orderId: oid,
+      bookingId,
+      hotelName: hotel?.name,
+      roomName: room?.name,
+      roomQty,
+      fullName,
+      email,
+      isForOtherGuest: bookingFor === "someone_else",
+      guestName: bookingFor === "someone_else" ? guestName : fullName,
+      methodName,
+      totalPrice,
+    });
+  };
+
+  const releaseSubmitLock = () => {
+    submitLockRef.current = false;
+    setSubmitting(false);
+  };
+
+  const startPolling = (pid, oid, bookingId) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts > 40) {
+        clearInterval(pollRef.current);
+        releaseSubmitLock();
+        toast("Payment not confirmed. Check Transaction History → Sync.", { icon: "ℹ️" });
+        return;
+      }
+      try {
+        const res = await api.get(`/payments/${pid}/status`);
+        const ps = res.data?.data?.payment_status;
+        const bs = res.data?.data?.booking_status;
+        if (ps === "success" || bs === "paid" || bs === "confirmed") {
+          clearInterval(pollRef.current);
+          releaseSubmitLock();
+          showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
+          toast.success("Payment confirmed!");
+        }
+      } catch {}
+    }, 3000);
+
+    setTimeout(() => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        releaseSubmitLock();
+      }
+    }, 120000);
+  };
+
+  const payWithSnap = async (token, pid, oid, bookingId) => {
+    try {
+      await loadSnapScript();
+    } catch (e) {
+      toast.error(e.message);
+      releaseSubmitLock();
+      return;
+    }
+    if (!window.snap) {
+      toast.error("Midtrans Snap is not ready");
+      releaseSubmitLock();
+      return;
+    }
+    startPolling(pid, oid, bookingId);
+    window.snap.pay(token, {
+      onSuccess: async () => {
+        releaseSubmitLock();
+        try {
+          const res = await api.get(`/payments/${pid}/status`);
+          showSuccess(oid, res.data?.data?.payment_method || "Midtrans", bookingId);
+        } catch {
+          showSuccess(oid, "Midtrans", bookingId);
+        }
+        toast.success("Payment successful!");
+      },
+      onPending: () => {
+        toast("Waiting for payment — polling status...", { icon: "⏳" });
+      },
+      onError: () => {
+        if (pollRef.current) clearInterval(pollRef.current);
+        releaseSubmitLock();
+        toast.error("Payment failed");
+      },
+      onClose: () => {
+        releaseSubmitLock();
+        toast("Popup closed — status continues polling for 2 minutes", { icon: "ℹ️" });
+      },
+    });
+  };
+
+  const handleOpenPaymentModal = (e) => {
+    e.preventDefault();
+
+    // STRICT AUTH CHECK: Jika Guest, langsung lempar ke login
+    if (!isUserLoggedIn()) {
+      toast.error("Please login first to make a booking.");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    if (isSubmittingRef.current || submitting) return;
+
+    if (!fullName || !email || !phone) {
+      toast.error("Please complete Booker Details (Name, Email, and Phone).");
+      return;
+    }
+
+    if (maxAvailableStock <= 0 || Number(roomQty) <= 0) {
+      toast.error("Sorry, this room is fully booked for your selected dates.");
+      return;
+    }
+
+    if (bookingFor === "someone_else" && (!guestName || !guestEmail || !guestPhone)) {
+      toast.error("Please complete Guest Details (Name, Email, and Phone).");
+      return;
+    }
+
+    if (!CLIENT_KEY) {
+      toast.error("VITE_MIDTRANS_CLIENT_KEY not configured");
+      return;
+    }
+
+    const targetHotelId = hotel?.id || hotelId;
+    const targetRoomTypeId = room?.id || roomId;
+
+    if (!targetHotelId || !targetRoomTypeId) {
+      toast.error("Invalid Hotel or Room ID.");
+      return;
+    }
+
+    doBooking(targetHotelId, targetRoomTypeId);
+  };
+
+  const doBooking = async (targetHotelId, targetRoomTypeId) => {
+    // DOUBLE CHECK AUTH
+    if (!isUserLoggedIn()) {
+      toast.error("Please login first to make a booking.");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    if (isSubmittingRef.current || submitting || submitLockRef.current) return;
+    submitLockRef.current = true;
+    isSubmittingRef.current = true;
+    setSubmitting(true);
+
+    const isForOtherGuest = bookingFor === "someone_else";
+
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const payload = {
+      hotel_id: Number(targetHotelId),
+      room_type_id: Number(targetRoomTypeId),
+      check_in: checkInDate,
+      check_out: checkOutDate,
+      qty: Number(roomQty),
+      adults: Number(adults),
+      children: Number(children),
+      is_for_other_guest: isForOtherGuest,
+      booker_name: fullName,
+      booker_email: email,
+      booker_phone: phone,
+      guest_name: isForOtherGuest ? guestName : fullName,
+      guest_email: isForOtherGuest ? guestEmail : email,
+      guest_phone: isForOtherGuest ? guestPhone : phone,
+      special_request: specialRequests,
+      special_requests: specialRequests,
+      idempotency_key: idempotencyKeyRef.current,
+    };
+
+    try {
+      const res = await api.post("/user/bookings", payload);
+
+      if (res.data?.duplicate) {
+        toast.error(res.data.message || "Anda sudah memiliki reservasi aktif untuk kamar dan tanggal ini.");
+        releaseSubmitLock();
+        return;
+      }
+
+      if (res.data && res.data.data) {
+        invalidateCache("/user/bookings");
+        const createdBooking = res.data.data.booking || res.data.data;
+        const bookingCode = createdBooking.booking_code || createdBooking.order_id;
+        const bookingId = createdBooking.id || null;
+        const pid = createdBooking.payment?.id || createdBooking.payment_id;
+        setOrderId(bookingCode);
+        if (pid) setPaymentId(pid);
+
+        let token = null;
+        if (pid) {
+          try {
+            const snapRes = await api.post(`/payments/${pid}/snap-token`);
+            token = snapRes.data?.data?.snap_token || snapRes.data?.snap_token;
+          } catch (snapErr) {
+            console.error("Gagal ambil snap token:", snapErr);
+            toast.error(snapErr.response?.data?.message || snapErr.response?.data?.error || "Failed to create payment session");
+            releaseSubmitLock();
+            return;
+          }
+        }
+
+        if (!token) {
+          toast.error("Snap token tidak tersedia");
+          releaseSubmitLock();
+          return;
+        }
+
+        payWithSnap(token, pid, bookingCode, bookingId);
+      }
+    } catch (err) {
+      const responseData = err.response?.data;
+
+      if (err.response?.status === 401) {
+        toast.error("Sesi Anda telah berakhir. Silakan login kembali.");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login", { state: { from: location } });
+      } else if (err.response?.status === 422) {
+        const validationMessage = responseData?.errors
+          ? Object.values(responseData.errors).flat().find(Boolean)
+          : null;
+        const errorMessage = responseData?.message || validationMessage || "Room does not meet order criteria.";
+        toast.error(errorMessage);
+
+        if (responseData?.suggestions) {
+          setSuggestionData({
+            message: errorMessage,
+            type: responseData.suggestions.type,
+            rooms: responseData.suggestions.rooms || [],
+          });
+        }
+      } else {
+        const errorMessage = responseData?.message || "Terjadi kesalahan saat memproses pesanan.";
+        toast.error(errorMessage);
+      }
+    } finally {
+      setSubmitting(false);
+      isSubmittingRef.current = false;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-12 animate-pulse text-left">
+        <div className="h-8 bg-[#DCCFC0]/40 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-[#DCCFC0]/40 rounded w-1/4 mb-8"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 h-96 bg-[#DCCFC0]/40 rounded-2xl"></div>
+          <div className="lg:col-span-5 h-96 bg-[#DCCFC0]/40 rounded-2xl"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hotel || !room) {
+    return (
+      <div className="w-full max-w-[1280px] mx-auto py-20 text-center">
+        <h2 className="font-headline-md text-2xl font-bold mb-4 text-[#1e1b16]">
+          Room Not Available
+        </h2>
+        <p className="font-body-md text-sm text-[#444842] mb-6">
+          This room type or hotel is currently inactive and cannot be booked at this time.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="bg-[#778873] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#50604d] transition-colors cursor-pointer"
+        >
+          Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#fff8f0] text-[#1e1b16] font-body-md antialiased min-h-screen">
+      <main className="w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8 md:py-16 text-left">
+        <div className="mb-8">
+            <h1 className="font-headline-xl text-3xl md:text-5xl font-bold text-[#778873] mb-2 leading-tight">
+            Complete Your Booking
+          </h1>
+          <p className="font-body-lg text-base md:text-lg text-[#444842]">
+            Fill in the details below to confirm your reservation.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 space-y-8">
+            <section className="bg-white rounded-2xl p-6 border border-[#DCCFC0]/50 shadow-sm">
+                  <h2 className="font-headline-md text-xl font-bold text-[#778873] mb-6 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#A1BC98]">person</span>
+                    Booking & Guest Data
+                  </h2>
+
+              {maxAvailableStock <= 0 && (
+                <div className="mb-6 p-4 bg-[#ba1a1a]/10 border border-[#ba1a1a]/30 rounded-xl flex items-center gap-3 text-[#ba1a1a]">
+                  <span className="material-symbols-outlined text-2xl shrink-0">block</span>
+                  <div>
+                    <p className="font-bold text-sm">Room Not Available</p>
+                    <p className="text-xs mt-0.5">
+                      This room is fully booked for your selected dates. Please change dates or select another room type.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleOpenPaymentModal} className="space-y-5">
+                {/* DATA PEMESAN UTAMA */}
+                <div className="space-y-4">
+                  <p className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider">
+                    Booking Contact Details
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="fullName">
+                        Full Name *
+                      </label>
+                      <input
+                        id="fullName"
+                        type="text"
+                        placeholder="Full name of booker"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="email">
+                        Email Address *
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        placeholder="name@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="phone">
+                      Booking Phone Number *
+                    </label>
+                    <input
+                      id="phone"
+                      type="tel"
+                      placeholder="+62 8xx xxxx xxxx"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                      className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* PILIHAN PEMESANAN UNTUK SIAPA */}
+                <div className="pt-2 border-t border-[#DCCFC0]/40">
+                  <span className="block font-label-md text-xs font-semibold text-[#444842] mb-3">
+                    Is this reservation for yourself or someone else?
+                  </span>
+                  <div className="flex items-center space-x-6">
+                    <label className="inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="bookingFor"
+                        value="me"
+                        checked={bookingFor === "me"}
+                        onChange={(e) => setBookingFor(e.target.value)}
+                        className="w-4 h-4 accent-[#778873] cursor-pointer"
+                      />
+                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Me (Self)</span>
+                    </label>
+                    <label className="inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="bookingFor"
+                        value="someone_else"
+                        checked={bookingFor === "someone_else"}
+                        onChange={(e) => setBookingFor(e.target.value)}
+                        className="w-4 h-4 accent-[#778873] cursor-pointer"
+                      />
+                      <span className="ml-2 font-body-md text-sm text-[#2D332C]">Someone Else</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* INPUT DATA TAMU MENGINAP */}
+                {bookingFor === "someone_else" && (
+                  <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 space-y-4 animate-in fade-in duration-200">
+                    <p className="font-label-sm text-xs font-bold text-[#778873] uppercase tracking-wider">
+                      Guest Data (As per ID / Passport)
+                    </p>
+
+                    <div>
+                      <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestName">
+                        Full Guest Name *
+                      </label>
+                      <input
+                        id="guestName"
+                        type="text"
+                        placeholder="Guest name who will check-in"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        required={bookingFor === "someone_else"}
+                        className="w-full bg-white border border-[#DCCFC0] rounded-xl px-4 py-2.5 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestEmail">
+                          Guest Email *
+                        </label>
+                        <input
+                          id="guestEmail"
+                          type="email"
+                          placeholder="guest.email@domain.com"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
+                          required={bookingFor === "someone_else"}
+                          className="w-full bg-white border border-[#DCCFC0] rounded-xl px-4 py-2.5 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-label-md text-xs font-semibold text-[#444842] mb-1" htmlFor="guestPhone">
+                          Guest Phone Number *
+                        </label>
+                        <input
+                          id="guestPhone"
+                          type="tel"
+                          placeholder="08xxxxxxxxxx"
+                          value={guestPhone}
+                          onChange={(e) => setGuestPhone(e.target.value)}
+                          required={bookingFor === "someone_else"}
+                          className="w-full bg-white border border-[#DCCFC0] rounded-xl px-4 py-2.5 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* JUMLAH KAMAR */}
+                <div className="p-4 bg-[#FAF6F0] rounded-xl border border-[#DCCFC0]/60 flex items-center justify-between">
+                  <div>
+                    <span className="block font-label-md text-sm font-bold text-[#2D332C]">
+                      Number of Rooms
+                    </span>
+                    <span className="font-label-sm text-xs text-[#778873]">
+                      {maxAvailableStock <= 0 ? (
+                        <span className="text-[#ba1a1a] font-semibold">Out of Stock (Available: 0)</span>
+                      ) : (
+                        `Minimum ${minRequiredRooms} rooms for ${adults} adults (Available: ${maxAvailableStock})`
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={maxAvailableStock <= 0 || Number(roomQty) <= minRequiredRooms}
+                      onClick={() => setRoomQty((prev) => Math.max(minRequiredRooms, Number(prev) - 1))}
+                      className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span className="font-headline-md text-lg font-bold text-[#2D332C] min-w-[20px] text-center">
+                      {roomQty}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={maxAvailableStock <= 0 || Number(roomQty) >= maxAvailableStock}
+                      onClick={() => setRoomQty((prev) => Math.min(maxAvailableStock, Number(prev) + 1))}
+                      className="w-9 h-9 rounded-lg bg-white border border-[#DCCFC0] flex items-center justify-center font-bold text-lg text-[#2D332C] hover:bg-[#e8e2d9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-label-md text-xs font-semibold text-[#444842] mb-2" htmlFor="requests">
+                    Special Requests (Optional)
+                  </label>
+                  <textarea
+                    id="requests"
+                    rows={3}
+                    placeholder="e.g., Extra bed, high floor preference, late check-in..."
+                    value={specialRequests}
+                    onChange={(e) => setSpecialRequests(e.target.value)}
+                    className="w-full bg-[#fff8f0] border border-[#DCCFC0] rounded-xl px-4 py-3 font-body-md text-sm text-[#1e1b16] focus:outline-none focus:border-[#778873] focus:ring-1 focus:ring-[#778873] transition-colors resize-none"
+                  />
+                </div>
+
+                <div className="pt-2">
+            <button
+              type="submit"
+              disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
+              className="w-full md:hidden bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {maxAvailableStock <= 0
+                ? "Room Not Available"
+                : submitting
+                ? "Checking Availability..."
+                : "Pay Now"}
+              <span className="material-symbols-outlined text-base">payments</span>
+            </button>
+                </div>
+              </form>
+            </section>
+          </div>
+
+          {/* SIDEBAR RINCIAN PEMESANAN */}
+          <div className="lg:col-span-5 relative">
+            <div className="sticky top-24 bg-[#e8e2d9] rounded-2xl p-6 flex flex-col gap-5 border border-[#DCCFC0]/60 shadow-md shadow-[#778873]/5">
+              <h3 className="font-headline-md text-xl font-bold text-[#778873]">
+                Booking Details
+              </h3>
+
+              <div className="bg-white rounded-xl overflow-hidden flex border border-[#DCCFC0]/40">
+                {(room?.thumbnail || hotel?.thumbnail) ? (
+                  <img
+                    src={room?.thumbnail || hotel?.thumbnail}
+                    alt={room?.name}
+                    className="w-1/3 object-cover min-h-[90px]"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-1/3 min-h-[90px] bg-gradient-to-br from-[#e8e2d9] to-[#DCCFC0] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#778873] text-4xl opacity-60">no_photography</span>
+                  </div>
+                )}
+                <div className="p-3 flex flex-col justify-center w-2/3 text-left">
+                  <span className="font-label-sm text-[11px] font-bold text-[#778873] uppercase tracking-wider mb-0.5">
+                    {hotel?.name || "H'Leven Resort"}
+                  </span>
+                  <h4 className="font-label-md text-sm font-bold text-[#2D332C] line-clamp-2 leading-tight">
+                    {room?.name || "Executive Suite"}
+                  </h4>
+                  <span className="font-label-sm text-xs text-[#444842] mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">group</span>
+                    {adults} Adults, {children} Children ({roomQty} Rooms)
+                  </span>
+                </div>
+              </div>
+
+              {/* PEMISAHAN NAMA PEMESAN & TAMU */}
+              <div className="bg-white/60 p-3 rounded-xl border border-[#DCCFC0]/50 space-y-1.5 font-body-md text-xs text-[#444842]">
+                <div className="flex justify-between items-center">
+                  <span>Booker:</span>
+                  <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
+                    {fullName || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Guest:</span>
+                  <span className="font-semibold text-[#2D332C] truncate max-w-[150px]">
+                    {bookingFor === "someone_else" ? (guestName || "-") : (fullName || "Same as booker")}
+                  </span>
+                </div>
+              </div>
+
+              {room?.is_refundable ? (
+                <div className="p-3 rounded-xl bg-[#4F6F52]/10 border border-[#4F6F52]/20 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[#4F6F52] text-[18px] mt-0.5 flex-shrink-0">verified</span>
+                  <div className="text-left">
+                    <p className="font-label-md text-xs font-bold text-[#4F6F52] uppercase tracking-wider">
+                      Reservasi Bisa Direfund
+                    </p>
+                      <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                        Refund is automatically available if cancellation is made more than 24 hours before check-in. Within the last 24 hours, the funds are non-refundable.
+                      </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-[#ba1a1a]/10 border border-[#ba1a1a]/20 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[#ba1a1a] text-[18px] mt-0.5 flex-shrink-0">block</span>
+                  <div className="text-left">
+                    <p className="font-label-md text-xs font-bold text-[#ba1a1a] uppercase tracking-wider">
+                      Non-Refundable
+                    </p>
+                      <p className="font-body-md text-[11px] text-[#444842] mt-0.5 leading-snug">
+                        This room cannot be refunded if you cancel your reservation.
+                      </p>
+                  </div>
+                </div>
+              )}
+
+              <hr className="border-t border-[#DCCFC0]/50" />
+
+              <div className="space-y-3 font-body-md text-sm text-[#2D332C]">
+                {priceQuoteError && (
+                  <p role="alert" className="rounded-lg border border-[#ba1a1a]/20 bg-[#ba1a1a]/10 p-3 text-xs text-[#ba1a1a]">
+                    {priceQuoteError}
+                  </p>
+                )}
+                <div className="flex justify-between items-center">
+                  <span>
+                    Tarif Kamar
+                    <span className="text-[#444842] text-xs block">{priceInfoText}</span>
+                  </span>
+                  <span className="font-semibold">Rp {subtotalPrice.toLocaleString("id-ID")}</span>
+                </div>
+
+                <div className="flex justify-between items-center text-[#778873]">
+                  <span>                      Tax &amp; Service ({taxRate}%)</span>
+                  <span className="font-semibold">Rp {taxAndFees.toLocaleString("id-ID")}</span>
+                </div>
+              </div>
+
+              <hr className="border-t border-[#DCCFC0]/50" />
+
+              <div className="flex justify-between items-end mb-2">
+                <span className="font-headline-md text-lg font-bold text-[#2D332C]">Total</span>
+                <span className="font-headline-lg text-2xl font-bold text-[#778873]">
+                  Rp {totalPrice.toLocaleString("id-ID")}
+                </span>
+              </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenPaymentModal}
+                  disabled={submitting || maxAvailableStock <= 0 || !!priceQuoteError}
+                  className="w-full bg-[#778873] text-white font-label-md text-sm font-semibold py-4 rounded-xl hover:bg-[#50604d] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {maxAvailableStock <= 0
+                    ? "Room Not Available"
+                    : submitting
+                    ? "Processing..."
+                    : "Pay Now"}
+                  <span className="material-symbols-outlined text-base">payments</span>
+                </button>
+
+              <p className="font-label-sm text-xs text-[#444842] text-center flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-sm">shield</span>
+                 Secure payment via Midtrans
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* MODAL SUKSES RESERVASI */}
+      {successModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#DCCFC0]/60 text-center animate-in zoom-in-95 duration-200">
+            <div className="bg-[#778873] text-white p-6 flex flex-col items-center">
+              <span className="material-symbols-outlined text-5xl mb-2">check_circle</span>
+              <h3 className="font-headline-md text-2xl font-bold">Reservasi Berhasil!</h3>
+              <p className="font-body-md text-xs opacity-90 mt-1">Terima kasih telah memilih H'Leven</p>
+            </div>
+            <div className="p-6 space-y-4 text-left font-body-md text-sm text-[#2D332C]">
+              <div className="bg-[#faf3ea] rounded-xl p-4 space-y-2.5 border border-[#DCCFC0]/40">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Order ID:</span>
+                  <span className="font-bold text-[#778873]">{successModalData.orderId}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Hotel:</span>
+                  <span className="font-semibold text-right">{successModalData.hotelName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Room:</span>
+                  <span className="font-semibold text-right">{successModalData.roomName} ({successModalData.roomQty} kamar)</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Pemesan:</span>
+                  <span className="font-semibold">{successModalData.fullName}</span>
+                </div>
+                {successModalData.isForOtherGuest && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-[#444842]">Tamu Menginap:</span>
+                    <span className="font-semibold">{successModalData.guestName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#444842]">Pembayaran:</span>
+                  <span className="font-semibold">{successModalData.methodName}</span>
+                </div>
+                <hr className="border-t border-[#DCCFC0]/60 my-2" />
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-[#444842]">Total Paid:</span>
+                  <span className="font-bold text-lg text-[#778873]">Rp {successModalData.totalPrice.toLocaleString("id-ID")}</span>
+                </div>
+              </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuccessModalData(null);
+                    navigate("/profile", { state: { defaultTab: "history" } });
+                  }}
+                  className="w-full bg-[#778873] text-white py-3.5 rounded-xl font-label-md text-sm font-semibold hover:bg-[#50604d] transition-all shadow-md cursor-pointer active:scale-95"
+                >
+                  View My Orders
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REKOMENDASI KAMAR ALTERNATIF */}
+      {suggestionData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1e1b16]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl border border-[#DCCFC0]/60 flex flex-col text-left">
+            <div className="flex justify-between items-start gap-4 border-b border-[#DCCFC0]/60 p-5 sm:p-6">
+              <div>
+                <h3 className="font-headline-md text-xl font-bold text-[#2D312C]">
+                  Pilihan Kamar Alternatif
+                </h3>
+                <p className="text-xs font-semibold text-[#ba1a1a] mt-1">{suggestionData.message}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup rekomendasi kamar"
+                onClick={() => setSuggestionData(null)}
+                className="shrink-0 rounded-lg px-2 py-1 text-[#6B6E6A] hover:bg-[#F4F0E9] hover:text-[#2D312C] text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-5 pt-4 sm:px-6">
+              <p className="font-body-md text-xs text-[#444842]">
+                {suggestionData.rooms && suggestionData.rooms.length > 0
+                  ? (suggestionData.type === "same_hotel"
+                    ? "Kamar berikut tersedia di hotel yang sama. Gulir untuk melihat semua pilihan:"
+                    : "Kamar berikut tersedia di hotel lain, diurutkan dari yang terdekat. Gulir untuk melihat semua pilihan:")
+                  : "Tidak ada opsi kamar alternatif yang tersedia untuk tanggal dan kapasitas tamu yang Anda pilih."}
+              </p>
+            </div>
+
+            {suggestionData.rooms && suggestionData.rooms.length > 0 && (
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-3 sm:px-6">
+                <div className="grid grid-cols-1 gap-4">
+                {suggestionData.rooms.map((altRoom) => (
+                  <div
+                    key={altRoom.id}
+                    className="overflow-hidden border border-[#DCCFC0] rounded-2xl bg-[#faf3ea] hover:border-[#778873] transition-colors shadow-sm"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)]">
+                      {altRoom.photos?.length > 0 ? (
+                        <img
+                          src={getStorageUrl(altRoom.photos.find((photo) => photo.is_thumbnail)?.photo || altRoom.photos[0].photo || altRoom.photos[0].url)}
+                          alt={altRoom.name}
+                          className="h-40 w-full object-cover sm:h-full sm:min-h-52"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-32 items-center justify-center bg-[#e8e2d9] text-[#778873] sm:h-full sm:min-h-52">
+                          <span className="material-symbols-outlined text-5xl" aria-hidden="true">bed</span>
+                        </div>
+                      )}
+                      <div className="flex min-w-0 flex-col p-4 sm:p-5">
+                        <div>
+                          <p className="font-label-md text-xs font-bold uppercase tracking-wide text-[#50604d]">
+                            {altRoom.hotel?.name || "Hotel"}
+                            {suggestionData.type === "same_hotel" && " · Hotel ini"}
+                          </p>
+                          <h4 className="mt-1 font-headline-sm text-lg font-bold text-[#2D332C]">{altRoom.name}</h4>
+                          <p className="mt-1 text-xs leading-relaxed text-[#5b6058]">
+                            {[altRoom.hotel?.address, altRoom.hotel?.city].filter(Boolean).join(" · ") || "Lokasi tidak tersedia"}
+                          </p>
+                          {suggestionData.type === "other_hotels_nearby" && (
+                            <p className="mt-1 text-xs font-semibold text-[#50604d]">
+                              {altRoom.distance_km != null && Number.isFinite(Number(altRoom.distance_km))
+                                ? `±${Number(altRoom.distance_km).toLocaleString("id-ID")} km dari hotel pilihan`
+                                : "Jarak belum tersedia"}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#444842]">
+                          <p className="rounded-lg bg-white/70 p-2">
+                            Kapasitas: {altRoom.capacity_adult} dewasa, {altRoom.capacity_child || 0} anak
+                          </p>
+                          <p className="rounded-lg bg-white/70 p-2">
+                            {altRoom.bed || "Tempat tidur tidak disebutkan"} · {Number(altRoom.bed_count || 1)} kasur
+                          </p>
+                        </div>
+                        {altRoom.description && (
+                          <p className="mt-3 text-xs leading-relaxed text-[#5b6058]">{altRoom.description}</p>
+                        )}
+                        {Array.isArray(altRoom.facilities) && altRoom.facilities.length > 0 && (
+                          <div className="mt-3">
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#6B6E6A]">Fasilitas kamar</p>
+                            <div className="flex flex-wrap gap-1.5">
+                            {altRoom.facilities.map((facility) => (
+                              <span
+                                key={facility.id || facility.name || facility}
+                                className="rounded-full border border-[#DCCFC0] bg-white px-2.5 py-1 text-[10px] text-[#444842]"
+                              >
+                                {getFacilityDisplayName(facility.name || facility)}
+                              </span>
+                            ))}
+                            </div>
+                          </div>
+                        )}
+                        {Array.isArray(altRoom.hotel?.facilities) && altRoom.hotel.facilities.length > 0 && (
+                          <div className="mt-3">
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#6B6E6A]">Fasilitas hotel</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {altRoom.hotel.facilities.slice(0, 6).map((facility) => (
+                                <span
+                                  key={facility.id || facility.name}
+                                  className="rounded-full border border-[#DCCFC0] bg-white px-2.5 py-1 text-[10px] text-[#444842]"
+                                >
+                                  {getFacilityDisplayName(facility.name)}
+                                </span>
+                              ))}
+                              {altRoom.hotel.facilities.length > 6 && (
+                                <span className="rounded-full bg-[#778873]/10 px-2.5 py-1 text-[10px] text-[#50604d]">
+                                  +{altRoom.hotel.facilities.length - 6} lainnya
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {(!Array.isArray(altRoom.facilities) || altRoom.facilities.length === 0) && (
+                          <p className="mt-3 text-[11px] italic text-[#777a74]">Fasilitas kamar belum dicantumkan.</p>
+                        )}
+
+                        <div className="mt-auto flex flex-col gap-3 border-t border-[#DCCFC0] pt-3 sm:flex-row sm:items-end sm:justify-between sm:pt-4">
+                          <div>
+                            <p className="text-xs text-[#5b6058]">
+                              {altRoom.available_stock != null
+                                ? `Tersedia ${Number(altRoom.available_stock)} kamar untuk tanggal pilihan`
+                                : "Tersedia untuk tanggal pilihan"}
+                            </p>
+                            <p className="mt-1 font-label-md text-base font-bold text-[#778873]">
+                              Rp {Number(altRoom.weekday_price || altRoom.price || 0).toLocaleString("id-ID")} <span className="text-xs font-normal text-[#5b6058]">/ malam</span>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSuggestionData(null);
+                              navigate(`/booking/${altRoom.hotel_id || hotelId}/${altRoom.id}?check_in=${checkInDate}&check_out=${checkOutDate}&adults=${adults}&children=${children}&rooms=${Math.max(1, Number(roomQty) || 1)}`);
+                            }}
+                            className="w-full rounded-xl bg-[#778873] px-5 py-3 text-xs font-bold text-white transition-colors hover:bg-[#50604d] sm:w-auto"
+                          >
+                            Pilih kamar ini
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default BookingPage;
