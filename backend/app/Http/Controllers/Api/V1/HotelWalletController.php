@@ -11,6 +11,23 @@ use Illuminate\Validation\Rule;
 
 class HotelWalletController extends Controller
 {
+    /**
+ * Ringkasan saldo wallet hotel.
+ *
+ * Menghitung dan menampilkan total balance yang tersedia dari ledger
+ * entries bertipe 'hotel'. Balance dibagi menjadi kategori:
+ * - available_balance: saldo yang dapat ditarik
+ * - held_balance: saldo yang dijagalkan (dihold)
+ *
+ * Fitur tambahan dalam response:
+ * - withdrawal_blocked_by_debt: mengecek apakah available < 0
+ * - minimum_withdrawal: batas minimal penarikan (50.000)
+ * - withdrawals_enabled & withdrawals_message: status fitur penarikan
+ *   (non-aktif hingga onboarding XenPlatform selesai)
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi ringkasan balance wallet
+     */
     public function summary(Request $request): JsonResponse
     {
         $hotel = $this->hotelFor($request);
@@ -41,6 +58,15 @@ class HotelWalletController extends Controller
         ]);
     }
 
+    /**
+ * Daftar destinasi pencairan hotel.
+ *
+ * Menampilkan daftar semua destinasi pembayaran (bank account / e-wallet)
+ * yang telah dikonfigurasi untuk hotel tertentu.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi array destinasi pencairan
+     */
     public function destinations(Request $request): JsonResponse
     {
         $hotel = $this->hotelFor($request);
@@ -55,6 +81,22 @@ class HotelWalletController extends Controller
         ]);
     }
 
+    /**
+ * Menambah destinasi pencairan baru.
+ *
+ * Proses konfigurasi destinasi pencairan (bank account atau e-wallet)
+ * untuk hotel. Validasi meliputi tipe destinasi, kode channel,
+ * nomor rekening, dan nama pemilik account.
+ *
+ * Validasi input:
+ * - type: required, harus 'bank' atau 'e_wallet'
+ * - channel_code: required, string max 80, hanya huruf/angka/_
+ * - account_number: required, string min 5 max 34, hanya angka
+ * - account_name: required, string max 255
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data destinasi yang baru dibuat
+     */
     public function storeDestination(Request $request): JsonResponse
     {
         $hotel = $this->hotelFor($request);
@@ -82,6 +124,17 @@ class HotelWalletController extends Controller
         ], 201);
     }
 
+    /**
+ * Mengubah destinasi pencairan.
+ *
+ * Proses update destinasi pencairan yang sudah ada. Semua field
+ * wajib diisi kembali (type, channel_code, account_number, account_name).
+ * Field provider_recipient_id di-set ke null saat update.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID destinasi pencairan
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data destinasi yang sudah diupdate
+     */
     public function updateDestination(Request $request, int $id): JsonResponse
     {
         $hotel = $this->hotelFor($request);
@@ -115,6 +168,17 @@ class HotelWalletController extends Controller
         ]);
     }
 
+    /**
+ * Menghapus destinasi pencairan.
+ *
+ * Proses penghapusan destinasi pencairan dengan validasi dependent:
+ * mengecek apakah destinasi masih digunakan oleh penarikan
+ * yang memiliki status 'requested' atau 'processing'.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID destinasi pencairan
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses/gagal penghapusan
+     */
     public function deleteDestination(Request $request, int $id): JsonResponse
     {
         $hotel = $this->hotelFor($request);
@@ -137,6 +201,15 @@ class HotelWalletController extends Controller
         return response()->json(['success' => true, 'message' => 'Tujuan pencairan dihapus.']);
     }
 
+    /**
+ * Daftar penarikan hotel.
+ *
+ * Menampilkan daftar semua permintaan penarikan yang diajukan hotel.
+ * Data diorder by tanggal terbaru dan dipaginasi 15 per halaman.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar penarikan dengan pagination
+     */
     public function withdrawals(Request $request): JsonResponse
     {
         $hotel = $this->hotelFor($request);
@@ -151,6 +224,21 @@ class HotelWalletController extends Controller
         ]);
     }
 
+    /***
+ * Permintaan penarikan wallet.
+ *
+ * Mengembalikan respons bahwa fitur penarikan otomatis belum tersedia.
+ * Penarikan hanya dapat diaktifkan setelah:
+ * 1. Aktivasi XenPlatform
+ * 2. Onboarding tiap hotel secara lengkap
+ * 3. Konfigurasi payout selesai
+ *
+ * Response HTTP 503 (Service Unavailable) untuk menandai bahwa
+ * fitur ini sementara tidak aktif.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response dengan pesan informasi dan status 503
+     */
     public function requestWithdrawal(): JsonResponse
     {
         return response()->json([

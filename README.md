@@ -9,6 +9,15 @@ Aplikasi web untuk pemesanan kamar hotel dan pengelolaan operasional hotel. Proy
 - **Super Admin** — monitoring hotel, persetujuan mitra, manajemen pengguna, peringatan (warning), appeal, activity log, dan laporan platform.
 - **Autentikasi** — Laravel Sanctum (token-based), dengan tiga peran: `user`, `admin_hotel`, `super_admin`.
 
+## Arsitektur & Alur Kerja
+
+Aplikasi ini menggunakan arsitektur *decoupled* dengan alur kerja sebagai berikut:
+- **Frontend (React 19 + Vite)**: Berperan sebagai antarmuka pengguna yang berinteraksi dengan API melalui token Laravel Sanctum.
+- **Backend (Laravel 13 API)**: Mengelola logika bisnis, validasi, dan integrasi layanan pihak ketiga.
+- **Penyimpanan File (Local Storage)**: Menggunakan *Public Disk* Laravel untuk menyimpan foto hotel, kamar, dan avatar pengguna secara lokal di server.
+- **Database (MySQL)**: Media penyimpanan utama untuk data relasional.
+- **Midtrans**: *Payment gateway* utama untuk memproses transaksi pembayaran pelanggan secara aman.
+
 ## Prasyarat (Prerequisites)
 
 | Perangkat | Versi minimal |
@@ -26,8 +35,6 @@ Aplikasi web untuk pemesanan kamar hotel dan pengelolaan operasional hotel. Proy
 ```text
 Hleven-Project/
 ├── README.md                 # Dokumen ini
-├── AGENTS.md                 # Panduan untuk AI agent / kontributor otomatis
-├── opencode.json             # Konfigurasi opencode
 ├── backend/                  # Laravel 13 (API-only)
 │   ├── app/
 │   │   ├── Http/
@@ -66,6 +73,8 @@ Hleven-Project/
     ├── vite.config.js        # Konfigurasi Vite (port 5713)
     └── .env                  # Konfigurasi lingkungan frontend
 ```
+
+> **Catatan**: Untuk detail lebih mendalam mengenai logika bisnis, skema API, dan alur folder backend, silakan baca [Dokumentasi Backend (backend/README.md)](backend/README.md).
 
 ## Cara Instalasi (Installation)
 
@@ -137,6 +146,14 @@ cd frontend
 npm run dev
 ```
 
+### Tips Pengembangan (Backend)
+
+Selain menggunakan `php artisan serve`, Anda dapat menggunakan perintah berikut di folder `backend/` untuk menjalankan seluruh service (API, Queue, dan Vite aset) secara bersamaan:
+
+```bash
+composer dev
+```
+
 Buka `http://localhost:5713` di browser. Semua endpoint API berada di `http://localhost:8000/api/v1`.
 
 ### Menjalankan scheduler (opsional)
@@ -189,18 +206,9 @@ composer test                     # php artisan config:clear && php artisan test
 cd ../frontend && npm run lint    # eslint
 ```
 
-### Tangkapan Layar
-
-> Tambahkan gambar ke folder `docs/screenshots/` lalu tautkan di sini, contoh:
-
-```markdown
-![Landing Page](docs/screenshots/landing.png)
-![Dashboard Mitra Hotel](docs/screenshots/dashboard-admin-hotel.png)
-![Dashboard Super Admin](docs/screenshots/dashboard-super-admin.png)
-```
 
 ## Catatan Tambahan
 
 - **Perubahan skema database harus disetujui lebih dulu** — lihat aturan *Hard rules* di `AGENTS.md`.
-- **Penyimpanan file** (foto hotel, kamar, avatar) memakai Supabase Storage; database utama berjalan di MySQL/PostgreSQL sesuai `backend/.env`.
+- **Penyimpanan file** (foto hotel, kamar, avatar) menggunakan **Local Storage (Public Disk)**; database utama berjalan di MySQL sesuai konfigurasi `backend/.env`.
 - **CORS** backend mengizinkan `localhost:5713` (port frontend) beserta 5173/5174/3000.

@@ -15,6 +15,28 @@ class SuperAdminPayoutController extends Controller
         private \App\Services\SuperAdminDashboardService $dashboardService
     ) {}
 
+    /**
+ * Menampilkan daftar permintaan pencairan.
+ *
+ * Menampilkan daftar semua permintaan pencairan dengan filter opsional
+ * berdasarkan status, pencarian, dan pagination. Termasuk rincian statistik
+ * komisi hotel melalui dashboard service.
+ *
+ * Fitur filter:
+ * - status: filter berdasarkan status pending, approved, rejected, atau paid
+ * - search: pencarian pada data hotel atau requester
+ * - per_page: jumlah data per halaman
+ * - breakdown_page: halaman rincian pendapatan per hotel
+ * - page: halaman utama
+ *
+ * Statistik yang dihitung:
+ * - totalGross: total gross amount pembayaran sukses
+ * - platformCommission: komisi platform (rate * totalGross)
+ * - hotelNetRevenue: pendapatan bersih hotel setelah komisi
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar pencairan dengan statistik komisi
+     */
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -77,6 +99,29 @@ class SuperAdminPayoutController extends Controller
         ], 200);
     }
 
+    /**
+ * Memperbarui status pencairan oleh super admin.
+ *
+ * Proses persetujuan atau penolakan permintaan pencairan oleh super admin.
+ * Meliputi validasi input, pencarian data pencairan, dan pemanggilan
+ * payoutService untuk memperbarui status.
+ *
+ * Validasi input:
+ * - status: wajib, salah satu: approved, rejected, paid
+ * - admin_note: opsibel, maksimal 1000 karakter (catatan admin)
+ * - reference: opsional, referensi tambahan maksimal 100 karakter
+ *
+ * Proses:
+ * 1. Validasi input status, admin_note, dan reference
+ * 2. Cek keberadaan data pencarian berdasarkan ID
+ * 3. Panggil payoutService->updateStatus untuk memperbarui status
+ * 4. Jika RuntimeException: kembalikan response error 422 dengan pesan
+ * 5. Jika sukses: kembalikan response dengan pesan berhasil dan data terbaru
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID pencairan
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses dan data pencairan
+     */
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $request->validate([

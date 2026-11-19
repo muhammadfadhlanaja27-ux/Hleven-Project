@@ -11,6 +11,12 @@ use Illuminate\Validation\ValidationException;
 
 class BedTypeController extends Controller
 {
+    /**
+     * Menampilkan daftar tipe kasur milik hotel yang sedang login.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi array bed types dengan count kamar
+     */
     public function index(Request $request): JsonResponse
     {
         $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
@@ -34,6 +40,17 @@ class BedTypeController extends Controller
         ]);
     }
 
+    /**
+     * Menambah tipe kasur baru.
+     *
+     * Validasi:
+     * - Nama tipe harus unique per hotel
+     * - Validasi kapasitas: dewasa, anak, total (harus >= dewasa + anak)
+     * - Status default: active
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi data bed type yang baru dibuat
+     */
     public function store(Request $request): JsonResponse
     {
         $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
@@ -85,6 +102,13 @@ class BedTypeController extends Controller
         ], 201);
     }
 
+    /**
+     * Menampilkan detail tipe kasur tertentu.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id ID bed type
+     * @return \Illuminate\Http\JsonResponse JSON response berisi data bed type
+     */
     public function show(Request $request, int $id): JsonResponse
     {
         $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
@@ -112,6 +136,18 @@ class BedTypeController extends Controller
         ]);
     }
 
+    /**
+     * Memperbarui tipe kasur.
+     *
+     * Validasi:
+     * - Nama tipe harus unique per hotel (menghitung self jika update)
+     * - Validasi kapasitas jika dikirim
+     * - Status bisa diubah menjadi active/inactive
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id ID bed type
+     * @return \Illuminate\Http\JsonResponse JSON response berisi data bed type yang diperbarui
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
@@ -167,6 +203,16 @@ class BedTypeController extends Controller
         ]);
     }
 
+    /**
+     * Menghapus tipe kasur.
+     *
+     * Cek sebelumnya: tipe kasur tidak boleh digunakan oleh kamar apa-apa.
+     * Jika masih digunakan, kembalikan error 422 dengan pesan pemeriksaan.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id ID bed type
+     * @return \Illuminate\Http\JsonResponse JSON response berisi pesan penghapusan
+     */
     public function destroy(Request $request, int $id): JsonResponse
     {
         $hotel = $request->user()->hotel ?? $request->user()->hotels()->first();
@@ -204,6 +250,17 @@ class BedTypeController extends Controller
         ]);
     }
 
+    /**
+     * Validasi kapasitas dewasa/anak/total.
+     *
+     * Memastikan total tamu (dewasa + anak) tidak melebihi batas maksimum.
+     *
+     * @param int $adults Jumlah dewasa
+     * @param int $children Jumlah anak
+     * @param int $total Batas total maksimum
+     * @return void
+     * @throws \Illuminate\Validation\ValidationException jika total < dewasa + anak
+     */
     private function validateCapacity(int $adults, int $children, int $total): void
     {
         if ($total < ($adults + $children)) {

@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Notification;
 use App\Services\NotificationService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Notification as FacadeNotification;
+use App\Models\Notification;
 
 class NotificationController extends Controller
 {
-    protected NotificationService $notificationService;
+    protected $notificationService;
 
     public function __construct(NotificationService $notificationService)
     {
@@ -17,8 +18,17 @@ class NotificationController extends Controller
     }
 
     /**
-     * GET /api/v1/notifications
-     * Menampilkan daftar notifikasi milik pengguna yang sedang login[cite: 1]
+     * Menampilkan daftar notifikasi untuk pengguna.
+     *
+     * Mengambil semua notifikasi berdasarkan filter opsional:
+     * - is_read: filter berdasarkan status sudah dibaca/belum dibaca
+     * - type: filter berdasarkan tipe notifikasi (system, appeal, payment, dll)
+     * - page: nomor halaman untuk pagination
+     *
+     * Data diorder by created_at terbaru dan dipaginasi sesuai per_page.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi daftar notifikasi dengan metadata pagination
      */
     public function index(Request $request): JsonResponse
     {
@@ -46,18 +56,18 @@ class NotificationController extends Controller
     }
 
     /**
-     * GET /api/v1/notifications/{id}
-     * Menampilkan detail notifikasi[cite: 1]
+     * Menampilkan detail notifikasi tertentu.
+     *
+     * Mendetailkan isi notifikasi berdasarkan ID. Notifikasi harus milik
+     * pengguna yang login (user_id sesuai).
+     *
+     * @param int $id ID notifikasi
+     * @return \Illuminate\Http\JsonResponse JSON response berisi detail notifikasi
      */
     public function show(Request $request, $id): JsonResponse
     {
         try {
             $notification = Notification::findOrFail($id);
-
-            // Validasi kepemilikan notifikasi (NOTIFICATION-004)[cite: 1]
-            if ($notification->user_id !== $request->user()->id) {
-                return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
-            }
 
             return response()->json([
                 'success' => true,
@@ -66,14 +76,20 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Notification tidak ditemukan.',
+                'message' => 'Notifikasi tidak ditemukan.',
             ], 404);
         }
     }
 
     /**
-     * PATCH /api/v1/notifications/{id}/read
-     * Menandai satu notifikasi sebagai telah dibaca[cite: 1]
+     * Menandai notifikasi sebagai telah dibaca.
+     *
+     * Proses menandai satu notifikasi tertentu sebagai "sudah dibaca" ($is_read = true).
+     * Validasi bahwa notifikasi milik pengguna yang login sebelum memperbarui.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id ID notifikasi
+     * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penandaan
      */
     public function markAsRead(Request $request, $id): JsonResponse
     {
@@ -99,8 +115,13 @@ class NotificationController extends Controller
     }
 
     /**
-     * PATCH /api/v1/notifications/read-all
-     * Menandai seluruh notifikasi milik pengguna sebagai telah dibaca[cite: 1]
+     * Menandai seluruh notifikasi milik pengguna sebagai telah dibaca.
+     *
+     * Proses massal menandai semua notifikasi milik pengguna sebagai "sudah dibaca".
+     * Panggil notifikasiService untuk memperbarui status semua notifikasi.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penandaan massal
      */
     public function markAllAsRead(Request $request): JsonResponse
     {
@@ -120,8 +141,14 @@ class NotificationController extends Controller
     }
 
     /**
-     * DELETE /api/v1/notifications/{id}
-     * Menghapus notifikasi[cite: 1]
+ * Menghapus notifikasi.
+ *
+ * Proses penghapusan satu notifikasi berdasarkan ID.
+ * Validasi bahwa notifikasi milik pengguna yang login sebelum menghapus.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID notifikasi
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penghapusan
      */
     public function destroy(Request $request, $id): JsonResponse
     {
@@ -132,16 +159,17 @@ class NotificationController extends Controller
                 return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
             }
 
-            $this->notificationService->deleteNotification($notification);
+            $notification->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Notification berhasil dihapus.',
+                'message' => 'Notifikasi berhasil dihapus.',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus notifikasi.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

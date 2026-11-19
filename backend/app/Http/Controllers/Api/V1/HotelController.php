@@ -120,6 +120,26 @@ class HotelController extends Controller
         ], 200);
     }
 
+    /**
+     * Mendapatkan lokasi hotel melalui OpenStreetMap Nominatim API.
+     *
+ * Algoritma pencarian lokasi:
+ * 1. Cek apakah hotel memiliki koordinat latitude/longitude
+ * 2. Jika ada koordinat: gunakan reverse endpoint (/reverse) untuk mendapatkan address detail
+ * 3. Jika tidak ada koordinat: gunakan search endpoint dengan nama hotel di Indonesia
+ * 4. Gabungkan result: locality/region/country dari OpenStreetM, atau fallback ke city dari database
+ * 5. Jika OSM gagal/kosong, coba ambil dari profile hotel (city/province)
+ * 6. Jika tetap kosong, fallback ke alamat hotel, koordinat, atau nama hotel
+ *
+ * Tracking sumber informasi ($source):
+ * - 'OpenStreetMap': result langsung dari API Nominatim
+ * - 'Hotel profile': fallback ke data city/province dari tabel hotels
+ * - 'Hotel address': fallback ke alamat hotel yang tersimpan
+ * - 'Hotel coordinates': fallback ke koordinat latitude/longitude
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi location_area dan sumber data
+     */
     public function locationArea(Request $request): JsonResponse
     {
         $user = $request->user();

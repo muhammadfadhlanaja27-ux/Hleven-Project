@@ -37,6 +37,22 @@ class MigratePhotosToSupabase extends Command
 
     /**
      * Execute the console command.
+     *
+     * Migrasi foto dan file dari disk lokal (public) ke Supabase Storage.
+     * Proses meliputi 4 kategori utama:
+     * 1. HotelPhotos - update URL foto hotel ke Supabase public URL
+     * 2. RoomPhotos - migrasi foto kamar ke Supabase
+     * 3. User Avatars - migrasi avatar pengguna
+     * 4. Partner Documents - migrasi file partner aplikasi
+     *
+     * Handling berbagai scenario URL:
+     * - already_supabase: URL sudah di Supabase, dicek perlu normalisasi path
+     * - normalized: normalisasi path URL Supabase (ubah s3 URL ke supabase.co format)
+     * - constructed_supabase: Konstruk URL Supabase dari path relativ
+     * - converted_localhost: Konversi dari localhost:8000/storage/ ke Supabase public URL
+     * - not_found: File tidak ditemukan, dilewati dengan peringatan
+     *
+     * @return int - Total migrated, skipped, failed (dilaporkan via $this->info)
      */
     public function handle()
     {
@@ -46,7 +62,14 @@ class MigratePhotosToSupabase extends Command
         $skippedCount = 0;
         $failedCount = 0;
 
-        // Helper function to process a single file path/url
+        /**
+         * Helper function to process a single file path/url and migrate to Supabase.
+         *
+         * @param mixed $currentUrl - URL atau path file dari database
+         * @param string $directory - Prefix folder tujuan (hotels, rooms, avatar/{id}, partners/{id})
+         * @return array{0: mixed, 1: string} - [newUrl, status] di mana status salah satu:
+         *         'success', 'normalized', 'constructed_supabase', 'converted_localhost', 'already_supabase', 'empty', 'error', 'not_found'
+         */
         $processFile = function ($currentUrl, string $directory) {
             if (! $currentUrl) {
                 return [null, 'empty'];
@@ -55,7 +78,15 @@ class MigratePhotosToSupabase extends Command
             $baseUrl = rtrim(config('filesystems.disks.s3.url'), '/');
             $bucket = trim((string) config('filesystems.disks.s3.bucket'));
 
-            // Function to normalize any Supabase URL to valid public HTTP format
+            /**
+             * Normalisasi URL Supabase ke format HTTP publik valid.
+             * Mengganti internal path Supabase ke format public HTTP:
+             * - .storage.supabase.co/storage/v1/s3 -> .supabase.co/storage/v1/object/public
+             * - /storage/v1/s3 -> /storage/v1/object/public
+             *
+             * @param string $url - URL yang akan dinormalisasi
+             * @return string - URL yang sudah dinormalisasi
+             */
             $normalizeSupabaseUrl = function ($url) use ($bucket) {
                 $publicUrl = str_replace(
                     ['.storage.supabase.co/storage/v1/s3', '/storage/v1/s3'],
@@ -69,7 +100,12 @@ class MigratePhotosToSupabase extends Command
                 return $publicUrl;
             };
 
-            // If already on Supabase URL, check if normalization is needed
+            /**
+             * Cek jika URL sudah mengandung supabase.co.
+             * Jika ya, cek apakah perlu normalisasi path additional.
+             *
+             * @return array{0: string, 1: string} - [normalizedUrl, statusLabel]
+             */
             if (str_contains($currentUrl, 'supabase.co')) {
                 $normalized = $normalizeSupabaseUrl($currentUrl);
                 if ($normalized !== $currentUrl) {
@@ -79,23 +115,34 @@ class MigratePhotosToSupabase extends Command
                 return [$currentUrl, 'already_supabase'];
             }
 
-            // Extract relative storage path
+            /**
+             * Ekstrak path relatif dari URL.
+             * Jika path dimulai dengan 'storage/', potong prefix tersebut.
+             *
+             * @return string - path relatif tanpa prefix storage/
+             */
             $relativePath = ltrim(parse_url($currentUrl, PHP_URL_PATH) ?? $currentUrl, '/');
             if (str_starts_with($relativePath, 'storage/')) {
                 $relativePath = substr($relativePath, 8);
             }
 
-            // Check if file exists in local disk ('public')
+            /**
+             * Cek jika file exists di disk lokal 'public'.
+             * Jika ada, baca konten file, unggah ke disk 's3' (Supabase),
+             * lalu bangun public Supabase URL.
+             *
+             * @return array{0: string, 1: string} - [newSupabaseUrl, statusLabel 'success']
+             */
             if (Storage::disk('public')->exists($relativePath)) {
                 try {
                     $fileContents = Storage::disk('public')->get($relativePath);
                     $filename = basename($relativePath);
                     $targetPath = trim($directory, '/').'/'.uniqid().'_'.$filename;
 
-                    // Put file to s3 disk
+                    // Put file to s3 disk (Supabase storage)
                     Storage::disk('s3')->put($targetPath, $fileContents);
 
-                    // Build public Supabase URL
+                    // Bangun public Supabase URL
                     $newUrl = $normalizeSupabaseUrl($baseUrl.'/'.ltrim($targetPath, '/'));
 
                     return [$newUrl, 'success'];
@@ -104,8 +151,13 @@ class MigratePhotosToSupabase extends Command
                 }
             }
 
-            // If file is not found locally but is a relative path (e.g. room_types/foo.jpg or rooms/bar.jpg),
-            // construct the expected Supabase public URL assuming it was uploaded directly to S3
+            /**
+             * Jika file tidak ditemukan di lokal tapi adalah path relativ
+             * (e.g. room_types/foo.jpg atau rooms/bar.jpg), konstruk URL
+             * Supabase asuming file diunggah langsung ke S3.
+             *
+             * @return array{0: string, 1: string} - [constructedUrl, statusLabel 'constructed_supabase']
+             */
             if (! str_starts_with($currentUrl, 'http://') && ! str_starts_with($currentUrl, 'https://')) {
                 $targetPath = ltrim($currentUrl, '/');
                 if ($bucket !== '' && str_starts_with($targetPath, $bucket.'/')) {
@@ -116,7 +168,12 @@ class MigratePhotosToSupabase extends Command
                 return [$constructedUrl, 'constructed_supabase'];
             }
 
-            // If it starts with localhost URL (e.g. http://localhost:8000/storage/rooms/foo.jpg), extract path and convert to Supabase public URL
+            /**
+             * Jika URL mulai dengan localhost (e.g. http://localhost:8000/storage/rooms/foo.jpg),
+             * ekstrak path setelah /storage/ dan konversi ke Supabase public URL.
+             *
+             * @return array{0: string, 1: string} - [convertedUrl, statusLabel 'converted_localhost']
+             */
             if (str_contains($currentUrl, 'localhost:8000/storage/')) {
                 $path = substr($currentUrl, strpos($currentUrl, '/storage/') + 9);
                 $constructedUrl = $normalizeSupabaseUrl($baseUrl.'/'.ltrim($path, '/'));

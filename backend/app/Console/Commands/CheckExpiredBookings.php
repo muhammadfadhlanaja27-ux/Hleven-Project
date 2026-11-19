@@ -17,11 +17,32 @@ class CheckExpiredBookings extends Command
      */
     protected $signature = 'booking:check-expired';
 
-    protected $description = 'Membatalkan otomatis booking yang kadaluarsa dan mengembalikan stok kamar';
+    protected $description = 'Membatalkan booking yang kadaluarsa dan mengembalikan stok kamar';
 
+    /**
+     * Execute the console command.
+     *
+     * Membatalkan booking status unpaid/pending yang lewat:
+     * - expired_at payment (sudah lewat tanggal kadaluarsa pembayaran), ATAU
+     * - created_at > 15 menit lalu (booking lama belum dibayar)
+     *
+     * Identical logic dengan CancelExpiredBookings, digunakan untuk
+     * menjalankan melalui scheduler tiap menit (routes/console.php).
+     *
+     * @return int - Jumlah booking dibatalkan (0 jika tidak ada)
+     */
     public function handle()
     {
-        // Cari booking status unpaid/pending yang lewat expired_at payment atau dibuat >15 menit lalu
+        /**
+         * Cari booking status unpaid/pending yang expired:
+         * - Payment sudah lewat expired_at, ATAU
+         * - Booking dibuat > 15 menit ago dan masih unpaid/pending
+         *
+         * Gunakan eager loading bookingRooms dan payment untuk menghindari
+         * query tambahan di dalam loop.
+         *
+         * @var \App\Models\Booking[]
+         */
         $expiredBookings = Booking::with(['bookingRooms', 'payment'])
             ->whereIn('status', ['unpaid', 'pending'])
             ->where(function ($query) {
@@ -40,6 +61,13 @@ class CheckExpiredBookings extends Command
 
         $count = 0;
 
+        /**
+         * Loop melalui setiap booking kedaluwarsa.
+         * Setiap iterasi menggunakan transaksi database untuk memastikan
+         * restore stok dan update status terjadi secara atomic.
+         *
+         * @var \App\Models\Booking $booking
+         */
         foreach ($expiredBookings as $booking) {
             DB::beginTransaction();
             try {
@@ -47,11 +75,23 @@ class CheckExpiredBookings extends Command
                 $checkOut = Carbon::parse($booking->check_out);
                 $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
 
+                /**
+                 * 1. Kembalikan stok ke master RoomType berdasarkan room_type_id
+                 * dan qty dari booking room. Increment memastikan stok tidak
+                 * berhambar karena booking expired.
+                 *
+                 * @var \App\Models\RoomType $roomType
+                 */
                 foreach ($booking->bookingRooms as $bRoom) {
-                    // 1. Restore Stok Master RoomType
                     RoomType::where('id', $bRoom->room_type_id)->increment('stock', $bRoom->qty);
 
-                    // 2. Restore Stok Harian RoomAvailability
+                    /**
+                     * 2. Kembalikan stok harian ke RoomAvailability per tanggal.
+                     * Loop melalui CarbonPeriod dari check-in hingga hari sebelum check-out.
+                     * Setiap tanggal mendapatkan increment available_stock dan decrement booked_room.
+                     *
+                     * @var \Carbon\Carbon $date
+                     */
                     foreach ($period as $date) {
                         $dateStr = $date->format('Y-m-d');
                         $avail = RoomAvailability::where('room_type_id', $bRoom->room_type_id)
@@ -65,7 +105,11 @@ class CheckExpiredBookings extends Command
                     }
                 }
 
-                // Update status booking dan payment
+                /**
+                 * Update status booking menjadi 'expired' dan sinkronkan
+                 * payment status menjadi 'expired' jika ada payment terkait.
+                 * Prokes ini memastikan booking dan payment dalam konsistensi sama.
+                 */
                 $booking->update(['status' => 'expired']);
                 if ($booking->payment) {
                     $booking->payment->update(['payment_status' => 'expired']);

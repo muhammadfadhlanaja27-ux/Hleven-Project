@@ -32,26 +32,45 @@ class BookingController extends Controller
      * Cari booking sesuai aktor yang login: admin_hotel dibatasi ke hotelnya,
      * user biasa dibatasi ke booking miliknya sendiri. Mencegah IDOR lintas tenant.
      */
-    private function findBookingForActor(Request $request, $id, array $with = []): ?Booking
-    {
-        $user = $request->user();
-        $query = Booking::with($with)->where('id', $id);
+/**
+ * Cari booking sesuai aktor yang login: admin_hotel dibatasi ke hotelnya,
+ * user biasa dibatasi ke booking miliknya sendiri. Mencegah IDOR lintas tenant.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking yang dicari
+ * @param array $with Eager loading relations
+ * @return \App\Models\Booking|null Booking instance or null if not found/authorized
+ */
+private function findBookingForActor(Request $request, $id, array $with = []): ?Booking
+{
+    $user = $request->user();
+    $query = Booking::with($with)->where('id', $id);
 
-        if ($user->role === 'admin_hotel') {
-            $hotel = $user->hotel ?? $user->hotels()->first();
-            if (! $hotel) {
-                return null;
-            }
-            $query->where('hotel_id', $hotel->id);
-        } elseif ($user->role === 'user') {
-            $query->where('user_id', $user->id);
+    if ($user->role === 'admin_hotel') {
+        $hotel = $user->hotel ?? $user->hotels()->first();
+        if (! $hotel) {
+            return null;
         }
-
-        return $query->first();
+        $query->where('hotel_id', $hotel->id);
+    } elseif ($user->role === 'user') {
+        $query->where('user_id', $user->id);
     }
+
+    return $query->first();
+}
 
     public function syncPayment(Request $request, $id)
     {
+        /**
+         * Sinkronisasi status pembayaran ke Midtrans.
+         *
+         * Mendapatkan data pembayaran berdasarkan booking ID dan memanggil
+         * MidtransService untuk menyinkronkan status terbaru dari API Midtrans.
+         *
+         * @param \Illuminate\Http\Request $request
+         * @param int $id ID booking
+         * @return \Illuminate\Http\JsonResponse JSON response dengan status dan data booking terbaru
+         */
         $booking = $this->findBookingForActor($request, $id, ['payment']);
 
         if (! $booking || ! $booking->payment) {
@@ -81,6 +100,15 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
+        /**
+         * Daftar booking berdasarkan aktor yang login.
+         *
+         * Admin hotel: terbatas ke booking hotel-nya sendiri.
+         * User biasa: terbuka booking-milik-nya (user_id).
+         *
+         * @param \Illuminate\Http\Request $request
+         * @return \Illuminate\Http\JsonResponse JSON response berisi array booking
+         */
         $user = $request->user();
         $hotel = $user->hotel ?? $user->hotels()->first();
 
@@ -101,6 +129,20 @@ class BookingController extends Controller
 
     public function quote(Request $request)
     {
+        /**
+         * Dapatkan quote harga untuk pemesanan kamar.
+         *
+         * Proses:
+         * 1. Validasi input: hotel_id, room_type_id, check_in, check_out, qty, adults, children
+         * 2. Cek ketersediaan fisik stock di room_type
+         * 3. Hitung booked qty dalam periode check-in/check-out
+         * 4. Validasi sisa stock mencukupi untuk qty yang diminta
+         * 5. Dapatkan quote harga dari PricingService
+         * 6. Jika ada closure dates, cari alternative rooms
+         *
+         * @param \Illuminate\Http\Request $request
+         * @return \Illuminate\Http\JsonResponse JSON response berisi quote dan sisa_stock
+         */
         $validator = Validator::make($request->all(), [
             'hotel_id' => 'required|integer|exists:hotels,id',
             'room_type_id' => 'required|integer|exists:room_types,id',
@@ -200,6 +242,20 @@ class BookingController extends Controller
 
     public function alternatives(Request $request, int $hotelId)
     {
+        /**
+         * Dapatkan kamar alternatif saat stock kamar utama tidak mencukupi.
+         *
+         * Mencari kamar yang tersedia di hotel yang sama (kecuali tipe kamar yang
+         * sedang dicari) atau di hotel lain di sekitarnya. Filter berdasarkan:
+         * - Kapasitas dewasa dan anak
+         * - Stok yang tersedia
+         * - Ketersediaan tanggal (check-in/check-out)
+         * - Jarak terhadap hotel utama
+         *
+         * @param \Illuminate\Http\Request $request
+         * @param int $hotelId ID hotel utama
+         * @return \Illuminate\Http\JsonResponse JSON response berisi data kamar alternatif
+         */
         $validated = $request->validate([
             'room_type_id' => 'required|integer|exists:room_types,id',
             'check_in' => 'required|date|after_or_equal:today',
@@ -444,6 +500,21 @@ class BookingController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
+        /**
+         * Update status booking.
+         *
+         * Hanya boleh diakses admin hotel atau pengupdate internal.
+         * Validasi status yang diterima: pending, unpaid, paid, checked_in,
+         * checked_out, cancelled, expired, refunded, refund_pending.
+         *
+ * Jika status baru adalah 'checked_out', tetapkan notifikasi review request
+ * ke user. Jika status 'refunded' atau 'cancelled' dengan payment success,
+ * panggil WalletLedgerService untuk reverse/release transaksi.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking
+ * @return \Illuminate\Http\JsonResponse
+ */
         $internalUpdate = $request->attributes->get('internal_booking_status_update') === true;
 
         if (! $internalUpdate && $request->user()->role !== 'admin_hotel') {
@@ -548,6 +619,26 @@ class BookingController extends Controller
 
     public function cancelBooking(Request $request, $id)
     {
+        /**
+         * Batalkan booking.
+         *
+         * Logika utama:
+         * 1. Cari booking berdasarkan user_id (mencegah IDOR). Jika tidak ditemukan, return 404.
+         * 2. Cek status booking: jika sudah dalam status blocked (cancelled, expired, refunded, refund_pending, checked_in, checked_out), return error 400.
+         * 3. Jika status 'unpaid' atau 'pending': ubah status menjadi 'cancelled' langsung via updateStatusInternally.
+         * 4. Jika status 'paid' atau 'confirmed':
+ *    a. Evaluasi refund policy melalui RefundPolicyService.
+ *    b. Jika tidak refundable: batal tanpa refund (funds forfeited).
+ *    c. Jika within cutoff hours: batal tanpa refund, info cutoff hours.
+ *    d. Jika outside cutoff: proses refund otomatis, update status menjadi 'refunded'.
+ *       Kirim notifikasi ke user dan hotel admin tentang refund yang disetujui otomatis.
+ *
+ * Status blocked: ['cancelled', 'expired', 'refunded', 'refund_pending', 'checked_in', 'checked_out']
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking
+ * @return \Illuminate\Http\JsonResponse
+ */
         $user = $request->user();
         $booking = Booking::with(['bookingRooms.roomType', 'payment'])->where('id', $id)
             ->where('user_id', $user->id)
@@ -656,6 +747,19 @@ class BookingController extends Controller
 
     public function handleRefundApproval(Request $request, $id)
     {
+        /**
+         * Handle persetujuan penolakan refund oleh admin hotel.
+         *
+ * Validasi input: action (approve/reject) dan optional reason.
+ * Jika action 'approve': ubah status booking menjadi 'refunded', panggil
+ * updateStatusInternally, dan kirim notifikasi ke user tentang refund yang
+ * disetujui. Jika action 'reject': kembalikan status booking menjadi 'paid',
+ * kirim notifikasi bahwa refund ditolak.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID booking
+ * @return \Illuminate\Http\JsonResponse
+ */
         $validator = Validator::make($request->all(), [
             'action' => 'required|in:approve,reject',
             'reason' => 'nullable|string',
@@ -714,6 +818,24 @@ class BookingController extends Controller
 
         return $this->updateStatus($request, $bookingId);
     }
+/**
+ * Perpanjang masa booking.
+ *
+ * Hanya booking dengan status 'paid', 'confirmed', atau 'checked_in' yang boleh diperpanjang. Proses:
+ * 1. Validasi input: type (hanya 'days'), duration (integer min 1), notes (optional)
+ * 2. Cari booking dengan relasi: bookingRooms.roomType, payment, hotel, guests
+ * 3. Validasi status booking: hanya 'paid', 'confirmed', 'checked_in' yang boleh
+ * 4. Dapatkan base price dari first booking room atau roomType weekday_price
+ * 5. Hitung tax rate via PricingService::taxRateForBooking
+ * 6. Buat CarbonPeriod dari check_out lama hingga check_out baru (+ duration days)
+ * 7. Untuk setiap tanggal di periode: cek stok availability, kurangi available_stock,
+ *    increment booked_room. Throw exception jika stok tidak mencukupi.
+ * 8. Update booking: check_out baru, total_night bertambah duration,
+ *    subtotal/tax/grand_total ditambahkan dengan extension totals.
+ * 9. Tambahkan special_request dengan label '[Extend +N Days] dan notes optional.
+ * 10. Simpan payment gross_amount dengan grand_total baru.
+ * 11. Return booking data lengkap dengan extension_summary.
+ */
 
     public function extendBooking(Request $request, $id)
     {
@@ -864,6 +986,16 @@ class BookingController extends Controller
 
     public function userBookings(Request $request)
     {
+        /**
+         * Daftar booking user dengan evaluasi refund policy.
+         *
+         * Menampilkan semua booking user dilengkapi perhitungan refund policy.
+         * Setiap booking di-map dengan data refund policy termasuk is_refundable,
+         * refund_cutoff_hours, dan status refund.
+         *
+         * @param \Illuminate\Http\Request $request
+         * @return \Illuminate\Http\JsonResponse JSON response berisi array booking dengan refund policy
+         */
         $user = $request->user();
 
         $bookings = Booking::with(['hotel', 'bookingRooms.roomType.photos', 'bookingRooms.roomType', 'payment', 'review', 'guests'])
@@ -883,6 +1015,29 @@ class BookingController extends Controller
             'data' => $bookings,
         ]);
     }
+/**
+ * Membuat booking baru pelanggan.
+ *
+ * Proses lengkap:
+ * 1. Validasi input: hotel_id, room_type_id, check_in, check_out, qty, adults, children,
+ *    is_for_other_guest, guest details, special requests, idempotency key
+ * 2. Cek ketersediaan hotel pelanggan
+ * 3. Validasi kapasitas kamar: physical stock & booked stock di periode
+ * 4. Validasi batas kapasitas dewasa/anak per kamar
+ * 5. Cek tanggal closure dari PricingService
+ * 6. Validasi duplikat booking (idempotency key atau query overlap)
+ * 7. Ambil data room type dengan lockForUpdate
+ * 8. Buat record Booking dengan status 'unpaid'
+ * 9. Buat record BookingRoom untuk setiap kamar
+ * 10. Buat record Guest dari data pemesan
+ * 11. Tambahkan guests ekstra jika dikirim array 'guests'
+ * 12. Buat RoomAvailability per tanggal dalam periode check-in/out
+ * 13. Buat Payment dengan status 'pending' dan expired_at +30 menit
+ * 14. Commit transaksi dan return booking + payment data
+ *
+ * Fitur idempotency key: jika key sudah pernah digunakan, return booking sebelumnya
+ * tanpa membuat booking duplicate.
+ */
 
     public function store(Request $request)
     {

@@ -22,6 +22,17 @@ class HotelPayoutController extends Controller
         return $user->hotel ?? $user->hotels()->first();
     }
 
+    /**
+ * Daftar pencairan hotel.
+ *
+ * Menampilkan seluruh riwayat permintaan pencairan untuk hotel tertentu.
+ * Query didukung filtering status dan pengurutan berdasarkan tanggal.
+ * Response mencakup balance hotel, data bank, dan konfigurasi limit
+ * pencairan dari konfigurasi aplikasi.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi riwayat pencairan lengkap
+     */
     public function index(Request $request): JsonResponse
     {
         $hotel = $this->resolveHotel($request);
@@ -61,6 +72,24 @@ class HotelPayoutController extends Controller
         ], 200);
     }
 
+    /***
+ * Mengajukan permintaan pencairan.
+ *
+ * Proses request payout ke layanan payout (PayoutService).
+ * Validasi input mencakup amount (minimal min_payout dari config),
+ * note opsional, dan destination_id yang harus aktif terkait hotel.
+ *
+ * Alur kerja:
+ * 1. Validasi input: amount (numeric min min_payout), note (string max 1000),
+ *    destination_id (integer, exists di hotel_payout_destinations)
+ * 2. Cek destinasi yang dipilih atau gunakan default
+ * 3. Panggil PayoutService::requestPayout untuk membuat permintaan
+ * 4. Jika sukses: return data payout yang baru dibuat (201)
+ * 5. Jika gagal (RuntimeException): return pesan error dan 422
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi status dan data payout
+     */
     public function store(Request $request): JsonResponse
     {
         $hotel = $this->resolveHotel($request);

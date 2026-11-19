@@ -18,6 +18,22 @@ class PurgeDummyHotels extends Command
 
     protected $description = 'Hapus data dummy hotel (hotel01..hotel20@hleven.com, [DUMMY] hotels)';
 
+    /**
+     * Execute the console command.
+     *
+     * Menghapus data hotel dummy (hotel01..hotel20@hleven.com, [DUMMY] hotels)
+     * beserta data terkait dalam transaksi database.
+     *
+     * Fitur:
+     * - Opsi --force untuk skip konfirmasi manual
+     * - Validasi data dummy sebelum penghapusan (cek jumlah hotel dan user)
+     * - Penghapusan berurutan: bookings -> room types -> photos -> hotels -> users
+     * - Cleanup tabel hub: booking_status_histories, guests, payments, refunds, reviews, e_tickets
+     * - Gunakan DB::transaction untuk keconsistenan data jika ada gagal
+     *
+     * @param bool $force - Dari opsi --force command (skip konfirmasi)
+     * @return int - SUCCESS (0) atau kode error
+     */
     public function handle(): int
     {
         $hotelCount = Hotel::where('slug', 'like', '%-dummy-%')->count();
@@ -42,6 +58,19 @@ class PurgeDummyHotels extends Command
             return self::SUCCESS;
         }
 
+        /**
+         * Semua penghapusan data dijalankan dalam transaksi database
+         * untuk memastikan keconsistenan jika ada bagian gagal.
+         * Urutan penghapusan:
+         * 1. Hapus data terkait: booking_status_histories, guests, payments, refunds, reviews, e_tickets
+         * 2. Hapus booking_room dan booking
+         * 3. Hapus room_availabilities dan room_price_histories
+         * 4. Hapus room_photo, room_facilities
+         * 5. Force delete room_type
+         * 6. Hapus hotel_photo, hotel_facilities
+         * 7. Force delete hotel
+         * 8. Delete user dummy
+         */
         DB::transaction(function () {
             $hotelIds = Hotel::where('slug', 'like', '%-dummy-%')->pluck('id');
             if ($hotelIds->isEmpty()) {

@@ -14,6 +14,15 @@ use Illuminate\Support\Facades\DB;
 
 class AppealController extends Controller
 {
+    /**
+ * Menampilkan daftar appeal untuk admin hotel.
+ *
+ * Mengambil semua appeal yang diajukan oleh admin hotel yang sama,
+ * diurutkan berdasarkan tanggal terbaru dan dipaginasi.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar appeal dengan pagination
+     */
     public function indexAdmin(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -23,6 +32,23 @@ class AppealController extends Controller
         return response()->json(['success' => true, 'data' => $appeals]);
     }
 
+    /**
+ * Menyimpan appeal baru oleh admin hotel.
+ *
+ * Proses pengajuan banding terhadap peringatan atau pemulihan akun hotel.
+ * Validasi input: reason (wajib, min 10 char, max 2000) dan warning_id (opsional).
+ * Cek validasi: hotel harus ada, peringatan harus sesuai hotel,
+ * peringatan tidak bisa ditutup, dan tidak ada banding pending lain.
+ *
+ * Proses dalam transaksi database:
+ * 1. Buat record Appeal baru dengan status 'pending'
+ * 2. Tentukan subject (peringatan atau pemulihan) berdasarkan apakah ada warning_id
+ * 3. Buat notifikasi ke admin hotel
+ * 4. Kirim notifikasi ke semua super admin dengan detail hotel dan subject
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses dan data appeal yang dibuat
+     */
     public function storeAdmin(Request $request): JsonResponse
     {
         $request->validate([
@@ -103,6 +129,16 @@ class AppealController extends Controller
         });
     }
 
+    /**
+ * Menampilkan daftar appeal untuk super admin.
+ *
+ * Mengambil semua appeal di sistem dengan filter opsional berdasarkan status.
+ * Dilengkapi relasi hotel, warning, dan requester (peminta banding).
+ * Dapat difilter berdasarkan status (approved, rejected, pending, dll).
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar appeal lengkap dengan pagination
+     */
     public function indexSuperAdmin(Request $request): JsonResponse
     {
         $query = Appeal::with(['hotel', 'warning', 'requester'])->latest();
@@ -114,6 +150,22 @@ class AppealController extends Controller
         return response()->json(['success' => true, 'data' => $appeals]);
     }
 
+    /**
+ * Memperbarui status appeal oleh super admin.
+ *
+ * Proses persetujuan atau tolak banding yang diajikan oleh admin hotel.
+ * Hanya boleh diproses jika status appeal masih 'pending'.
+ * Setiap ditetapkan, catat admin_note dan timestamp decided_at.
+ *
+ * Validasi:
+ * - status wajib 'approved' atau 'rejected'
+ * - admin_note opsional, max 1000 karakter
+ * - Appeal harus memiliki status 'pending' sebelum diproses
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID appeal
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses dan data appeal yang diupdate
+     */
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $request->validate([

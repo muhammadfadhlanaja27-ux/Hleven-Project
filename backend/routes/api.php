@@ -36,8 +36,22 @@ use App\Http\Controllers\QRCodeController;
 |--------------------------------------------------------------------------
 | API Routes - H'Leven Backend
 |--------------------------------------------------------------------------
-*/
 
+ * Semua route dibagi menjadi 5 grup utama:
+ * 1. PUBLIC ROUTES - Buka untuk semua (tidak butuh auth:sanctum)
+ * 2. PROTECTED ROUTES - Butuh token sanctum
+ * 3. ADMIN HOTEL ROUTES - Butuh role admin_hotel
+ * 4. SUPER ADMIN ROUTES - Butuh role super_admin
+ * 5. SHARED ROUTES - Bisa diakses admin_hotel & super_admin
+ *
+ * Catatan Penting:
+ * - Route prefix 'v1' digunakan untuk semua API endpoints
+ * - Route kecuali register, login, facilities, payments/callback, dan public hotel/room reads
+ *   butuh auth:sanctum
+ * - Untuk daftar lengkap endpoint, jalankan: php artisan route:list
+ * - Setiap grup middleware memiliki keterangan tersendiri di bawah ini
+ *
+ */
 Route::prefix('v1')->group(function () {
 
     // ==========================================

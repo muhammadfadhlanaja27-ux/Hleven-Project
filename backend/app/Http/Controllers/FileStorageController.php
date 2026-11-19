@@ -19,6 +19,17 @@ class FileStorageController extends Controller
         $this->storageService = $storageService;
     }
 
+    /**
+ * Mengunggah foto hotel.
+ *
+ * Proses unggah foto baru untuk hotel tertentu.
+ * Validasi meliputi tipe file (jpg, jpeg, png, webp), maksimal 5MB,
+ * dan validasi kepemilikan hotel oleh admin yang login.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID hotel
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses unggahan foto
+     */
     public function uploadHotelPhoto(Request $request, $id): JsonResponse
     {
         $request->validate([
@@ -49,6 +60,17 @@ class FileStorageController extends Controller
         }
     }
 
+    /**
+ * Menghapus foto hotel.
+ *
+ * Proses penghapusan foto hotel yang sudah ada.
+ * Validasi kepemilikan hotel oleh admin yang login serta aturan
+ * minim satu foto untuk hotel ($photoCount <= 1).
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID foto hotel
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penghapusan
+     */
     public function deleteHotelPhoto(Request $request, $id): JsonResponse
     {
         try {
@@ -81,6 +103,17 @@ class FileStorageController extends Controller
         }
     }
 
+    /**
+ * Mengunggah foto kamar.
+ *
+ * Proses unggah foto baru untuk tipe kamar tertentu.
+ * Validasi meliputi tipe file (jpg, jpeg, png, webp), maksimal 5MB,
+ * serta validasi akses hotel berdasarkan admin_id.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID tipe kamar (room_type_id)
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses unggahan foto
+     */
     public function uploadRoomPhoto(Request $request, $id): JsonResponse
     {
         $request->validate([
@@ -110,6 +143,17 @@ class FileStorageController extends Controller
         }
     }
 
+    /**
+ * Menghapus foto kamar.
+ *
+ * Proses penghapusan foto kamar yang sudah ada.
+ * Validasi akses hotel berdasarkan roomType.hotel.admin_id serta
+ * penghapusan melalui storage service.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID foto kamar (room_photo_id)
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penghapusan
+     */
     public function deleteRoomPhoto(Request $request, $id): JsonResponse
     {
         try {

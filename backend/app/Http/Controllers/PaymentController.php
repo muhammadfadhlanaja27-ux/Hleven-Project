@@ -100,8 +100,16 @@ class PaymentController extends Controller
     }
 
     /**
-     * POST /api/v1/payments/callback
-     * Webhook/Callback dari Midtrans Server
+ * POST /api/v1/payments/callback
+ * Webhook/Callback dari Midtrans Server
+ *
+ * menerima payload callback dari Midtrans setelah pembayaran berhasil atau dibatalkan.
+ * Payload dikirim langsung ke MidtransService untuk diproses.
+ * Response HTTP 200 selalu dikembalikan ke Midtrans (baik sukses maupun error)
+ * untuk memenuhi persyaratan webhook Midtrans.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi status sukses/error
      */
     public function callback(Request $request): JsonResponse
     {

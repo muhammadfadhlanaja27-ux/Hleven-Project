@@ -16,6 +16,19 @@ class SuperAdminUserController extends Controller
         $this->userService = $userService;
     }
 
+    /**
+ * Menampilkan daftar pengguna untuk super admin.
+ *
+ * Menampilkan seluruh data pengguna dengan filter opsional:
+ * - role: admin_hotel, user, super_admin
+ * - status: active, blocked, inactive
+ * - search: mencocokkan nama, email, atau nomor telepon
+ *
+ * Data diorder by latest dan dipaginasi sesuai per_page.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi daftar pengguna dengan metadata pagination
+     */
     public function index(Request $request): JsonResponse
     {
         try {
@@ -43,6 +56,14 @@ class SuperAdminUserController extends Controller
         }
     }
 
+    /**
+ * Menampilkan detail pengguna tertentu.
+ *
+ * Mengambil data pengguna berdasarkan ID beserta informasi akun.
+ *
+ * @param int $id ID pengguna
+ * @return \Illuminate\Http\JsonResponse JSON response berisi data pengguna
+     */
     public function show($id): JsonResponse
     {
         try {
@@ -60,6 +81,25 @@ class SuperAdminUserController extends Controller
         }
     }
 
+    /**
+ * Menambah pengguna baru oleh super admin.
+ *
+ * Proses pendaftaran pengguna baru dengan validasi komprehensif:
+ * - name: wajib, string, max 255 karakter
+ * - email: wajib format email, unik di tabel users
+ * - password: wajib, minimal 8 karakter
+ * - role: wajib, salah satu: admin_hotel, user, super_admin
+ * - phone: opsional, string, max 20 karakter
+ * - status: opsional, salah satu: active, blocked, inactive
+ * - hotel_name: opsional, nama hotel untuk admin_hotel
+ *
+ * Validasi pastikan role yang dikirim valid dan email belum terdaftar.
+ * Pengguran dibuat melalui SuperAdminUserService untuk menjalankan
+ * logika bisnis tambahan (jika ada).
+ *
+ * @param \Illuminate\Http\Request $request
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses dan status creation
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -88,6 +128,20 @@ class SuperAdminUserController extends Controller
         }
     }
 
+    /**
+ * Memperbarui status pengguna oleh super admin.
+ *
+ * Proses mengubah status akun pengguna (active, blocked, inactive).
+ * Validasi memastikan status yang dikirim valid dan tidak boleh
+ * mengubah status akun sendiri sendiri super admin.
+ *
+ * Catatan penting: Semua huruf status diubah menjadi lowercase
+ * sebelum disimpan ke database untuk kompatibilitas Supabase.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID pengguna
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses pembaruan status
+     */
     public function updateStatus(Request $request, $id): JsonResponse
     {
         // 1. Terima data dari React (apapun bentuk hurufnya)
@@ -123,6 +177,34 @@ class SuperAdminUserController extends Controller
         }
     }
 
+    /**
+ * Memperbarui role pengguna oleh super admin.
+ *
+ * Proses mengubah role akun pengguna (admin_hotel, user).
+ * Hanya boleh diubah jika user bukan dirinya sendiri super admin.
+ *
+ * Role yang didukung:
+ * - admin_hotel: role untuk managemen hotel tertentu
+ * - user: role untuk pengguna standar
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID pengguna
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses pembaruan role
+     */
+    /**
+ * Memperbarui role pengguna oleh super admin.
+ *
+ * Proses mengubah role akun pengguna dari admin_hotel menjadi user atau sebaliknya.
+ * Hanya boleh diubah jika user bukan dirinya sendiri super admin.
+ *
+ * Role yang didukung:
+ * - admin_hotel: role untuk managemen hotel tertentu beserta semua kamar & pembayaran
+ * - user: role untuk pengguna standar dengan akses terbatas
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID pengguna
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses pembaruan role
+     */
     public function updateRole(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
@@ -154,6 +236,19 @@ class SuperAdminUserController extends Controller
         }
     }
 
+    /**
+ * Menghapus pengguna oleh super admin.
+ *
+ * Proses penghapusan pengguna dari sistem.
+ * Hanya boleh dihapus jika user bukan dirinya sendiri super admin.
+ *
+ * Pencegahan diri sendiri: Super admin tidak dapat menghapus akun itself.
+ * Jika mencoba, response akan mengembalikan pesan error dengan status 400.
+ *
+ * @param \Illuminate\Http\Request $request
+ * @param int $id ID pengguna
+ * @return \Illuminate\Http\JsonResponse JSON response berisi pesan sukses penghapusan
+     */
     public function destroy(Request $request, $id): JsonResponse
     {
         try {
