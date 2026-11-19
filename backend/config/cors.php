@@ -12,7 +12,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://hleven.my.id'],
+    'allowed_origins' => ['http://localhost'],
 
     'allowed_origins_patterns' => [],
 
